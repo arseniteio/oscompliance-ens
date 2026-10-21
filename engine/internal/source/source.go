@@ -105,13 +105,37 @@ func (s *Source) Agents(ctx context.Context, since time.Time) ([]verdict.Agent, 
 // indexed since the given time.
 func (s *Source) LatestSnapshots(ctx context.Context, since time.Time) (map[string]fact.AccountInventorySnapshot, error) {
 
+	newest, err := latestFacts[fact.AccountInventorySnapshot](ctx, s, fact.AccountInventorySnapshotFact, since, 1)
+
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots := map[string]fact.AccountInventorySnapshot{}
+
+	for agentID, list := range newest {
+		snapshots[agentID] = list[0]
+	}
+
+	return snapshots, nil
+}
+
+// IdentitySnapshots returns, per agent ID, up to n identity_snapshot facts
+// indexed since the given time, newest first.
+func (s *Source) IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
+	return latestFacts[fact.IdentitySnapshot](ctx, s, fact.IdentitySnapshotFact, since, n)
+}
+
+// latestFacts returns, per agent ID, up to n facts of type name, newest first.
+func latestFacts[T any](ctx context.Context, s *Source, name string, since time.Time, n int) (map[string][]T, error) {
+
 	query := map[string]any{
 		"size":  0,
-		"query": map[string]any{"bool": map[string]any{"filter": factFilter(fact.AccountInventorySnapshotFact, since)}},
+		"query": map[string]any{"bool": map[string]any{"filter": factFilter(name, since)}},
 		"aggs": map[string]any{"agents": map[string]any{
 			"terms": map[string]any{"field": "agent.id", "size": maxAgents},
 			"aggs": map[string]any{"latest": map[string]any{
-				"top_hits": map[string]any{"size": 1, "sort": []any{map[string]any{"timestamp": "desc"}}},
+				"top_hits": map[string]any{"size": n, "sort": []any{map[string]any{"timestamp": "desc"}}},
 			}},
 		}},
 	}
@@ -135,34 +159,45 @@ func (s *Source) LatestSnapshots(ctx context.Context, since time.Time) (map[stri
 		return nil, err
 	}
 
-	snapshots := map[string]fact.AccountInventorySnapshot{}
+	facts := map[string][]T{}
 
 	for _, b := range resp.Aggregations.Agents.Buckets {
-		if len(b.Latest.Hits.Hits) == 0 {
-			continue
+		for _, h := range b.Latest.Hits.Hits {
+			var f T
+			if err := decodeHit(h, &f); err != nil {
+				return nil, fmt.Errorf("agent %s: %w", b.Key, err)
+			}
+			facts[b.Key] = append(facts[b.Key], f)
 		}
-		var snapshot fact.AccountInventorySnapshot
-		if err := decodeHit(b.Latest.Hits.Hits[0], &snapshot); err != nil {
-			return nil, fmt.Errorf("agent %s: %w", b.Key, err)
-		}
-		snapshots[b.Key] = snapshot
 	}
 
-	return snapshots, nil
+	return facts, nil
 }
 
 // AccountRecords returns every account_record of one pass of one agent.
 func (s *Source) AccountRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.AccountRecord, error) {
+	return passRecords[fact.AccountRecord](ctx, s, fact.AccountRecordFact, agentID, runID, since)
+}
 
-	filter := append(factFilter(fact.AccountRecordFact, since),
+// IdentityRecords returns every identity_record of one pass of one agent.
+func (s *Source) IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error) {
+	return passRecords[fact.IdentityRecord](ctx, s, fact.IdentityRecordFact, agentID, runID, since)
+}
+
+// passRecords reads every fact of type name with the given run_id from one
+// agent, decoded into T. A Go method cannot have type parameters, so this is
+// a function that takes the Source.
+func passRecords[T any](ctx context.Context, s *Source, name, agentID, runID string, since time.Time) ([]T, error) {
+
+	filter := append(factFilter(name, since),
 		map[string]any{"term": map[string]any{"agent.id": agentID}},
 		map[string]any{"term": map[string]any{"data.run_id": runID}},
 	)
 
-	var records []fact.AccountRecord
+	var records []T
 
 	err := s.page(ctx, filter, func(h hit) error {
-		var record fact.AccountRecord
+		var record T
 		if err := decodeHit(h, &record); err != nil {
 			return err
 		}

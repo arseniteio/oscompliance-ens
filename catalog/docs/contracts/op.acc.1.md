@@ -161,11 +161,13 @@ Active accounts for EV-01 and EV-07 are the `account_record` with
 `login_enabled = true`.
 
 EV-02 over the latest `identity_snapshot` per host in the window (the
-current pass) and the newest complete pass before it (the previous pass):
+current pass) and the newest complete pass before it (the previous pass: both
+files read, every record received; up to 10 earlier passes are tried):
 
 1. No snapshot: `NOT_EVALUABLE`, cause `COLLECTION`.
 2. `passwd_status` or `shadow_status` is not `read`: `NOT_EVALUABLE`, cause
    `COLLECTION`, reason the error.
+   Both read but no `records_emitted`: `NOT_EVALUABLE`, cause `EVIDENCE`.
 3. Fewer `identity_record` received than `records_emitted`: `NOT_EVALUABLE`,
    cause `COLLECTION`.
 4. Otherwise `COMPLIANT`: identity changes are being recorded. The reason

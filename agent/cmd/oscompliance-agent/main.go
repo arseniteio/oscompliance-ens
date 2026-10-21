@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -25,7 +26,8 @@ func main() {
 func run() error {
 	output := flag.String("output", "/var/log/oscompliance/facts.ndjson", "NDJSON file the facts are appended to")
 	host := flag.String("host", "", "host name to report (default: os.Hostname)")
-	passwd := flag.String("passwd", "/etc/passwd", "account database read by EV-01")
+	passwd := flag.String("passwd", "/etc/passwd", "account database read by EV-01 and EV-02")
+	shadow := flag.String("shadow", "/etc/shadow", "shadow file read by EV-02")
 	uidMin := flag.Int("uid-min", 1000, "lowest UID reported by EV-01")
 	flag.Parse()
 
@@ -49,5 +51,11 @@ func run() error {
 	defer f.Close()
 
 	e := emit.New(f, *host, version, runID)
-	return opacc1.CollectEV01(e, opacc1.EV01Config{PasswdPath: *passwd, UIDMin: *uidMin})
+
+	// Every collector runs even when an earlier one fails: one broken
+	// evidence must not silence the others.
+	return errors.Join(
+		opacc1.CollectEV01(e, opacc1.EV01Config{PasswdPath: *passwd, UIDMin: *uidMin}),
+		opacc1.CollectEV02(e, opacc1.EV02Config{PasswdPath: *passwd, ShadowPath: *shadow}),
+	)
 }

@@ -16,6 +16,23 @@ type fakeFacts struct {
 	records   map[string][]fact.AccountRecord // by run_id
 	failRun   string
 	asked     []string // run_ids asked for
+
+	currentIdentity map[string][]fact.IdentitySnapshot
+	earlierIdentity map[string][]fact.IdentitySnapshot
+	identityRecords map[string][]fact.IdentityRecord // by run_id
+	identityAsked   []string
+}
+
+func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
+	if n == 1 {
+		return f.currentIdentity, nil
+	}
+	return f.earlierIdentity, nil
+}
+
+func (f *fakeFacts) IdentityRecords(_ context.Context, _, runID string, _ time.Time) ([]fact.IdentityRecord, error) {
+	f.identityAsked = append(f.identityAsked, runID)
+	return f.identityRecords[runID], nil
 }
 
 func (f *fakeFacts) Agents(context.Context, time.Time) ([]verdict.Agent, error) {
@@ -61,8 +78,9 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	if err == nil {
 		t.Error("want the error of agent 004")
 	}
-	if n != 3 || len(sink.got) != 3 {
-		t.Fatalf("want 3 verdicts (001, 002, 003), got %d: %+v", n, sink.got)
+	// EV-01 for 001, 002, 003 (004 fails) and EV-02 for all four.
+	if n != 7 || len(sink.got) != 7 {
+		t.Fatalf("want 7 verdicts, got %d: %+v", n, sink.got)
 	}
 	// Records are read only for snapshots that were read.
 	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {
@@ -71,7 +89,9 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 
 	byAgent := map[string]verdict.Verdict{}
 	for _, v := range sink.got {
-		byAgent[v.Agent.ID] = v
+		if v.Evidence == "EV-01" {
+			byAgent[v.Agent.ID] = v
+		}
 	}
 	if byAgent["001"].RunID != "r1" || byAgent["002"].RunID != "r2" || byAgent["003"].RunID != "" {
 		t.Errorf("run ids: %+v", byAgent)
@@ -79,5 +99,45 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	v := byAgent["001"]
 	if v.Control != "op.acc.1" || v.Evidence != "EV-01" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
 		t.Errorf("verdict fields: %+v", v)
+	}
+}
+
+func identityPass(runID string, emitted int, read bool) fact.IdentitySnapshot {
+	s := fact.IdentitySnapshot{Envelope: fact.Envelope{RunID: runID}, PasswdStatus: fact.SourceRead, ShadowStatus: fact.SourceRead, RecordsEmitted: &emitted}
+	if !read {
+		s.ShadowStatus, s.ShadowError, s.RecordsEmitted = fact.SourceUnreadable, "denied", nil
+	}
+	return s
+}
+
+func TestOncePicksPreviousCompleteIdentityPass(t *testing.T) {
+	cur := identityPass("cur", 1, true)
+	facts := &fakeFacts{
+		agents:          []verdict.Agent{{ID: "001", Name: "a"}},
+		currentIdentity: map[string][]fact.IdentitySnapshot{"001": {cur}},
+		earlierIdentity: map[string][]fact.IdentitySnapshot{"001": {
+			cur,                                 // the current pass itself: skipped
+			identityPass("unread", 0, false),    // shadow not read: skipped
+			identityPass("incomplete", 2, true), // 1 of 2 records: skipped
+			identityPass("good", 1, true),       // previous
+			identityPass("older", 1, true),      // never reached
+		}},
+		identityRecords: map[string][]fact.IdentityRecord{
+			"cur": {{}}, "incomplete": {{}}, "good": {{}}, "older": {{}},
+		},
+	}
+
+	if _, err := Once(context.Background(), facts, &fakeSink{}, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"cur", "incomplete", "good"}
+	if len(facts.identityAsked) != len(want) {
+		t.Fatalf("records asked for %v, want %v", facts.identityAsked, want)
+	}
+	for i := range want {
+		if facts.identityAsked[i] != want[i] {
+			t.Fatalf("records asked for %v, want %v", facts.identityAsked, want)
+		}
 	}
 }
