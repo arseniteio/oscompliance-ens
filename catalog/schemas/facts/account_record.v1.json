@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/account_record.v1.json",
+  "title": "account_record v1",
+  "description": "One local account with UID at or above the agent's uid_min, as read from the account database in one pass. Emitted once per account, before the account_inventory_snapshot of the same run_id.",
+  "type": "object",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "required": ["user", "uid", "gid", "shell", "login_enabled"],
+  "properties": {
+    "fact": { "const": "account_record" },
+    "user": {
+      "description": "Login name.",
+      "type": "string",
+      "minLength": 1
+    },
+    "uid": { "type": "integer", "minimum": 0 },
+    "gid": { "type": "integer", "minimum": 0 },
+    "shell": {
+      "description": "Login shell as written in the source. Empty string when the field is empty.",
+      "type": "string"
+    },
+    "login_enabled": {
+      "description": "False when the shell ends in /nologin or /false. An empty shell means /bin/sh, so it is true.",
+      "type": "boolean"
+    }
+  },
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/account_inventory_snapshot.v1.json",
+  "title": "account_inventory_snapshot v1",
+  "description": "Summary of one read of the local account database. Emitted once per pass, after every account_record of the same run_id, so it also marks the pass as complete. Emitted even when the source could not be read.",
+  "type": "object",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "required": ["source", "source_path", "source_status", "uid_min"],
+  "properties": {
+    "fact": { "const": "account_inventory_snapshot" },
+    "source": {
+      "description": "Kind of account database read.",
+      "enum": ["passwd"]
+    },
+    "source_path": { "type": "string", "minLength": 1 },
+    "source_status": {
+      "description": "read: parsed. unreadable: open or read failed. implausible: readable but has no UID 0 entry, so its content cannot be trusted.",
+      "enum": ["read", "unreadable", "implausible"]
+    },
+    "source_error": {
+      "description": "Why the source was not read. Only when source_status is not read.",
+      "type": "string"
+    },
+    "uid_min": {
+      "description": "Lowest UID the agent emits an account_record for.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "entries_total": {
+      "description": "Lines of the source with a numeric UID, at any UID.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "records_emitted": {
+      "description": "account_record facts emitted in this run_id. The engine compares it with the records it received.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "duplicate_uids": {
+      "description": "UIDs held by more than one entry, at any UID. Empty array when there are none.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["uid", "users"],
+        "properties": {
+          "uid": { "type": "integer", "minimum": 0 },
+          "users": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 2
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "if": { "properties": { "source_status": { "const": "read" } } },
+  "then": {
+    "required": ["entries_total", "records_emitted", "duplicate_uids"],
+    "not": { "required": ["source_error"] }
+  },
+  "else": {
+    "required": ["source_error"],
+    "allOf": [
+      { "not": { "required": ["entries_total"] } },
+      { "not": { "required": ["records_emitted"] } },
+      { "not": { "required": ["duplicate_uids"] } }
+    ]
+  },
+  "unevaluatedProperties": false
+}

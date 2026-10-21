@@ -1,0 +1,1 @@
+{"oscompliance":"1","fact":"account_inventory_snapshot","ts":"2026-10-21T14:00:00Z","host":"lab-agent-01","agent_version":"0.1.0","run_id":"9b3e2d4a-7c1f-4e8a-b6d0-3a5c9f1e2b47","source":"passwd","source_path":"/etc/passwd","source_status":"unreadable","source_error":"open /etc/passwd: permission denied","uid_min":1000}

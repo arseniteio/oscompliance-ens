@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/envelope.v1.json",
+  "title": "Fact envelope v1",
+  "description": "Fields every fact line carries. Payload fields sit next to them at the top level, so Wazuh decodes them without nesting. A fact never carries a compliance state, an evidence id or a requirement id: mapping facts to evidences and judging them is the engine's job.",
+  "type": "object",
+  "required": ["oscompliance", "fact", "ts", "host", "agent_version", "run_id"],
+  "properties": {
+    "oscompliance": {
+      "description": "Envelope version. Also the marker the Wazuh decoder keys on.",
+      "const": "1"
+    },
+    "fact": {
+      "description": "Fact type. Selects the payload schema.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "ts": {
+      "description": "Observation time, UTC, RFC 3339 with Z suffix.",
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "host": {
+      "description": "Hostname of the observed system.",
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_version": {
+      "description": "Version of the oscompliance agent that emitted the fact.",
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "description": "Identifier of one collection pass. All facts of a pass share it; snapshot facts use it to prove completeness.",
+      "type": "string",
+      "format": "uuid"
+    }
+  }
+}

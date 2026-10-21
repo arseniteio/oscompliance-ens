@@ -54,11 +54,83 @@ Findings:
 
 ## 4. Envelope v2
 
+Schema: [`envelope.v1.json`](../../schemas/facts/envelope.v1.json). The file
+version tracks the schema; this section keeps the name "v2" to set it apart
+from the v1 runbook envelope.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `oscompliance` | `"1"` | Envelope version and decoder marker. Replaces `ensfacil`. |
+| `fact` | string | Fact type. Replaces `event`. |
+| `ts` | RFC 3339, UTC, `Z` | Observation time. |
+| `host` | string | Observed system. |
+| `agent_version` | string | Emitting agent version. |
+| `run_id` | UUID | One collection pass. Replaces the `collector_run` heartbeat. |
+
+Payload fields sit at the top level, next to the envelope. A fact carries no
+`estado`, `nivel`, `evidence_id` or `requisito`: the catalog maps facts to
+evidences and the engine judges them.
+
 ## 5. Fact catalogue
+
+Only EV-01 is defined so far. Examples in
+[`examples/`](../../schemas/facts/examples/).
+
+### `account_record`
+
+Schema: [`account_record.v1.json`](../../schemas/facts/account_record.v1.json).
+One per local account with `uid >= uid_min`, any shell. Fields: `user`, `uid`,
+`gid`, `shell`, `login_enabled`. `login_enabled` is false when the shell ends in
+`/nologin` or `/false`; an empty shell counts as enabled.
+
+Differences with v1 `account_active`: accounts without login are emitted too,
+flagged by `login_enabled`; `tipo=persona` is dropped (classification belongs
+to the engine).
+
+### `account_inventory_snapshot`
+
+Schema: [`account_inventory_snapshot.v1.json`](../../schemas/facts/account_inventory_snapshot.v1.json).
+One per pass, emitted after every `account_record` of the same `run_id`.
+
+| Field | When | Meaning |
+|---|---|---|
+| `source`, `source_path` | always | Account database read (`passwd`). |
+| `source_status` | always | `read`, `unreadable`, `implausible` (no UID 0 entry). |
+| `source_error` | not `read` | Why the read failed. |
+| `uid_min` | always | Threshold applied to `account_record`. |
+| `entries_total` | `read` | Entries with a numeric UID, any UID. |
+| `records_emitted` | `read` | `account_record` facts in this `run_id`. |
+| `duplicate_uids` | `read` | `[{uid, users[]}]` over all entries; empty when none. |
+
+Differences with v1 `account_inventory`: no `estado`; the unreadable and
+implausible cases are a fact instead of an `evidence_state`; duplicates carry
+the users that share each UID; `records_emitted` lets the engine detect an
+incomplete pass.
 
 ## 6. Parameters
 
+EV-01 only.
+
+| Parameter | Owner | Default | Use |
+|---|---|---|---|
+| `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
+| `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path`. |
+
 ## 7. Evidence judgement
+
+EV-01, as the engine must compute it to match v1 (`score.py`), over the latest
+`account_inventory_snapshot` per host in the window:
+
+1. No snapshot: `NO_EVALUABLE`, cause `COLLECTION`.
+2. `source_status` is not `read`: `NO_EVALUABLE`, cause `COLLECTION`, reason
+   `source_error`.
+3. Fewer `account_record` received for that `run_id` than `records_emitted`:
+   `NO_EVALUABLE`, cause `COLLECTION`. New in v2.
+4. `duplicate_uids` not empty: `NO_CUMPLE`.
+5. Otherwise: `CUMPLE`.
+
+Active accounts for EV-01 and EV-07 are the `account_record` with
+`login_enabled = true`.
 
 ## 8. Wazuh rules
 
