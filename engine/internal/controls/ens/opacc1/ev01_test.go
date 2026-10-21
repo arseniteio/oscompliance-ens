@@ -35,8 +35,6 @@ func records(n int) []fact.AccountRecord {
 }
 
 func TestJudgeEV01(t *testing.T) {
-	t.Skip("remove when JudgeEV01 is written")
-
 	dup := fact.DuplicateUID{UID: 0, AccountNames: []string{"root", "toor"}}
 
 	cases := []struct {
@@ -51,7 +49,8 @@ func TestJudgeEV01(t *testing.T) {
 		{"source implausible", EV01Input{Snapshot: notRead(fact.SourceImplausible, "no entry with UID 0")}, verdict.NotEvaluable, verdict.CauseCollection, "no entry with UID 0"},
 		{"fewer records than announced", EV01Input{Snapshot: readSnapshot(3), Records: records(2)}, verdict.NotEvaluable, verdict.CauseCollection, ""},
 		{"incomplete pass wins over duplicates", EV01Input{Snapshot: readSnapshot(3, dup), Records: records(1)}, verdict.NotEvaluable, verdict.CauseCollection, ""},
-		{"duplicate UIDs", EV01Input{Snapshot: readSnapshot(3, dup), Records: records(3)}, verdict.NonCompliant, "", ""},
+		{"read snapshot without counters", EV01Input{Snapshot: &fact.AccountInventorySnapshot{SourceStatus: fact.SourceRead}}, verdict.NotEvaluable, verdict.CauseEvidence, "records_emitted"},
+		{"duplicate UIDs", EV01Input{Snapshot: readSnapshot(3, dup), Records: records(3)}, verdict.NonCompliant, "", "UID 0 (root, toor)"},
 		{"clean inventory", EV01Input{Snapshot: readSnapshot(3), Records: records(3)}, verdict.Compliant, "", ""},
 		{"no accounts above uid_min", EV01Input{Snapshot: readSnapshot(0)}, verdict.Compliant, "", ""},
 		{"more records than announced (repeated delivery)", EV01Input{Snapshot: readSnapshot(2), Records: records(3)}, verdict.Compliant, "", ""},

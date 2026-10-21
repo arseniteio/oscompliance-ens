@@ -124,6 +124,8 @@ EV-01, as the engine must compute it to match v1 (`score.py`), over the latest
 1. No snapshot: `NO_EVALUABLE`, cause `COLLECTION`.
 2. `source_status` is not `read`: `NO_EVALUABLE`, cause `COLLECTION`, reason
    `source_error`.
+   A read snapshot without `records_emitted` breaks the schema:
+   `NOT_EVALUABLE`, cause `EVIDENCE`.
 3. Fewer `account_record` received for that `run_id` than `records_emitted`:
    `NO_EVALUABLE`, cause `COLLECTION`. New in v2.
 4. `duplicate_uids` not empty: `NO_CUMPLE`.
