@@ -151,13 +151,13 @@ agent runs and writes, nothing else.
 - `agent.conf.fragment.xml`: one `<localfile>` (`log_format json`,
   `/var/log/oscompliance/facts.ndjson`) for every control, delivered through
   the group `agent.conf`.
-- `oscompliance_facts_rules.xml`, range 112000-112099, apart from v1
-  (106800-106899) and from the plugin rule files (106xxx, 107xxx, 110xxx,
-  111xxx). 112000 matches the envelope at level 0; 112001 matches any fact with
-  a valid `fact` and `run_id` at level 3, so it is indexed. A new fact type
-  needs no new rule.
+- `oscompliance_facts_rules.xml`, range 119000-119099, apart from v1
+  (106800-106899) and from every band the plugin uses or reserves (up to
+  112899; 112000-112099 is mp.eq.4). 119000 matches the envelope at level 0;
+  119001 matches any fact with a valid `fact` and `run_id` at level 3, so it
+  is indexed. A new fact type needs no new rule.
 
-What the engine reads from `wazuh-alerts-*` (`rule.id: 112001`), checked in
+What the engine reads from `wazuh-alerts-*` (`rule.id: 119001`), checked in
 the lab:
 
 - Every payload field sits under `data.`.
@@ -166,7 +166,7 @@ the lab:
   using the schemas.
 - Wazuh renames static field names (`user` became `dstuser`); hence
   `account_name`. The envelope schema lists the names to avoid.
-- A line with the envelope but an invalid `fact` or `run_id` stops at 112000
+- A line with the envelope but an invalid `fact` or `run_id` stops at 119000
   and is not indexed.
 
 

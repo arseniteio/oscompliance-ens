@@ -13,7 +13,7 @@ import (
 )
 
 // FactRule is the Wazuh rule every indexed fact matches (catalog/wazuh).
-const FactRule = "112001"
+const FactRule = "119001"
 
 // pageSize is the number of hits per page when paging through facts.
 const pageSize = 1000

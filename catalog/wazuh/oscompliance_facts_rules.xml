@@ -1,23 +1,24 @@
 <!--
-  OSCompliance facts. Reserved range 112000-112099.
+  OSCompliance facts. Reserved range 119000-119099, clear of every ENSFacil
+  band (in use or reserved, up to 112899).
 
   Rules are generic: they key on the envelope, never on a control or a fact
   name, so a new fact type reaches the index without a new rule. Facts carry no
   verdict, so no rule here raises a level above 3 or adds a compliance group.
 
-    112000  base: any line with the v1 envelope (level 0, not indexed)
-    112001  any fact (level 3, indexed)
+    119000  base: any line with the v1 envelope (level 0, not indexed)
+    119001  any fact (level 3, indexed)
 -->
 <group name="oscompliance,">
 
-  <rule id="112000" level="0">
+  <rule id="119000" level="0">
     <decoded_as>json</decoded_as>
     <field name="oscompliance" type="pcre2">^1$</field>
     <description>OSCompliance fact envelope v1</description>
   </rule>
 
-  <rule id="112001" level="3">
-    <if_sid>112000</if_sid>
+  <rule id="119001" level="3">
+    <if_sid>119000</if_sid>
     <field name="fact" type="pcre2">^[a-z][a-z0-9_]*$</field>
     <field name="run_id" type="pcre2">^[0-9a-f-]{36}$</field>
     <description>OSCompliance fact $(fact)</description>

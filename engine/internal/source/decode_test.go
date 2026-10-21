@@ -6,7 +6,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
-// Copied from an alert indexed in the lab (wazuh-alerts-*, rule 112001).
+// Copied from an alert indexed in the lab (wazuh-alerts-*, rule 119001).
 func TestDecodeIndexedFacts(t *testing.T) {
 	record := map[string]any{
 		"oscompliance": "1", "fact": "account_record", "ts": "2026-10-21T15:21:26Z",
