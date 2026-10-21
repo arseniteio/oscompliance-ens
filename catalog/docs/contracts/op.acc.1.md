@@ -187,11 +187,10 @@ from the index.
 Divergence in the last row: v1 rule 2 keeps any non-compliant fact for the
 whole window (26 h), so a fixed duplicate stays `NO_CUMPLE` until it ages out.
 v2 judges the latest pass only; the earlier `NON_COMPLIANT` verdict stays in
-`oscompliance-verdicts` as history. See section 10.
+`oscompliance-verdicts` as history. Decided 2026-10-21: v2 keeps judging the
+current state.
 
 
 ## 10. Open decisions
 
-- EV-01 after a fix: current state (v2, latest pass) or sticky for the window
-  (v1 rule 2). Proposed: current state, with history in the verdicts index.
 
