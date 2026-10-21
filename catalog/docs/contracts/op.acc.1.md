@@ -73,7 +73,7 @@ evidences and the engine judges them.
 
 ## 5. Fact catalogue
 
-Only EV-01 is defined so far. Examples in
+EV-01 and EV-02 are defined so far. Examples in
 [`examples/`](../../schemas/facts/examples/).
 
 ### `account_record`
@@ -107,14 +107,40 @@ implausible cases are a fact instead of an `evidence_state`; duplicates carry
 the users that share each UID; `records_emitted` lets the engine detect an
 incomplete pass.
 
-## 6. Parameters
+### `identity_record` (EV-02)
 
-EV-01 only.
+Schema: [`identity_record.v1.json`](../../schemas/facts/identity_record.v1.json).
+One per entry of `passwd`, at any UID, joined with its `shadow` entry. Fields:
+`account_name`, `uid`, `gid`, `shell`, `password_state` (`set`, `locked`,
+`empty`, `missing`, `other`), `account_expires` (date, optional). Never a
+password hash.
+
+### `identity_snapshot` (EV-02)
+
+Schema: [`identity_snapshot.v1.json`](../../schemas/facts/identity_snapshot.v1.json).
+One per pass, after every `identity_record` of the same `run_id`.
+
+| Field | When | Meaning |
+|---|---|---|
+| `passwd_path`, `passwd_status` | always | `read`, `unreadable`, `implausible`. |
+| `passwd_error` | not `read` | Why. |
+| `shadow_path`, `shadow_status` | always | `read`, `unreadable`. |
+| `shadow_error` | not `read` | Why. |
+| `records_emitted` | both `read` | `identity_record` facts in this `run_id`. |
+
+Differences with v1 `account_created`, `account_modified`, `account_deleted`:
+the agent keeps no baseline and emits no changes. It reports the whole identity
+table on every pass and the engine compares two passes. A lost or corrupt
+baseline on the host can no longer hide or invent changes, and a reinstalled
+agent needs no first pass to set one.
+
+## 6. Parameters
 
 | Parameter | Owner | Default | Use |
 |---|---|---|---|
 | `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
-| `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path`. |
+| `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
+| `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
 
 ## 7. Evidence judgement
 
@@ -133,6 +159,24 @@ EV-01, as the engine must compute it to match v1 (`score.py`), over the latest
 
 Active accounts for EV-01 and EV-07 are the `account_record` with
 `login_enabled = true`.
+
+EV-02 over the latest `identity_snapshot` per host in the window (the
+current pass) and the newest complete pass before it (the previous pass):
+
+1. No snapshot: `NOT_EVALUABLE`, cause `COLLECTION`.
+2. `passwd_status` or `shadow_status` is not `read`: `NOT_EVALUABLE`, cause
+   `COLLECTION`, reason the error.
+3. Fewer `identity_record` received than `records_emitted`: `NOT_EVALUABLE`,
+   cause `COLLECTION`.
+4. Otherwise `COMPLIANT`: identity changes are being recorded. The reason
+   lists what changed against the previous pass, by `account_name`: created,
+   deleted, and modified (any field of `identity_record` differs). With no
+   previous pass in the lookback, the reason says the current pass is the
+   baseline.
+
+Same result as v1, where the change facts are always `CUMPLE` and the evidence
+fails only when collection fails. The change list itself is what EV-08
+(retention) and the plugin will read; where it is stored is open (section 10).
 
 Verdicts follow [`verdict.v1.json`](../../schemas/verdicts/verdict.v1.json)
 and go to the `oscompliance-verdicts` index. Status values are in English; v1
@@ -192,5 +236,8 @@ current state.
 
 
 ## 10. Open decisions
+
+- EV-02 changes: only in the verdict reason, or also as documents of their own
+  (one per change) that EV-08 and the plugin can query.
 
 

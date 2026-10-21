@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/identity_record.v1.json",
+  "title": "identity_record v1",
+  "description": "One entry of the identity files (passwd joined with shadow), at any UID. Emitted once per entry, before the identity_snapshot of the same run_id. The engine compares the records of two passes to find created, modified and deleted accounts. Never carries a password hash: only its state.",
+  "type": "object",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "required": ["account_name", "uid", "gid", "shell", "password_state"],
+  "properties": {
+    "fact": { "const": "identity_record" },
+    "account_name": { "type": "string", "minLength": 1 },
+    "uid": { "type": "integer", "minimum": 0 },
+    "gid": { "type": "integer", "minimum": 0 },
+    "shell": {
+      "description": "Login shell as written in passwd. Empty string when the field is empty.",
+      "type": "string"
+    },
+    "password_state": {
+      "description": "From the shadow password field. set: a hash. locked: starts with ! or *. empty: no password. missing: no shadow entry for the account. other: anything else.",
+      "enum": ["set", "locked", "empty", "missing", "other"]
+    },
+    "account_expires": {
+      "description": "Account expiration date (shadow field 8), UTC. Absent when the field is empty.",
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "unevaluatedProperties": false
+}
