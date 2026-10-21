@@ -1,6 +1,10 @@
 package opacc1
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -31,8 +35,54 @@ type IdentityChanges struct {
 // fields (ts, run_id, ...) always differ and do not count. When a name appears
 // twice in one pass, the first record wins.
 func DiffIdentities(previous, current []fact.IdentityRecord) IdentityChanges {
-	// TODO(dioni)
-	return IdentityChanges{}
+
+	before := byAccountName(previous)
+	after := byAccountName(current)
+
+	var changes IdentityChanges
+
+	for name, record := range after {
+
+		old, existed := before[name]
+
+		if !existed {
+			changes.Created = append(changes.Created, name)
+		} else if old != record {
+			changes.Modified = append(changes.Modified, name)
+		}
+	}
+
+	for name := range before {
+		if _, exists := after[name]; !exists {
+			changes.Deleted = append(changes.Deleted, name)
+		}
+	}
+
+	// Map order is random; sorted lists keep reasons comparable between passes.
+	sort.Strings(changes.Created)
+	sort.Strings(changes.Deleted)
+	sort.Strings(changes.Modified)
+
+	return changes
+}
+
+// byAccountName indexes records by name, first record wins. The envelope is
+// cleared so that two records compare equal (==) when only the pass differs.
+func byAccountName(records []fact.IdentityRecord) map[string]fact.IdentityRecord {
+
+	index := map[string]fact.IdentityRecord{}
+
+	for _, record := range records {
+
+		if _, seen := index[record.AccountName]; seen {
+			continue
+		}
+
+		record.Envelope = fact.Envelope{}
+		index[record.AccountName] = record
+	}
+
+	return index
 }
 
 // JudgeEV02 judges EV-02 (identity changes are recorded) as described in
@@ -48,6 +98,67 @@ func DiffIdentities(previous, current []fact.IdentityRecord) IdentityChanges {
 //     - changes: "since <Previous.RunID>: created: a, b; deleted: c; modified: d"
 //     (only the non-empty lists, in that order)
 func JudgeEV02(in EV02Input) verdict.Judgement {
-	// TODO(dioni): then remove the t.Skip lines in ev02_test.go.
-	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: verdict.CauseEvidence, Reason: "EV-02 judgement not implemented"}
+
+	current := in.Current
+
+	// 1. Nothing to judge.
+	if current == nil {
+		return notEvaluable(verdict.CauseCollection, "no identity_snapshot in the window")
+	}
+
+	// 2. The agent could not read the identity files.
+	if current.PasswdStatus != fact.SourceRead {
+		return notEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("%s %s: %s", current.PasswdPath, current.PasswdStatus, current.PasswdError))
+	}
+
+	if current.ShadowStatus != fact.SourceRead {
+		return notEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("%s %s: %s", current.ShadowPath, current.ShadowStatus, current.ShadowError))
+	}
+
+	// 3. A complete read always carries the counter (schema).
+	if current.RecordsEmitted == nil {
+		return notEvaluable(verdict.CauseEvidence, "read snapshot without records_emitted")
+	}
+
+	// 4. Records lost on the way.
+	received := len(in.Records)
+	emitted := *current.RecordsEmitted
+
+	if received < emitted {
+		return notEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("pass %s incomplete: %d of %d identity_record received", current.RunID, received, emitted))
+	}
+
+	// 5. Changes are being recorded. The reason says which.
+	if in.Previous == nil {
+		return verdict.Judgement{
+			Status: verdict.Compliant,
+			Reason: fmt.Sprintf("baseline: first complete pass, %d accounts", received),
+		}
+	}
+
+	changes := DiffIdentities(in.PreviousRecords, in.Records)
+
+	var parts []string
+
+	if len(changes.Created) > 0 {
+		parts = append(parts, "created: "+strings.Join(changes.Created, ", "))
+	}
+	if len(changes.Deleted) > 0 {
+		parts = append(parts, "deleted: "+strings.Join(changes.Deleted, ", "))
+	}
+	if len(changes.Modified) > 0 {
+		parts = append(parts, "modified: "+strings.Join(changes.Modified, ", "))
+	}
+
+	if len(parts) == 0 {
+		return verdict.Judgement{Status: verdict.Compliant, Reason: "no changes since " + in.Previous.RunID}
+	}
+
+	return verdict.Judgement{
+		Status: verdict.Compliant,
+		Reason: "since " + in.Previous.RunID + ": " + strings.Join(parts, "; "),
+	}
 }

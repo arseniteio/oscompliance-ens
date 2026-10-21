@@ -9,8 +9,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
-const ev02Pending = "DiffIdentities and JudgeEV02 not written yet"
-
 func identity(name string, uid int, state string) fact.IdentityRecord {
 	return fact.IdentityRecord{
 		Envelope:    fact.Envelope{RunID: "run-" + name, TS: "2026-10-21T14:00:00Z"},
@@ -19,7 +17,6 @@ func identity(name string, uid int, state string) fact.IdentityRecord {
 }
 
 func TestDiffIdentities(t *testing.T) {
-	t.Skip(ev02Pending)
 
 	root := identity("root", 0, "locked")
 	alice := identity("alice", 1000, "set")
@@ -79,7 +76,6 @@ func identitySnapshot(runID string, emitted int) *fact.IdentitySnapshot {
 }
 
 func TestJudgeEV02(t *testing.T) {
-	t.Skip(ev02Pending)
 
 	root := identity("root", 0, "locked")
 	alice := identity("alice", 1000, "set")

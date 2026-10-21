@@ -10,12 +10,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
 )
 
-// Remove the t.Skip lines once readShadow, passwordState and accountExpires
-// are written.
-const ev02Pending = "EV-02 shadow functions not written yet"
-
 func TestPasswordState(t *testing.T) {
-	t.Skip(ev02Pending)
 
 	cases := []struct {
 		field string
@@ -39,7 +34,6 @@ func TestPasswordState(t *testing.T) {
 }
 
 func TestAccountExpires(t *testing.T) {
-	t.Skip(ev02Pending)
 
 	cases := []struct {
 		field string
@@ -70,7 +64,6 @@ alice:!:20000:0:99999:7:::
 `
 
 func TestReadShadow(t *testing.T) {
-	t.Skip(ev02Pending)
 
 	path := filepath.Join(t.TempDir(), "shadow")
 	if err := os.WriteFile(path, []byte(shadowFixture), 0o600); err != nil {
@@ -137,7 +130,6 @@ func collectEV02(t *testing.T, passwd, shadow string) []map[string]any {
 }
 
 func TestCollectEV02(t *testing.T) {
-	t.Skip(ev02Pending)
 
 	passwd := "root:x:0:0:root:/root:/bin/bash\nalice:x:1000:1000::/home/alice:/bin/bash\ncarol:x:1001:1001::/home/carol:/bin/bash\n"
 

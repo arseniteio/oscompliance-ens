@@ -1,7 +1,11 @@
 package opacc1
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
@@ -106,9 +110,42 @@ func emitWithoutShadow(e *emit.Emitter, snapshot fact.IdentitySnapshot) error {
 // emitted, malformed lines (not 9 fields, empty name) are skipped, and only an
 // open or read error is returned. When a name appears twice, the first wins.
 func readShadow(path string) (map[string]shadowEntry, error) {
-	// TODO(dioni): open path, scan lines, split on ":", fill the map with
-	// passwordState(fields[1]) and accountExpires(fields[7]).
-	return nil, fmt.Errorf("readShadow not implemented")
+
+	file, err := os.Open(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	entries := map[string]shadowEntry{}
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		fields := strings.Split(line, ":")
+		if len(fields) != 9 || fields[0] == "" {
+			continue
+		}
+
+		if _, seen := entries[fields[0]]; seen {
+			continue
+		}
+
+		entries[fields[0]] = shadowEntry{
+			passwordState:  passwordState(fields[1]),
+			accountExpires: accountExpires(fields[7]),
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("read %s: %w", path, err)
+	}
+
+	return entries, nil
 }
 
 // passwordState classifies the shadow password field (field 2) without ever
@@ -119,13 +156,31 @@ func readShadow(path string) (map[string]shadowEntry, error) {
 //	"$..."         -> fact.PasswordSet
 //	anything else  -> fact.PasswordOther
 func passwordState(field string) string {
-	// TODO(dioni)
-	return ""
+
+	switch {
+	case field == "":
+		return fact.PasswordEmpty
+	case strings.HasPrefix(field, "!"), strings.HasPrefix(field, "*"):
+		return fact.PasswordLocked
+	case strings.HasPrefix(field, "$"):
+		return fact.PasswordSet
+	default:
+		return fact.PasswordOther
+	}
 }
 
 // accountExpires converts shadow field 8 (days since 1970-01-01) to a
 // YYYY-MM-DD date in UTC. An empty or non-numeric field returns "".
 func accountExpires(field string) string {
-	// TODO(dioni)
-	return ""
+
+	// parseID (ev01.go) already accepts only unsigned decimals: "-1" and
+	// "abc" fail here and mean "no date".
+	days, err := parseID(field)
+
+	if err != nil {
+		return ""
+	}
+
+	// Go writes date layouts with its reference date, 2006-01-02.
+	return time.Unix(int64(days)*24*60*60, 0).UTC().Format("2006-01-02")
 }
