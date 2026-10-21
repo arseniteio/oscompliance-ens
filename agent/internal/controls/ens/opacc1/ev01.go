@@ -67,7 +67,7 @@ func CollectEV01(e *emit.Emitter, cfg EV01Config) error {
 
 		record := fact.AccountRecord{
 			Envelope:     e.Envelope(fact.AccountRecordFact),
-			User:         entry.user,
+			AccountName:  entry.user,
 			UID:          entry.uid,
 			GID:          entry.gid,
 			Shell:        entry.shell,
@@ -188,7 +188,7 @@ func duplicateUIDs(entries []passwdEntry) []fact.DuplicateUID {
 
 	for uid, users := range usersByUID {
 		if len(users) > 1 {
-			duplicates = append(duplicates, fact.DuplicateUID{UID: uid, Users: users})
+			duplicates = append(duplicates, fact.DuplicateUID{UID: uid, AccountNames: users})
 		}
 	}
 

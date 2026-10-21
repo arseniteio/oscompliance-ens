@@ -15,8 +15,8 @@ func TestEmitWritesFlatEnvelopeAndPayload(t *testing.T) {
 	e.now = func() time.Time { return time.Date(2026, 10, 21, 16, 0, 0, 0, time.FixedZone("CEST", 2*3600)) }
 
 	rec := fact.AccountRecord{
-		Envelope: e.Envelope(fact.AccountRecordFact),
-		User:     "alice", UID: 1000, GID: 1000, Shell: "/bin/bash", LoginEnabled: true,
+		Envelope:    e.Envelope(fact.AccountRecordFact),
+		AccountName: "alice", UID: 1000, GID: 1000, Shell: "/bin/bash", LoginEnabled: true,
 	}
 	if err := e.Emit(rec); err != nil {
 		t.Fatal(err)
@@ -32,7 +32,7 @@ func TestEmitWritesFlatEnvelopeAndPayload(t *testing.T) {
 	want := map[string]any{
 		"oscompliance": "1", "fact": "account_record", "ts": "2026-10-21T14:00:00Z",
 		"host": "host-1", "agent_version": "0.1.0", "run_id": "5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10",
-		"user": "alice", "uid": float64(1000), "gid": float64(1000), "shell": "/bin/bash", "login_enabled": true,
+		"account_name": "alice", "uid": float64(1000), "gid": float64(1000), "shell": "/bin/bash", "login_enabled": true,
 	}
 	if len(got) != len(want) {
 		t.Fatalf("fields: got %v, want %v", got, want)

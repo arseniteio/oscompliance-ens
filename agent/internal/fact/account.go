@@ -16,7 +16,7 @@ const (
 // AccountRecord mirrors account_record.v1.json.
 type AccountRecord struct {
 	Envelope
-	User         string `json:"user"`
+	AccountName  string `json:"account_name"`
 	UID          int    `json:"uid"`
 	GID          int    `json:"gid"`
 	Shell        string `json:"shell"`
@@ -41,6 +41,6 @@ type AccountInventorySnapshot struct {
 
 // DuplicateUID is a UID shared by more than one account entry.
 type DuplicateUID struct {
-	UID   int      `json:"uid"`
-	Users []string `json:"users"`
+	UID          int      `json:"uid"`
+	AccountNames []string `json:"account_names"`
 }

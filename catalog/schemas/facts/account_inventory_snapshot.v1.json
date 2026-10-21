@@ -41,10 +41,10 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["uid", "users"],
+        "required": ["uid", "account_names"],
         "properties": {
           "uid": { "type": "integer", "minimum": 0 },
-          "users": {
+          "account_names": {
             "type": "array",
             "items": { "type": "string" },
             "minItems": 2

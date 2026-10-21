@@ -79,7 +79,7 @@ Only EV-01 is defined so far. Examples in
 ### `account_record`
 
 Schema: [`account_record.v1.json`](../../schemas/facts/account_record.v1.json).
-One per local account with `uid >= uid_min`, any shell. Fields: `user`, `uid`,
+One per local account with `uid >= uid_min`, any shell. Fields: `account_name`, `uid`,
 `gid`, `shell`, `login_enabled`. `login_enabled` is false when the shell ends in
 `/nologin` or `/false`; an empty shell counts as enabled.
 
@@ -100,7 +100,7 @@ One per pass, emitted after every `account_record` of the same `run_id`.
 | `uid_min` | always | Threshold applied to `account_record`. |
 | `entries_total` | `read` | Entries with a numeric UID, any UID. |
 | `records_emitted` | `read` | `account_record` facts in this `run_id`. |
-| `duplicate_uids` | `read` | `[{uid, users[]}]` over all entries; empty when none. |
+| `duplicate_uids` | `read` | `[{uid, account_names[]}]` over all entries; empty when none. |
 
 Differences with v1 `account_inventory`: no `estado`; the unreadable and
 implausible cases are a fact instead of an `evidence_state`; duplicates carry
@@ -133,6 +133,31 @@ Active accounts for EV-01 and EV-07 are the `account_record` with
 `login_enabled = true`.
 
 ## 8. Wazuh rules
+
+Files: [`catalog/wazuh/`](../../wazuh/). Installed on the manager only; the
+agent runs and writes, nothing else.
+
+- `agent.conf.fragment.xml`: one `<localfile>` (`log_format json`,
+  `/var/log/oscompliance/facts.ndjson`) for every control, delivered through
+  the group `agent.conf`.
+- `oscompliance_facts_rules.xml`, range 112000-112099, apart from v1
+  (106800-106899) and from the plugin rule files (106xxx, 107xxx, 110xxx,
+  111xxx). 112000 matches the envelope at level 0; 112001 matches any fact with
+  a valid `fact` and `run_id` at level 3, so it is indexed. A new fact type
+  needs no new rule.
+
+What the engine reads from `wazuh-alerts-*` (`rule.id: 112001`), checked in
+the lab:
+
+- Every payload field sits under `data.`.
+- Scalars arrive as strings: `"1000"`, `"true"`. Arrays of objects
+  (`duplicate_uids`) keep their JSON types. The engine converts scalars back
+  using the schemas.
+- Wazuh renames static field names (`user` became `dstuser`); hence
+  `account_name`. The envelope schema lists the names to avoid.
+- A line with the envelope but an invalid `fact` or `run_id` stops at 112000
+  and is not indexed.
+
 
 ## 9. Parity and migration
 

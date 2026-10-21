@@ -66,7 +66,7 @@ func TestCollectEV01Read(t *testing.T) {
 	}{{"alice", true}, {"svc", false}, {"bob", true}}
 	for i, w := range wantRecords {
 		f := facts[i]
-		if f["fact"] != "account_record" || f["user"] != w.user || f["login_enabled"] != w.login {
+		if f["fact"] != "account_record" || f["account_name"] != w.user || f["login_enabled"] != w.login {
 			t.Errorf("record %d: got %v, want %s login=%v", i, f, w.user, w.login)
 		}
 	}
@@ -82,7 +82,7 @@ func TestCollectEV01Read(t *testing.T) {
 		t.Errorf("source_error on a read snapshot: %v", s)
 	}
 	dups, _ := json.Marshal(s["duplicate_uids"])
-	if string(dups) != `[{"uid":0,"users":["root","toor"]}]` {
+	if string(dups) != `[{"account_names":["root","toor"],"uid":0}]` {
 		t.Errorf("duplicate_uids: %s", dups)
 	}
 }

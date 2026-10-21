@@ -5,10 +5,10 @@
   "description": "One local account with UID at or above the agent's uid_min, as read from the account database in one pass. Emitted once per account, before the account_inventory_snapshot of the same run_id.",
   "type": "object",
   "allOf": [{ "$ref": "envelope.v1.json" }],
-  "required": ["user", "uid", "gid", "shell", "login_enabled"],
+  "required": ["account_name", "uid", "gid", "shell", "login_enabled"],
   "properties": {
     "fact": { "const": "account_record" },
-    "user": {
+    "account_name": {
       "description": "Login name.",
       "type": "string",
       "minLength": 1

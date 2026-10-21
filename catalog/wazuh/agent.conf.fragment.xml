@@ -1,0 +1,5 @@
+<!-- Inside <agent_config> of the group agent.conf on the manager. One file for every control. -->
+<localfile>
+  <log_format>json</log_format>
+  <location>/var/log/oscompliance/facts.ndjson</location>
+</localfile>
