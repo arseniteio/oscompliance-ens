@@ -20,27 +20,43 @@ Data flow: agent → Wazuh → engine → state index → plugin.
 catalog/
   docs/contracts/   per-control fact contracts
   docs/adr/         architecture decision records
-  schemas/facts/    JSON schemas, one per fact type
+  schemas/facts/    JSON schemas, one per fact type, with examples
+  schemas/verdicts/ JSON schema of the verdicts index
+  fact/             Go module .../catalog/fact: fact types shared by agent and
+                    engine; its tests validate the schemas
+  wazuh/            manager side: <localfile> fragment and generic fact rules
   controls/         control definitions
 agent/              Go module github.com/OpenSourceCompliance/oscompliance-core/agent
   cmd/oscompliance-agent/
-  internal/controls/ens/opacc1/
+  internal/controls/ens/opacc1/   collectors
   internal/source/  data sources (accounts, auth log, ...)
   internal/emit/    fact output
   internal/state/   offsets, cursors, snapshots
-  internal/fact/    fact types
-engine/
+engine/             Go module github.com/OpenSourceCompliance/oscompliance-core/engine
+  cmd/oscompliance-engine/
+  internal/controls/ens/opacc1/   judges
+  internal/source/  facts read from wazuh-alerts-*
+  internal/store/   verdicts index
+  internal/run/     one evaluation pass
 ```
 
 ## Status
 
-Pre-alpha. In progress: the op.acc.1 fact contract
-(`catalog/docs/contracts/op.acc.1.md`). No code yet.
+Pre-alpha. op.acc.1 EV-01 runs end to end: agent, Wazuh rules, engine,
+verdicts. Contract: `catalog/docs/contracts/op.acc.1.md`.
 
 ## Development
 
-Requires Go 1.27. End-to-end testing uses
-[wazuh-lab-docker](https://github.com/OpenSourceCompliance/wazuh-lab-docker).
+Requires Go 1.27. Each module has its own `go.mod`; agent and engine import
+`catalog/fact` through a `replace` directive.
+
+```bash
+make check   # gofmt, go vet and go test on every module, schemas included
+```
+
+End-to-end testing uses
+[wazuh-lab-docker](https://github.com/OpenSourceCompliance/wazuh-lab-docker),
+which builds both binaries from this repository.
 
 ## License
 

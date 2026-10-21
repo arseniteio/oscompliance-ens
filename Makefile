@@ -1,0 +1,18 @@
+# Checks for every Go module in the repository: format, vet, tests. The
+# catalog/fact tests also validate the schemas and their examples. -count=1
+# because the Go test cache does not see changes to the schema files.
+
+MODULES := catalog/fact agent engine
+
+.PHONY: check test
+
+check:  ## gofmt, go vet and go test on every module
+	@for m in $(MODULES); do \
+	  echo "==> $$m"; \
+	  unformatted="$$(cd $$m && gofmt -l .)"; \
+	  if [ -n "$$unformatted" ]; then echo "not gofmt-ed: $$unformatted"; exit 1; fi; \
+	  (cd $$m && go vet ./... && go test -count=1 ./...) || exit 1; \
+	done
+
+test:   ## go test on every module
+	@for m in $(MODULES); do (cd $$m && go test -count=1 ./...) || exit 1; done
