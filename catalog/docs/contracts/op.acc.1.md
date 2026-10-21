@@ -132,6 +132,15 @@ EV-01, as the engine must compute it to match v1 (`score.py`), over the latest
 Active accounts for EV-01 and EV-07 are the `account_record` with
 `login_enabled = true`.
 
+Verdicts follow [`verdict.v1.json`](../../schemas/verdicts/verdict.v1.json)
+and go to the `oscompliance-verdicts` index. Status values are in English; v1
+equivalents: `COMPLIANT` = `CUMPLE`, `NON_COMPLIANT` = `NO_CUMPLE`,
+`NOT_EVALUABLE` = `NO_EVALUABLE`. Causes keep their v1 names.
+
+Engine parameters: `window` 26 h (v1 `OPACC1_VENTANA_HORAS`), `lookback` 7
+days (agents with facts this recent are judged even when the window is empty).
+Records of a pass are matched by `run_id`, not by the window.
+
 ## 8. Wazuh rules
 
 Files: [`catalog/wazuh/`](../../wazuh/). Installed on the manager only; the
