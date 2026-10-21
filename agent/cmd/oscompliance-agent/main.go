@@ -9,7 +9,7 @@ import (
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc1"
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".

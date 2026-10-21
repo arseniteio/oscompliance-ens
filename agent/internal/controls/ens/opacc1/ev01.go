@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
 // EV01Config holds the agent-side parameters of EV-01 (contract section 6).

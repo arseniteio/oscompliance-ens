@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
 // Emitter stamps envelopes for one collection pass and writes one fact per line.
