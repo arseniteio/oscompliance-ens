@@ -31,7 +31,8 @@ type IdentityChanges struct {
 }
 
 // DiffIdentities compares two passes by account_name. An account is modified
-// when uid, gid, shell, password_state or account_expires differ; envelope
+// when uid, gid, shell, password_state, account_expires or authorized_keys
+// differ; envelope
 // fields (ts, run_id, ...) always differ and do not count. When a name appears
 // twice in one pass, the first record wins.
 func DiffIdentities(previous, current []fact.IdentityRecord) IdentityChanges {
@@ -47,7 +48,7 @@ func DiffIdentities(previous, current []fact.IdentityRecord) IdentityChanges {
 
 		if !existed {
 			changes.Created = append(changes.Created, name)
-		} else if old != record {
+		} else if !sameIdentity(old, record) {
 			changes.Modified = append(changes.Modified, name)
 		}
 	}
@@ -66,8 +67,25 @@ func DiffIdentities(previous, current []fact.IdentityRecord) IdentityChanges {
 	return changes
 }
 
+// sameIdentity compares the account fields of two records. Not ==: a pointer
+// field (AuthorizedKeys) would compare addresses, and every account would
+// look modified on every pass.
+func sameIdentity(a, b fact.IdentityRecord) bool {
+	return a.AccountName == b.AccountName && a.UID == b.UID && a.GID == b.GID &&
+		a.Shell == b.Shell && a.PasswordState == b.PasswordState &&
+		a.AccountExpires == b.AccountExpires && sameCount(a.AuthorizedKeys, b.AuthorizedKeys)
+}
+
+// sameCount compares two optional counts by value; nil means unknown.
+func sameCount(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
 // byAccountName indexes records by name, first record wins. The envelope is
-// cleared so that two records compare equal (==) when only the pass differs.
+// cleared: two passes always differ in it.
 func byAccountName(records []fact.IdentityRecord) map[string]fact.IdentityRecord {
 
 	index := map[string]fact.IdentityRecord{}

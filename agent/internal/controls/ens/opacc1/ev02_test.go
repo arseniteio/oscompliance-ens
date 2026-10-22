@@ -98,6 +98,11 @@ func TestReadShadow(t *testing.T) {
 // collectEV02 runs CollectEV02 over passwd and shadow contents. An empty
 // shadow argument means the shadow file does not exist.
 func collectEV02(t *testing.T, passwd, shadow string) []map[string]any {
+	return collectEV02WithSSHD(t, passwd, shadow, "")
+}
+
+// collectEV02WithSSHD also sets the sshd binary; "" means none installed.
+func collectEV02WithSSHD(t *testing.T, passwd, shadow, sshd string) []map[string]any {
 	t.Helper()
 
 	dir := t.TempDir()
@@ -114,7 +119,11 @@ func collectEV02(t *testing.T, passwd, shadow string) []map[string]any {
 
 	var buf bytes.Buffer
 	e := emit.New(&buf, "h", "test", "5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10")
-	if err := CollectEV02(e, EV02Config{PasswdPath: passwdPath, ShadowPath: shadowPath}); err != nil {
+	sshdPath := filepath.Join(dir, "no-sshd")
+	if sshd != "" {
+		sshdPath = sshd
+	}
+	if err := CollectEV02(e, EV02Config{PasswdPath: passwdPath, ShadowPath: shadowPath, SSHDPath: sshdPath}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -172,5 +181,30 @@ func TestCollectEV02PasswdNotRead(t *testing.T) {
 	s := facts[0]
 	if s["passwd_status"] != "implausible" || s["shadow_status"] != "unreadable" || s["shadow_error"] == nil || s["records_emitted"] != nil {
 		t.Errorf("snapshot: %v", s)
+	}
+}
+
+func TestCollectEV02SSHKeys(t *testing.T) {
+	home := t.TempDir()
+	writeFile(t, filepath.Join(home, ".ssh/authorized_keys"), "ssh-ed25519 AAAA\n", 0o600)
+
+	passwd := "root:x:0:0:root:/nonexistent:/bin/bash\nalice:x:1000:1000::" + home + ":/bin/bash\n"
+	sshd := fakeSSHD(t, "authorizedkeysfile .ssh/authorized_keys\nauthorizedkeyscommand none\n", 0)
+
+	facts := collectEV02WithSSHD(t, passwd, shadowFixture, sshd)
+	if len(facts) != 3 {
+		t.Fatalf("want 2 records and the snapshot, got %v", facts)
+	}
+	if facts[0]["authorized_keys"] != float64(0) || facts[1]["authorized_keys"] != float64(1) {
+		t.Errorf("keys: root %v, alice %v", facts[0]["authorized_keys"], facts[1]["authorized_keys"])
+	}
+	if s := facts[2]; s["sshd_status"] != "read" || s["authorized_keys_files"] == nil {
+		t.Errorf("snapshot: %v", s)
+	}
+
+	// No sshd installed: every account has 0 keys, nothing else is asked.
+	facts = collectEV02(t, passwd, shadowFixture)
+	if facts[1]["authorized_keys"] != float64(0) || facts[2]["sshd_status"] != "absent" {
+		t.Errorf("no sshd: %v", facts)
 	}
 }

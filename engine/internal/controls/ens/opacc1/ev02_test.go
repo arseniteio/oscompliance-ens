@@ -28,6 +28,16 @@ func TestDiffIdentities(t *testing.T) {
 	bobOtherPass := bob
 	bobOtherPass.RunID, bobOtherPass.TS, bobOtherPass.AgentVersion = "other", "2026-10-22T00:00:00Z", "2"
 
+	one, otherOne, two := 1, 1, 2
+	keyed := identity("kim", 1004, "locked")
+	keyed.AuthorizedKeys = &one
+	keyedSame := keyed
+	keyedSame.AuthorizedKeys = &otherOne // same count, different pointer
+	keyedMore := keyed
+	keyedMore.AuthorizedKeys = &two
+	keyedUnknown := keyed
+	keyedUnknown.AuthorizedKeys = nil
+
 	carol := identity("carol", 1002, "set")
 	dave := identity("dave", 1003, "set")
 	daveExpires := dave
@@ -45,6 +55,9 @@ func TestDiffIdentities(t *testing.T) {
 		{"modified password state", []fact.IdentityRecord{alice}, []fact.IdentityRecord{aliceLocked}, IdentityChanges{Modified: []string{"alice"}}},
 		{"modified expiry", []fact.IdentityRecord{dave}, []fact.IdentityRecord{daveExpires}, IdentityChanges{Modified: []string{"dave"}}},
 		{"all three", []fact.IdentityRecord{root, alice, bob}, []fact.IdentityRecord{root, aliceLocked, carol}, IdentityChanges{Created: []string{"carol"}, Deleted: []string{"bob"}, Modified: []string{"alice"}}},
+		{"same key count in another pass", []fact.IdentityRecord{keyed}, []fact.IdentityRecord{keyedSame}, IdentityChanges{}},
+		{"key added", []fact.IdentityRecord{keyed}, []fact.IdentityRecord{keyedMore}, IdentityChanges{Modified: []string{"kim"}}},
+		{"keys became unknown", []fact.IdentityRecord{keyed}, []fact.IdentityRecord{keyedUnknown}, IdentityChanges{Modified: []string{"kim"}}},
 		{"name twice: first wins", []fact.IdentityRecord{alice}, []fact.IdentityRecord{alice, aliceLocked}, IdentityChanges{}},
 	}
 

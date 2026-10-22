@@ -42,7 +42,8 @@ type EV04Input struct {
 //  2. No complete identity pass: NOT_EVALUABLE, COLLECTION.
 //  3. For each account with UID >= P-10 and an offboarding date (its P-09
 //     row, else its account_expires), still enabled more than P-05 days
-//     after that date: NON_COMPLIANT.
+//     after that date: NON_COMPLIANT. If only its SSH keys could say
+//     whether it is enabled and they are unknown: NOT_EVALUABLE, EVIDENCE.
 //  4. No offboarding date anywhere (P-09 empty, no account expiry): nothing
 //     can be measured, NOT_EVALUABLE, CONFIGURATION.
 //  5. Otherwise COMPLIANT.
@@ -61,7 +62,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	today := in.Now.UTC().Truncate(24 * time.Hour)
 
 	measured := 0
-	var overdue []string
+	var overdue, unknown []string
 
 	for _, account := range in.Accounts {
 
@@ -77,15 +78,24 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 
 		measured++
 
-		if IsDisabled(account, today) {
+		disabled, known := IsDisabled(account, today)
+
+		if disabled {
 			continue
 		}
 
 		days := int(today.Sub(left.UTC().Truncate(24*time.Hour)).Hours() / 24)
 
-		if days > in.DeadlineDays {
-			overdue = append(overdue, fmt.Sprintf("%s (%d days)", account.AccountName, days))
+		if days <= in.DeadlineDays {
+			continue
 		}
+
+		if !known {
+			unknown = append(unknown, account.AccountName)
+			continue
+		}
+
+		overdue = append(overdue, fmt.Sprintf("%s (%d days)", account.AccountName, days))
 	}
 
 	// 3. Enabled after the deadline.
@@ -94,6 +104,13 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 			Status: verdict.NonCompliant,
 			Reason: fmt.Sprintf("enabled more than %d days (P-05) after leaving: %s", in.DeadlineDays, strings.Join(overdue, ", ")),
 		}
+	}
+
+	// 3b. Past the deadline with a locked password, but the SSH keys could
+	// not be counted: whether it can still log in is not known.
+	if len(unknown) > 0 {
+		return notEvaluable(verdict.CauseEvidence,
+			"past the deadline with a locked password, SSH keys unknown: "+strings.Join(unknown, ", "))
 	}
 
 	// 4. No date to measure against, and nobody declared there are none.
@@ -125,23 +142,31 @@ func offboardingDate(account fact.IdentityRecord, declared map[string]time.Time)
 	return date, err == nil
 }
 
-// IsDisabled follows v1: no-login shell, locked password, or expired account.
-// Exported for the EV-08 history, which must agree with EV-04.
-func IsDisabled(account fact.IdentityRecord, today time.Time) bool {
+// IsDisabled says whether an account can no longer be used to log in, and
+// whether that can be known. Disabled: a no-login shell, an expired account,
+// or no usable password (locked or missing) and no SSH key sshd would accept.
+// A locked password alone is not enough: sshd still takes a key. v1 counted it
+// as disabled.
+func IsDisabled(account fact.IdentityRecord, today time.Time) (disabled, known bool) {
 
 	if strings.HasSuffix(account.Shell, "/nologin") || strings.HasSuffix(account.Shell, "/false") {
-		return true
+		return true, true
 	}
 
-	if account.PasswordState == fact.PasswordLocked {
-		return true
+	if account.AccountExpires != "" {
+		if expires, err := time.Parse("2006-01-02", account.AccountExpires); err == nil && !expires.After(today) {
+			return true, true
+		}
 	}
 
-	if account.AccountExpires == "" {
-		return false
+	if account.PasswordState != fact.PasswordLocked && account.PasswordState != fact.PasswordMissing {
+		return false, true
 	}
 
-	expires, err := time.Parse("2006-01-02", account.AccountExpires)
+	// No password to log in with: only keys are left.
+	if account.AuthorizedKeys == nil {
+		return false, false
+	}
 
-	return err == nil && !expires.After(today)
+	return *account.AuthorizedKeys == 0, true
 }

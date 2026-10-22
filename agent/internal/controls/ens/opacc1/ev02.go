@@ -15,6 +15,9 @@ import (
 type EV02Config struct {
 	PasswdPath string
 	ShadowPath string
+	// SSHDPath is the sshd binary asked for its effective configuration
+	// (sshd -T). Missing binary: no key logins are possible.
+	SSHDPath string
 }
 
 // shadowEntry is what EV-02 reports from one shadow line. Never the hash.
@@ -55,10 +58,19 @@ func CollectEV02(e *emit.Emitter, cfg EV02Config) error {
 	if err != nil {
 		snapshot.ShadowStatus = fact.SourceUnreadable
 		snapshot.ShadowError = err.Error()
+		snapshot.SSHDStatus = fact.SSHDError
+		snapshot.SSHDError = "not asked: " + cfg.ShadowPath + " was not read"
 		return e.Emit(snapshot)
 	}
 
 	snapshot.ShadowStatus = fact.SourceRead
+
+	// Where sshd looks for keys. Asked once per pass, not per account.
+	keys := readSSHD(cfg.SSHDPath)
+
+	snapshot.SSHDStatus = keys.status
+	snapshot.SSHDError = keys.err
+	snapshot.AuthorizedKeysFiles = keys.files
 
 	recordsEmitted := 0
 
@@ -80,6 +92,7 @@ func CollectEV02(e *emit.Emitter, cfg EV02Config) error {
 			Shell:          entry.shell,
 			PasswordState:  state.passwordState,
 			AccountExpires: state.accountExpires,
+			AuthorizedKeys: keys.count(entry),
 		}
 
 		if err := e.Emit(record); err != nil {
@@ -101,6 +114,10 @@ func emitWithoutShadow(e *emit.Emitter, snapshot fact.IdentitySnapshot) error {
 
 	snapshot.ShadowStatus = fact.SourceUnreadable
 	snapshot.ShadowError = "not read: " + snapshot.PasswdPath + " was not read"
+
+	// No accounts, so no keys to count: sshd is not asked.
+	snapshot.SSHDStatus = fact.SSHDError
+	snapshot.SSHDError = "not asked: " + snapshot.PasswdPath + " was not read"
 
 	return e.Emit(snapshot)
 }

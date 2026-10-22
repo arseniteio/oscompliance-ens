@@ -169,8 +169,8 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	const read = `{"oscompliance":"1","fact":"account_inventory_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","source":"passwd","source_path":"/etc/passwd","source_status":"read","uid_min":1000,"entries_total":3,"records_emitted":1,"duplicate_uids":[]}`
 	const unread = `{"oscompliance":"1","fact":"account_inventory_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","source":"passwd","source_path":"/etc/passwd","source_status":"unreadable","source_error":"denied","uid_min":1000}`
 
-	const identityRead = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"read","records_emitted":2}`
-	const shadowUnread = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"unreadable","shadow_error":"denied"}`
+	const identityRead = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"read","records_emitted":2,"sshd_status":"read","authorized_keys_files":[".ssh/authorized_keys"]}`
+	const shadowUnread = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"unreadable","shadow_error":"denied","sshd_status":"absent"}`
 	const identityRecord = `{"oscompliance":"1","fact":"identity_record","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","account_name":"a","uid":1000,"gid":1000,"shell":"/bin/bash","password_state":"set"}`
 
 	const groupRead = `{"oscompliance":"1","fact":"group_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_path":"/etc/group","group_status":"read","records_emitted":1}`
@@ -203,6 +203,15 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		{"group: read without records_emitted", groupRead, func(m map[string]any) { delete(m, "records_emitted") }},
 		{"group: privileged flag", groupRecord, func(m map[string]any) { m["privileged"] = true }},
 		{"group: members not a list", groupRecord, func(m map[string]any) { m["members"] = "a,b" }},
+		{"identity: sshd read without key files", identityRead, func(m map[string]any) { delete(m, "authorized_keys_files") }},
+		{"identity: key files without sshd", shadowUnread, func(m map[string]any) { m["authorized_keys_files"] = []any{".ssh/authorized_keys"} }},
+		{"identity: sshd error without message", identityRead, func(m map[string]any) {
+			m["sshd_status"] = "error"
+			delete(m, "authorized_keys_files")
+		}},
+		{"identity: no sshd_status", identityRead, func(m map[string]any) { delete(m, "sshd_status") }},
+		{"identity: negative key count", identityRecord, func(m map[string]any) { m["authorized_keys"] = -1 }},
+		{"identity: the keys themselves", identityRecord, func(m map[string]any) { m["authorized_keys"] = []any{"ssh-ed25519 AAAA"} }},
 		{"identity: expiry not a date", identityRecord, func(m map[string]any) { m["account_expires"] = "20612" }},
 	}
 

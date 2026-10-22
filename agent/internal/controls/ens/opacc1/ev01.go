@@ -24,6 +24,7 @@ type passwdEntry struct {
 	user  string
 	uid   int
 	gid   int
+	home  string
 	shell string
 }
 
@@ -133,6 +134,7 @@ func readPasswd(path string) ([]passwdEntry, error) {
 			user:  fields[0],
 			uid:   uid,
 			gid:   gid,
+			home:  fields[5],
 			shell: fields[6],
 		})
 	}

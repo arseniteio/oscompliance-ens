@@ -112,8 +112,9 @@ incomplete pass.
 Schema: [`identity_record.v1.json`](../../schemas/facts/identity_record.v1.json).
 One per entry of `passwd`, at any UID, joined with its `shadow` entry. Fields:
 `account_name`, `uid`, `gid`, `shell`, `password_state` (`set`, `locked`,
-`empty`, `missing`, `other`), `account_expires` (date, optional). Never a
-password hash.
+`empty`, `missing`, `other`), `account_expires` (date, optional),
+`authorized_keys` (how many public keys sshd would accept; absent when it
+cannot be known). Never a password hash nor a key.
 
 ### `identity_snapshot` (EV-02)
 
@@ -127,6 +128,9 @@ One per pass, after every `identity_record` of the same `run_id`.
 | `shadow_path`, `shadow_status` | always | `read`, `unreadable`. |
 | `shadow_error` | not `read` | Why. |
 | `records_emitted` | both `read` | `identity_record` facts in this `run_id`. |
+| `sshd_status` | always | `read` (from `sshd -T`), `absent` (no sshd: 0 keys for everyone), `command` (an `AuthorizedKeysCommand` decides: keys unknown), `error`. |
+| `sshd_error` | `error` | Why. |
+| `authorized_keys_files` | `read` | `AuthorizedKeysFile` patterns as sshd reports them. `Match` blocks are not applied. |
 
 Differences with v1 `account_created`, `account_modified`, `account_deleted`:
 the agent keeps no baseline and emits no changes. It reports the whole identity
@@ -167,6 +171,7 @@ cursor and parses no log.
 | `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
 | `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
 | `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
+| `sshd_path` | agent | `/usr/sbin/sshd` | EV-02. Asked with `sshd -T` for `AuthorizedKeysFile`. |
 | `group_path` | agent | `/etc/group` | EV-06. Reported as `group_path`. |
 | P-03 service accounts | plugin | none | EV-05. Read like P-04. |
 | P-05 `plazo_max_deshabilitar_dias` | plugin | none | EV-04. Number. |
@@ -234,14 +239,22 @@ and P-10. No fact of its own:
 1. P-05, P-09 or P-10 unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
 2. No complete identity pass: `NOT_EVALUABLE`, cause `COLLECTION`.
 3. An account with UID >= P-10 and an offboarding date (its P-09 row, else
-   its `account_expires`), not disabled (no-login shell, locked password or
-   expired) more than P-05 days after that date: `NON_COMPLIANT`.
+   its `account_expires`), not disabled more than P-05 days after that date:
+   `NON_COMPLIANT`. If only its SSH keys could tell and they are unknown:
+   `NOT_EVALUABLE`, cause `EVIDENCE`.
 4. No offboarding date at all and P-09 empty: `NOT_EVALUABLE`, cause
    `CONFIGURATION`, as v1 without `bajas.tsv` nor expiry dates.
 5. Otherwise `COMPLIANT`. A declared account that no longer exists counts as
    handled.
 
 v1 kept a `deshabilitadas.tsv` register on the host; EV-04 does not need it.
+
+Disabled (EV-04, EV-08): a no-login shell, an expired account, or no usable
+password (`locked` or `missing`) and `authorized_keys` = 0. Unknown when the
+password is unusable and `authorized_keys` is absent. v1 also counted a locked
+password with keys as disabled, though sshd still accepts the key; v2 does
+not. In EV-08 history an unknown state counts as enabled: only a provable
+disabling is recorded.
 
 EV-08 over the per-account history the engine keeps in
 `oscompliance-identity-history` (one document per agent and account:
@@ -347,9 +360,6 @@ current state.
 
 ## 10. Open decisions
 
-- "Disabled" (EV-04, EV-08) follows v1: no-login shell, locked password or
-  expired account. A locked password does not stop a key-based sshd login,
-  so an account used every day can count as disabled (the lab's `jperez`).
 - EV-08 ignores accounts deleted while still enabled (v1 did too); they were
   kept zero days.
 

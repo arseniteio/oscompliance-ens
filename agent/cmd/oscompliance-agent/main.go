@@ -29,6 +29,7 @@ func run() error {
 	passwd := flag.String("passwd", "/etc/passwd", "account database read by EV-01 and EV-02")
 	shadow := flag.String("shadow", "/etc/shadow", "shadow file read by EV-02")
 	group := flag.String("group", "/etc/group", "group file read by EV-06")
+	sshd := flag.String("sshd", "/usr/sbin/sshd", "sshd binary asked for AuthorizedKeysFile (EV-02)")
 	uidMin := flag.Int("uid-min", 1000, "lowest UID reported by EV-01")
 	flag.Parse()
 
@@ -57,7 +58,7 @@ func run() error {
 	// evidence must not silence the others.
 	return errors.Join(
 		opacc1.CollectEV01(e, opacc1.EV01Config{PasswdPath: *passwd, UIDMin: *uidMin}),
-		opacc1.CollectEV02(e, opacc1.EV02Config{PasswdPath: *passwd, ShadowPath: *shadow}),
+		opacc1.CollectEV02(e, opacc1.EV02Config{PasswdPath: *passwd, ShadowPath: *shadow, SSHDPath: *sshd}),
 		opacc1.CollectEV06(e, opacc1.EV06Config{GroupPath: *group}),
 	)
 }

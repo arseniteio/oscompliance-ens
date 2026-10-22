@@ -24,7 +24,17 @@ type IdentityRecord struct {
 	Shell          string `json:"shell"`
 	PasswordState  string `json:"password_state"`
 	AccountExpires string `json:"account_expires,omitempty"`
+	// AuthorizedKeys is nil when the number of keys cannot be known.
+	AuthorizedKeys *int `json:"authorized_keys,omitempty"`
 }
+
+// Values of IdentitySnapshot.SSHDStatus.
+const (
+	SSHDRead    = "read"
+	SSHDAbsent  = "absent"
+	SSHDCommand = "command"
+	SSHDError   = "error"
+)
 
 // IdentitySnapshot mirrors identity_snapshot.v1.json. PasswdStatus uses the
 // Source* values; ShadowStatus only SourceRead and SourceUnreadable.
@@ -38,4 +48,8 @@ type IdentitySnapshot struct {
 	ShadowStatus   string `json:"shadow_status"`
 	ShadowError    string `json:"shadow_error,omitempty"`
 	RecordsEmitted *int   `json:"records_emitted,omitempty"`
+
+	SSHDStatus          string   `json:"sshd_status"`
+	SSHDError           string   `json:"sshd_error,omitempty"`
+	AuthorizedKeysFiles []string `json:"authorized_keys_files,omitempty"`
 }

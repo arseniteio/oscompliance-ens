@@ -4,45 +4,191 @@
   "title": "identity_snapshot v1",
   "description": "Summary of one read of the identity files. Emitted once per pass, after every identity_record of the same run_id, so it also marks the pass as complete. Emitted even when a file could not be read; then no identity_record is emitted.",
   "type": "object",
-  "required": ["passwd_path", "passwd_status", "shadow_path", "shadow_status"],
+  "required": [
+    "passwd_path",
+    "passwd_status",
+    "shadow_path",
+    "shadow_status",
+    "sshd_status"
+  ],
   "properties": {
-    "fact": { "const": "identity_snapshot" },
-    "passwd_path": { "type": "string", "minLength": 1 },
+    "fact": {
+      "const": "identity_snapshot"
+    },
+    "passwd_path": {
+      "type": "string",
+      "minLength": 1
+    },
     "passwd_status": {
       "description": "read, unreadable, or implausible (no UID 0 entry).",
-      "enum": ["read", "unreadable", "implausible"]
+      "enum": [
+        "read",
+        "unreadable",
+        "implausible"
+      ]
     },
-    "passwd_error": { "description": "Only when passwd_status is not read.", "type": "string" },
-    "shadow_path": { "type": "string", "minLength": 1 },
+    "passwd_error": {
+      "description": "Only when passwd_status is not read.",
+      "type": "string"
+    },
+    "shadow_path": {
+      "type": "string",
+      "minLength": 1
+    },
     "shadow_status": {
       "description": "read or unreadable. Not attempted (unreadable, with an error saying so) when passwd was not read.",
-      "enum": ["read", "unreadable"]
+      "enum": [
+        "read",
+        "unreadable"
+      ]
     },
-    "shadow_error": { "description": "Only when shadow_status is not read.", "type": "string" },
+    "shadow_error": {
+      "description": "Only when shadow_status is not read.",
+      "type": "string"
+    },
     "records_emitted": {
       "description": "identity_record facts emitted in this run_id. Only when both files were read.",
       "type": "integer",
       "minimum": 0
+    },
+    "sshd_status": {
+      "description": "How the agent learned where sshd looks for keys. read: from sshd -T. absent: no sshd binary, so no key logins. command: an AuthorizedKeysCommand decides, keys cannot be counted. error: sshd -T failed.",
+      "enum": [
+        "read",
+        "absent",
+        "command",
+        "error"
+      ]
+    },
+    "sshd_error": {
+      "description": "Only when sshd_status is error.",
+      "type": "string"
+    },
+    "authorized_keys_files": {
+      "description": "AuthorizedKeysFile patterns from sshd -T, as written (%h, %u, %U, %% not expanded). Only when sshd_status is read.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   },
   "allOf": [
-    { "$ref": "envelope.v1.json" },
     {
-      "if": { "properties": { "passwd_status": { "const": "read" } } },
-      "then": { "not": { "required": ["passwd_error"] } },
-      "else": { "required": ["passwd_error"] }
-    },
-    {
-      "if": { "properties": { "shadow_status": { "const": "read" } } },
-      "then": { "not": { "required": ["shadow_error"] } },
-      "else": { "required": ["shadow_error"] }
+      "$ref": "envelope.v1.json"
     },
     {
       "if": {
-        "properties": { "passwd_status": { "const": "read" }, "shadow_status": { "const": "read" } }
+        "properties": {
+          "passwd_status": {
+            "const": "read"
+          }
+        }
       },
-      "then": { "required": ["records_emitted"] },
-      "else": { "not": { "required": ["records_emitted"] } }
+      "then": {
+        "not": {
+          "required": [
+            "passwd_error"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "passwd_error"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "shadow_status": {
+            "const": "read"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "shadow_error"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "shadow_error"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "passwd_status": {
+            "const": "read"
+          },
+          "shadow_status": {
+            "const": "read"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "records_emitted"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "records_emitted"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sshd_status": {
+            "const": "read"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "authorized_keys_files"
+        ],
+        "not": {
+          "required": [
+            "sshd_error"
+          ]
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "authorized_keys_files"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "sshd_status": {
+            "const": "error"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "sshd_error"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "sshd_error"
+          ]
+        }
+      }
     }
   ],
   "unevaluatedProperties": false

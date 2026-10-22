@@ -10,7 +10,48 @@ import (
 )
 
 func person(name string, state, expires string) fact.IdentityRecord {
-	return fact.IdentityRecord{AccountName: name, UID: 1500, GID: 1500, Shell: "/bin/bash", PasswordState: state, AccountExpires: expires}
+	none := 0
+	return fact.IdentityRecord{AccountName: name, UID: 1500, GID: 1500, Shell: "/bin/bash", PasswordState: state, AccountExpires: expires, AuthorizedKeys: &none}
+}
+
+func withKeys(r fact.IdentityRecord, n int) fact.IdentityRecord {
+	r.AuthorizedKeys = &n
+	return r
+}
+
+func keysUnknown(r fact.IdentityRecord) fact.IdentityRecord {
+	r.AuthorizedKeys = nil
+	return r
+}
+
+func TestIsDisabled(t *testing.T) {
+	today := day("2026-10-22")
+
+	nologin := person("a", "set", "")
+	nologin.Shell = "/usr/sbin/nologin"
+
+	cases := []struct {
+		name            string
+		record          fact.IdentityRecord
+		disabled, known bool
+	}{
+		{"no-login shell", nologin, true, true},
+		{"expired", person("a", "set", "2026-10-01"), true, true},
+		{"expires later", person("a", "set", "2027-01-01"), false, true},
+		{"usable password", person("a", "set", ""), false, true},
+		{"empty password logs in", person("a", "empty", ""), false, true},
+		{"locked, no keys", person("a", "locked", ""), true, true},
+		{"locked, with a key: still logs in", withKeys(person("a", "locked", ""), 1), false, true},
+		{"no shadow entry, no keys", person("a", "missing", ""), true, true},
+		{"locked, keys unknown", keysUnknown(person("a", "locked", "")), false, false},
+		{"usable password, keys unknown: keys do not matter", keysUnknown(person("a", "set", "")), false, true},
+	}
+
+	for _, c := range cases {
+		if d, k := IsDisabled(c.record, today); d != c.disabled || k != c.known {
+			t.Errorf("%s: got disabled=%v known=%v, want %v %v", c.name, d, k, c.disabled, c.known)
+		}
+	}
 }
 
 func day(s string) time.Time {
@@ -56,7 +97,10 @@ func TestJudgeEV04(t *testing.T) {
 		{"no identity table", noIdentity, verdict.NotEvaluable, verdict.CauseCollection, []string{"no complete identity pass"}},
 		{"declared and still enabled past the deadline", declare(base(person("antonio", "set", "")), "antonio", "2026-10-01"), verdict.NonCompliant, "", []string{"antonio (21 days)", "1 days (P-05)"}},
 		{"declared, within the deadline", declare(base(person("antonio", "set", "")), "antonio", "2026-10-21"), verdict.Compliant, "", []string{"1 accounts"}},
-		{"declared and locked", declare(base(person("antonio", "locked", "")), "antonio", "2026-10-01"), verdict.Compliant, "", nil},
+		{"declared and locked, no keys", declare(base(person("antonio", "locked", "")), "antonio", "2026-10-01"), verdict.Compliant, "", nil},
+		{"declared, locked but with a key", declare(base(withKeys(person("antonio", "locked", ""), 1)), "antonio", "2026-10-01"), verdict.NonCompliant, "", []string{"antonio (21 days)"}},
+		{"declared, locked, keys unknown", declare(base(keysUnknown(person("antonio", "locked", ""))), "antonio", "2026-10-01"), verdict.NotEvaluable, verdict.CauseEvidence, []string{"SSH keys unknown: antonio"}},
+		{"keys unknown but within the deadline", declare(base(keysUnknown(person("antonio", "locked", ""))), "antonio", "2026-10-21"), verdict.Compliant, "", nil},
 		{"declared and no-login shell", declare(base(nologin), "ana", "2026-10-01"), verdict.Compliant, "", nil},
 		{"declared, account already deleted", declare(base(person("jperez", "set", "")), "antonio", "2026-07-31"), verdict.Compliant, "", []string{"0 accounts"}},
 		{"expiry in the past disables", base(person("eva", "set", "2026-09-01")), verdict.Compliant, "", []string{"1 accounts"}},
