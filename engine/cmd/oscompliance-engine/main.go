@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/run"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/store"
@@ -37,6 +38,7 @@ func runMain() error {
 	caFile := flag.String("ca", "", "CA certificate for the indexer (PEM)")
 	alerts := flag.String("alerts-index", "wazuh-alerts-*", "index pattern holding the facts")
 	verdicts := flag.String("verdicts-index", "oscompliance-verdicts", "index the verdicts are written to")
+	configIndex := flag.String("config-index", "wazuh-ens-configuration", "plugin index holding the policy parameters")
 	window := flag.Duration("window", 26*time.Hour, "only facts newer than this count")
 	lookback := flag.Duration("lookback", 7*24*time.Hour, "agents with facts this recent are judged")
 	interval := flag.Duration("interval", 0, "time between passes; 0 runs one pass and exits")
@@ -69,7 +71,17 @@ func runMain() error {
 	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
 
 	for {
-		n, err := run.Once(ctx, facts, sink, cfg, time.Now())
+		// Reloaded every pass: a change in the Configuration screen applies
+		// on the next pass without restarting the engine.
+		var policy params.Lister
+		if loaded, err := params.Load(ctx, client, *configIndex); err != nil {
+			slog.Warn("parameters", "error", err)
+			policy = params.Unavailable(err)
+		} else {
+			policy = loaded
+		}
+
+		n, err := run.Once(ctx, facts, policy, sink, cfg, time.Now())
 		if err != nil {
 			slog.Error("pass", "verdicts", n, "error", err)
 		} else {

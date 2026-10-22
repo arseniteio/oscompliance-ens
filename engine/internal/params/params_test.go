@@ -1,0 +1,65 @@
+package params
+
+import (
+	"encoding/json"
+	"errors"
+	"reflect"
+	"testing"
+)
+
+// Shape copied from the lab's wazuh-ens-configuration, trimmed.
+const active = `{
+  "controls": [
+    {"controlId": "op.acc.1", "parameters": [
+      {"id": "P-03", "value": []},
+      {"id": "P-04", "value": ["admin", " guest ", ""]},
+      {"id": "P-05", "value": "root\n\nadmin\n"},
+      {"id": "P-06", "value": "^adm.*$", "matchMode": "regex"}
+    ]}
+  ],
+  "agents": {
+    "001": {"controls": {"op.acc.1": {"parameters": {"P-04": ["test"]}}}},
+    "002": {"controls": {"op.acc.1": {"parameters": {"P-07": ["x"]}}}}
+  }
+}`
+
+func TestList(t *testing.T) {
+	var c Config
+	if err := json.Unmarshal([]byte(active), &c); err != nil {
+		t.Fatal(err)
+	}
+
+	cases := []struct {
+		agent, param string
+		want         []string
+		wantErr      error // ErrNotSet, or nil; any other error is checked as non-nil
+		anyErr       bool
+	}{
+		{"001", "P-04", []string{"test"}, nil, false},           // agent value wins
+		{"002", "P-04", []string{"admin", "guest"}, nil, false}, // agent without P-04: control value, trimmed
+		{"999", "P-04", []string{"admin", "guest"}, nil, false}, // unknown agent: control value
+		{"001", "P-05", []string{"root", "admin"}, nil, false},  // one entry per line
+		{"001", "P-03", nil, ErrNotSet, false},                  // empty list
+		{"001", "P-99", nil, ErrNotSet, false},                  // missing
+		{"001", "P-06", nil, nil, true},                         // regex: not supported
+	}
+
+	for _, tc := range cases {
+		got, err := c.List(tc.agent, "op.acc.1", tc.param)
+
+		switch {
+		case tc.anyErr:
+			if err == nil || errors.Is(err, ErrNotSet) {
+				t.Errorf("%s %s: want a non-ErrNotSet error, got %v", tc.agent, tc.param, err)
+			}
+		case tc.wantErr != nil:
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("%s %s: want %v, got %v", tc.agent, tc.param, tc.wantErr, err)
+			}
+		default:
+			if err != nil || !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("%s %s: got %v %v, want %v", tc.agent, tc.param, got, err, tc.want)
+			}
+		}
+	}
+}

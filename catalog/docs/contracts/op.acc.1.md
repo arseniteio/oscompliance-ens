@@ -134,6 +134,19 @@ table on every pass and the engine compares two passes. A lost or corrupt
 baseline on the host can no longer hide or invent changes, and a reinstalled
 agent needs no first pass to set one.
 
+### Wazuh alerts (EV-03)
+
+EV-03 has no fact of ours. Wazuh already collects the authentication log and
+its own sshd decoder and rules produce the alerts the engine reads:
+
+| What | Query on `wazuh-alerts-*` | Fields used |
+|---|---|---|
+| Successful sshd login | `rule.groups: authentication_success` and `decoder.parent: sshd` (rule 5715 and children) | `data.dstuser` (account), `data.srcip`, `timestamp`, `id` |
+| Authentication log reaches Wazuh | any of `rule.groups` `authentication_success`, `authentication_failed`, `sudo` in the lookback | `agent.id` |
+
+Difference with v1 `account_authenticated`: the agent keeps no offset or
+cursor and parses no log.
+
 ## 6. Parameters
 
 | Parameter | Owner | Default | Use |
@@ -141,6 +154,7 @@ agent needs no first pass to set one.
 | `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
 | `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
 | `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
+| P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates and regex values are not applied yet. |
 
 ## 7. Evidence judgement
 
@@ -179,6 +193,17 @@ files read, every record received; up to 10 earlier passes are tried):
 Same result as v1, where the change facts are always `CUMPLE` and the evidence
 fails only when collection fails. The change list itself is what EV-08
 (retention) and the plugin will read; where it is stored is open (section 10).
+
+EV-03 over the sshd logins in the window:
+
+1. P-04 missing, empty, not a list or a regex: `NOT_EVALUABLE`, cause
+   `CONFIGURATION`. Never judged against a default nobody set.
+2. No authentication event from the agent in the lookback: `NOT_EVALUABLE`,
+   cause `COLLECTION`. Silence from a log that does not reach Wazuh is not
+   compliance (v1 probed its log the same way).
+3. A login whose account is in P-04, ignoring case: `NON_COMPLIANT`, reason
+   lists each account with its number of logins.
+4. Otherwise `COMPLIANT`.
 
 Verdicts follow [`verdict.v1.json`](../../schemas/verdicts/verdict.v1.json)
 and go to the `oscompliance-verdicts` index. Status values are in English; v1

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
@@ -22,6 +23,18 @@ type fakeFacts struct {
 	identityRecords map[string][]fact.IdentityRecord // by run_id
 	identityAsked   []string
 }
+
+func (f *fakeFacts) SSHLogins(context.Context, string, time.Time) ([]source.Login, error) {
+	return nil, nil
+}
+
+func (f *fakeFacts) AuthActivity(context.Context, time.Time) (map[string]time.Time, error) {
+	return nil, nil
+}
+
+type noParams struct{}
+
+func (noParams) List(string, string, string) ([]string, error) { return nil, errors.New("not set") }
 
 func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
 	if n == 1 {
@@ -73,14 +86,14 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	sink := &fakeSink{}
 	now := time.Date(2026, 10, 21, 16, 0, 0, 0, time.UTC)
 
-	n, err := Once(context.Background(), facts, sink, Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}, now)
+	n, err := Once(context.Background(), facts, noParams{}, sink, Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}, now)
 
 	if err == nil {
 		t.Error("want the error of agent 004")
 	}
-	// EV-01 for 001, 002, 003 (004 fails) and EV-02 for all four.
-	if n != 7 || len(sink.got) != 7 {
-		t.Fatalf("want 7 verdicts, got %d: %+v", n, sink.got)
+	// EV-01 for 001, 002, 003 (004 fails); EV-02 and EV-03 for all four.
+	if n != 11 || len(sink.got) != 11 {
+		t.Fatalf("want 11 verdicts, got %d: %+v", n, sink.got)
 	}
 	// Records are read only for snapshots that were read.
 	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {
@@ -127,7 +140,7 @@ func TestOncePicksPreviousCompleteIdentityPass(t *testing.T) {
 		},
 	}
 
-	if _, err := Once(context.Background(), facts, &fakeSink{}, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
+	if _, err := Once(context.Background(), facts, noParams{}, &fakeSink{}, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 

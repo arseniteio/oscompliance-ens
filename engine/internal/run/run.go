@@ -9,6 +9,8 @@ import (
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
@@ -19,6 +21,8 @@ type Facts interface {
 	AccountRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.AccountRecord, error)
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
+	SSHLogins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
+	AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error)
 }
 
 // identityDepth bounds how many earlier passes are tried when looking for the
@@ -43,7 +47,7 @@ type Config struct {
 // Once judges every known agent and writes one verdict per agent and
 // evidence. A failure on one agent or evidence does not stop the others; all
 // failures are returned together.
-func Once(ctx context.Context, facts Facts, sink Sink, cfg Config, now time.Time) (int, error) {
+func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg Config, now time.Time) (int, error) {
 
 	windowStart := now.Add(-cfg.Window)
 	lookbackStart := now.Add(-cfg.Lookback)
@@ -70,6 +74,12 @@ func Once(ctx context.Context, facts Facts, sink Sink, cfg Config, now time.Time
 
 	if err != nil {
 		return 0, fmt.Errorf("identity snapshots: %w", err)
+	}
+
+	authActivity, err := facts.AuthActivity(ctx, lookbackStart)
+
+	if err != nil {
+		return 0, fmt.Errorf("authentication activity: %w", err)
 	}
 
 	var errs []error
@@ -119,6 +129,13 @@ func Once(ctx context.Context, facts Facts, sink Sink, cfg Config, now time.Time
 				runID = ev02.Current.RunID
 			}
 			write(agent, "EV-02", opacc1.JudgeEV02(ev02), runID)
+		}
+
+		ev03, err := inputEV03(ctx, facts, policy, agent.ID, authActivity, windowStart)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("agent %s EV-03: %w", agent.ID, err))
+		} else {
+			write(agent, "EV-03", opacc1.JudgeEV03(ev03), "")
 		}
 	}
 
@@ -194,4 +211,22 @@ func inputEV02(ctx context.Context, facts Facts, agentID string, current, earlie
 
 func readBoth(s fact.IdentitySnapshot) bool {
 	return s.PasswdStatus == fact.SourceRead && s.ShadowStatus == fact.SourceRead
+}
+
+func inputEV03(ctx context.Context, facts Facts, policy params.Lister, agentID string, authActivity map[string]time.Time, since time.Time) (opacc1.EV03Input, error) {
+
+	in := opacc1.EV03Input{}
+
+	generic, err := policy.List(agentID, "op.acc.1", "P-04")
+	if err != nil {
+		in.GenericProblem = err.Error()
+	}
+	in.Generic = generic
+
+	_, in.AuthSeen = authActivity[agentID]
+
+	logins, err := facts.SSHLogins(ctx, agentID, since)
+	in.Logins = logins
+
+	return in, err
 }
