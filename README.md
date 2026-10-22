@@ -17,15 +17,17 @@ Data flow: agent → Wazuh → engine → state index → plugin.
 ## Layout
 
 ```
-catalog/
+catalog/            Go module .../catalog: embeds controls/ and templates/
   docs/contracts/   per-control fact contracts
   docs/adr/         architecture decision records
   schemas/facts/    JSON schemas, one per fact type, with examples
   schemas/verdicts/ JSON schema of the verdicts index
-  fact/             Go module .../catalog/fact: fact types shared by agent and
-                    engine; its tests validate the schemas
+  fact/             fact types shared by agent and engine; its tests validate
+                    the schemas
   wazuh/            manager side: <localfile> fragment and generic fact rules
-  controls/         control definitions
+  controls/ens/     per control: evidences with levels and requirements,
+                    parameter classes
+  templates/        built-in parameter templates by system type
 agent/              Go module github.com/OpenSourceCompliance/oscompliance-core/agent
   cmd/oscompliance-agent/
   internal/controls/ens/opacc1/   collectors
@@ -37,18 +39,20 @@ engine/             Go module github.com/OpenSourceCompliance/oscompliance-core/
   internal/controls/ens/opacc1/   judges
   internal/source/  facts read from wazuh-alerts-*
   internal/store/   verdicts index
+  internal/params/  policy parameters from the plugin configuration
+  internal/history/ per-account identity history (EV-08)
   internal/run/     one evaluation pass
 ```
 
 ## Status
 
-Pre-alpha. op.acc.1 EV-01 runs end to end: agent, Wazuh rules, engine,
-verdicts. Contract: `catalog/docs/contracts/op.acc.1.md`.
+Pre-alpha. op.acc.1 (EV-01 to EV-08) runs end to end on Linux: agent, Wazuh
+rules, engine, verdicts. Contract: `catalog/docs/contracts/op.acc.1.md`.
 
 ## Development
 
 Requires Go 1.27. Each module has its own `go.mod`; agent and engine import
-`catalog/fact` through a `replace` directive.
+`catalog` through a `replace` directive.
 
 ```bash
 make check   # gofmt, go vet and go test on every module, schemas included
