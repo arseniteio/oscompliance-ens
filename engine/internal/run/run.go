@@ -118,6 +118,15 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg
 				runID = ev01.Snapshot.RunID
 			}
 			write(agent, "EV-01", opacc1.JudgeEV01(ev01), runID)
+
+			// EV-07 judges the same inventory against P-07 (column usuario).
+			ev07 := opacc1.EV07Input{Inventory: ev01}
+			authorized, err := policy.ListColumn(agent.ID, "op.acc.1", "P-07", 0)
+			if err != nil {
+				ev07.AuthorizedProblem = err.Error()
+			}
+			ev07.Authorized = authorized
+			write(agent, "EV-07", opacc1.JudgeEV07(ev07), runID)
 		}
 
 		ev02, err := inputEV02(ctx, facts, agent.ID, currentIdentities[agent.ID], earlierIdentities[agent.ID], lookbackStart)

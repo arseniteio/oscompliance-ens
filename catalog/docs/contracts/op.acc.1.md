@@ -155,6 +155,7 @@ cursor and parses no log.
 | `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
 | `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
 | P-03 service accounts | plugin | none | EV-05. Read like P-04. |
+| P-07 `lista_usuarios_autorizados` | plugin | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
 | P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates and regex values are not applied yet. |
 
 ## 7. Evidence judgement
@@ -206,6 +207,17 @@ accounts) over the same sshd logins in the window:
 3. A login whose account is in the list, ignoring case: `NON_COMPLIANT`, reason
    lists each account with its number of logins.
 4. Otherwise `COMPLIANT`.
+
+EV-07 over the same inventory as EV-01 and the `usuario` column of P-07:
+
+1. P-07 missing or with no `usuario`: `NOT_EVALUABLE`, cause `CONFIGURATION`.
+2. Inventory unusable: as EV-01 steps 1 to 3.
+3. An active account (`login_enabled`) not in P-07, compared literally and
+   with case as the plugin does: `NON_COMPLIANT`, reason lists them.
+4. Otherwise `COMPLIANT`.
+
+EV-07 only applies at MEDIO and ALTO (R1). The engine judges it at every
+level; applying levels is open (section 10).
 
 Verdicts follow [`verdict.v1.json`](../../schemas/verdicts/verdict.v1.json)
 and go to the `oscompliance-verdicts` index. Status values are in English; v1
@@ -265,6 +277,9 @@ current state.
 
 
 ## 10. Open decisions
+
+- ENS level: where `NOT_APPLICABLE` is decided for evidences above the
+  active level (EV-07 at BAJO), engine or plugin.
 
 - EV-02 changes: only in the verdict reason, or also as documents of their own
   (one per change) that EV-08 and the plugin can query.

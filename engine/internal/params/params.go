@@ -96,6 +96,43 @@ func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 	return nil, ErrNotSet
 }
 
+// ListColumn returns one column of a table parameter, whose rows are written
+// "a | b | c" (P-07 is "usuario | sistema | rol"). col counts from 0. Rows
+// with an empty cell in that column are skipped; ErrNotSet when none is left.
+func (c *Config) ListColumn(agentID, controlID, paramID string, col int) ([]string, error) {
+	return column(c, agentID, controlID, paramID, col)
+}
+
+func column(l Lister, agentID, controlID, paramID string, col int) ([]string, error) {
+
+	rows, err := l.List(agentID, controlID, paramID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var values []string
+
+	for _, row := range rows {
+
+		cells := strings.Split(row, "|")
+
+		if col >= len(cells) {
+			continue
+		}
+
+		if cell := strings.TrimSpace(cells[col]); cell != "" {
+			values = append(values, cell)
+		}
+	}
+
+	if len(values) == 0 {
+		return nil, ErrNotSet
+	}
+
+	return values, nil
+}
+
 // listValue accepts a JSON list of strings or one string with one entry per
 // line, drops empty entries, and fails with ErrNotSet when nothing is left.
 func listValue(value any) ([]string, error) {
@@ -134,9 +171,11 @@ func listValue(value any) ([]string, error) {
 	return values, nil
 }
 
-// Lister is anything that answers List: a loaded *Config, or Unavailable.
+// Lister is anything that answers List and ListColumn: a loaded *Config, or
+// Unavailable.
 type Lister interface {
 	List(agentID, controlID, paramID string) ([]string, error)
+	ListColumn(agentID, controlID, paramID string, col int) ([]string, error)
 }
 
 // Unavailable answers every List with err: used when the configuration could
@@ -149,4 +188,8 @@ type unavailable struct{ err error }
 
 func (u unavailable) List(string, string, string) ([]string, error) {
 	return nil, fmt.Errorf("configuration not loaded: %w", u.err)
+}
+
+func (u unavailable) ListColumn(agentID, controlID, paramID string, _ int) ([]string, error) {
+	return u.List(agentID, controlID, paramID)
 }

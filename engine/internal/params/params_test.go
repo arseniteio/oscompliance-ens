@@ -18,7 +18,7 @@ const active = `{
     ]}
   ],
   "agents": {
-    "001": {"controls": {"op.acc.1": {"parameters": {"P-04": ["test"]}}}},
+    "001": {"controls": {"op.acc.1": {"parameters": {"P-04": ["test"], "P-07": ["jgomez | srv01 | ops", "ana", " | srv02 | x", "pepe |"]}}}},
     "002": {"controls": {"op.acc.1": {"parameters": {"P-07": ["x"]}}}}
   }
 }`
@@ -61,5 +61,27 @@ func TestList(t *testing.T) {
 				t.Errorf("%s %s: got %v %v, want %v", tc.agent, tc.param, got, err, tc.want)
 			}
 		}
+	}
+}
+
+func TestListColumn(t *testing.T) {
+	var c Config
+	if err := json.Unmarshal([]byte(active), &c); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := c.ListColumn("001", "op.acc.1", "P-07", 0)
+	if err != nil || !reflect.DeepEqual(got, []string{"jgomez", "ana", "pepe"}) {
+		t.Errorf("usuario column: %v %v", got, err)
+	}
+
+	got, err = c.ListColumn("001", "op.acc.1", "P-07", 1)
+	if err != nil || !reflect.DeepEqual(got, []string{"srv01", "srv02"}) {
+		t.Errorf("sistema column: %v %v", got, err)
+	}
+
+	// Agent 002's P-07 is ["x"]: a one-column row has no rol column.
+	if _, err := c.ListColumn("002", "op.acc.1", "P-07", 2); !errors.Is(err, ErrNotSet) {
+		t.Errorf("column absent from every row: want ErrNotSet, got %v", err)
 	}
 }
