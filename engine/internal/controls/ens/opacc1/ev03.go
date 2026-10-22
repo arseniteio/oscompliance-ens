@@ -1,6 +1,10 @@
 package opacc1
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -33,6 +37,60 @@ type EV03Input struct {
 //  4. Otherwise COMPLIANT, reason "N sshd logins in the window, none with a
 //     P-04 account".
 func JudgeEV03(in EV03Input) verdict.Judgement {
-	// TODO(dioni): then remove the t.Skip in ev03_test.go.
-	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: verdict.CauseEvidence, Reason: "EV-03 judgement not implemented"}
+
+	// 1. Without P-04 there is nothing to compare against.
+	if in.GenericProblem != "" {
+		return notEvaluable(verdict.CauseConfiguration, "P-04: "+in.GenericProblem)
+	}
+
+	// 2. Silence only counts when the authentication log is known to arrive.
+	if !in.AuthSeen {
+		return notEvaluable(verdict.CauseCollection, "no authentication events from this agent in the lookback")
+	}
+
+	// 3. Logins with a forbidden account, counted per account. Lowercase
+	// key, so "Admin" and "admin" are one account.
+	counts := map[string]int{}
+
+	for _, login := range in.Logins {
+		for _, name := range in.Generic {
+			if strings.EqualFold(login.Account, name) {
+				counts[strings.ToLower(login.Account)]++
+				break
+			}
+		}
+	}
+
+	if len(counts) > 0 {
+		return verdict.Judgement{
+			Status: verdict.NonCompliant,
+			Reason: "generic accounts authenticated: " + countList(counts),
+		}
+	}
+
+	// 4. The log arrives and no forbidden account logged in.
+	return verdict.Judgement{
+		Status: verdict.Compliant,
+		Reason: fmt.Sprintf("%d sshd logins in the window, none with a P-04 account", len(in.Logins)),
+	}
+}
+
+// countList writes "a (2), b (1)", sorted by name: a map has no order.
+func countList(counts map[string]int) string {
+
+	var names []string
+
+	for name := range counts {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	var parts []string
+
+	for _, name := range names {
+		parts = append(parts, fmt.Sprintf("%s (%d)", name, counts[name]))
+	}
+
+	return strings.Join(parts, ", ")
 }

@@ -14,8 +14,6 @@ func login(account string) source.Login {
 }
 
 func TestJudgeEV03(t *testing.T) {
-	t.Skip("remove when JudgeEV03 is written")
-
 	generic := []string{"admin", "guest", "test"}
 
 	cases := []struct {
@@ -29,7 +27,8 @@ func TestJudgeEV03(t *testing.T) {
 		{"P-04 problem wins over a silent source", EV03Input{GenericProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, nil},
 		{"no authentication events", EV03Input{Generic: generic}, verdict.NotEvaluable, verdict.CauseCollection, []string{"no authentication events"}},
 		{"generic account logged in", EV03Input{Generic: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), login("admin")}}, verdict.NonCompliant, "", []string{"admin (1)"}},
-		{"case is ignored", EV03Input{Generic: generic, AuthSeen: true, Logins: []source.Login{login("Admin")}}, verdict.NonCompliant, "", []string{"(1)"}},
+		{"case is ignored", EV03Input{Generic: generic, AuthSeen: true, Logins: []source.Login{login("Admin")}}, verdict.NonCompliant, "", []string{"admin (1)"}},
+		{"one account whatever its case", EV03Input{Generic: generic, AuthSeen: true, Logins: []source.Login{login("Admin"), login("admin")}}, verdict.NonCompliant, "", []string{"admin (2)"}},
 		{"counted and sorted", EV03Input{Generic: generic, AuthSeen: true, Logins: []source.Login{login("test"), login("admin"), login("test")}}, verdict.NonCompliant, "", []string{"admin (1), test (2)"}},
 		{"only named accounts", EV03Input{Generic: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), login("mgarcia")}}, verdict.Compliant, "", []string{"2 sshd logins"}},
 		{"source alive, no logins", EV03Input{Generic: generic, AuthSeen: true}, verdict.Compliant, "", []string{"0 sshd logins"}},
