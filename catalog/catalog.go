@@ -20,11 +20,29 @@ var files embed.FS
 
 // Control is one control file of controls/.
 type Control struct {
-	Framework  string               `json:"framework"`
-	Control    string               `json:"control"`
-	Title      string               `json:"title"`
-	Evidences  []Evidence           `json:"evidences"`
-	Parameters map[string]Parameter `json:"parameters"`
+	Framework    string               `json:"framework"`
+	Control      string               `json:"control"`
+	Title        string               `json:"title"`
+	Status       string               `json:"status"`
+	Requirements []Requirement        `json:"requirements"`
+	Evidences    []Evidence           `json:"evidences"`
+	Parameters   map[string]Parameter `json:"parameters"`
+}
+
+// Requirement is one requirement of a control: the levels it applies at and
+// the evidences that accredit it. No evidence means it can only be accredited
+// by a document (P-ATT).
+type Requirement struct {
+	ID                  string   `json:"id"`
+	Title               string   `json:"title"`
+	Levels              []string `json:"levels"`
+	EvidenceIDs         []string `json:"evidence_ids"`
+	ApplicabilityReason string   `json:"applicability_reason,omitempty"`
+}
+
+// AppliesAt says whether the requirement applies at an ENS level.
+func (r Requirement) AppliesAt(level string) bool {
+	return slices.Contains(r.Levels, level)
 }
 
 // Evidence is one evidence of a control.

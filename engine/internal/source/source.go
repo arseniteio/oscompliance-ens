@@ -21,15 +21,96 @@ const pageSize = 1000
 // maxAgents bounds the per-agent aggregations.
 const maxAgents = 10000
 
-// Source reads facts from one alerts index pattern.
+// Source reads facts from one alerts index pattern, and the registered agents
+// from Wazuh's monitoring index.
 type Source struct {
-	client *indexer.Client
-	index  string
+	client     *indexer.Client
+	index      string
+	monitoring string
 }
 
-// New returns a Source over index, usually "wazuh-alerts-*".
-func New(client *indexer.Client, index string) *Source {
-	return &Source{client: client, index: index}
+// New returns a Source over index (usually "wazuh-alerts-*") and monitoring
+// (usually "wazuh-monitoring-*").
+func New(client *indexer.Client, index, monitoring string) *Source {
+	return &Source{client: client, index: index, monitoring: monitoring}
+}
+
+// ManagerID is the Wazuh manager's own agent ID. The monitoring index leaves
+// it out, but the manager is audited like any other machine.
+const ManagerID = "000"
+
+// RegisteredAgents returns the agents Wazuh knows, whether or not they send
+// facts: every agent of the monitoring index since the given time, plus the
+// manager when it raised any alert in that time. An agent that went silent
+// keeps getting verdicts (NOT_EVALUABLE by COLLECTION) instead of
+// disappearing.
+func (s *Source) RegisteredAgents(ctx context.Context, since time.Time) ([]verdict.Agent, error) {
+
+	monitoring, err := s.agentNames(ctx, s.monitoring, "id", "name", []any{
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("monitoring: %w", err)
+	}
+
+	manager, err := s.agentNames(ctx, s.index, "agent.id", "agent.name", []any{
+		map[string]any{"term": map[string]any{"agent.id": ManagerID}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("manager: %w", err)
+	}
+
+	return append(monitoring, manager...), nil
+}
+
+// agentNames lists the distinct values of idField in index, each with the
+// newest value of nameField.
+func (s *Source) agentNames(ctx context.Context, index, idField, nameField string, filter []any) ([]verdict.Agent, error) {
+
+	query := map[string]any{
+		"size":  0,
+		"query": map[string]any{"bool": map[string]any{"filter": filter}},
+		"aggs": map[string]any{"agents": map[string]any{
+			"terms": map[string]any{"field": idField, "size": maxAgents},
+			"aggs": map[string]any{"name": map[string]any{
+				"terms": map[string]any{"field": nameField, "size": 1},
+			}},
+		}},
+	}
+
+	var resp struct {
+		Aggregations struct {
+			Agents struct {
+				Buckets []struct {
+					Key  string `json:"key"`
+					Name struct {
+						Buckets []struct {
+							Key string `json:"key"`
+						} `json:"buckets"`
+					} `json:"name"`
+				} `json:"buckets"`
+			} `json:"agents"`
+		} `json:"aggregations"`
+	}
+
+	if err := s.client.Search(ctx, index, query, &resp); err != nil {
+		return nil, err
+	}
+
+	var agents []verdict.Agent
+
+	for _, b := range resp.Aggregations.Agents.Buckets {
+		a := verdict.Agent{ID: b.Key}
+		if len(b.Name.Buckets) > 0 {
+			a.Name = b.Name.Buckets[0].Key
+		}
+		agents = append(agents, a)
+	}
+
+	return agents, nil
 }
 
 type hit struct {
@@ -54,51 +135,10 @@ func factFilter(name string, since time.Time) []any {
 
 // Agents returns every agent that sent any fact since the given time.
 func (s *Source) Agents(ctx context.Context, since time.Time) ([]verdict.Agent, error) {
-
-	query := map[string]any{
-		"size": 0,
-		"query": map[string]any{"bool": map[string]any{"filter": []any{
-			map[string]any{"term": map[string]any{"rule.id": FactRule}},
-			map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
-		}}},
-		"aggs": map[string]any{"agents": map[string]any{
-			"terms": map[string]any{"field": "agent.id", "size": maxAgents},
-			"aggs": map[string]any{"name": map[string]any{
-				"terms": map[string]any{"field": "agent.name", "size": 1},
-			}},
-		}},
-	}
-
-	var resp struct {
-		Aggregations struct {
-			Agents struct {
-				Buckets []struct {
-					Key  string `json:"key"`
-					Name struct {
-						Buckets []struct {
-							Key string `json:"key"`
-						} `json:"buckets"`
-					} `json:"name"`
-				} `json:"buckets"`
-			} `json:"agents"`
-		} `json:"aggregations"`
-	}
-
-	if err := s.client.Search(ctx, s.index, query, &resp); err != nil {
-		return nil, err
-	}
-
-	var agents []verdict.Agent
-
-	for _, b := range resp.Aggregations.Agents.Buckets {
-		a := verdict.Agent{ID: b.Key}
-		if len(b.Name.Buckets) > 0 {
-			a.Name = b.Name.Buckets[0].Key
-		}
-		agents = append(agents, a)
-	}
-
-	return agents, nil
+	return s.agentNames(ctx, s.index, "agent.id", "agent.name", []any{
+		map[string]any{"term": map[string]any{"rule.id": FactRule}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	})
 }
 
 // GroupSnapshots returns, per agent ID, the newest group_snapshot indexed

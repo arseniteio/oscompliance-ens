@@ -255,11 +255,49 @@ while still enabled (zero days; v1 did not track these): `NON_COMPLIANT`.
 Deleted with no start date or with its last state unknown: `NOT_EVALUABLE`,
 `EVIDENCE`. Otherwise `COMPLIANT`.
 
+**Requirements and control**, with the plugin's audit rules
+(`requirement-evaluator.ts`, `control-evaluator.ts`), from the evidence
+verdicts of the same pass and the requirements of section 3:
+
+1. Not applicable at the level, or control disabled: `NOT_APPLICABLE`, out of
+   the denominator.
+2. No technical evidence (op.acc.1.5, op.acc.1.r1.1): `COMPLIANT`, attested,
+   with a P-ATT row (`requisito | referencia | enlace | fecha | responsable`)
+   that has a reference and a usable link (`http(s)://`, `file://`, `\\host`
+   or an absolute path; the parameter's own example domain is refused);
+   otherwise `NON_COMPLIANT`, not evidenced. A document never covers a
+   requirement with technical evidence.
+3. Any evidence `NON_COMPLIANT`: `NON_COMPLIANT`, evidenced. A measured
+   failure fails the whole requirement.
+4. Any evidence `NOT_EVALUABLE`, or none applicable: `NON_COMPLIANT`, not
+   evidenced, with each gap and its cause. What cannot be proven counts
+   against. An evidence the engine produced no verdict for (its facts could
+   not be read) counts as a `COLLECTION` gap, never as absent.
+5. Otherwise `COMPLIANT`.
+
+Control: every applicable requirement `COMPLIANT` gives `COMPLIANT` (100);
+every one `NON_COMPLIANT` gives `NON_COMPLIANT`; a mix gives `PARTIAL`. Score
+is the rounded average (100 or 0 per requirement) over every applicable
+requirement, measured or not; coverage is measured / applicable. Nothing
+applicable: `NOT_APPLICABLE`, no score. The plugin's block on missing
+required parameters is not reproduced: each evidence already reports its own
+missing parameter as `CONFIGURATION`. The plugin's statement of applicability
+and policy decisions have no op.acc.1 content.
+
+**Agents judged**: every agent that sent a fact in the lookback, every agent
+in `wazuh-monitoring-*` in the lookback, and the manager (000) when it raised
+any alert. An agent that stops sending keeps its verdicts as `NOT_EVALUABLE`
+by `COLLECTION` while Wazuh keeps it registered, instead of disappearing.
+This replaces the v1 watchdog (`collector_missing`).
+
 Verdicts follow [`verdict.v1.json`](../../schemas/verdicts/verdict.v1.json)
-in `oscompliance-verdicts`, one per agent, evidence and pass (judging the same
-pass again replaces it). Status values in English; v1 equivalents:
-`COMPLIANT` = `CUMPLE`, `NON_COMPLIANT` = `NO_CUMPLE`, `NOT_EVALUABLE` =
-`NO_EVALUABLE`, `NOT_APPLICABLE` = `NO_APLICA`. Causes keep their v1 names.
+in `oscompliance-verdicts`, with a `scope`: `evidence` (one per agent,
+evidence and pass; judging the same pass again replaces it), `requirement`
+and `control` (the last of each day, one point per day for the evolution
+series). Status values in English; v1 equivalents: `COMPLIANT` = `CUMPLE`,
+`NON_COMPLIANT` = `NO_CUMPLE`, `NOT_EVALUABLE` = `NO_EVALUABLE`,
+`NOT_APPLICABLE` = `NO_APLICA`, `PARTIAL` = `PARCIAL`. Causes keep their v1
+names.
 
 Engine parameters: `window` 26 h (v1 `OPACC1_VENTANA_HORAS`), `lookback` 7
 days (agents with facts this recent are judged even when the window is

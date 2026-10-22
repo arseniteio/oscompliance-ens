@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/verdicts/verdict.v1.json",
   "title": "verdict v1",
-  "description": "One document of the oscompliance-verdicts index: the engine's judgement of one evidence on one agent. Written only by the engine. Judging the same pass again replaces the document (ID: agent.id/control/evidence/run_id, or 'none' when there was no snapshot).",
+  "description": "One document of the oscompliance-verdicts index, written only by the engine: the judgement of one evidence, one requirement or one control on one agent. IDs: evidence agent/control/evidence/run_id ('none' without a pass), requirement agent/control/requirement/day, control agent/control/day.",
   "type": "object",
   "required": [
     "oscompliance_verdict",
     "@timestamp",
+    "scope",
     "control",
-    "evidence",
     "agent",
     "status",
     "window_start",
@@ -24,10 +24,23 @@
       "type": "string",
       "format": "date-time"
     },
+    "scope": {
+      "enum": [
+        "evidence",
+        "requirement",
+        "control"
+      ]
+    },
     "control": {
       "type": "string",
       "examples": [
         "op.acc.1"
+      ]
+    },
+    "requirement": {
+      "type": "string",
+      "examples": [
+        "op.acc.1.4"
       ]
     },
     "evidence": {
@@ -58,8 +71,10 @@
         "COMPLIANT",
         "NON_COMPLIANT",
         "NOT_EVALUABLE",
-        "NOT_APPLICABLE"
-      ]
+        "NOT_APPLICABLE",
+        "PARTIAL"
+      ],
+      "description": "NOT_EVALUABLE only for evidences (requirements turn it into NON_COMPLIANT, not evidenced); PARTIAL only for controls."
     },
     "cause": {
       "description": "Only with NOT_EVALUABLE.",
@@ -87,42 +102,191 @@
     },
     "engine_version": {
       "type": "string"
-    }
-  },
-  "if": {
-    "properties": {
-      "status": {
-        "const": "NOT_EVALUABLE"
+    },
+    "evidenced": {
+      "description": "Requirement scope: false when NON_COMPLIANT comes from a lack of proof, not a measure.",
+      "type": "boolean"
+    },
+    "attested": {
+      "description": "Requirement scope: proven by a P-ATT document.",
+      "type": "boolean"
+    },
+    "score": {
+      "description": "Control scope: 0-100, absent when nothing applies.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "coverage": {
+      "description": "Control scope: measured / applicable requirements, %.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "applicable_requirements": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "measured_requirements": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unmeasured_requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     }
   },
-  "then": {
-    "required": [
-      "cause",
-      "reason"
-    ]
-  },
-  "else": {
-    "not": {
-      "required": [
-        "cause"
-      ]
-    },
-    "if": {
-      "properties": {
-        "status": {
-          "enum": [
-            "NON_COMPLIANT",
-            "NOT_APPLICABLE"
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "NOT_EVALUABLE"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "cause",
+          "reason"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "cause"
+          ]
+        },
+        "if": {
+          "properties": {
+            "status": {
+              "enum": [
+                "NON_COMPLIANT",
+                "NOT_APPLICABLE",
+                "PARTIAL"
+              ]
+            }
+          }
+        },
+        "then": {
+          "required": [
+            "reason"
           ]
         }
       }
     },
-    "then": {
-      "required": [
-        "reason"
-      ]
+    {
+      "if": {
+        "properties": {
+          "scope": {
+            "const": "evidence"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "evidence"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "requirement"
+              ]
+            },
+            {
+              "required": [
+                "score"
+              ]
+            },
+            {
+              "required": [
+                "evidenced"
+              ]
+            },
+            {
+              "properties": {
+                "status": {
+                  "const": "PARTIAL"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scope": {
+            "const": "requirement"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "requirement"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "evidence"
+              ]
+            },
+            {
+              "required": [
+                "score"
+              ]
+            },
+            {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "NOT_EVALUABLE",
+                    "PARTIAL"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scope": {
+            "const": "control"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "evidence"
+              ]
+            },
+            {
+              "required": [
+                "requirement"
+              ]
+            },
+            {
+              "properties": {
+                "status": {
+                  "const": "NOT_EVALUABLE"
+                }
+              }
+            }
+          ]
+        }
+      }
     }
-  },
-  "additionalProperties": false
+  ]
 }

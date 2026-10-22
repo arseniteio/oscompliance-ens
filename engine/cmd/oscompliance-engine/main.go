@@ -37,6 +37,7 @@ func runMain() error {
 	user := flag.String("user", "admin", "indexer user; password in $"+passwordEnv)
 	caFile := flag.String("ca", "", "CA certificate for the indexer (PEM)")
 	alerts := flag.String("alerts-index", "wazuh-alerts-*", "index pattern holding the facts")
+	monitoring := flag.String("monitoring-index", "wazuh-monitoring-*", "index pattern listing the registered agents")
 	verdicts := flag.String("verdicts-index", "oscompliance-verdicts", "index the verdicts are written to")
 	configIndex := flag.String("config-index", "wazuh-ens-configuration", "plugin index holding the policy parameters")
 	historyIndex := flag.String("history-index", "oscompliance-identity-history", "index of the per-account history (EV-08)")
@@ -73,7 +74,7 @@ func runMain() error {
 		return fmt.Errorf("history index: %w", err)
 	}
 
-	facts := source.New(client, *alerts)
+	facts := source.New(client, *alerts, *monitoring)
 	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
 
 	for {

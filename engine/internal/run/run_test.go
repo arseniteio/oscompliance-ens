@@ -22,6 +22,11 @@ type fakeFacts struct {
 	identityRecords map[string][]fact.IdentityRecord // by run_id
 	identityAsked   []string
 	failIdentityRun string
+	registered      []verdict.Agent
+}
+
+func (f *fakeFacts) RegisteredAgents(context.Context, time.Time) ([]verdict.Agent, error) {
+	return f.registered, nil
 }
 
 func (f *fakeFacts) Logins(context.Context, string, time.Time) ([]source.Login, error) {
@@ -120,27 +125,71 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 		t.Error("want the error of agent 003")
 	}
 
-	// 8 evidences for 001 and 002; 003 loses EV-01, EV-02 and EV-07, which
-	// read its identity pass, and still gets the other 5.
-	if n != 21 || len(sink.got) != 21 {
-		t.Fatalf("want 21 verdicts, got %d", n)
+	// 001 and 002: 8 evidences, 8 requirements and the control (17 each).
+	// 003 loses the 5 evidences that read its identity pass (EV-01, EV-02,
+	// EV-04, EV-07, EV-08) and still gets 3 evidences, 8 requirements and
+	// the control (12).
+	if n != 46 || len(sink.got) != 46 {
+		t.Fatalf("want 46 verdicts, got %d", n)
 	}
 
 	got := map[string]verdict.Verdict{}
 	for _, v := range sink.got {
-		got[v.Agent.ID+" "+v.Evidence] = v
+		got[v.Agent.ID+" "+v.Scope+" "+v.Requirement+v.Evidence] = v
 	}
 
-	if v := got["001 EV-01"]; v.RunID != "r1" || v.Control != "op.acc.1" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
+	if v := got["001 evidence EV-01"]; v.RunID != "r1" || v.Control != "op.acc.1" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
 		t.Errorf("001 EV-01: %+v", v)
 	}
-	if v := got["002 EV-01"]; v.RunID != "" || v.Status != verdict.NotEvaluable {
+	if v := got["002 evidence EV-01"]; v.RunID != "" || v.Status != verdict.NotEvaluable {
 		t.Errorf("002 without identity pass: %+v", v)
 	}
-	for _, ev := range []string{"EV-01", "EV-02", "EV-07"} {
-		if _, ok := got["003 "+ev]; ok {
+	for _, ev := range []string{"EV-01", "EV-02", "EV-04", "EV-07", "EV-08"} {
+		if _, ok := got["003 evidence "+ev]; ok {
 			t.Errorf("003 %s written despite the read error", ev)
 		}
+	}
+
+	// The requirements of 003 still come out, its unread evidences counted
+	// as COLLECTION gaps, never as compliant by absence.
+	if v := got["003 requirement op.acc.1.4"]; v.Status != verdict.NonCompliant || !strings.Contains(v.Reason, "EV-01 (COLLECTION)") {
+		t.Errorf("003 op.acc.1.4: %+v", v)
+	}
+	if v := got["001 control "]; v.Score == nil || v.Coverage == nil || v.ApplicableRequirements == nil {
+		t.Errorf("001 control: %+v", v)
+	}
+}
+
+// A registered agent that sends nothing still gets every verdict, and the
+// name of an agent known both ways is kept.
+func TestOnceJudgesRegisteredSilentAgents(t *testing.T) {
+	facts := &fakeFacts{
+		agents:     []verdict.Agent{{ID: "001"}},
+		registered: []verdict.Agent{{ID: "001", Name: "web"}, {ID: "002", Name: "silent"}, {ID: "000", Name: "wazuh.manager"}},
+	}
+	sink := &fakeSink{}
+
+	if _, err := Once(context.Background(), facts, noParams{}, &memHistory{}, sink, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	byAgent := map[string]int{}
+	names := map[string]string{}
+	for _, v := range sink.got {
+		byAgent[v.Agent.ID]++
+		names[v.Agent.ID] = v.Agent.Name
+		if v.Scope == verdict.ScopeEvidence && v.Status == verdict.Compliant {
+			t.Errorf("%s %s compliant with no facts", v.Agent.ID, v.Evidence)
+		}
+	}
+
+	for _, id := range []string{"000", "001", "002"} {
+		if byAgent[id] != 17 {
+			t.Errorf("agent %s: %d verdicts, want 17", id, byAgent[id])
+		}
+	}
+	if names["001"] != "web" {
+		t.Errorf("name of 001: %q", names["001"])
 	}
 }
 
@@ -195,7 +244,9 @@ func TestOnceNotApplicable(t *testing.T) {
 		}
 		got := map[string]verdict.Verdict{}
 		for _, v := range sink.got {
-			got[v.Evidence] = v
+			if v.Scope == verdict.ScopeEvidence {
+				got[v.Evidence] = v
+			}
 		}
 		return got
 	}

@@ -17,19 +17,28 @@ var mapping = map[string]any{
 		"properties": map[string]any{
 			"oscompliance_verdict": kw(),
 			"@timestamp":           date(),
+			"scope":                kw(),
 			"control":              kw(),
+			"requirement":          kw(),
 			"evidence":             kw(),
 			"agent": map[string]any{"properties": map[string]any{
 				"id":   kw(),
 				"name": kw(),
 			}},
-			"status":         kw(),
-			"cause":          kw(),
-			"reason":         map[string]any{"type": "keyword", "ignore_above": 2048},
-			"run_id":         kw(),
-			"window_start":   date(),
-			"window_end":     date(),
-			"engine_version": kw(),
+			"status":                  kw(),
+			"cause":                   kw(),
+			"reason":                  map[string]any{"type": "keyword", "ignore_above": 2048},
+			"run_id":                  kw(),
+			"window_start":            date(),
+			"window_end":              date(),
+			"engine_version":          kw(),
+			"evidenced":               map[string]any{"type": "boolean"},
+			"attested":                map[string]any{"type": "boolean"},
+			"score":                   map[string]any{"type": "integer"},
+			"coverage":                map[string]any{"type": "integer"},
+			"applicable_requirements": map[string]any{"type": "integer"},
+			"measured_requirements":   map[string]any{"type": "integer"},
+			"unmeasured_requirements": kw(),
 		},
 	},
 }
@@ -53,17 +62,36 @@ func NewVerdicts(ctx context.Context, client *indexer.Client, index string) (*Ve
 	return &Verdicts{client: client, index: index}, nil
 }
 
-// Write stores v. The document ID is agent, control, evidence and the pass
-// judged, so judging the same pass again replaces the verdict instead of
-// adding one.
+// Write stores v under an ID that replaces instead of piling up:
+//
+//   - evidence: agent/control/evidence/run_id ("none" without a pass), so
+//     judging the same pass again replaces it and each pass stays as history;
+//   - requirement: agent/control/requirement/day, and control:
+//     agent/control/day: the last verdict of each day, one point per day of
+//     the evolution series.
 func (s *Verdicts) Write(ctx context.Context, v verdict.Verdict) error {
+	return s.client.Put(ctx, s.index, DocumentID(v), v)
+}
+
+// DocumentID is the document ID Write uses for v.
+func DocumentID(v verdict.Verdict) string {
+
+	day := v.Timestamp
+	if len(day) >= 10 {
+		day = day[:10]
+	}
+
+	switch v.Scope {
+	case verdict.ScopeRequirement:
+		return strings.Join([]string{v.Agent.ID, v.Control, v.Requirement, day}, "/")
+	case verdict.ScopeControl:
+		return strings.Join([]string{v.Agent.ID, v.Control, day}, "/")
+	}
 
 	pass := v.RunID
 	if pass == "" {
 		pass = "none"
 	}
 
-	id := strings.Join([]string{v.Agent.ID, v.Control, v.Evidence, pass}, "/")
-
-	return s.client.Put(ctx, s.index, id, v)
+	return strings.Join([]string{v.Agent.ID, v.Control, v.Evidence, pass}, "/")
 }

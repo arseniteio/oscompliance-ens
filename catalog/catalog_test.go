@@ -8,6 +8,27 @@ func TestOpAcc1(t *testing.T) {
 		t.Fatalf("op.acc.1: %v %+v", ok, c)
 	}
 
+	if c.Status != "ACTIVE" || len(c.Requirements) != 8 {
+		t.Fatalf("requirements: %s %d", c.Status, len(c.Requirements))
+	}
+
+	// Every evidence a requirement names exists, and every evidence
+	// accredits some requirement.
+	used := map[string]bool{}
+	for _, r := range c.Requirements {
+		for _, id := range r.EvidenceIDs {
+			if _, ok := c.Evidence(id); !ok {
+				t.Errorf("%s names unknown evidence %s", r.ID, id)
+			}
+			used[id] = true
+		}
+	}
+	for _, e := range c.Evidences {
+		if !used[e.ID] {
+			t.Errorf("%s accredits no requirement", e.ID)
+		}
+	}
+
 	ev07, _ := c.Evidence("EV-07")
 	if ev07.AppliesAt("BAJO") || !ev07.AppliesAt("MEDIO") || !ev07.AppliesAt("ALTO") {
 		t.Errorf("EV-07 levels: %v", ev07.Levels)

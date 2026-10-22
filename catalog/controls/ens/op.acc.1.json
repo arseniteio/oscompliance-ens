@@ -2,6 +2,108 @@
   "framework": "ENS",
   "control": "op.acc.1",
   "title": "Identificación",
+  "status": "ACTIVE",
+  "requirements": [
+    {
+      "id": "op.acc.1.1",
+      "title": "Identificador único válido",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-03"
+      ]
+    },
+    {
+      "id": "op.acc.1.2",
+      "title": "Identificadores singulares por rol",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05",
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.1.3",
+      "title": "Identificador singular por entidad",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-02",
+        "EV-03",
+        "EV-05"
+      ]
+    },
+    {
+      "id": "op.acc.1.4",
+      "title": "Gestión del ciclo de vida de las cuentas",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-02",
+        "EV-04",
+        "EV-08"
+      ]
+    },
+    {
+      "id": "op.acc.1.5",
+      "title": "Identificación en comunicaciones electrónicas (eIDAS)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.1.r1.1",
+      "title": "Singularización de la persona",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.1.r1.2",
+      "title": "Identificación ligada a privilegios",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.1.r1.3",
+      "title": "Lista actualizada de usuarios autorizados",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-07"
+      ],
+      "applicability_reason": "Refuerzo R1 exigible en nivel MEDIO y ALTO. Para BAJO debe mostrarse como NO_APLICA."
+    }
+  ],
   "evidences": [
     {
       "id": "EV-01",
