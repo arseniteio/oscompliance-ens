@@ -52,6 +52,20 @@ Findings:
 
 ## 3. Requirements and evidences
 
+Data: [`controls/ens/op.acc.1.json`](../../controls/ens/op.acc.1.json),
+generated from the plugin catalog. Levels decide applicability (section 7).
+
+| Evidence | Requirements | Levels | Judged from |
+|---|---|---|---|
+| EV-01 Account inventory, unique UIDs | 1.3, 1.4, r1.2, r1.3 | all | identity pass, P-10 |
+| EV-02 Identity changes recorded | 1.3, 1.4 | all | identity passes (current and previous) |
+| EV-03 No generic account logins | 1.1, 1.3 | all | Wazuh login alerts, P-04 |
+| EV-04 Offboarded accounts disabled in time | 1.4 | all | identity pass, P-05, P-09, P-10 |
+| EV-05 No service account logins | 1.2, 1.3 | all | Wazuh login alerts, P-03 |
+| EV-06 One identity per role | 1.2, r1.2 | all | group pass, identity pass, logins, P-11, P-12 |
+| EV-07 Active accounts authorized | r1.3 | MEDIO, ALTO | identity pass, P-07, P-10 |
+| EV-08 Accounts retained before deletion | 1.4 | all | identity history, P-06, P-09, P-10 |
+
 ## 4. Envelope v2
 
 Schema: [`envelope.v1.json`](../../schemas/facts/envelope.v1.json). The file
@@ -69,76 +83,43 @@ from the v1 runbook envelope.
 
 Payload fields sit at the top level, next to the envelope. A fact carries no
 `estado`, `nivel`, `evidence_id` or `requisito`: the catalog maps facts to
-evidences and the engine judges them.
+evidences and the engine judges them. The agent keeps no state between passes.
 
 ## 5. Fact catalogue
 
-EV-01 and EV-02 are defined so far. Examples in
-[`examples/`](../../schemas/facts/examples/).
+Examples in [`examples/`](../../schemas/facts/examples/). Every snapshot fact
+is emitted after the records of its `run_id`, even when its source could not
+be read, and carries `records_emitted` so the engine can tell a complete pass.
 
-### `account_record`
+### `identity_record` and `identity_snapshot`
 
-Schema: [`account_record.v1.json`](../../schemas/facts/account_record.v1.json).
-One per local account with `uid >= uid_min`, any shell. Fields: `account_name`, `uid`,
-`gid`, `shell`, `login_enabled`. `login_enabled` is false when the shell ends in
-`/nologin` or `/false`; an empty shell counts as enabled.
+Schemas: [`identity_record.v1.json`](../../schemas/facts/identity_record.v1.json),
+[`identity_snapshot.v1.json`](../../schemas/facts/identity_snapshot.v1.json).
 
-Differences with v1 `account_active`: accounts without login are emitted too,
-flagged by `login_enabled`; `tipo=persona` is dropped (classification belongs
-to the engine).
+One `identity_record` per entry of `passwd`, at any UID, joined with its
+`shadow` entry: `account_name`, `uid`, `gid`, `shell`, `password_state`
+(`set`, `locked`, `empty`, `missing`, `other`), `account_expires` (date,
+optional), `authorized_keys` (how many public keys sshd would accept; absent
+when it cannot be known). Never a password hash nor a key.
 
-### `account_inventory_snapshot`
-
-Schema: [`account_inventory_snapshot.v1.json`](../../schemas/facts/account_inventory_snapshot.v1.json).
-One per pass, emitted after every `account_record` of the same `run_id`.
-
-| Field | When | Meaning |
+| `identity_snapshot` field | When | Meaning |
 |---|---|---|
-| `source`, `source_path` | always | Account database read (`passwd`). |
-| `source_status` | always | `read`, `unreadable`, `implausible` (no UID 0 entry). |
-| `source_error` | not `read` | Why the read failed. |
-| `uid_min` | always | Threshold applied to `account_record`. |
-| `entries_total` | `read` | Entries with a numeric UID, any UID. |
-| `records_emitted` | `read` | `account_record` facts in this `run_id`. |
-| `duplicate_uids` | `read` | `[{uid, account_names[]}]` over all entries; empty when none. |
-
-Differences with v1 `account_inventory`: no `estado`; the unreadable and
-implausible cases are a fact instead of an `evidence_state`; duplicates carry
-the users that share each UID; `records_emitted` lets the engine detect an
-incomplete pass.
-
-### `identity_record` (EV-02)
-
-Schema: [`identity_record.v1.json`](../../schemas/facts/identity_record.v1.json).
-One per entry of `passwd`, at any UID, joined with its `shadow` entry. Fields:
-`account_name`, `uid`, `gid`, `shell`, `password_state` (`set`, `locked`,
-`empty`, `missing`, `other`), `account_expires` (date, optional),
-`authorized_keys` (how many public keys sshd would accept; absent when it
-cannot be known). Never a password hash nor a key.
-
-### `identity_snapshot` (EV-02)
-
-Schema: [`identity_snapshot.v1.json`](../../schemas/facts/identity_snapshot.v1.json).
-One per pass, after every `identity_record` of the same `run_id`.
-
-| Field | When | Meaning |
-|---|---|---|
-| `passwd_path`, `passwd_status` | always | `read`, `unreadable`, `implausible`. |
+| `passwd_path`, `passwd_status` | always | `read`, `unreadable`, `implausible` (no UID 0 entry). |
 | `passwd_error` | not `read` | Why. |
 | `shadow_path`, `shadow_status` | always | `read`, `unreadable`. |
 | `shadow_error` | not `read` | Why. |
 | `records_emitted` | both `read` | `identity_record` facts in this `run_id`. |
 | `sshd_status` | always | `read` (from `sshd -T`), `absent` (no sshd: 0 keys for everyone), `command` (an `AuthorizedKeysCommand` decides: keys unknown), `error`. |
 | `sshd_error` | `error` | Why. |
-| `authorized_keys_files` | `read` | Global `AuthorizedKeysFile` patterns as sshd reports them. Each account's count uses `sshd -T -C user=<account>,host=localhost,addr=127.0.0.1`, so `Match User` and `Match Group` blocks apply exactly; `Match Address` and `Match Host` are evaluated for a local connection. |
+| `authorized_keys_files` | `read` | Global `AuthorizedKeysFile` patterns. Each account's count uses `sshd -T -C user=<account>,host=localhost,addr=127.0.0.1`: `Match User` and `Match Group` apply exactly, `Match Address` and `Match Host` as for a local connection. |
 
-Differences with v1 `account_created`, `account_modified`, `account_deleted`:
-the agent keeps no baseline and emits no changes. It reports the whole identity
-table on every pass and the engine compares two passes. A lost or corrupt
-baseline on the host can no longer hide or invent changes, and a reinstalled
-agent needs no first pass to set one.
+Replaces v1 `account_active`, `account_inventory`, `account_created`,
+`account_modified` and `account_deleted`. The agent applies no UID threshold
+and emits no changes: it reports the whole identity table on every pass and
+the engine applies P-10 and compares passes. A lost or corrupt baseline on
+the host can no longer hide or invent changes.
 
-### `group_record` and `group_snapshot` (EV-06)
+### `group_record` and `group_snapshot`
 
 Schemas: [`group_record.v1.json`](../../schemas/facts/group_record.v1.json),
 [`group_snapshot.v1.json`](../../schemas/facts/group_snapshot.v1.json).
@@ -146,171 +127,143 @@ One `group_record` per line of the group file (`group_name`, `gid`,
 `members`), then one `group_snapshot` (`group_path`, `group_status` `read`,
 `unreadable` or `implausible` (no GID 0), `group_error`, `records_emitted`).
 
-Differences with v1 `multi_role_inventory`, `multi_role_account`,
-`multi_role_usage` and `privilege_use`: the agent no longer knows which groups
-grant privilege nor the admin suffix. It reports every group; P-11 and P-12
-are applied by the engine.
+Replaces v1 `multi_role_inventory`, `multi_role_account`, `multi_role_usage`
+and `privilege_use`: the agent no longer knows which groups grant privilege
+nor the admin suffix; P-11 and P-12 are applied by the engine.
 
-### Wazuh alerts (EV-03, EV-05)
+### Wazuh login alerts (EV-03, EV-05, EV-06)
 
-EV-03 and EV-05 have no fact of ours. Wazuh already collects the authentication log and
-its own sshd decoder and rules produce the alerts the engine reads:
+No fact of ours. Wazuh collects the authentication log and its own decoders
+and rules produce the alerts the engine reads:
 
 | What | Query on `wazuh-alerts-*` | Fields used |
 |---|---|---|
-| Successful sshd login | `rule.groups: authentication_success` and `decoder.parent: sshd` (rule 5715 and children) | `data.dstuser` (account), `data.srcip`, `timestamp`, `id` |
-| Authentication log reaches Wazuh | any of `rule.groups` `authentication_success`, `authentication_failed`, `sudo` in the lookback | `agent.id` |
+| sshd login | `rule.groups: authentication_success`, `decoder.parent: sshd` (rule 5715 and children) | `data.dstuser`, `data.srcip` |
+| Console, su and graphical login | `rule.groups: authentication_success`, `decoder.parent: pam`, `predecoder.program_name` in `login`, `su`, `gdm-password`, `lightdm`, `sddm` (rule 5501) | `data.dstuser` |
+| Authentication log reaches Wazuh | `rule.groups` in `authentication_success`, `authentication_failed`, `sudo`, in the lookback | `agent.id` |
 
-Difference with v1 `account_authenticated`: the agent keeps no offset or
-cursor and parses no log.
+The PAM session of sshd is not counted (5715 already is) nor `sudo` (privilege
+use, not a login). Replaces v1 `account_authenticated`, which only saw sshd:
+the agent keeps no offset or cursor and parses no log.
 
 ## 6. Parameters
 
+Agent parameters are paths only; every policy parameter lives in the plugin's
+configuration (`wazuh-ens-configuration`, document `ACTIVE_CONFIGURATION`)
+and the engine reloads it every pass.
+
 | Parameter | Owner | Default | Use |
 |---|---|---|---|
-| `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
-| `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
-| `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
-| `sshd_path` | agent | `/usr/sbin/sshd` | EV-02. Asked with `sshd -T` for `AuthorizedKeysFile`. |
-| `group_path` | agent | `/etc/group` | EV-06. Reported as `group_path`. |
-| P-03 service accounts | plugin | none | EV-05. Read like P-04. |
-| (P-03, P-04 written as a regular expression) | plugin | | `matchMode: regex` at the level the value comes from: RE2 (Go `regexp`, the plugin's engine), whole-name match, at most 512 characters, case-sensitive. A list compares ignoring case. Other list parameters reject a pattern with `CONFIGURATION`. |
-| P-05 `plazo_max_deshabilitar_dias` | plugin | none | EV-04. Number. |
-| P-09 `bajas_declaradas` | plugin | none | EV-04. Table `usuario \| fecha_baja` (YYYY-MM-DD); an unreadable row is a configuration error. Replaces v1 `bajas.tsv` on the host. |
-| P-10 `uid_minimo_persona` | plugin | 1000 (product default) | EV-04. The agent still applies its own `uid_min` for EV-01; see section 10. |
-| P-06 `periodo_retencion_cuentas_dias` | plugin | none | EV-08. Number. |
-| P-11 `grupos_privilegiados` | plugin | `sudo, wheel, admin` (product default, said in the reason) | EV-06. List. |
-| P-12 `sufijo_admin` | plugin | none: nobody is excluded | EV-06. First entry used. |
-| P-07 `lista_usuarios_autorizados` | plugin | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
-| P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates are not applied yet. |
+| `passwd_path` | agent | `/etc/passwd` | Identity facts, groups (admin accounts). |
+| `shadow_path` | agent | `/etc/shadow` | Identity facts. |
+| `sshd_path` | agent | `/usr/sbin/sshd` | `sshd -T` for key files. |
+| `group_path` | agent | `/etc/group` | Group facts. |
+| P-03 `cuentas_servicio_definidas` | plugin, platform | template | EV-05. List or regex. |
+| P-04 `cuentas_genericas_prohibidas` | plugin, organisation | none | EV-03. List or regex. |
+| P-05 `plazo_max_deshabilitar_dias` | plugin, organisation | none | EV-04. Number. |
+| P-06 `periodo_retencion_cuentas_dias` | plugin, organisation | none | EV-08. Number. |
+| P-07 `lista_usuarios_autorizados` | plugin, system | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
+| P-09 `bajas_declaradas` | plugin, organisation | none | EV-04, EV-08. Table `usuario \| fecha_baja` (YYYY-MM-DD); an unreadable row is a configuration error. Replaces v1 `bajas.tsv` on the host. |
+| P-10 `uid_minimo_persona` | plugin, platform | template, else 1000 (product default) | EV-01, EV-04, EV-07, EV-08. Replaces the agent's v1 `OPACC1_UID_MIN`. |
+| P-11 `grupos_privilegiados` | plugin, platform | template, else `sudo, wheel, admin` (product default, said in the reason) | EV-06. List. |
+| P-12 `sufijo_admin` | plugin, organisation | none: nobody is excluded | EV-06. First entry. |
+
+Resolution, as the plugin's `configuration-resolver.ts`, with the classes of
+[`controls/ens/op.acc.1.json`](../../controls/ens/op.acc.1.json):
+
+1. `organisation`: the control's common value only; an agent value is
+   ignored.
+2. `system` and `platform`: the agent's own value; else its template (the
+   assigned one, built-in from [`templates/`](../../templates/) or custom
+   from the configuration; `none` disables it; with none assigned or found,
+   the built-in default of its system type, `typeOverride` before
+   `detectedType`); else the common value.
+3. The match mode (`regex`) is the one stored with the value, at its level.
+   A regex is RE2 (Go `regexp`, the plugin's engine), matches the whole name,
+   at most 512 characters, case-sensitive; a list compares ignoring case.
+   Parameters that take no regex reject one with `CONFIGURATION`.
+
+Union parameters (read whole across agents) do not occur in op.acc.1.
 
 ## 7. Evidence judgement
 
-EV-01, as the engine must compute it to match v1 (`score.py`), over the latest
-`account_inventory_snapshot` per host in the window:
+Before any judgement, applicability: with `global.ensLevel` set, an evidence
+whose levels do not include it is `NOT_APPLICABLE` (EV-07 at BAJO); a control
+with `enabled: false` gives `NOT_APPLICABLE` for all its evidences. Without a
+level nothing is ruled out. The engine decides it, not the plugin.
 
-1. No snapshot: `NO_EVALUABLE`, cause `COLLECTION`.
-2. `source_status` is not `read`: `NO_EVALUABLE`, cause `COLLECTION`, reason
-   `source_error`.
-   A read snapshot without `records_emitted` breaks the schema:
-   `NOT_EVALUABLE`, cause `EVIDENCE`.
-3. Fewer `account_record` received for that `run_id` than `records_emitted`:
-   `NO_EVALUABLE`, cause `COLLECTION`. New in v2.
-4. `duplicate_uids` not empty: `NO_CUMPLE`.
-5. Otherwise: `CUMPLE`.
+Shared checks:
 
-Active accounts for EV-01 and EV-07 are the `account_record` with
-`login_enabled = true`.
+- Identity pass usable: the newest `identity_snapshot` in the window exists,
+  both files `read`, `records_emitted` present (else `EVIDENCE`), and at least
+  that many `identity_record` received for its `run_id` (more is fine: Wazuh
+  can deliver a line twice). Otherwise `NOT_EVALUABLE`, cause `COLLECTION`.
+- A parameter missing or unusable gives `NOT_EVALUABLE`, cause
+  `CONFIGURATION`. Never a default the auditor did not set, except P-10 and
+  P-11 where the plugin itself documents a product default.
+- Disabled account: no-login shell, expired, or no usable password (`locked`
+  or `missing`) and `authorized_keys` = 0. Unknown when the password is
+  unusable and `authorized_keys` is absent. v1 counted a locked password with
+  keys as disabled, though sshd still accepts the key. Active: UID >= P-10 and
+  not disabled.
 
-EV-02 over the latest `identity_snapshot` per host in the window (the
-current pass) and the newest complete pass before it (the previous pass: both
-files read, every record received; up to 10 earlier passes are tried):
+**EV-01**: identity pass usable and P-10 usable; a UID held by more than one
+entry, at any UID (as v1): `NON_COMPLIANT`; otherwise `COMPLIANT`.
 
-1. No snapshot: `NOT_EVALUABLE`, cause `COLLECTION`.
-2. `passwd_status` or `shadow_status` is not `read`: `NOT_EVALUABLE`, cause
-   `COLLECTION`, reason the error.
-   Both read but no `records_emitted`: `NOT_EVALUABLE`, cause `EVIDENCE`.
-3. Fewer `identity_record` received than `records_emitted`: `NOT_EVALUABLE`,
-   cause `COLLECTION`.
-4. Otherwise `COMPLIANT`: identity changes are being recorded. The reason
-   lists what changed against the previous pass, by `account_name`: created,
-   deleted, and modified (any field of `identity_record` differs). With no
-   previous pass in the lookback, the reason says the current pass is the
-   baseline.
+**EV-02**: identity pass usable; then `COMPLIANT`, with the changes against
+the newest complete earlier pass (up to 10 tried) in the reason: created,
+deleted, modified (any field of `identity_record`, compared by value). With
+no earlier pass, the reason says the current one is the baseline. As v1, the
+evidence fails only when collection fails.
 
-Same result as v1, where the change facts are always `CUMPLE` and the evidence
-fails only when collection fails. The change list itself is what EV-08
-(retention) and the plugin will read; where it is stored is open (section 10).
+**EV-03, EV-05**: the logins in the window against P-04 (generic) or P-03
+(service). List unusable: `CONFIGURATION`. No authentication event in the
+lookback: `NOT_EVALUABLE`, `COLLECTION` (silence from a log that does not
+reach Wazuh is not compliance). A login whose account matches:
+`NON_COMPLIANT`, each account with its count. Otherwise `COMPLIANT`, with the
+logins by method.
 
-EV-03 (against P-04, generic accounts) and EV-05 (against P-03, service
-accounts) over the same sshd logins in the window:
+**EV-04**: identity pass usable, P-05, P-09, P-10 usable. An account with UID
+>= P-10 and an offboarding date (its P-09 row, else its `account_expires`)
+not disabled more than P-05 days after it: `NON_COMPLIANT`; if only its keys
+could tell and they are unknown: `NOT_EVALUABLE`, `EVIDENCE`. No date at all
+and P-09 empty: `NOT_EVALUABLE`, `CONFIGURATION`. Otherwise `COMPLIANT`; a
+declared account that no longer exists counts as handled.
 
-1. The list (P-04 or P-03) missing, empty, not a list or a regex: `NOT_EVALUABLE`, cause
-   `CONFIGURATION`. Never judged against a default nobody set.
-2. No authentication event from the agent in the lookback: `NOT_EVALUABLE`,
-   cause `COLLECTION`. Silence from a log that does not reach Wazuh is not
-   compliance (v1 probed its log the same way).
-3. A login whose account is in the list, ignoring case: `NON_COMPLIANT`, reason
-   lists each account with its number of logins.
-4. Otherwise `COMPLIANT`.
+**EV-06**: group pass usable (as the identity pass), identity table for admin
+accounts, P-11 and P-12 usable. A member of a P-11 group, not itself named
+`<x><suffix>`, with no `<member><suffix>` account, or a login by such a
+member: `NON_COMPLIANT` (as v1). No finding and no authentication event in
+the lookback: `NOT_EVALUABLE`, `COLLECTION`; v1 gave that whenever its auth
+source failed, v2 keeps a structural finding. Otherwise `COMPLIANT`.
 
-EV-04 over the identity table of the newest complete EV-02 pass, P-05, P-09
-and P-10. No fact of its own:
+**EV-07**: identity pass usable, P-07 (`usuario` column) and P-10 usable. An
+active account not in P-07, compared literally and with case as the plugin:
+`NON_COMPLIANT`. Not listed and state unknown: `NOT_EVALUABLE`, `EVIDENCE`.
+Otherwise `COMPLIANT`. v1 called active any account with a login shell.
 
-1. P-05, P-09 or P-10 unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
-2. No complete identity pass: `NOT_EVALUABLE`, cause `COLLECTION`.
-3. An account with UID >= P-10 and an offboarding date (its P-09 row, else
-   its `account_expires`), not disabled more than P-05 days after that date:
-   `NON_COMPLIANT`. If only its SSH keys could tell and they are unknown:
-   `NOT_EVALUABLE`, cause `EVIDENCE`.
-4. No offboarding date at all and P-09 empty: `NOT_EVALUABLE`, cause
-   `CONFIGURATION`, as v1 without `bajas.tsv` nor expiry dates.
-5. Otherwise `COMPLIANT`. A declared account that no longer exists counts as
-   handled.
-
-v1 kept a `deshabilitadas.tsv` register on the host; EV-04 does not need it.
-
-Disabled (EV-04, EV-08): a no-login shell, an expired account, or no usable
-password (`locked` or `missing`) and `authorized_keys` = 0. Unknown when the
-password is unusable and `authorized_keys` is absent. v1 also counted a locked
-password with keys as disabled, though sshd still accepts the key; v2 does
-not. The EV-08 history records an unknown state as such (`state_unknown`):
-it neither proves nor clears a disabling.
-
-EV-08 over the per-account history the engine keeps in
+**EV-08**: over the per-account history the engine keeps in
 `oscompliance-identity-history` (one document per agent and account:
 `first_seen`, `last_seen`, `disabled_since`, `disabled_observed`,
-`state_unknown`, `deleted_at`, last `account_expires`). Each complete current EV-02 pass moves
-it forward; applying a pass twice changes nothing. It replaces v1
-`deshabilitadas.tsv` on the host.
-
-1. P-06, P-09 or P-10 unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
-2. No complete current identity pass: `NOT_EVALUABLE`, cause `COLLECTION`.
-3. An account with UID >= P-10 deleted in the window less than P-06 days
-   after its start date, or deleted while still enabled (kept zero days):
-   `NON_COMPLIANT`. Start date: its P-09 row, else its last expiry date, else
-   the day the engine saw it change from enabled to disabled. v1 did not
-   track accounts deleted while enabled.
-4. A deleted account with no start date (already disabled when the history
-   began, no P-09 row, no expiry) or whose last state was unknown:
-   `NOT_EVALUABLE`, cause `EVIDENCE`.
-5. Otherwise `COMPLIANT`.
-
-EV-06 over the newest group pass, the account list of the newest complete
-EV-02 pass, P-11, P-12 and the sshd logins:
-
-1. P-11 or P-12 set but unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
-2. Group pass missing, unread or incomplete: `NOT_EVALUABLE`, cause
-   `COLLECTION` (`EVIDENCE` for a read snapshot without counter).
-3. No complete EV-02 pass to look up admin accounts: `NOT_EVALUABLE`, cause
-   `COLLECTION`.
-4. A member of a P-11 group, not itself named `<x><suffix>`, with no
-   `<member><suffix>` account; or a sshd login by such a member:
-   `NON_COMPLIANT`. Same rules as v1.
-5. No finding and no authentication event in the lookback: `NOT_EVALUABLE`,
-   cause `COLLECTION`. v1 gave `NO_EVALUABLE` whenever its auth source
-   failed; v2 keeps a structural finding even then.
-6. Otherwise `COMPLIANT`.
-
-EV-07 over the same inventory as EV-01 and the `usuario` column of P-07:
-
-1. P-07 missing or with no `usuario`: `NOT_EVALUABLE`, cause `CONFIGURATION`.
-2. Inventory unusable: as EV-01 steps 1 to 3.
-3. An active account (`login_enabled`) not in P-07, compared literally and
-   with case as the plugin does: `NON_COMPLIANT`, reason lists them.
-4. Otherwise `COMPLIANT`.
-
-EV-07 only applies at MEDIO and ALTO (R1). The engine judges it at every
-level; applying levels is open (section 10).
+`state_unknown`, `deleted_at`, last `account_expires`), moved forward by each
+complete current identity pass; applying a pass twice changes nothing. It
+replaces v1 `deshabilitadas.tsv` on the host. P-06, P-09, P-10 unusable:
+`CONFIGURATION`; no complete current pass: `COLLECTION`. An account with UID
+>= P-10 deleted in the window less than P-06 days after its start date (P-09
+row, else last expiry, else the observed day it was disabled), or deleted
+while still enabled (zero days; v1 did not track these): `NON_COMPLIANT`.
+Deleted with no start date or with its last state unknown: `NOT_EVALUABLE`,
+`EVIDENCE`. Otherwise `COMPLIANT`.
 
 Verdicts follow [`verdict.v1.json`](../../schemas/verdicts/verdict.v1.json)
-and go to the `oscompliance-verdicts` index. Status values are in English; v1
-equivalents: `COMPLIANT` = `CUMPLE`, `NON_COMPLIANT` = `NO_CUMPLE`,
-`NOT_EVALUABLE` = `NO_EVALUABLE`. Causes keep their v1 names.
+in `oscompliance-verdicts`, one per agent, evidence and pass (judging the same
+pass again replaces it). Status values in English; v1 equivalents:
+`COMPLIANT` = `CUMPLE`, `NON_COMPLIANT` = `NO_CUMPLE`, `NOT_EVALUABLE` =
+`NO_EVALUABLE`, `NOT_APPLICABLE` = `NO_APLICA`. Causes keep their v1 names.
 
 Engine parameters: `window` 26 h (v1 `OPACC1_VENTANA_HORAS`), `lookback` 7
-days (agents with facts this recent are judged even when the window is empty).
-Records of a pass are matched by `run_id`, not by the window.
+days (agents with facts this recent are judged even when the window is
+empty). Records of a pass are matched by `run_id`, not by the window.
 
 ## 8. Wazuh rules
 
@@ -330,20 +283,17 @@ What the engine reads from `wazuh-alerts-*` (`rule.id: 119001`), checked in
 the lab:
 
 - Every payload field sits under `data.`.
-- Scalars arrive as strings: `"1000"`, `"true"`. Arrays of objects
-  (`duplicate_uids`) keep their JSON types. The engine converts scalars back
-  using the schemas.
+- Scalars arrive as strings: `"1000"`, `"true"`. Arrays keep their JSON
+  types. The engine converts scalars back using the Go fact types.
 - Wazuh renames static field names (`user` became `dstuser`); hence
   `account_name`. The envelope schema lists the names to avoid.
 - A line with the envelope but an invalid `fact` or `run_id` stops at 119000
   and is not indexed.
 
-
 ## 9. Parity and migration
 
-EV-01, checked in `wazuh-lab-docker` on 2026-10-21: v1 (`collect.sh` +
-`score.py`) and v2 (agent + engine) run over the same `passwd`, verdicts read
-from the index.
+Checked in `wazuh-lab-docker` on 2026-10-21 for EV-01: v1 (`collect.sh` +
+`score.py`) and v2 over the same `passwd`, verdicts read from the index.
 
 | Case | v1 | v2 |
 |---|---|---|
@@ -353,29 +303,20 @@ from the index.
 | Missing file | `NO_EVALUABLE` `COLLECTION` | `NOT_EVALUABLE` `COLLECTION` |
 | Normal again, right after the duplicate | `NO_CUMPLE` | `COMPLIANT` |
 
-Divergence in the last row: v1 rule 2 keeps any non-compliant fact for the
-whole window (26 h), so a fixed duplicate stays `NO_CUMPLE` until it ages out.
-v2 judges the latest pass only; the earlier `NON_COMPLIANT` verdict stays in
-`oscompliance-verdicts` as history. Decided 2026-10-21: v2 keeps judging the
-current state.
+v1 keeps any non-compliant fact for the whole window (26 h); v2 judges the
+current state and keeps earlier verdicts as history (decided 2026-10-21).
 
+Deliberate differences with v1, each decided on 2026-10-22: a locked password
+with SSH keys is not disabled; EV-07 counts active accounts by that
+definition, not by shell; EV-08 counts accounts deleted while enabled; EV-03,
+EV-05 and EV-06 also see console, su and graphical logins; the engine
+decides `NOT_APPLICABLE` by level; templates and parameter classes are
+applied as the plugin does.
 
 ## 10. Open decisions
 
-
-- `uid_min`: the agent applies its own flag for EV-01 while P-10 lives in the
-  plugin. Moving it to the engine means emitting `account_record` for every
-  UID.
-- EV-08 (retention of disabled accounts before deletion) needs, per account,
-  when it was disabled and when it was deleted, over P-06 days (365 by
-  example). v1 kept that in a register on the host. Options: the engine keeps
-  that history in an index of its own, built from EV-02 passes; or the
-  agent keeps it.
-
-- ENS level: where `NOT_APPLICABLE` is decided for evidences above the
-  active level (EV-07 at BAJO), engine or plugin.
-
-- EV-02 changes: only in the verdict reason, or also as documents of their own
-  (one per change) that EV-08 and the plugin can query.
-
-
+- The plugin still reads its own copy of the templates and evidence levels
+  (TypeScript). It should read `controls/` and `templates/` when it is
+  changed.
+- Showing identity changes in the plugin: from the EV-02 verdict reason or
+  from `oscompliance-identity-history`.
