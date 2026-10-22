@@ -23,7 +23,7 @@ const active = `{
   ],
   "agents": {
     "001": {"controls": {"op.acc.1": {"parameters": {"P-04": ["test"], "P-07": ["jgomez | srv01 | ops", "ana", " | srv02 | x", "pepe |"]}}}},
-    "002": {"controls": {"op.acc.1": {"parameters": {"P-07": ["x"]}}}}
+    "002": {"controls": {"op.acc.1": {"parameters": {"P-07": ["x"], "P-04": "(adm|tmp)[0-9]*"}, "matchModes": {"P-04": "regex"}}}}
   }
 }`
 
@@ -40,7 +40,6 @@ func TestList(t *testing.T) {
 		anyErr       bool
 	}{
 		{"001", "P-04", []string{"test"}, nil, false},           // agent value wins
-		{"002", "P-04", []string{"admin", "guest"}, nil, false}, // agent without P-04: control value, trimmed
 		{"999", "P-04", []string{"admin", "guest"}, nil, false}, // unknown agent: control value
 		{"001", "P-05", []string{"root", "admin"}, nil, false},  // one entry per line
 		{"001", "P-03", nil, ErrNotSet, false},                  // empty list
@@ -108,6 +107,44 @@ func TestNumber(t *testing.T) {
 	for _, id := range []string{"P-14", "P-99"} {
 		if _, err := c.Number("001", "op.acc.1", id); !errors.Is(err, ErrNotSet) {
 			t.Errorf("%s: want ErrNotSet, got %v", id, err)
+		}
+	}
+}
+
+func TestMatcher(t *testing.T) {
+	var c Config
+	if err := json.Unmarshal([]byte(active), &c); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := c.Matcher("999", "op.acc.1", "P-04")
+	if err != nil || !list.Match("ADMIN") || !list.Match("guest") || list.Match("guests") {
+		t.Errorf("list: %v %v", list, err)
+	}
+
+	// Agent 002 writes P-04 as a pattern, with its own mode.
+	pattern, err := c.Matcher("002", "op.acc.1", "P-04")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]bool{"adm": true, "tmp42": true, "admin": false, "xadm": false, "ADM": false} {
+		if pattern.Match(name) != want {
+			t.Errorf("pattern %s on %q: want %v", pattern, name, want)
+		}
+	}
+
+	// The control's P-06 is a regex in the fixture: the mode applies there too.
+	if m, err := c.Matcher("001", "op.acc.1", "P-06"); err != nil || !m.Match("admin") || m.Match("root") {
+		t.Errorf("control-level pattern: %v %v", m, err)
+	}
+
+	bad := Config{}
+	if err := json.Unmarshal([]byte(`{"controls":[{"controlId":"c","parameters":[{"id":"P","value":"(a","matchMode":"regex"},{"id":"Q","value":" a ","matchMode":"regex"}]}]}`), &bad); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"P", "Q"} {
+		if _, err := bad.Matcher("1", "c", id); err == nil || errors.Is(err, ErrNotSet) {
+			t.Errorf("%s: want a syntax error, got %v", id, err)
 		}
 	}
 }

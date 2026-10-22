@@ -174,6 +174,7 @@ cursor and parses no log.
 | `sshd_path` | agent | `/usr/sbin/sshd` | EV-02. Asked with `sshd -T` for `AuthorizedKeysFile`. |
 | `group_path` | agent | `/etc/group` | EV-06. Reported as `group_path`. |
 | P-03 service accounts | plugin | none | EV-05. Read like P-04. |
+| (P-03, P-04 written as a regular expression) | plugin | | `matchMode: regex` at the level the value comes from: RE2 (Go `regexp`, the plugin's engine), whole-name match, at most 512 characters, case-sensitive. A list compares ignoring case. Other list parameters reject a pattern with `CONFIGURATION`. |
 | P-05 `plazo_max_deshabilitar_dias` | plugin | none | EV-04. Number. |
 | P-09 `bajas_declaradas` | plugin | none | EV-04. Table `usuario \| fecha_baja` (YYYY-MM-DD); an unreadable row is a configuration error. Replaces v1 `bajas.tsv` on the host. |
 | P-10 `uid_minimo_persona` | plugin | 1000 (product default) | EV-04. The agent still applies its own `uid_min` for EV-01; see section 10. |
@@ -181,7 +182,7 @@ cursor and parses no log.
 | P-11 `grupos_privilegiados` | plugin | `sudo, wheel, admin` (product default, said in the reason) | EV-06. List. |
 | P-12 `sufijo_admin` | plugin | none: nobody is excluded | EV-06. First entry used. |
 | P-07 `lista_usuarios_autorizados` | plugin | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
-| P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates and regex values are not applied yet. |
+| P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates are not applied yet. |
 
 ## 7. Evidence judgement
 

@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -13,9 +14,10 @@ import (
 // EV-05: the same sshd logins, checked against a different list. Logins come
 // from Wazuh's own sshd alerts, not from our agent.
 type LoginInput struct {
-	// Forbidden is the list the logins are checked against (P-04 for EV-03,
-	// P-03 for EV-05). Empty when ForbiddenProblem is set.
-	Forbidden []string
+	// Forbidden is the parameter the logins are checked against (P-04 for
+	// EV-03, P-03 for EV-05): a list or a regular expression. Unusable when
+	// ForbiddenProblem is set.
+	Forbidden params.Matcher
 	// ForbiddenProblem says why the list cannot be used (not set, not a list,
 	// regex); "" when it can.
 	ForbiddenProblem string
@@ -42,7 +44,8 @@ func JudgeEV05(in LoginInput) verdict.Judgement {
 //
 //  1. ForbiddenProblem set: NOT_EVALUABLE, CONFIGURATION, reason "<param>: " + problem.
 //  2. AuthSeen false: NOT_EVALUABLE, COLLECTION.
-//  3. Any login whose account is in Forbidden, ignoring case: NON_COMPLIANT,
+//  3. Any login whose account matches Forbidden (a list ignoring case, or a
+//     whole-name regular expression): NON_COMPLIANT,
 //     reason "<kind> accounts authenticated: a (2), b (1)".
 //  4. Otherwise COMPLIANT, reason "N sshd logins in the window, none with a
 //     <param> account".
@@ -63,11 +66,8 @@ func noLoginIn(in LoginInput, paramID, kind string) verdict.Judgement {
 	counts := map[string]int{}
 
 	for _, login := range in.Logins {
-		for _, name := range in.Forbidden {
-			if strings.EqualFold(login.Account, name) {
-				counts[strings.ToLower(login.Account)]++
-				break
-			}
+		if in.Forbidden.Match(login.Account) {
+			counts[strings.ToLower(login.Account)]++
 		}
 	}
 

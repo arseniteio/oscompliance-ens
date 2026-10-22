@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -61,6 +62,10 @@ func (noParams) ListColumn(string, string, string, int) ([]string, error) {
 }
 
 func (noParams) Number(string, string, string) (float64, error) { return 0, errors.New("not set") }
+
+func (noParams) Matcher(string, string, string) (params.Matcher, error) {
+	return params.Matcher{}, errors.New("not set")
+}
 
 func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
 	if n == 1 {

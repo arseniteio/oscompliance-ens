@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -14,7 +15,12 @@ func login(account string) source.Login {
 }
 
 func TestJudgeEV03(t *testing.T) {
-	generic := []string{"admin", "guest", "test"}
+	generic := params.ListMatcher("admin", "guest", "test")
+
+	pattern, err := params.PatternMatcher("(adm|tmp)[0-9]*")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	cases := []struct {
 		name    string
@@ -31,6 +37,7 @@ func TestJudgeEV03(t *testing.T) {
 		{"one account whatever its case", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("Admin"), login("admin")}}, verdict.NonCompliant, "", []string{"admin (2)"}},
 		{"counted and sorted", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("test"), login("admin"), login("test")}}, verdict.NonCompliant, "", []string{"admin (1), test (2)"}},
 		{"only named accounts", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), login("mgarcia")}}, verdict.Compliant, "", []string{"2 sshd logins"}},
+		{"pattern: whole name", LoginInput{Forbidden: pattern, AuthSeen: true, Logins: []source.Login{login("tmp7"), login("admin"), login("xadm")}}, verdict.NonCompliant, "", []string{"generic accounts authenticated: tmp7 (1)"}},
 		{"source alive, no logins", LoginInput{Forbidden: generic, AuthSeen: true}, verdict.Compliant, "", []string{"0 sshd logins"}},
 	}
 
@@ -55,7 +62,7 @@ func TestJudgeEV03(t *testing.T) {
 
 // EV-05 is the same judgement against P-03: only the list and the words change.
 func TestJudgeEV05(t *testing.T) {
-	service := []string{"daemon", "www-data", "sshd"}
+	service := params.ListMatcher("daemon", "www-data", "sshd")
 
 	got := JudgeEV05(LoginInput{Forbidden: service, AuthSeen: true, Logins: []source.Login{login("jperez"), login("www-data")}})
 	if got.Status != verdict.NonCompliant || !strings.Contains(got.Reason, "service accounts authenticated: www-data (1)") {

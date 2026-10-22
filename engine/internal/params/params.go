@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,8 @@ type Config struct {
 	} `json:"controls"`
 	Agents map[string]struct {
 		Controls map[string]struct {
-			Parameters map[string]any `json:"parameters"`
+			Parameters map[string]any    `json:"parameters"`
+			MatchModes map[string]string `json:"matchModes"`
 		} `json:"controls"`
 	} `json:"agents"`
 }
@@ -65,36 +67,21 @@ func Load(ctx context.Context, client *indexer.Client, index string) (*Config, e
 }
 
 // List returns a list parameter for one agent: the agent's own value when it
-// has one, otherwise the control's. Plugin templates are not applied yet.
+// has one, otherwise the control's. Plugin templates are not applied yet. A
+// parameter written as a regular expression is an error here: use Matcher.
 func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 
-	if agent, ok := c.Agents[agentID]; ok {
-		if value, ok := agent.Controls[controlID].Parameters[paramID]; ok {
-			return listValue(value)
-		}
+	value, mode, ok := c.valueAndMode(agentID, controlID, paramID)
+
+	if !ok {
+		return nil, ErrNotSet
 	}
 
-	for _, control := range c.Controls {
-
-		if control.ControlID != controlID {
-			continue
-		}
-
-		for _, p := range control.Parameters {
-
-			if p.ID != paramID {
-				continue
-			}
-
-			if p.MatchMode == "regex" {
-				return nil, fmt.Errorf("%s %s uses a regular expression, not supported by the engine yet", controlID, paramID)
-			}
-
-			return listValue(p.Value)
-		}
+	if mode == "regex" {
+		return nil, fmt.Errorf("%s %s is a regular expression, which this evidence does not accept", controlID, paramID)
 	}
 
-	return nil, ErrNotSet
+	return listValue(value)
 }
 
 // Number returns a numeric parameter for one agent (agent value first, then
@@ -189,6 +176,115 @@ func column(l Lister, agentID, controlID, paramID string, col int) ([]string, er
 	return values, nil
 }
 
+// MaxPatternLength is the plugin's limit for a regular expression parameter.
+const MaxPatternLength = 512
+
+// Matcher answers "is this name in the parameter?" for a list parameter that
+// the plugin lets the auditor write either as a list or as one regular
+// expression (matchMode "regex").
+type Matcher struct {
+	list    []string
+	pattern *regexp.Regexp
+	source  string
+}
+
+// ListMatcher builds a Matcher from a plain list.
+func ListMatcher(values ...string) Matcher {
+	return Matcher{list: values}
+}
+
+// PatternMatcher builds a Matcher from a regular expression, with the same
+// checks as a configured one.
+func PatternMatcher(source string) (Matcher, error) {
+
+	if source != strings.TrimSpace(source) {
+		return Matcher{}, fmt.Errorf("regular expression %q starts or ends with spaces", source)
+	}
+	if len(source) > MaxPatternLength {
+		return Matcher{}, fmt.Errorf("regular expression longer than %d characters", MaxPatternLength)
+	}
+
+	// Anchored here: the plugin requires a full match.
+	pattern, err := regexp.Compile(`^(?:` + source + `)$`)
+	if err != nil {
+		return Matcher{}, fmt.Errorf("regular expression %q: %w", source, err)
+	}
+
+	return Matcher{pattern: pattern, source: source}, nil
+}
+
+// Match: a list compares ignoring case, as the plugin does for forbidden
+// lists; a pattern must match the whole name (RE2, as the plugin).
+func (m Matcher) Match(name string) bool {
+
+	if m.pattern != nil {
+		return m.pattern.MatchString(name)
+	}
+
+	for _, entry := range m.list {
+		if strings.EqualFold(entry, name) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// String describes the parameter for a verdict reason.
+func (m Matcher) String() string {
+	if m.pattern != nil {
+		return "pattern " + m.source
+	}
+	return strings.Join(m.list, ", ")
+}
+
+// Matcher returns a list-or-pattern parameter for one agent: the agent's own
+// value and mode when it has one, otherwise the control's.
+func (c *Config) Matcher(agentID, controlID, paramID string) (Matcher, error) {
+
+	value, mode, ok := c.valueAndMode(agentID, controlID, paramID)
+
+	if !ok {
+		return Matcher{}, ErrNotSet
+	}
+
+	if mode != "regex" {
+		list, err := listValue(value)
+		return Matcher{list: list}, err
+	}
+
+	source, isString := value.(string)
+	if !isString || strings.TrimSpace(source) == "" {
+		return Matcher{}, ErrNotSet
+	}
+
+	return PatternMatcher(source)
+}
+
+// valueAndMode is value plus the match mode stored at the same level.
+func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, bool) {
+
+	if agent, ok := c.Agents[agentID]; ok {
+		control := agent.Controls[controlID]
+		if value, ok := control.Parameters[paramID]; ok {
+			return value, control.MatchModes[paramID], true
+		}
+	}
+
+	for _, control := range c.Controls {
+		if control.ControlID != controlID {
+			continue
+		}
+		for _, p := range control.Parameters {
+			if p.ID == paramID {
+				return p.Value, p.MatchMode, true
+			}
+		}
+	}
+
+	return nil, "", false
+}
+
 // listValue accepts a JSON list of strings or one string with one entry per
 // line, drops empty entries, and fails with ErrNotSet when nothing is left.
 func listValue(value any) ([]string, error) {
@@ -233,6 +329,7 @@ type Lister interface {
 	List(agentID, controlID, paramID string) ([]string, error)
 	ListColumn(agentID, controlID, paramID string, col int) ([]string, error)
 	Number(agentID, controlID, paramID string) (float64, error)
+	Matcher(agentID, controlID, paramID string) (Matcher, error)
 }
 
 // Unavailable answers every List with err: used when the configuration could
@@ -253,4 +350,8 @@ func (u unavailable) ListColumn(agentID, controlID, paramID string, _ int) ([]st
 
 func (u unavailable) Number(string, string, string) (float64, error) {
 	return 0, fmt.Errorf("configuration not loaded: %w", u.err)
+}
+
+func (u unavailable) Matcher(string, string, string) (Matcher, error) {
+	return Matcher{}, fmt.Errorf("configuration not loaded: %w", u.err)
 }

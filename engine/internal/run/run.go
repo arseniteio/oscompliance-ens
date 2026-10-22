@@ -268,11 +268,11 @@ func loginInput(policy params.Lister, agentID, paramID string, authSeen bool, lo
 
 	in := opacc1.LoginInput{AuthSeen: authSeen, Logins: logins}
 
-	list, err := policy.List(agentID, "op.acc.1", paramID)
+	matcher, err := policy.Matcher(agentID, "op.acc.1", paramID)
 	if err != nil {
 		in.ForbiddenProblem = err.Error()
 	}
-	in.Forbidden = list
+	in.Forbidden = matcher
 
 	return in
 }
