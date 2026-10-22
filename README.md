@@ -31,9 +31,7 @@ catalog/            Go module .../catalog: embeds controls/ and templates/
 agent/              Go module github.com/OpenSourceCompliance/oscompliance-core/agent
   cmd/oscompliance-agent/
   internal/controls/ens/opacc1/   collectors
-  internal/source/  data sources (accounts, auth log, ...)
-  internal/emit/    fact output
-  internal/state/   offsets, cursors, snapshots
+  internal/emit/    fact output (the agent keeps no state between passes)
 engine/             Go module github.com/OpenSourceCompliance/oscompliance-core/engine
   cmd/oscompliance-engine/
   internal/controls/ens/opacc1/   judges
