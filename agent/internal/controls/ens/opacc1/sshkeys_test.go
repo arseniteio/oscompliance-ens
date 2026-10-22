@@ -58,7 +58,8 @@ func TestCountKeys(t *testing.T) {
 	central := filepath.Join(t.TempDir(), "keys")
 	writeFile(t, filepath.Join(central, "ana"), "ssh-ed25519 CCCC\n", 0o600)
 
-	keys := sshdKeys{status: fact.SSHDRead, files: []string{".ssh/authorized_keys", ".ssh/authorized_keys2", central + "/%u", "none"}}
+	sshd := fakeSSHD(t, "authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2 "+central+"/%u none\n", 0)
+	keys := sshdKeys{status: fact.SSHDRead, path: sshd}
 
 	if got := keys.count(entry); got == nil || *got != 3 {
 		t.Errorf("2 in home + 0 missing + 1 central: got %v", got)
@@ -71,6 +72,11 @@ func TestCountKeys(t *testing.T) {
 		if got := (sshdKeys{status: status}).count(entry); got != nil {
 			t.Errorf("%s: want unknown, got %d", status, *got)
 		}
+	}
+
+	// sshd itself fails for this account: unknown.
+	if got := (sshdKeys{status: fact.SSHDRead, path: fakeSSHD(t, "", 1)}).count(entry); got != nil {
+		t.Errorf("sshd -T -C failed: want unknown, got %d", *got)
 	}
 
 	// A key file that exists but cannot be read: unknown, never 0.
@@ -99,4 +105,43 @@ func TestKeyFilePath(t *testing.T) {
 			t.Errorf("%s: got %s, want %s", pattern, got, want)
 		}
 	}
+}
+
+// Match blocks: sshd -T -C user=... gives one account its own files or a
+// command; the agent must follow it, not the global setting.
+func TestCountKeysFollowsMatch(t *testing.T) {
+	home := t.TempDir()
+	writeFile(t, filepath.Join(home, ".ssh/authorized_keys"), "ssh-ed25519 AAAA\n", 0o600)
+	writeFile(t, filepath.Join(home, "git-keys"), "ssh-ed25519 B\nssh-ed25519 C\n", 0o600)
+
+	path := filepath.Join(t.TempDir(), "sshd")
+	script := `#!/bin/sh
+case "$*" in
+  *user=git,*) echo "authorizedkeysfile %h/git-keys" ;;
+  *user=ldap,*) echo "authorizedkeyscommand /usr/bin/fetch-keys" ;;
+  *) echo "authorizedkeysfile .ssh/authorized_keys" ;;
+esac
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	keys := readSSHD(path)
+
+	cases := map[string]*int{"ana": intp(1), "git": intp(2), "ldap": nil}
+	for user, want := range cases {
+		got := keys.count(passwdEntry{user: user, uid: 1500, home: home})
+		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
+			t.Errorf("%s: got %v, want %v", user, deref(got), deref(want))
+		}
+	}
+}
+
+func intp(n int) *int { return &n }
+
+func deref(p *int) any {
+	if p == nil {
+		return "unknown"
+	}
+	return *p
 }

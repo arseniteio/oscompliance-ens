@@ -130,7 +130,7 @@ One per pass, after every `identity_record` of the same `run_id`.
 | `records_emitted` | both `read` | `identity_record` facts in this `run_id`. |
 | `sshd_status` | always | `read` (from `sshd -T`), `absent` (no sshd: 0 keys for everyone), `command` (an `AuthorizedKeysCommand` decides: keys unknown), `error`. |
 | `sshd_error` | `error` | Why. |
-| `authorized_keys_files` | `read` | `AuthorizedKeysFile` patterns as sshd reports them. `Match` blocks are not applied. |
+| `authorized_keys_files` | `read` | Global `AuthorizedKeysFile` patterns as sshd reports them. Each account's count uses `sshd -T -C user=<account>,host=localhost,addr=127.0.0.1`, so `Match User` and `Match Group` blocks apply exactly; `Match Address` and `Match Host` are evaluated for a local connection. |
 
 Differences with v1 `account_created`, `account_modified`, `account_deleted`:
 the agent keeps no baseline and emits no changes. It reports the whole identity

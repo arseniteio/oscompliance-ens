@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -19,30 +20,46 @@ import (
 type sshdKeys struct {
 	status string   // one of the fact.SSHD* values
 	err    string   // set when status is fact.SSHDError
-	files  []string // AuthorizedKeysFile patterns, when status is fact.SSHDRead
+	files  []string // global AuthorizedKeysFile patterns, when status is fact.SSHDRead
+	path   string   // the sshd binary, asked again per account for Match blocks
 }
 
 // sshdTimeout bounds sshd -T: it only parses its configuration.
 const sshdTimeout = 10 * time.Second
 
-// readSSHD asks sshd for its effective configuration. Match blocks are not
-// applied: the global AuthorizedKeysFile is used for every account.
+// readSSHD asks sshd for its effective global configuration: whether it
+// exists and where it looks for keys outside any Match block.
 func readSSHD(path string) sshdKeys {
 
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		return sshdKeys{status: fact.SSHDAbsent}
 	}
 
+	files, command, err := sshdT(path)
+
+	switch {
+	case err != nil:
+		return sshdKeys{status: fact.SSHDError, err: err.Error()}
+	case command:
+		return sshdKeys{status: fact.SSHDCommand}
+	}
+
+	return sshdKeys{status: fact.SSHDRead, files: files, path: path}
+}
+
+// sshdT runs sshd -T with extra arguments and returns the AuthorizedKeysFile
+// patterns, and whether an AuthorizedKeysCommand decides instead: then keys
+// come from a program (LDAP, a vault...) and cannot be counted from files.
+func sshdT(path string, args ...string) (files []string, command bool, err error) {
+
 	ctx, cancel := context.WithTimeout(context.Background(), sshdTimeout)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx, path, "-T").Output()
+	out, err := exec.CommandContext(ctx, path, append([]string{"-T"}, args...)...).Output()
 
 	if err != nil {
-		return sshdKeys{status: fact.SSHDError, err: path + " -T: " + err.Error()}
+		return nil, false, fmt.Errorf("%s -T %s: %w", path, strings.Join(args, " "), err)
 	}
-
-	keys := sshdKeys{status: fact.SSHDRead}
 
 	scanner := bufio.NewScanner(strings.NewReader(string(out)))
 
@@ -55,17 +72,22 @@ func readSSHD(path string) sshdKeys {
 
 		switch strings.ToLower(fields[0]) {
 		case "authorizedkeysfile":
-			keys.files = fields[1:]
+			files = fields[1:]
 		case "authorizedkeyscommand":
-			// Keys come from a program (LDAP, a vault...): they cannot be
-			// counted from files.
 			if fields[1] != "none" {
-				return sshdKeys{status: fact.SSHDCommand}
+				return nil, true, nil
 			}
 		}
 	}
 
-	return keys
+	return files, false, nil
+}
+
+// matchSpec is the connection sshd -T -C evaluates Match blocks against. Only
+// the user is real: Match User and Match Group apply exactly, Match Address
+// and Match Host as for a local connection.
+func matchSpec(user string) string {
+	return "user=" + user + ",host=localhost,addr=127.0.0.1"
 }
 
 // count returns how many keys sshd would accept for the account, or nil when
@@ -82,7 +104,14 @@ func (k sshdKeys) count(entry passwdEntry) *int {
 		return nil
 	}
 
-	for _, pattern := range k.files {
+	// Match blocks can give one account other key files, or a command.
+	files, command, err := sshdT(k.path, "-C", matchSpec(entry.user))
+
+	if err != nil || command {
+		return nil
+	}
+
+	for _, pattern := range files {
 
 		if pattern == "none" {
 			continue
