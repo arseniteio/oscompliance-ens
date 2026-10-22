@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
@@ -159,6 +160,8 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg
 		write(agent, "EV-03", opacc1.JudgeEV03(loginInput(policy, agent.ID, "P-04", authSeen, logins)), "")
 		write(agent, "EV-05", opacc1.JudgeEV05(loginInput(policy, agent.ID, "P-03", authSeen, logins)), "")
 
+		write(agent, "EV-04", opacc1.JudgeEV04(inputEV04(policy, agent.ID, ev02, now)), "")
+
 		ev06, err := inputEV06(ctx, facts, policy, agent.ID, groupSnapshots, ev02, lookbackStart)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("agent %s EV-06: %w", agent.ID, err))
@@ -286,13 +289,10 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 		in.Suffix = suffix[0]
 	}
 
-	switch {
-	case ev02.Current != nil && readBoth(*ev02.Current) && ev02.Current.RecordsEmitted != nil && len(ev02.Records) >= *ev02.Current.RecordsEmitted:
-		in.Accounts = identityNames(ev02.Records)
-	case ev02.Previous != nil:
-		in.Accounts = identityNames(ev02.PreviousRecords)
-	default:
-		in.AccountsProblem = "no complete identity pass (EV-02) in the lookback"
+	if records, problem := completeIdentity(ev02); problem != "" {
+		in.AccountsProblem = problem
+	} else {
+		in.Accounts = identityNames(records)
 	}
 
 	snapshot, ok := snapshots[agentID]
@@ -310,6 +310,78 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 	in.GroupRecords = records
 
 	return in, err
+}
+
+// completeIdentity returns the identity table of the EV-02 input: the current
+// pass when complete, otherwise the previous complete one.
+func completeIdentity(ev02 opacc1.EV02Input) ([]fact.IdentityRecord, string) {
+
+	current := ev02.Current
+
+	if current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted {
+		return ev02.Records, ""
+	}
+
+	if ev02.Previous != nil {
+		return ev02.PreviousRecords, ""
+	}
+
+	return nil, "no complete identity pass (EV-02) in the lookback"
+}
+
+// inputEV04 gathers the identity table and P-05, P-09 and P-10.
+func inputEV04(policy params.Lister, agentID string, ev02 opacc1.EV02Input, now time.Time) opacc1.EV04Input {
+
+	in := opacc1.EV04Input{Declared: map[string]time.Time{}, UIDMin: opacc1.DefaultUIDMin, Now: now}
+
+	in.Accounts, in.AccountsProblem = completeIdentity(ev02)
+
+	var problems []string
+
+	deadline, err := policy.Number(agentID, "op.acc.1", "P-05")
+	if err != nil {
+		problems = append(problems, "P-05: "+err.Error())
+	}
+	in.DeadlineDays = int(deadline)
+
+	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")
+	switch {
+	case errors.Is(err, params.ErrNotSet):
+		// Product default, as v1.
+	case err != nil:
+		problems = append(problems, "P-10: "+err.Error())
+	default:
+		in.UIDMin = int(uidMin)
+	}
+
+	// P-09 rows are "usuario | fecha_baja"; a date that cannot be read is a
+	// configuration error, not a row to skip.
+	rows, err := policy.List(agentID, "op.acc.1", "P-09")
+	switch {
+	case errors.Is(err, params.ErrNotSet):
+	case err != nil:
+		problems = append(problems, "P-09: "+err.Error())
+	default:
+		for _, row := range rows {
+			cells := strings.Split(row, "|")
+			if len(cells) < 2 {
+				problems = append(problems, fmt.Sprintf("P-09: row %q has no date", row))
+				continue
+			}
+			name, date := strings.TrimSpace(cells[0]), strings.TrimSpace(cells[1])
+			left, err := time.Parse("2006-01-02", date)
+			if name == "" || err != nil {
+				problems = append(problems, fmt.Sprintf("P-09: row %q is not \"usuario | YYYY-MM-DD\"", row))
+				continue
+			}
+			in.Declared[name] = left
+			in.DeclaredSet = true
+		}
+	}
+
+	in.ConfigProblem = strings.Join(problems, "; ")
+
+	return in
 }
 
 func identityNames(records []fact.IdentityRecord) []string {

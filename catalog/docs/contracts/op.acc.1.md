@@ -169,6 +169,9 @@ cursor and parses no log.
 | `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
 | `group_path` | agent | `/etc/group` | EV-06. Reported as `group_path`. |
 | P-03 service accounts | plugin | none | EV-05. Read like P-04. |
+| P-05 `plazo_max_deshabilitar_dias` | plugin | none | EV-04. Number. |
+| P-09 `bajas_declaradas` | plugin | none | EV-04. Table `usuario \| fecha_baja` (YYYY-MM-DD); an unreadable row is a configuration error. Replaces v1 `bajas.tsv` on the host. |
+| P-10 `uid_minimo_persona` | plugin | 1000 (product default) | EV-04. The agent still applies its own `uid_min` for EV-01; see section 10. |
 | P-11 `grupos_privilegiados` | plugin | `sudo, wheel, admin` (product default, said in the reason) | EV-06. List. |
 | P-12 `sufijo_admin` | plugin | none: nobody is excluded | EV-06. First entry used. |
 | P-07 `lista_usuarios_autorizados` | plugin | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
@@ -223,6 +226,21 @@ accounts) over the same sshd logins in the window:
 3. A login whose account is in the list, ignoring case: `NON_COMPLIANT`, reason
    lists each account with its number of logins.
 4. Otherwise `COMPLIANT`.
+
+EV-04 over the identity table of the newest complete EV-02 pass, P-05, P-09
+and P-10. No fact of its own:
+
+1. P-05, P-09 or P-10 unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
+2. No complete identity pass: `NOT_EVALUABLE`, cause `COLLECTION`.
+3. An account with UID >= P-10 and an offboarding date (its P-09 row, else
+   its `account_expires`), not disabled (no-login shell, locked password or
+   expired) more than P-05 days after that date: `NON_COMPLIANT`.
+4. No offboarding date at all and P-09 empty: `NOT_EVALUABLE`, cause
+   `CONFIGURATION`, as v1 without `bajas.tsv` nor expiry dates.
+5. Otherwise `COMPLIANT`. A declared account that no longer exists counts as
+   handled.
+
+v1 kept a `deshabilitadas.tsv` register on the host; EV-04 does not need it.
 
 EV-06 over the newest group pass, the account list of the newest complete
 EV-02 pass, P-11, P-12 and the sshd logins:
@@ -309,6 +327,15 @@ current state.
 
 
 ## 10. Open decisions
+
+- `uid_min`: the agent applies its own flag for EV-01 while P-10 lives in the
+  plugin. Moving it to the engine means emitting `account_record` for every
+  UID.
+- EV-08 (retention of disabled accounts before deletion) needs, per account,
+  when it was disabled and when it was deleted, over P-06 days (365 by
+  example). v1 kept that in a register on the host. Options: the engine keeps
+  that history in an index of its own, built from EV-02 passes; or the
+  agent keeps it.
 
 - ENS level: where `NOT_APPLICABLE` is decided for evidences above the
   active level (EV-07 at BAJO), engine or plugin.

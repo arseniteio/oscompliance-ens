@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
@@ -96,6 +97,61 @@ func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 	return nil, ErrNotSet
 }
 
+// Number returns a numeric parameter for one agent (agent value first, then
+// the control's). The plugin stores numbers as JSON numbers or as strings.
+func (c *Config) Number(agentID, controlID, paramID string) (float64, error) {
+	return number(c.value(agentID, controlID, paramID))
+}
+
+// value finds the raw value of a parameter: the agent's own, else the
+// control's. ok is false when neither exists.
+func (c *Config) value(agentID, controlID, paramID string) (any, bool) {
+
+	if agent, ok := c.Agents[agentID]; ok {
+		if value, ok := agent.Controls[controlID].Parameters[paramID]; ok {
+			return value, true
+		}
+	}
+
+	for _, control := range c.Controls {
+		if control.ControlID != controlID {
+			continue
+		}
+		for _, p := range control.Parameters {
+			if p.ID == paramID {
+				return p.Value, true
+			}
+		}
+	}
+
+	return nil, false
+}
+
+func number(value any, ok bool) (float64, error) {
+
+	if !ok {
+		return 0, ErrNotSet
+	}
+
+	switch v := value.(type) {
+	case float64:
+		return v, nil
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return 0, ErrNotSet
+		}
+		n, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+		if err != nil {
+			return 0, fmt.Errorf("%q is not a number", v)
+		}
+		return n, nil
+	case nil:
+		return 0, ErrNotSet
+	default:
+		return 0, fmt.Errorf("value of type %T is not a number", value)
+	}
+}
+
 // ListColumn returns one column of a table parameter, whose rows are written
 // "a | b | c" (P-07 is "usuario | sistema | rol"). col counts from 0. Rows
 // with an empty cell in that column are skipped; ErrNotSet when none is left.
@@ -176,6 +232,7 @@ func listValue(value any) ([]string, error) {
 type Lister interface {
 	List(agentID, controlID, paramID string) ([]string, error)
 	ListColumn(agentID, controlID, paramID string, col int) ([]string, error)
+	Number(agentID, controlID, paramID string) (float64, error)
 }
 
 // Unavailable answers every List with err: used when the configuration could
@@ -192,4 +249,8 @@ func (u unavailable) List(string, string, string) ([]string, error) {
 
 func (u unavailable) ListColumn(agentID, controlID, paramID string, _ int) ([]string, error) {
 	return u.List(agentID, controlID, paramID)
+}
+
+func (u unavailable) Number(string, string, string) (float64, error) {
+	return 0, fmt.Errorf("configuration not loaded: %w", u.err)
 }

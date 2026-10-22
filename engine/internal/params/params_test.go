@@ -14,7 +14,11 @@ const active = `{
       {"id": "P-03", "value": []},
       {"id": "P-04", "value": ["admin", " guest ", ""]},
       {"id": "P-05", "value": "root\n\nadmin\n"},
-      {"id": "P-06", "value": "^adm.*$", "matchMode": "regex"}
+      {"id": "P-06", "value": "^adm.*$", "matchMode": "regex"},
+      {"id": "P-08", "value": 30},
+      {"id": "P-10", "value": " 1000 "},
+      {"id": "P-13", "value": "many"},
+      {"id": "P-14", "value": ""}
     ]}
   ],
   "agents": {
@@ -83,5 +87,27 @@ func TestListColumn(t *testing.T) {
 	// Agent 002's P-07 is ["x"]: a one-column row has no rol column.
 	if _, err := c.ListColumn("002", "op.acc.1", "P-07", 2); !errors.Is(err, ErrNotSet) {
 		t.Errorf("column absent from every row: want ErrNotSet, got %v", err)
+	}
+}
+
+func TestNumber(t *testing.T) {
+	var c Config
+	if err := json.Unmarshal([]byte(active), &c); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, err := c.Number("001", "op.acc.1", "P-08"); err != nil || n != 30 {
+		t.Errorf("JSON number: %v %v", n, err)
+	}
+	if n, err := c.Number("001", "op.acc.1", "P-10"); err != nil || n != 1000 {
+		t.Errorf("number as string: %v %v", n, err)
+	}
+	if _, err := c.Number("001", "op.acc.1", "P-13"); err == nil || errors.Is(err, ErrNotSet) {
+		t.Errorf("not a number: want a non-ErrNotSet error, got %v", err)
+	}
+	for _, id := range []string{"P-14", "P-99"} {
+		if _, err := c.Number("001", "op.acc.1", id); !errors.Is(err, ErrNotSet) {
+			t.Errorf("%s: want ErrNotSet, got %v", id, err)
+		}
 	}
 }

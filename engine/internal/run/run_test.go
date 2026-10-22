@@ -48,6 +48,8 @@ func (noParams) ListColumn(string, string, string, int) ([]string, error) {
 	return nil, errors.New("not set")
 }
 
+func (noParams) Number(string, string, string) (float64, error) { return 0, errors.New("not set") }
+
 func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
 	if n == 1 {
 		return f.currentIdentity, nil
@@ -103,10 +105,10 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	if err == nil {
 		t.Error("want the error of agent 004")
 	}
-	// EV-01 and EV-07 for 001, 002, 003 (004 fails); EV-02, EV-03, EV-05
-	// and EV-06 for all four.
-	if n != 22 || len(sink.got) != 22 {
-		t.Fatalf("want 22 verdicts, got %d: %+v", n, sink.got)
+	// EV-01 and EV-07 for 001, 002, 003 (004 fails); EV-02, EV-03, EV-04,
+	// EV-05 and EV-06 for all four.
+	if n != 26 || len(sink.got) != 26 {
+		t.Fatalf("want 26 verdicts, got %d: %+v", n, sink.got)
 	}
 	// Records are read only for snapshots that were read.
 	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {
