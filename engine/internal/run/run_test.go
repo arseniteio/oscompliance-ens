@@ -24,7 +24,7 @@ type fakeFacts struct {
 	failIdentityRun string
 }
 
-func (f *fakeFacts) SSHLogins(context.Context, string, time.Time) ([]source.Login, error) {
+func (f *fakeFacts) Logins(context.Context, string, time.Time) ([]source.Login, error) {
 	return nil, nil
 }
 

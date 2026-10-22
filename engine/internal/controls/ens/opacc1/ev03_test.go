@@ -11,7 +11,7 @@ import (
 )
 
 func login(account string) source.Login {
-	return source.Login{Time: time.Date(2026, 10, 22, 11, 40, 0, 0, time.UTC), Account: account, SourceIP: "10.0.0.9"}
+	return source.Login{Time: time.Date(2026, 10, 22, 11, 40, 0, 0, time.UTC), Account: account, SourceIP: "10.0.0.9", Method: source.MethodSSHD}
 }
 
 func TestJudgeEV03(t *testing.T) {
@@ -36,9 +36,11 @@ func TestJudgeEV03(t *testing.T) {
 		{"case is ignored", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("Admin")}}, verdict.NonCompliant, "", []string{"admin (1)"}},
 		{"one account whatever its case", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("Admin"), login("admin")}}, verdict.NonCompliant, "", []string{"admin (2)"}},
 		{"counted and sorted", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("test"), login("admin"), login("test")}}, verdict.NonCompliant, "", []string{"admin (1), test (2)"}},
-		{"only named accounts", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), login("mgarcia")}}, verdict.Compliant, "", []string{"2 sshd logins"}},
+		{"only named accounts", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), login("mgarcia")}}, verdict.Compliant, "", []string{"2 logins in the window (sshd 2)"}},
+		{"su to a generic account counts", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{{Account: "admin", Method: source.MethodSU}}}, verdict.NonCompliant, "", []string{"admin (1)"}},
+		{"methods counted", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), {Account: "ana", Method: source.MethodConsole}, {Account: "ana", Method: source.MethodSU}}}, verdict.Compliant, "", []string{"3 logins in the window (console 1, sshd 1, su 1)"}},
 		{"pattern: whole name", LoginInput{Forbidden: pattern, AuthSeen: true, Logins: []source.Login{login("tmp7"), login("admin"), login("xadm")}}, verdict.NonCompliant, "", []string{"generic accounts authenticated: tmp7 (1)"}},
-		{"source alive, no logins", LoginInput{Forbidden: generic, AuthSeen: true}, verdict.Compliant, "", []string{"0 sshd logins"}},
+		{"source alive, no logins", LoginInput{Forbidden: generic, AuthSeen: true}, verdict.Compliant, "", []string{"0 logins in the window, none"}},
 	}
 
 	for _, c := range cases {

@@ -22,7 +22,7 @@ type Facts interface {
 	Agents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
-	SSHLogins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
+	Logins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
 	AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error)
 	GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error)
 	GroupRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.GroupRecord, error)
@@ -151,9 +151,9 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, 
 		}
 
 		// EV-03, EV-05 and EV-06 read the same logins.
-		logins, err := facts.SSHLogins(ctx, agent.ID, windowStart)
+		logins, err := facts.Logins(ctx, agent.ID, windowStart)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("agent %s sshd logins: %w", agent.ID, err))
+			errs = append(errs, fmt.Errorf("agent %s logins: %w", agent.ID, err))
 			continue
 		}
 

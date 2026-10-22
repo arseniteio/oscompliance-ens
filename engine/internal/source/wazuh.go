@@ -14,24 +14,59 @@ import (
 // reaches Wazuh: v1 probed its log for the same three kinds of line.
 var authGroups = []any{"authentication_success", "authentication_failed", "sudo"}
 
-// Login is one successful sshd authentication (Wazuh rule 5715 and its
-// children: groups sshd and authentication_success).
+// Login methods.
+const (
+	MethodSSHD      = "sshd"
+	MethodConsole   = "console"
+	MethodSU        = "su"
+	MethodGraphical = "graphical"
+)
+
+// pamPrograms are the PAM services whose opened session is an interactive
+// login, by method. sshd is taken from its own rule (5715) instead, so it is
+// not counted twice; sudo is privilege use, not a login; cron and systemd
+// sessions are not people.
+var pamPrograms = map[string]string{
+	"login":        MethodConsole,
+	"su":           MethodSU,
+	"gdm-password": MethodGraphical,
+	"lightdm":      MethodGraphical,
+	"sddm":         MethodGraphical,
+}
+
+// Login is one successful interactive login as Wazuh decoded it.
 type Login struct {
 	Time     time.Time
-	Account  string // data.dstuser
-	SourceIP string // data.srcip
+	Account  string // data.dstuser: the account logged in as
+	SourceIP string // data.srcip, sshd only
+	Method   string // one of the Method* values
 	AlertID  string // the alert's id, for traceability
 }
 
-// SSHLogins returns the successful sshd logins of one agent since the given
-// time, oldest first.
-func (s *Source) SSHLogins(ctx context.Context, agentID string, since time.Time) ([]Login, error) {
+// Logins returns the interactive logins of one agent since the given time,
+// oldest first: sshd logins (rule 5715 and children) and PAM sessions opened
+// by login, su and graphical login managers (rule 5501).
+func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([]Login, error) {
+
+	var programs []any
+	for program := range pamPrograms {
+		programs = append(programs, program)
+	}
 
 	filter := []any{
 		map[string]any{"term": map[string]any{"agent.id": agentID}},
 		map[string]any{"term": map[string]any{"rule.groups": "authentication_success"}},
-		map[string]any{"term": map[string]any{"decoder.parent": "sshd"}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+		map[string]any{"bool": map[string]any{
+			"minimum_should_match": 1,
+			"should": []any{
+				map[string]any{"term": map[string]any{"decoder.parent": "sshd"}},
+				map[string]any{"bool": map[string]any{"filter": []any{
+					map[string]any{"term": map[string]any{"decoder.parent": "pam"}},
+					map[string]any{"terms": map[string]any{"predecoder.program_name": programs}},
+				}}},
+			},
+		}},
 	}
 
 	var logins []Login
@@ -39,9 +74,15 @@ func (s *Source) SSHLogins(ctx context.Context, agentID string, since time.Time)
 	err := s.page(ctx, filter, func(h hit) error {
 
 		var a struct {
-			ID        string `json:"id"`
-			Timestamp string `json:"timestamp"`
-			Data      struct {
+			ID         string `json:"id"`
+			Timestamp  string `json:"timestamp"`
+			Predecoder struct {
+				ProgramName string `json:"program_name"`
+			} `json:"predecoder"`
+			Decoder struct {
+				Parent string `json:"parent"`
+			} `json:"decoder"`
+			Data struct {
 				DstUser string `json:"dstuser"`
 				SrcIP   string `json:"srcip"`
 			} `json:"data"`
@@ -57,7 +98,12 @@ func (s *Source) SSHLogins(ctx context.Context, agentID string, since time.Time)
 			return fmt.Errorf("alert %s: timestamp: %w", h.ID, err)
 		}
 
-		logins = append(logins, Login{Time: ts, Account: a.Data.DstUser, SourceIP: a.Data.SrcIP, AlertID: a.ID})
+		method := MethodSSHD
+		if a.Decoder.Parent == "pam" {
+			method = pamPrograms[a.Predecoder.ProgramName]
+		}
+
+		logins = append(logins, Login{Time: ts, Account: a.Data.DstUser, SourceIP: a.Data.SrcIP, Method: method, AlertID: a.ID})
 		return nil
 	})
 
