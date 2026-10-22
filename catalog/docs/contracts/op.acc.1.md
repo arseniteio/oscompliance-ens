@@ -273,6 +273,11 @@ agent runs and writes, nothing else.
 - `agent.conf.fragment.xml`: one `<localfile>` (`log_format json`,
   `/var/log/oscompliance/facts.ndjson`) for every control, delivered through
   the group `agent.conf`.
+- The manager (agent 000) must be judged like any other machine, with every
+  control (Dioni, 2026-10-22). It belongs to no group, so the group
+  `agent.conf` never reaches it: the same `<localfile>` has to go in its own
+  `ossec.conf`. The engine already treats agent 000 as any agent: it judges
+  whoever sends facts. Pending for the installer.
 - `oscompliance_facts_rules.xml`, range 119000-119099, apart from v1
   (106800-106899) and from every band the plugin uses or reserves (up to
   112899; 112000-112099 is mp.eq.4). 119000 matches the envelope at level 0;
@@ -315,6 +320,9 @@ applied as the plugin does.
 
 ## 10. Open decisions
 
+- Manager as an audited machine: the installer must add the `<localfile>` to
+  the manager's own `ossec.conf` (section 8), and the plugin must stop
+  limiting the manager row to organisation controls.
 - The plugin still reads its own copy of the templates and evidence levels
   (TypeScript). It should read `controls/` and `templates/` when it is
   changed.
