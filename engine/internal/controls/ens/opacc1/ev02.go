@@ -117,37 +117,12 @@ func byAccountName(records []fact.IdentityRecord) map[string]fact.IdentityRecord
 //     (only the non-empty lists, in that order)
 func JudgeEV02(in EV02Input) verdict.Judgement {
 
-	current := in.Current
-
-	// 1. Nothing to judge.
-	if current == nil {
-		return notEvaluable(verdict.CauseCollection, "no identity_snapshot in the window")
+	// 1 to 4. The current pass must be complete.
+	if gap, found := identityGap(in.Current, in.Records); found {
+		return gap
 	}
 
-	// 2. The agent could not read the identity files.
-	if current.PasswdStatus != fact.SourceRead {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("%s %s: %s", current.PasswdPath, current.PasswdStatus, current.PasswdError))
-	}
-
-	if current.ShadowStatus != fact.SourceRead {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("%s %s: %s", current.ShadowPath, current.ShadowStatus, current.ShadowError))
-	}
-
-	// 3. A complete read always carries the counter (schema).
-	if current.RecordsEmitted == nil {
-		return notEvaluable(verdict.CauseEvidence, "read snapshot without records_emitted")
-	}
-
-	// 4. Records lost on the way.
 	received := len(in.Records)
-	emitted := *current.RecordsEmitted
-
-	if received < emitted {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("pass %s incomplete: %d of %d identity_record received", current.RunID, received, emitted))
-	}
 
 	// 5. Changes are being recorded. The reason says which.
 	if in.Previous == nil {
@@ -179,4 +154,41 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 		Status: verdict.Compliant,
 		Reason: "since " + in.Previous.RunID + ": " + strings.Join(parts, "; "),
 	}
+}
+
+// identityGap checks that an identity pass can be used at all: steps 1 to 4
+// of EV-02, shared with EV-01 and EV-07, which judge the same table. found is
+// true when it cannot; the judgement says why.
+func identityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (gap verdict.Judgement, found bool) {
+
+	// 1. Nothing to judge.
+	if current == nil {
+		return notEvaluable(verdict.CauseCollection, "no identity_snapshot in the window"), true
+	}
+
+	// 2. The agent could not read the identity files.
+	if current.PasswdStatus != fact.SourceRead {
+		return notEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("%s %s: %s", current.PasswdPath, current.PasswdStatus, current.PasswdError)), true
+	}
+
+	if current.ShadowStatus != fact.SourceRead {
+		return notEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("%s %s: %s", current.ShadowPath, current.ShadowStatus, current.ShadowError)), true
+	}
+
+	// 3. A complete read always carries the counter (schema). Without it the
+	// fact is broken, not missing, hence EVIDENCE and not COLLECTION.
+	if current.RecordsEmitted == nil {
+		return notEvaluable(verdict.CauseEvidence, "read snapshot without records_emitted"), true
+	}
+
+	// 4. Records lost on the way. More than announced is fine: Wazuh can
+	// deliver a line twice.
+	if len(records) < *current.RecordsEmitted {
+		return notEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("pass %s incomplete: %d of %d identity_record received", current.RunID, len(records), *current.RecordsEmitted)), true
+	}
+
+	return verdict.Judgement{}, false
 }

@@ -4,18 +4,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
-func account(name string, login bool) fact.AccountRecord {
-	return fact.AccountRecord{AccountName: name, UID: 1000, GID: 1000, Shell: "/bin/bash", LoginEnabled: login}
-}
-
 func TestJudgeEV07(t *testing.T) {
-	inventory := func(records ...fact.AccountRecord) EV01Input {
-		return EV01Input{Snapshot: readSnapshot(len(records)), Records: records}
-	}
+	root := account("root", 0, "locked", 0)
+	jperez := account("jperez", 1001, "locked", 1) // key login: active
+	mgarcia := account("mgarcia", 1002, "set", 0)  // password: active
+	old := account("old", 1003, "locked", 0)       // no password, no keys: disabled
+	unknown := account("kim", 1004, "locked", -1)  // keys unknown
+
+	nologin := account("svc", 1005, "set", 0)
+	nologin.Shell = "/usr/sbin/nologin"
+
+	incomplete := inventory(jperez)
+	incomplete.Current = identitySnapshot("cur", 3)
 
 	cases := []struct {
 		name    string
@@ -24,13 +27,17 @@ func TestJudgeEV07(t *testing.T) {
 		cause   verdict.Cause
 		reasons []string
 	}{
-		{"P-07 not set", EV07Input{AuthorizedProblem: "not set", Inventory: inventory()}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-07: not set"}},
-		{"no inventory", EV07Input{Authorized: []string{"jperez"}}, verdict.NotEvaluable, verdict.CauseCollection, nil},
-		{"incomplete inventory", EV07Input{Authorized: []string{"jperez"}, Inventory: EV01Input{Snapshot: readSnapshot(3), Records: records(1)}}, verdict.NotEvaluable, verdict.CauseCollection, nil},
-		{"unauthorized active account", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(account("jperez", true), account("mgarcia", true))}, verdict.NonCompliant, "", []string{"not in P-07: mgarcia"}},
-		{"case matters", EV07Input{Authorized: []string{"JPerez"}, Inventory: inventory(account("jperez", true))}, verdict.NonCompliant, "", []string{"jperez"}},
-		{"accounts without login do not count", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(account("jperez", true), account("backup-svc", false))}, verdict.Compliant, "", []string{"1 active accounts"}},
-		{"all authorized", EV07Input{Authorized: []string{"jperez", "mgarcia"}, Inventory: inventory(account("jperez", true), account("mgarcia", true))}, verdict.Compliant, "", []string{"2 active accounts, all in P-07"}},
+		{"P-07 not set", EV07Input{AuthorizedProblem: "not set", Inventory: inventory(root)}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-07: not set"}},
+		{"no inventory", EV07Input{Authorized: []string{"jperez"}, Inventory: Inventory{UIDMin: DefaultUIDMin}}, verdict.NotEvaluable, verdict.CauseCollection, nil},
+		{"incomplete inventory", EV07Input{Authorized: []string{"jperez"}, Inventory: incomplete}, verdict.NotEvaluable, verdict.CauseCollection, nil},
+		{"unauthorized active account", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(root, jperez, mgarcia)}, verdict.NonCompliant, "", []string{"not in P-07: mgarcia"}},
+		{"key login counts as active", EV07Input{Authorized: []string{"mgarcia"}, Inventory: inventory(jperez, mgarcia)}, verdict.NonCompliant, "", []string{"jperez"}},
+		{"case matters", EV07Input{Authorized: []string{"JPerez"}, Inventory: inventory(jperez)}, verdict.NonCompliant, "", []string{"jperez"}},
+		{"disabled accounts do not count", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(root, jperez, old, nologin)}, verdict.Compliant, "", []string{"1 active accounts"}},
+		{"system accounts do not count", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(account("daemon", 1, "set", 0), jperez)}, verdict.Compliant, "", nil},
+		{"unknown and not listed", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(jperez, unknown)}, verdict.NotEvaluable, verdict.CauseEvidence, []string{"kim"}},
+		{"unknown but listed", EV07Input{Authorized: []string{"jperez", "kim"}, Inventory: inventory(jperez, unknown)}, verdict.Compliant, "", nil},
+		{"all authorized", EV07Input{Authorized: []string{"jperez", "mgarcia"}, Inventory: inventory(jperez, mgarcia)}, verdict.Compliant, "", []string{"2 active accounts, all in P-07"}},
 	}
 
 	for _, c := range cases {

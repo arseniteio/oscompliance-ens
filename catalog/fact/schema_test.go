@@ -134,10 +134,6 @@ func TestGoTypesRoundTrip(t *testing.T) {
 
 		var v any
 		switch probe.Fact {
-		case AccountRecordFact:
-			v = &AccountRecord{}
-		case AccountInventorySnapshotFact:
-			v = &AccountInventorySnapshot{}
 		case IdentityRecordFact:
 			v = &IdentityRecord{}
 		case IdentitySnapshotFact:
@@ -166,9 +162,6 @@ func TestGoTypesRoundTrip(t *testing.T) {
 func TestSchemasRejectBadFacts(t *testing.T) {
 	schemas := compileSchemas(t)
 
-	const read = `{"oscompliance":"1","fact":"account_inventory_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","source":"passwd","source_path":"/etc/passwd","source_status":"read","uid_min":1000,"entries_total":3,"records_emitted":1,"duplicate_uids":[]}`
-	const unread = `{"oscompliance":"1","fact":"account_inventory_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","source":"passwd","source_path":"/etc/passwd","source_status":"unreadable","source_error":"denied","uid_min":1000}`
-
 	const identityRead = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"read","records_emitted":2,"sshd_status":"read","authorized_keys_files":[".ssh/authorized_keys"]}`
 	const shadowUnread = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"unreadable","shadow_error":"denied","sshd_status":"absent"}`
 	const identityRecord = `{"oscompliance":"1","fact":"identity_record","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","account_name":"a","uid":1000,"gid":1000,"shell":"/bin/bash","password_state":"set"}`
@@ -182,17 +175,11 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		base string
 		edit func(map[string]any)
 	}{
-		{"verdict field", read, func(m map[string]any) { m["estado"] = "CUMPLE" }},
-		{"evidence id", read, func(m map[string]any) { m["evidence_id"] = "EV-01" }},
-		{"error on a read snapshot", read, func(m map[string]any) { m["source_error"] = "x" }},
-		{"read without duplicate_uids", read, func(m map[string]any) { delete(m, "duplicate_uids") }},
-		{"ts not in UTC", read, func(m map[string]any) { m["ts"] = "2026-10-21T14:00:00+02:00" }},
-		{"run_id not a UUID", read, func(m map[string]any) { m["run_id"] = "x" }},
-		{"duplicate with one account", read, func(m map[string]any) {
-			m["duplicate_uids"] = []any{map[string]any{"uid": 1, "account_names": []any{"a"}}}
-		}},
-		{"counters on an unread snapshot", unread, func(m map[string]any) { m["entries_total"] = 0 }},
-		{"unread without source_error", unread, func(m map[string]any) { delete(m, "source_error") }},
+		{"verdict field", identityRead, func(m map[string]any) { m["estado"] = "CUMPLE" }},
+		{"evidence id", identityRecord, func(m map[string]any) { m["evidence_id"] = "EV-01" }},
+		{"ts not in UTC", identityRead, func(m map[string]any) { m["ts"] = "2026-10-21T14:00:00+02:00" }},
+		{"run_id not a UUID", identityRecord, func(m map[string]any) { m["run_id"] = "x" }},
+		{"wrong envelope version", groupRecord, func(m map[string]any) { m["oscompliance"] = "2" }},
 		{"identity: records with shadow unread", shadowUnread, func(m map[string]any) { m["records_emitted"] = 0 }},
 		{"identity: shadow unread without error", shadowUnread, func(m map[string]any) { delete(m, "shadow_error") }},
 		{"identity: error on a read passwd", identityRead, func(m map[string]any) { m["passwd_error"] = "x" }},
@@ -229,7 +216,7 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	}
 
 	// The bases themselves are valid, so each rejection above is the edit's.
-	for _, base := range []string{read, unread, identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord} {
+	for _, base := range []string{identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord} {
 		if err := validate(schemas, []byte(base)); err != nil {
 			t.Errorf("base rejected: %v", err)
 		}

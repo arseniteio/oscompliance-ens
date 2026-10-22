@@ -15,16 +15,13 @@ import (
 )
 
 type fakeFacts struct {
-	agents    []verdict.Agent
-	snapshots map[string]fact.AccountInventorySnapshot
-	records   map[string][]fact.AccountRecord // by run_id
-	failRun   string
-	asked     []string // run_ids asked for
+	agents []verdict.Agent
 
 	currentIdentity map[string][]fact.IdentitySnapshot
 	earlierIdentity map[string][]fact.IdentitySnapshot
 	identityRecords map[string][]fact.IdentityRecord // by run_id
 	identityAsked   []string
+	failIdentityRun string
 }
 
 func (f *fakeFacts) SSHLogins(context.Context, string, time.Time) ([]source.Login, error) {
@@ -64,16 +61,16 @@ func (p noParams) Level() string { return p.level }
 
 func (p noParams) ControlEnabled(string) bool { return !p.disabled }
 
-func (noParams) List(string, string, string) ([]string, error) { return nil, errors.New("not set") }
+func (noParams) List(string, string, string) ([]string, error) { return nil, params.ErrNotSet }
 
 func (noParams) ListColumn(string, string, string, int) ([]string, error) {
-	return nil, errors.New("not set")
+	return nil, params.ErrNotSet
 }
 
-func (noParams) Number(string, string, string) (float64, error) { return 0, errors.New("not set") }
+func (noParams) Number(string, string, string) (float64, error) { return 0, params.ErrNotSet }
 
 func (noParams) Matcher(string, string, string) (params.Matcher, error) {
-	return params.Matcher{}, errors.New("not set")
+	return params.Matcher{}, params.ErrNotSet
 }
 
 func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
@@ -85,23 +82,14 @@ func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (ma
 
 func (f *fakeFacts) IdentityRecords(_ context.Context, _, runID string, _ time.Time) ([]fact.IdentityRecord, error) {
 	f.identityAsked = append(f.identityAsked, runID)
+	if runID == f.failIdentityRun {
+		return nil, errors.New("boom")
+	}
 	return f.identityRecords[runID], nil
 }
 
 func (f *fakeFacts) Agents(context.Context, time.Time) ([]verdict.Agent, error) {
 	return f.agents, nil
-}
-
-func (f *fakeFacts) LatestSnapshots(context.Context, time.Time) (map[string]fact.AccountInventorySnapshot, error) {
-	return f.snapshots, nil
-}
-
-func (f *fakeFacts) AccountRecords(_ context.Context, _, runID string, _ time.Time) ([]fact.AccountRecord, error) {
-	f.asked = append(f.asked, runID)
-	if runID == f.failRun {
-		return nil, errors.New("boom")
-	}
-	return f.records[runID], nil
 }
 
 type fakeSink struct{ got []verdict.Verdict }
@@ -112,16 +100,16 @@ func (s *fakeSink) Write(_ context.Context, v verdict.Verdict) error {
 }
 
 func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
-	two := 2
+	pass := func(run string) []fact.IdentitySnapshot { return []fact.IdentitySnapshot{identityPass(run, 1, true)} }
+
 	facts := &fakeFacts{
-		agents: []verdict.Agent{{ID: "001", Name: "a"}, {ID: "002", Name: "b"}, {ID: "003", Name: "c"}, {ID: "004", Name: "d"}},
-		snapshots: map[string]fact.AccountInventorySnapshot{
-			"001": {Envelope: fact.Envelope{RunID: "r1"}, SourceStatus: fact.SourceRead, RecordsEmitted: &two, DuplicateUIDs: []fact.DuplicateUID{}},
-			"002": {Envelope: fact.Envelope{RunID: "r2"}, SourceStatus: fact.SourceUnreadable, SourceError: "denied"},
-			"004": {Envelope: fact.Envelope{RunID: "r4"}, SourceStatus: fact.SourceRead, RecordsEmitted: &two, DuplicateUIDs: []fact.DuplicateUID{}},
+		agents: []verdict.Agent{{ID: "001", Name: "a"}, {ID: "002", Name: "b"}, {ID: "003", Name: "c"}},
+		currentIdentity: map[string][]fact.IdentitySnapshot{
+			"001": pass("r1"),
+			"003": pass("r3"),
 		},
-		records: map[string][]fact.AccountRecord{"r1": {{}, {}}},
-		failRun: "r4",
+		identityRecords: map[string][]fact.IdentityRecord{"r1": {{AccountName: "root"}}},
+		failIdentityRun: "r3",
 	}
 	sink := &fakeSink{}
 	now := time.Date(2026, 10, 21, 16, 0, 0, 0, time.UTC)
@@ -129,30 +117,30 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	n, err := Once(context.Background(), facts, noParams{}, &memHistory{}, sink, Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}, now)
 
 	if err == nil {
-		t.Error("want the error of agent 004")
-	}
-	// EV-01 and EV-07 for 001, 002, 003 (004 fails); EV-02, EV-03, EV-04,
-	// EV-05, EV-06 and EV-08 for all four.
-	if n != 30 || len(sink.got) != 30 {
-		t.Fatalf("want 30 verdicts, got %d: %+v", n, sink.got)
-	}
-	// Records are read only for snapshots that were read.
-	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {
-		t.Errorf("records asked for %v", facts.asked)
+		t.Error("want the error of agent 003")
 	}
 
-	byAgent := map[string]verdict.Verdict{}
+	// 8 evidences for 001 and 002; 003 loses EV-01, EV-02 and EV-07, which
+	// read its identity pass, and still gets the other 5.
+	if n != 21 || len(sink.got) != 21 {
+		t.Fatalf("want 21 verdicts, got %d", n)
+	}
+
+	got := map[string]verdict.Verdict{}
 	for _, v := range sink.got {
-		if v.Evidence == "EV-01" {
-			byAgent[v.Agent.ID] = v
+		got[v.Agent.ID+" "+v.Evidence] = v
+	}
+
+	if v := got["001 EV-01"]; v.RunID != "r1" || v.Control != "op.acc.1" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
+		t.Errorf("001 EV-01: %+v", v)
+	}
+	if v := got["002 EV-01"]; v.RunID != "" || v.Status != verdict.NotEvaluable {
+		t.Errorf("002 without identity pass: %+v", v)
+	}
+	for _, ev := range []string{"EV-01", "EV-02", "EV-07"} {
+		if _, ok := got["003 "+ev]; ok {
+			t.Errorf("003 %s written despite the read error", ev)
 		}
-	}
-	if byAgent["001"].RunID != "r1" || byAgent["002"].RunID != "r2" || byAgent["003"].RunID != "" {
-		t.Errorf("run ids: %+v", byAgent)
-	}
-	v := byAgent["001"]
-	if v.Control != "op.acc.1" || v.Evidence != "EV-01" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
-		t.Errorf("verdict fields: %+v", v)
 	}
 }
 

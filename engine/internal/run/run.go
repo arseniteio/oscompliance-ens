@@ -20,8 +20,6 @@ import (
 // Facts is where the facts come from (source.Source in production).
 type Facts interface {
 	Agents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
-	LatestSnapshots(ctx context.Context, since time.Time) (map[string]fact.AccountInventorySnapshot, error)
-	AccountRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.AccountRecord, error)
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
 	SSHLogins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
@@ -68,12 +66,6 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, 
 
 	if err != nil {
 		return 0, fmt.Errorf("agents: %w", err)
-	}
-
-	inventories, err := facts.LatestSnapshots(ctx, windowStart)
-
-	if err != nil {
-		return 0, fmt.Errorf("account snapshots: %w", err)
 	}
 
 	currentIdentities, err := facts.IdentitySnapshots(ctx, windowStart, 1)
@@ -132,35 +124,30 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, 
 
 	for _, agent := range agents {
 
-		ev01, err := inputEV01(ctx, facts, agent.ID, inventories, lookbackStart)
+		// EV-01, EV-02 and EV-07 judge the same identity passes.
+		ev02, err := inputEV02(ctx, facts, agent.ID, currentIdentities[agent.ID], earlierIdentities[agent.ID], lookbackStart)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("agent %s EV-01: %w", agent.ID, err))
+			errs = append(errs, fmt.Errorf("agent %s identity passes: %w", agent.ID, err))
 		} else {
 			runID := ""
-			if ev01.Snapshot != nil {
-				runID = ev01.Snapshot.RunID
+			if ev02.Current != nil {
+				runID = ev02.Current.RunID
 			}
-			write(agent, "EV-01", opacc1.JudgeEV01(ev01), runID)
 
-			// EV-07 judges the same inventory against P-07 (column usuario).
-			ev07 := opacc1.EV07Input{Inventory: ev01}
+			inventory := opacc1.Inventory{Current: ev02.Current, Records: ev02.Records, Today: now.UTC().Truncate(24 * time.Hour)}
+			inventory.UIDMin, inventory.UIDMinProblem = uidMinParam(policy, agent.ID)
+
+			write(agent, "EV-01", opacc1.JudgeEV01(inventory), runID)
+			write(agent, "EV-02", opacc1.JudgeEV02(ev02), runID)
+
+			// EV-07: the same inventory against P-07 (column usuario).
+			ev07 := opacc1.EV07Input{Inventory: inventory}
 			authorized, err := policy.ListColumn(agent.ID, "op.acc.1", "P-07", 0)
 			if err != nil {
 				ev07.AuthorizedProblem = err.Error()
 			}
 			ev07.Authorized = authorized
 			write(agent, "EV-07", opacc1.JudgeEV07(ev07), runID)
-		}
-
-		ev02, err := inputEV02(ctx, facts, agent.ID, currentIdentities[agent.ID], earlierIdentities[agent.ID], lookbackStart)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("agent %s EV-02: %w", agent.ID, err))
-		} else {
-			runID := ""
-			if ev02.Current != nil {
-				runID = ev02.Current.RunID
-			}
-			write(agent, "EV-02", opacc1.JudgeEV02(ev02), runID)
 		}
 
 		// EV-03, EV-05 and EV-06 read the same logins.
@@ -197,29 +184,6 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, 
 	}
 
 	return written, errors.Join(errs...)
-}
-
-func inputEV01(ctx context.Context, facts Facts, agentID string, snapshots map[string]fact.AccountInventorySnapshot, since time.Time) (opacc1.EV01Input, error) {
-
-	in := opacc1.EV01Input{}
-
-	snapshot, ok := snapshots[agentID]
-	if !ok {
-		return in, nil
-	}
-
-	in.Snapshot = &snapshot
-
-	if snapshot.SourceStatus != fact.SourceRead {
-		return in, nil
-	}
-
-	// Records are matched by run_id, not by the window: the snapshot of a
-	// pass is emitted after its records.
-	records, err := facts.AccountRecords(ctx, agentID, snapshot.RunID, since)
-	in.Records = records
-
-	return in, err
 }
 
 // inputEV02 takes the newest pass in the window as current and the newest
@@ -438,16 +402,11 @@ type offboarding struct {
 // offboardingParams reads P-09 and P-10, shared by EV-04 and EV-08.
 func offboardingParams(policy params.Lister, agentID string) offboarding {
 
-	off := offboarding{declared: map[string]time.Time{}, uidMin: opacc1.DefaultUIDMin}
+	off := offboarding{declared: map[string]time.Time{}}
 
-	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")
-	switch {
-	case errors.Is(err, params.ErrNotSet):
-		// Product default, as v1.
-	case err != nil:
-		off.problems = append(off.problems, "P-10: "+err.Error())
-	default:
-		off.uidMin = int(uidMin)
+	var problem string
+	if off.uidMin, problem = uidMinParam(policy, agentID); problem != "" {
+		off.problems = append(off.problems, problem)
 	}
 
 	// P-09 rows are "usuario | fecha_baja"; a date that cannot be read is a
@@ -509,4 +468,22 @@ func notApplicable(policy params.Lister, control catalog.Control, evidenceID str
 		Status: verdict.NotApplicable,
 		Reason: fmt.Sprintf("%s applies at %s; active ENS level %s", evidenceID, strings.Join(evidence.Levels, ", "), level),
 	}, true
+}
+
+// uidMinParam reads P-10, with the product default when it is not set (as
+// the plugin says in the report). The second value names an unusable P-10.
+func uidMinParam(policy params.Lister, agentID string) (int, string) {
+
+	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")
+
+	switch {
+	case errors.Is(err, params.ErrNotSet):
+		return opacc1.DefaultUIDMin, ""
+	case err != nil:
+		return opacc1.DefaultUIDMin, "P-10: " + err.Error()
+	case uidMin < 0 || uidMin != float64(int(uidMin)):
+		return opacc1.DefaultUIDMin, fmt.Sprintf("P-10: %v is not a UID", uidMin)
+	}
+
+	return int(uidMin), ""
 }

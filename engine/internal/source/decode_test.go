@@ -6,54 +6,56 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
-// Copied from an alert indexed in the lab (wazuh-alerts-*, rule 119001).
+// Copied from alerts indexed in the lab (wazuh-alerts-*, rule 119001).
 func TestDecodeIndexedFacts(t *testing.T) {
 	record := map[string]any{
-		"oscompliance": "1", "fact": "account_record", "ts": "2026-10-21T15:21:26Z",
-		"host": "lab-agent-01", "agent_version": "9559fe8", "run_id": "0e037a39-0de3-4a5b-bb54-535dc8100cd7",
-		"account_name": "jperez", "uid": "1001", "gid": "1001", "shell": "/bin/bash", "login_enabled": "true",
+		"oscompliance": "1", "fact": "identity_record", "ts": "2026-10-22T12:14:44Z",
+		"host": "lab-agent-01", "agent_version": "0188f2b", "run_id": "fb98743f-321a-4045-8184-16216db37d03",
+		"account_name": "jperez", "uid": "1001", "gid": "1001", "shell": "/bin/bash", "password_state": "locked",
+		"authorized_keys": "1",
 	}
-	var r fact.AccountRecord
+	var r fact.IdentityRecord
 	if err := Decode(record, &r); err != nil {
 		t.Fatal(err)
 	}
-	if r.AccountName != "jperez" || r.UID != 1001 || r.GID != 1001 || !r.LoginEnabled || r.RunID != "0e037a39-0de3-4a5b-bb54-535dc8100cd7" {
+	if r.AccountName != "jperez" || r.UID != 1001 || r.GID != 1001 || r.AuthorizedKeys == nil || *r.AuthorizedKeys != 1 || r.RunID != "fb98743f-321a-4045-8184-16216db37d03" {
 		t.Errorf("record: %+v", r)
 	}
 
 	snapshot := map[string]any{
-		"oscompliance": "1", "fact": "account_inventory_snapshot", "run_id": "x",
-		"source": "passwd", "source_path": "/etc/passwd", "source_status": "read",
-		"uid_min": "1000", "entries_total": "23", "records_emitted": "4",
-		"duplicate_uids": []any{map[string]any{"uid": float64(0), "account_names": []any{"root", "toor"}}},
+		"oscompliance": "1", "fact": "identity_snapshot", "run_id": "x",
+		"passwd_path": "/etc/passwd", "passwd_status": "read", "shadow_path": "/etc/shadow", "shadow_status": "read",
+		"records_emitted": "25", "sshd_status": "read",
+		"authorized_keys_files": []any{".ssh/authorized_keys", ".ssh/authorized_keys2"},
 	}
-	var s fact.AccountInventorySnapshot
+	var s fact.IdentitySnapshot
 	if err := Decode(snapshot, &s); err != nil {
 		t.Fatal(err)
 	}
-	if s.UIDMin != 1000 || s.EntriesTotal == nil || *s.EntriesTotal != 23 || s.RecordsEmitted == nil || *s.RecordsEmitted != 4 {
-		t.Errorf("snapshot counts: %+v", s)
-	}
-	if len(s.DuplicateUIDs) != 1 || s.DuplicateUIDs[0].UID != 0 || len(s.DuplicateUIDs[0].AccountNames) != 2 {
-		t.Errorf("duplicate_uids: %+v", s.DuplicateUIDs)
+	if s.RecordsEmitted == nil || *s.RecordsEmitted != 25 || len(s.AuthorizedKeysFiles) != 2 {
+		t.Errorf("snapshot: %+v", s)
 	}
 
-	unread := map[string]any{"fact": "account_inventory_snapshot", "source_status": "unreadable", "source_error": "denied", "uid_min": "1000"}
-	var u fact.AccountInventorySnapshot
-	if err := Decode(unread, &u); err != nil {
-		t.Fatal(err)
+	group := map[string]any{"fact": "group_record", "group_name": "sudo", "gid": "27", "members": []any{"ubuntu"}}
+	var g fact.GroupRecord
+	if err := Decode(group, &g); err != nil || g.GID != 27 || len(g.Members) != 1 {
+		t.Errorf("group: %+v %v", g, err)
 	}
-	if u.EntriesTotal != nil || u.RecordsEmitted != nil || u.SourceError != "denied" {
-		t.Errorf("unread snapshot: %+v", u)
+
+	// No counter and keys unknown: the pointers stay nil.
+	unread := map[string]any{"fact": "identity_record", "account_name": "kim", "uid": "1004"}
+	var u fact.IdentityRecord
+	if err := Decode(unread, &u); err != nil || u.AuthorizedKeys != nil {
+		t.Errorf("unknown keys: %+v %v", u, err)
 	}
 }
 
 func TestDecodeRejectsBadScalars(t *testing.T) {
-	var r fact.AccountRecord
+	var r fact.IdentityRecord
 	if err := Decode(map[string]any{"uid": "abc"}, &r); err == nil {
 		t.Error("uid abc: want error")
 	}
-	if err := Decode(map[string]any{"login_enabled": "maybe"}, &r); err == nil {
-		t.Error("login_enabled maybe: want error")
+	if err := Decode(map[string]any{"authorized_keys": "many"}, &r); err == nil {
+		t.Error("authorized_keys many: want error")
 	}
 }

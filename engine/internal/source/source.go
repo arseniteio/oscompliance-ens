@@ -101,25 +101,6 @@ func (s *Source) Agents(ctx context.Context, since time.Time) ([]verdict.Agent, 
 	return agents, nil
 }
 
-// LatestSnapshots returns, per agent ID, the newest account_inventory_snapshot
-// indexed since the given time.
-func (s *Source) LatestSnapshots(ctx context.Context, since time.Time) (map[string]fact.AccountInventorySnapshot, error) {
-
-	newest, err := latestFacts[fact.AccountInventorySnapshot](ctx, s, fact.AccountInventorySnapshotFact, since, 1)
-
-	if err != nil {
-		return nil, err
-	}
-
-	snapshots := map[string]fact.AccountInventorySnapshot{}
-
-	for agentID, list := range newest {
-		snapshots[agentID] = list[0]
-	}
-
-	return snapshots, nil
-}
-
 // GroupSnapshots returns, per agent ID, the newest group_snapshot indexed
 // since the given time.
 func (s *Source) GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error) {
@@ -196,11 +177,6 @@ func latestFacts[T any](ctx context.Context, s *Source, name string, since time.
 	}
 
 	return facts, nil
-}
-
-// AccountRecords returns every account_record of one pass of one agent.
-func (s *Source) AccountRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.AccountRecord, error) {
-	return passRecords[fact.AccountRecord](ctx, s, fact.AccountRecordFact, agentID, runID, since)
 }
 
 // IdentityRecords returns every identity_record of one pass of one agent.

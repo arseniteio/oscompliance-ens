@@ -3,57 +3,53 @@ package opacc1
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
-// readSnapshot returns a snapshot that was read, announcing emitted records.
-func readSnapshot(emitted int, dups ...fact.DuplicateUID) *fact.AccountInventorySnapshot {
-	total := 20
-	if dups == nil {
-		dups = []fact.DuplicateUID{}
+var evalDay = time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
+
+// account is an identity record; keys < 0 means "SSH keys unknown".
+func account(name string, uid int, state string, keys int) fact.IdentityRecord {
+	r := fact.IdentityRecord{AccountName: name, UID: uid, GID: uid, Shell: "/bin/bash", PasswordState: state}
+	if keys >= 0 {
+		r.AuthorizedKeys = &keys
 	}
-	return &fact.AccountInventorySnapshot{
-		Source: "passwd", SourcePath: "/etc/passwd", SourceStatus: fact.SourceRead, UIDMin: 1000,
-		EntriesTotal: &total, RecordsEmitted: &emitted, DuplicateUIDs: dups,
-	}
+	return r
 }
 
-func notRead(status, why string) *fact.AccountInventorySnapshot {
-	return &fact.AccountInventorySnapshot{
-		Source: "passwd", SourcePath: "/etc/passwd", SourceStatus: status, SourceError: why, UIDMin: 1000,
-	}
-}
-
-func records(n int) []fact.AccountRecord {
-	out := make([]fact.AccountRecord, n)
-	for i := range out {
-		out[i] = fact.AccountRecord{AccountName: "user", UID: 1000 + i, GID: 1000 + i, Shell: "/bin/bash", LoginEnabled: true}
-	}
-	return out
+// inventory is a complete pass of the given records, with P-10 = 1000.
+func inventory(records ...fact.IdentityRecord) Inventory {
+	return Inventory{Current: identitySnapshot("cur", len(records)), Records: records, UIDMin: DefaultUIDMin, Today: evalDay}
 }
 
 func TestJudgeEV01(t *testing.T) {
-	dup := fact.DuplicateUID{UID: 0, AccountNames: []string{"root", "toor"}}
+	root := account("root", 0, "locked", 0)
+
+	badP10 := inventory(root)
+	badP10.UIDMinProblem = "P-10: \"many\" is not a number"
+
+	incomplete := inventory(root)
+	incomplete.Current = identitySnapshot("cur", 3)
+
+	shadowDenied := inventory()
+	shadowDenied.Current.ShadowStatus, shadowDenied.Current.ShadowError, shadowDenied.Current.RecordsEmitted = fact.SourceUnreadable, "permission denied", nil
 
 	cases := []struct {
-		name         string
-		in           EV01Input
-		status       verdict.Status
-		cause        verdict.Cause
-		reasonHasStr string // the reason must contain it; "" = no check
+		name    string
+		in      Inventory
+		status  verdict.Status
+		cause   verdict.Cause
+		reasons []string
 	}{
-		{"no snapshot in the window", EV01Input{}, verdict.NotEvaluable, verdict.CauseCollection, ""},
-		{"source unreadable", EV01Input{Snapshot: notRead(fact.SourceUnreadable, "permission denied")}, verdict.NotEvaluable, verdict.CauseCollection, "permission denied"},
-		{"source implausible", EV01Input{Snapshot: notRead(fact.SourceImplausible, "no entry with UID 0")}, verdict.NotEvaluable, verdict.CauseCollection, "no entry with UID 0"},
-		{"fewer records than announced", EV01Input{Snapshot: readSnapshot(3), Records: records(2)}, verdict.NotEvaluable, verdict.CauseCollection, ""},
-		{"incomplete pass wins over duplicates", EV01Input{Snapshot: readSnapshot(3, dup), Records: records(1)}, verdict.NotEvaluable, verdict.CauseCollection, ""},
-		{"read snapshot without counters", EV01Input{Snapshot: &fact.AccountInventorySnapshot{SourceStatus: fact.SourceRead}}, verdict.NotEvaluable, verdict.CauseEvidence, "records_emitted"},
-		{"duplicate UIDs", EV01Input{Snapshot: readSnapshot(3, dup), Records: records(3)}, verdict.NonCompliant, "", "UID 0 (root, toor)"},
-		{"clean inventory", EV01Input{Snapshot: readSnapshot(3), Records: records(3)}, verdict.Compliant, "", ""},
-		{"no accounts above uid_min", EV01Input{Snapshot: readSnapshot(0)}, verdict.Compliant, "", ""},
-		{"more records than announced (repeated delivery)", EV01Input{Snapshot: readSnapshot(2), Records: records(3)}, verdict.Compliant, "", ""},
+		{"P-10 unusable", badP10, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-10"}},
+		{"no identity pass", Inventory{UIDMin: DefaultUIDMin}, verdict.NotEvaluable, verdict.CauseCollection, nil},
+		{"shadow unreadable", shadowDenied, verdict.NotEvaluable, verdict.CauseCollection, []string{"permission denied"}},
+		{"incomplete pass", incomplete, verdict.NotEvaluable, verdict.CauseCollection, []string{"1 of 3"}},
+		{"duplicate UIDs, system ones included", inventory(root, account("toor", 0, "locked", 0), account("ana", 1001, "set", 0), account("bob", 1001, "set", 0)), verdict.NonCompliant, "", []string{"UID 0 (root, toor); UID 1001 (ana, bob)"}},
+		{"unique UIDs", inventory(root, account("daemon", 1, "locked", 0), account("ana", 1001, "set", 0)), verdict.Compliant, "", []string{"3 accounts, 1 with UID >= 1000"}},
 	}
 
 	for _, c := range cases {
@@ -63,12 +59,13 @@ func TestJudgeEV01(t *testing.T) {
 			if got.Status != c.status || got.Cause != c.cause {
 				t.Errorf("got %s/%s, want %s/%s (reason %q)", got.Status, got.Cause, c.status, c.cause, got.Reason)
 			}
-			// Every verdict other than COMPLIANT must say why.
 			if got.Status != verdict.Compliant && got.Reason == "" {
 				t.Error("empty reason")
 			}
-			if c.reasonHasStr != "" && !strings.Contains(got.Reason, c.reasonHasStr) {
-				t.Errorf("reason %q does not contain %q", got.Reason, c.reasonHasStr)
+			for _, r := range c.reasons {
+				if !strings.Contains(got.Reason, r) {
+					t.Errorf("reason %q does not contain %q", got.Reason, r)
+				}
 			}
 		})
 	}
