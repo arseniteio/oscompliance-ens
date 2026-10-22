@@ -134,9 +134,9 @@ table on every pass and the engine compares two passes. A lost or corrupt
 baseline on the host can no longer hide or invent changes, and a reinstalled
 agent needs no first pass to set one.
 
-### Wazuh alerts (EV-03)
+### Wazuh alerts (EV-03, EV-05)
 
-EV-03 has no fact of ours. Wazuh already collects the authentication log and
+EV-03 and EV-05 have no fact of ours. Wazuh already collects the authentication log and
 its own sshd decoder and rules produce the alerts the engine reads:
 
 | What | Query on `wazuh-alerts-*` | Fields used |
@@ -154,6 +154,7 @@ cursor and parses no log.
 | `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
 | `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
 | `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
+| P-03 service accounts | plugin | none | EV-05. Read like P-04. |
 | P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates and regex values are not applied yet. |
 
 ## 7. Evidence judgement
@@ -194,14 +195,15 @@ Same result as v1, where the change facts are always `CUMPLE` and the evidence
 fails only when collection fails. The change list itself is what EV-08
 (retention) and the plugin will read; where it is stored is open (section 10).
 
-EV-03 over the sshd logins in the window:
+EV-03 (against P-04, generic accounts) and EV-05 (against P-03, service
+accounts) over the same sshd logins in the window:
 
-1. P-04 missing, empty, not a list or a regex: `NOT_EVALUABLE`, cause
+1. The list (P-04 or P-03) missing, empty, not a list or a regex: `NOT_EVALUABLE`, cause
    `CONFIGURATION`. Never judged against a default nobody set.
 2. No authentication event from the agent in the lookback: `NOT_EVALUABLE`,
    cause `COLLECTION`. Silence from a log that does not reach Wazuh is not
    compliance (v1 probed its log the same way).
-3. A login whose account is in P-04, ignoring case: `NON_COMPLIANT`, reason
+3. A login whose account is in the list, ignoring case: `NON_COMPLIANT`, reason
    lists each account with its number of logins.
 4. Otherwise `COMPLIANT`.
 

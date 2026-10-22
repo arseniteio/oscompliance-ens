@@ -91,9 +91,9 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	if err == nil {
 		t.Error("want the error of agent 004")
 	}
-	// EV-01 for 001, 002, 003 (004 fails); EV-02 and EV-03 for all four.
-	if n != 11 || len(sink.got) != 11 {
-		t.Fatalf("want 11 verdicts, got %d: %+v", n, sink.got)
+	// EV-01 for 001, 002, 003 (004 fails); EV-02, EV-03 and EV-05 for all four.
+	if n != 15 || len(sink.got) != 15 {
+		t.Fatalf("want 15 verdicts, got %d: %+v", n, sink.got)
 	}
 	// Records are read only for snapshots that were read.
 	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {

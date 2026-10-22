@@ -131,11 +131,14 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg
 			write(agent, "EV-02", opacc1.JudgeEV02(ev02), runID)
 		}
 
-		ev03, err := inputEV03(ctx, facts, policy, agent.ID, authActivity, windowStart)
+		// EV-03 and EV-05 read the same logins against different lists.
+		logins, err := facts.SSHLogins(ctx, agent.ID, windowStart)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("agent %s EV-03: %w", agent.ID, err))
+			errs = append(errs, fmt.Errorf("agent %s sshd logins: %w", agent.ID, err))
 		} else {
-			write(agent, "EV-03", opacc1.JudgeEV03(ev03), "")
+			_, authSeen := authActivity[agent.ID]
+			write(agent, "EV-03", opacc1.JudgeEV03(loginInput(policy, agent.ID, "P-04", authSeen, logins)), "")
+			write(agent, "EV-05", opacc1.JudgeEV05(loginInput(policy, agent.ID, "P-03", authSeen, logins)), "")
 		}
 	}
 
@@ -213,20 +216,15 @@ func readBoth(s fact.IdentitySnapshot) bool {
 	return s.PasswdStatus == fact.SourceRead && s.ShadowStatus == fact.SourceRead
 }
 
-func inputEV03(ctx context.Context, facts Facts, policy params.Lister, agentID string, authActivity map[string]time.Time, since time.Time) (opacc1.EV03Input, error) {
+func loginInput(policy params.Lister, agentID, paramID string, authSeen bool, logins []source.Login) opacc1.LoginInput {
 
-	in := opacc1.EV03Input{}
+	in := opacc1.LoginInput{AuthSeen: authSeen, Logins: logins}
 
-	generic, err := policy.List(agentID, "op.acc.1", "P-04")
+	list, err := policy.List(agentID, "op.acc.1", paramID)
 	if err != nil {
-		in.GenericProblem = err.Error()
+		in.ForbiddenProblem = err.Error()
 	}
-	in.Generic = generic
+	in.Forbidden = list
 
-	_, in.AuthSeen = authActivity[agentID]
-
-	logins, err := facts.SSHLogins(ctx, agentID, since)
-	in.Logins = logins
-
-	return in, err
+	return in
 }
