@@ -172,6 +172,7 @@ cursor and parses no log.
 | P-05 `plazo_max_deshabilitar_dias` | plugin | none | EV-04. Number. |
 | P-09 `bajas_declaradas` | plugin | none | EV-04. Table `usuario \| fecha_baja` (YYYY-MM-DD); an unreadable row is a configuration error. Replaces v1 `bajas.tsv` on the host. |
 | P-10 `uid_minimo_persona` | plugin | 1000 (product default) | EV-04. The agent still applies its own `uid_min` for EV-01; see section 10. |
+| P-06 `periodo_retencion_cuentas_dias` | plugin | none | EV-08. Number. |
 | P-11 `grupos_privilegiados` | plugin | `sudo, wheel, admin` (product default, said in the reason) | EV-06. List. |
 | P-12 `sufijo_admin` | plugin | none: nobody is excluded | EV-06. First entry used. |
 | P-07 `lista_usuarios_autorizados` | plugin | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
@@ -241,6 +242,24 @@ and P-10. No fact of its own:
    handled.
 
 v1 kept a `deshabilitadas.tsv` register on the host; EV-04 does not need it.
+
+EV-08 over the per-account history the engine keeps in
+`oscompliance-identity-history` (one document per agent and account:
+`first_seen`, `last_seen`, `disabled_since`, `disabled_observed`,
+`deleted_at`, last `account_expires`). Each complete current EV-02 pass moves
+it forward; applying a pass twice changes nothing. It replaces v1
+`deshabilitadas.tsv` on the host.
+
+1. P-06, P-09 or P-10 unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
+2. No complete current identity pass: `NOT_EVALUABLE`, cause `COLLECTION`.
+3. An account with UID >= P-10, disabled before being deleted in the window,
+   deleted less than P-06 days after its start date: `NON_COMPLIANT`. Start
+   date: its P-09 row, else its last expiry date, else the day the engine saw
+   it change from enabled to disabled.
+4. A deleted account with no start date (already disabled when the history
+   began, no P-09 row, no expiry): `NOT_EVALUABLE`, cause `EVIDENCE`, as v1.
+5. Otherwise `COMPLIANT`. As v1, an account deleted while still enabled is
+   not tracked.
 
 EV-06 over the newest group pass, the account list of the newest complete
 EV-02 pass, P-11, P-12 and the sshd logins:
@@ -327,6 +346,12 @@ current state.
 
 
 ## 10. Open decisions
+
+- "Disabled" (EV-04, EV-08) follows v1: no-login shell, locked password or
+  expired account. A locked password does not stop a key-based sshd login,
+  so an account used every day can count as disabled (the lab's `jperez`).
+- EV-08 ignores accounts deleted while still enabled (v1 did too); they were
+  kept zero days.
 
 - `uid_min`: the agent applies its own flag for EV-01 while P-10 lives in the
   plugin. Moving it to the engine means emitting `account_record` for every

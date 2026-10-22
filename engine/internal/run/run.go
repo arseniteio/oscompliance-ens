@@ -10,6 +10,7 @@ import (
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
@@ -32,6 +33,13 @@ type Facts interface {
 // previous complete identity pass.
 const identityDepth = 10
 
+// History is the per-account history EV-08 needs (store.History in
+// production).
+type History interface {
+	Load(ctx context.Context, agentID string) (map[string]history.Account, error)
+	Save(ctx context.Context, accounts []history.Account) error
+}
+
 // Sink is where verdicts go (store.Verdicts in production).
 type Sink interface {
 	Write(ctx context.Context, v verdict.Verdict) error
@@ -50,7 +58,7 @@ type Config struct {
 // Once judges every known agent and writes one verdict per agent and
 // evidence. A failure on one agent or evidence does not stop the others; all
 // failures are returned together.
-func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg Config, now time.Time) (int, error) {
+func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, sink Sink, cfg Config, now time.Time) (int, error) {
 
 	windowStart := now.Add(-cfg.Window)
 	lookbackStart := now.Add(-cfg.Lookback)
@@ -161,6 +169,13 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg
 		write(agent, "EV-05", opacc1.JudgeEV05(loginInput(policy, agent.ID, "P-03", authSeen, logins)), "")
 
 		write(agent, "EV-04", opacc1.JudgeEV04(inputEV04(policy, agent.ID, ev02, now)), "")
+
+		ev08, err := inputEV08(ctx, hist, policy, agent, ev02, windowStart)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("agent %s EV-08: %w", agent.ID, err))
+		} else {
+			write(agent, "EV-08", opacc1.JudgeEV08(ev08), "")
+		}
 
 		ev06, err := inputEV06(ctx, facts, policy, agent.ID, groupSnapshots, ev02, lookbackStart)
 		if err != nil {
@@ -332,11 +347,14 @@ func completeIdentity(ev02 opacc1.EV02Input) ([]fact.IdentityRecord, string) {
 // inputEV04 gathers the identity table and P-05, P-09 and P-10.
 func inputEV04(policy params.Lister, agentID string, ev02 opacc1.EV02Input, now time.Time) opacc1.EV04Input {
 
-	in := opacc1.EV04Input{Declared: map[string]time.Time{}, UIDMin: opacc1.DefaultUIDMin, Now: now}
+	in := opacc1.EV04Input{Now: now}
 
 	in.Accounts, in.AccountsProblem = completeIdentity(ev02)
 
-	var problems []string
+	off := offboardingParams(policy, agentID)
+	in.Declared, in.DeclaredSet, in.UIDMin = off.declared, off.declaredSet, off.uidMin
+
+	problems := off.problems
 
 	deadline, err := policy.Number(agentID, "op.acc.1", "P-05")
 	if err != nil {
@@ -344,14 +362,86 @@ func inputEV04(policy params.Lister, agentID string, ev02 opacc1.EV02Input, now 
 	}
 	in.DeadlineDays = int(deadline)
 
+	in.ConfigProblem = strings.Join(problems, "; ")
+
+	return in
+}
+
+// inputEV08 brings the agent's history up to date with its current complete
+// identity pass, saves the changes, and returns the accounts deleted in the
+// window with P-06, P-09 and P-10.
+func inputEV08(ctx context.Context, hist History, policy params.Lister, agent verdict.Agent, ev02 opacc1.EV02Input, windowStart time.Time) (opacc1.EV08Input, error) {
+
+	off := offboardingParams(policy, agent.ID)
+	in := opacc1.EV08Input{Declared: off.declared, UIDMin: off.uidMin}
+
+	problems := off.problems
+
+	retention, err := policy.Number(agent.ID, "op.acc.1", "P-06")
+	if err != nil {
+		problems = append(problems, "P-06: "+err.Error())
+	}
+	in.RetentionDays = int(retention)
+	in.ConfigProblem = strings.Join(problems, "; ")
+
+	known, err := hist.Load(ctx, agent.ID)
+	if err != nil {
+		return in, fmt.Errorf("history: %w", err)
+	}
+
+	// Only the current pass moves the history forward: the previous one was
+	// applied when it was current.
+	current := ev02.Current
+	complete := current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted
+
+	if !complete {
+		in.IdentityProblem = "no complete current identity pass (EV-02) in the window"
+	} else {
+		at, err := time.Parse(time.RFC3339, current.TS)
+		if err != nil {
+			return in, fmt.Errorf("identity pass %s: ts: %w", current.RunID, err)
+		}
+
+		changed := history.Update(known, agent.ID, agent.Name, ev02.Records, at, current.RunID, opacc1.IsDisabled)
+
+		if err := hist.Save(ctx, changed); err != nil {
+			return in, fmt.Errorf("history: %w", err)
+		}
+
+		for _, account := range changed {
+			known[account.AccountName] = account
+		}
+	}
+
+	for _, account := range known {
+		if account.DeletedAt != nil && !account.DeletedAt.Before(windowStart) {
+			in.Deleted = append(in.Deleted, account)
+		}
+	}
+
+	return in, nil
+}
+
+type offboarding struct {
+	declared    map[string]time.Time
+	declaredSet bool
+	uidMin      int
+	problems    []string
+}
+
+// offboardingParams reads P-09 and P-10, shared by EV-04 and EV-08.
+func offboardingParams(policy params.Lister, agentID string) offboarding {
+
+	off := offboarding{declared: map[string]time.Time{}, uidMin: opacc1.DefaultUIDMin}
+
 	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")
 	switch {
 	case errors.Is(err, params.ErrNotSet):
 		// Product default, as v1.
 	case err != nil:
-		problems = append(problems, "P-10: "+err.Error())
+		off.problems = append(off.problems, "P-10: "+err.Error())
 	default:
-		in.UIDMin = int(uidMin)
+		off.uidMin = int(uidMin)
 	}
 
 	// P-09 rows are "usuario | fecha_baja"; a date that cannot be read is a
@@ -360,28 +450,26 @@ func inputEV04(policy params.Lister, agentID string, ev02 opacc1.EV02Input, now 
 	switch {
 	case errors.Is(err, params.ErrNotSet):
 	case err != nil:
-		problems = append(problems, "P-09: "+err.Error())
+		off.problems = append(off.problems, "P-09: "+err.Error())
 	default:
 		for _, row := range rows {
 			cells := strings.Split(row, "|")
 			if len(cells) < 2 {
-				problems = append(problems, fmt.Sprintf("P-09: row %q has no date", row))
+				off.problems = append(off.problems, fmt.Sprintf("P-09: row %q has no date", row))
 				continue
 			}
 			name, date := strings.TrimSpace(cells[0]), strings.TrimSpace(cells[1])
 			left, err := time.Parse("2006-01-02", date)
 			if name == "" || err != nil {
-				problems = append(problems, fmt.Sprintf("P-09: row %q is not \"usuario | YYYY-MM-DD\"", row))
+				off.problems = append(off.problems, fmt.Sprintf("P-09: row %q is not \"usuario | YYYY-MM-DD\"", row))
 				continue
 			}
-			in.Declared[name] = left
-			in.DeclaredSet = true
+			off.declared[name] = left
+			off.declaredSet = true
 		}
 	}
 
-	in.ConfigProblem = strings.Join(problems, "; ")
-
-	return in
+	return off
 }
 
 func identityNames(records []fact.IdentityRecord) []string {

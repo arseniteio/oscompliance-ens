@@ -77,7 +77,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 
 		measured++
 
-		if isDisabled(account, today) {
+		if IsDisabled(account, today) {
 			continue
 		}
 
@@ -125,8 +125,9 @@ func offboardingDate(account fact.IdentityRecord, declared map[string]time.Time)
 	return date, err == nil
 }
 
-// isDisabled follows v1: no-login shell, locked password, or expired account.
-func isDisabled(account fact.IdentityRecord, today time.Time) bool {
+// IsDisabled follows v1: no-login shell, locked password, or expired account.
+// Exported for the EV-08 history, which must agree with EV-04.
+func IsDisabled(account fact.IdentityRecord, today time.Time) bool {
 
 	if strings.HasSuffix(account.Shell, "/nologin") || strings.HasSuffix(account.Shell, "/false") {
 		return true

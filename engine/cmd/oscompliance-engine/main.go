@@ -39,6 +39,7 @@ func runMain() error {
 	alerts := flag.String("alerts-index", "wazuh-alerts-*", "index pattern holding the facts")
 	verdicts := flag.String("verdicts-index", "oscompliance-verdicts", "index the verdicts are written to")
 	configIndex := flag.String("config-index", "wazuh-ens-configuration", "plugin index holding the policy parameters")
+	historyIndex := flag.String("history-index", "oscompliance-identity-history", "index of the per-account history (EV-08)")
 	window := flag.Duration("window", 26*time.Hour, "only facts newer than this count")
 	lookback := flag.Duration("lookback", 7*24*time.Hour, "agents with facts this recent are judged")
 	interval := flag.Duration("interval", 0, "time between passes; 0 runs one pass and exits")
@@ -67,6 +68,11 @@ func runMain() error {
 		return fmt.Errorf("verdicts index: %w", err)
 	}
 
+	hist, err := store.NewHistory(ctx, client, *historyIndex)
+	if err != nil {
+		return fmt.Errorf("history index: %w", err)
+	}
+
 	facts := source.New(client, *alerts)
 	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
 
@@ -81,7 +87,7 @@ func runMain() error {
 			policy = loaded
 		}
 
-		n, err := run.Once(ctx, facts, policy, sink, cfg, time.Now())
+		n, err := run.Once(ctx, facts, policy, hist, sink, cfg, time.Now())
 		if err != nil {
 			slog.Error("pass", "verdicts", n, "error", err)
 		} else {

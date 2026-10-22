@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -38,6 +39,17 @@ func (f *fakeFacts) GroupSnapshots(context.Context, time.Time) (map[string]fact.
 
 func (f *fakeFacts) GroupRecords(context.Context, string, string, time.Time) ([]fact.GroupRecord, error) {
 	return nil, nil
+}
+
+type memHistory struct{ saved []history.Account }
+
+func (m *memHistory) Load(context.Context, string) (map[string]history.Account, error) {
+	return map[string]history.Account{}, nil
+}
+
+func (m *memHistory) Save(_ context.Context, accounts []history.Account) error {
+	m.saved = append(m.saved, accounts...)
+	return nil
 }
 
 type noParams struct{}
@@ -100,15 +112,15 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	sink := &fakeSink{}
 	now := time.Date(2026, 10, 21, 16, 0, 0, 0, time.UTC)
 
-	n, err := Once(context.Background(), facts, noParams{}, sink, Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}, now)
+	n, err := Once(context.Background(), facts, noParams{}, &memHistory{}, sink, Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}, now)
 
 	if err == nil {
 		t.Error("want the error of agent 004")
 	}
 	// EV-01 and EV-07 for 001, 002, 003 (004 fails); EV-02, EV-03, EV-04,
-	// EV-05 and EV-06 for all four.
-	if n != 26 || len(sink.got) != 26 {
-		t.Fatalf("want 26 verdicts, got %d: %+v", n, sink.got)
+	// EV-05, EV-06 and EV-08 for all four.
+	if n != 30 || len(sink.got) != 30 {
+		t.Fatalf("want 30 verdicts, got %d: %+v", n, sink.got)
 	}
 	// Records are read only for snapshots that were read.
 	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {
@@ -131,7 +143,7 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 }
 
 func identityPass(runID string, emitted int, read bool) fact.IdentitySnapshot {
-	s := fact.IdentitySnapshot{Envelope: fact.Envelope{RunID: runID}, PasswdStatus: fact.SourceRead, ShadowStatus: fact.SourceRead, RecordsEmitted: &emitted}
+	s := fact.IdentitySnapshot{Envelope: fact.Envelope{RunID: runID, TS: "2026-10-22T12:00:00Z"}, PasswdStatus: fact.SourceRead, ShadowStatus: fact.SourceRead, RecordsEmitted: &emitted}
 	if !read {
 		s.ShadowStatus, s.ShadowError, s.RecordsEmitted = fact.SourceUnreadable, "denied", nil
 	}
@@ -155,7 +167,7 @@ func TestOncePicksPreviousCompleteIdentityPass(t *testing.T) {
 		},
 	}
 
-	if _, err := Once(context.Background(), facts, noParams{}, &fakeSink{}, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
+	if _, err := Once(context.Background(), facts, noParams{}, &memHistory{}, &fakeSink{}, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 
