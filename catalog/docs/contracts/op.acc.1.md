@@ -134,6 +134,19 @@ table on every pass and the engine compares two passes. A lost or corrupt
 baseline on the host can no longer hide or invent changes, and a reinstalled
 agent needs no first pass to set one.
 
+### `group_record` and `group_snapshot` (EV-06)
+
+Schemas: [`group_record.v1.json`](../../schemas/facts/group_record.v1.json),
+[`group_snapshot.v1.json`](../../schemas/facts/group_snapshot.v1.json).
+One `group_record` per line of the group file (`group_name`, `gid`,
+`members`), then one `group_snapshot` (`group_path`, `group_status` `read`,
+`unreadable` or `implausible` (no GID 0), `group_error`, `records_emitted`).
+
+Differences with v1 `multi_role_inventory`, `multi_role_account`,
+`multi_role_usage` and `privilege_use`: the agent no longer knows which groups
+grant privilege nor the admin suffix. It reports every group; P-11 and P-12
+are applied by the engine.
+
 ### Wazuh alerts (EV-03, EV-05)
 
 EV-03 and EV-05 have no fact of ours. Wazuh already collects the authentication log and
@@ -154,7 +167,10 @@ cursor and parses no log.
 | `uid_min` | agent | 1000 | Lowest UID emitted as `account_record`. Reported in the snapshot. |
 | `passwd_path` | agent | `/etc/passwd` | Source path. Reported as `source_path` (EV-01) and `passwd_path` (EV-02). |
 | `shadow_path` | agent | `/etc/shadow` | EV-02. Reported as `shadow_path`. |
+| `group_path` | agent | `/etc/group` | EV-06. Reported as `group_path`. |
 | P-03 service accounts | plugin | none | EV-05. Read like P-04. |
+| P-11 `grupos_privilegiados` | plugin | `sudo, wheel, admin` (product default, said in the reason) | EV-06. List. |
+| P-12 `sufijo_admin` | plugin | none: nobody is excluded | EV-06. First entry used. |
 | P-07 `lista_usuarios_autorizados` | plugin | none | EV-07. Table `usuario \| sistema \| rol`; only `usuario` is compared. |
 | P-04 `cuentas_genericas_prohibidas` | plugin | none | EV-03. Read from `wazuh-ens-configuration` (`ACTIVE_CONFIGURATION`): the agent's own value, else the control's. Reloaded every pass. Templates and regex values are not applied yet. |
 
@@ -207,6 +223,22 @@ accounts) over the same sshd logins in the window:
 3. A login whose account is in the list, ignoring case: `NON_COMPLIANT`, reason
    lists each account with its number of logins.
 4. Otherwise `COMPLIANT`.
+
+EV-06 over the newest group pass, the account list of the newest complete
+EV-02 pass, P-11, P-12 and the sshd logins:
+
+1. P-11 or P-12 set but unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
+2. Group pass missing, unread or incomplete: `NOT_EVALUABLE`, cause
+   `COLLECTION` (`EVIDENCE` for a read snapshot without counter).
+3. No complete EV-02 pass to look up admin accounts: `NOT_EVALUABLE`, cause
+   `COLLECTION`.
+4. A member of a P-11 group, not itself named `<x><suffix>`, with no
+   `<member><suffix>` account; or a sshd login by such a member:
+   `NON_COMPLIANT`. Same rules as v1.
+5. No finding and no authentication event in the lookback: `NOT_EVALUABLE`,
+   cause `COLLECTION`. v1 gave `NO_EVALUABLE` whenever its auth source
+   failed; v2 keeps a structural finding even then.
+6. Otherwise `COMPLIANT`.
 
 EV-07 over the same inventory as EV-01 and the `usuario` column of P-07:
 

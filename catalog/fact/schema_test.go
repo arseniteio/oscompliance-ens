@@ -142,6 +142,10 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &IdentityRecord{}
 		case IdentitySnapshotFact:
 			v = &IdentitySnapshot{}
+		case GroupRecordFact:
+			v = &GroupRecord{}
+		case GroupSnapshotFact:
+			v = &GroupSnapshot{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}
@@ -169,6 +173,10 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	const shadowUnread = `{"oscompliance":"1","fact":"identity_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","passwd_path":"/etc/passwd","passwd_status":"read","shadow_path":"/etc/shadow","shadow_status":"unreadable","shadow_error":"denied"}`
 	const identityRecord = `{"oscompliance":"1","fact":"identity_record","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","account_name":"a","uid":1000,"gid":1000,"shell":"/bin/bash","password_state":"set"}`
 
+	const groupRead = `{"oscompliance":"1","fact":"group_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_path":"/etc/group","group_status":"read","records_emitted":1}`
+	const groupUnread = `{"oscompliance":"1","fact":"group_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_path":"/etc/group","group_status":"unreadable","group_error":"denied"}`
+	const groupRecord = `{"oscompliance":"1","fact":"group_record","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_name":"sudo","gid":27,"members":["a"]}`
+
 	cases := []struct {
 		name string
 		base string
@@ -191,6 +199,10 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		{"identity: both read without records_emitted", identityRead, func(m map[string]any) { delete(m, "records_emitted") }},
 		{"identity: password hash", identityRecord, func(m map[string]any) { m["password_hash"] = "$6$abc" }},
 		{"identity: unknown password_state", identityRecord, func(m map[string]any) { m["password_state"] = "expired" }},
+		{"group: records when unread", groupUnread, func(m map[string]any) { m["records_emitted"] = 0 }},
+		{"group: read without records_emitted", groupRead, func(m map[string]any) { delete(m, "records_emitted") }},
+		{"group: privileged flag", groupRecord, func(m map[string]any) { m["privileged"] = true }},
+		{"group: members not a list", groupRecord, func(m map[string]any) { m["members"] = "a,b" }},
 		{"identity: expiry not a date", identityRecord, func(m map[string]any) { m["account_expires"] = "20612" }},
 	}
 
@@ -208,7 +220,7 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	}
 
 	// The bases themselves are valid, so each rejection above is the edit's.
-	for _, base := range []string{read, unread, identityRead, shadowUnread, identityRecord} {
+	for _, base := range []string{read, unread, identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord} {
 		if err := validate(schemas, []byte(base)); err != nil {
 			t.Errorf("base rejected: %v", err)
 		}

@@ -120,6 +120,30 @@ func (s *Source) LatestSnapshots(ctx context.Context, since time.Time) (map[stri
 	return snapshots, nil
 }
 
+// GroupSnapshots returns, per agent ID, the newest group_snapshot indexed
+// since the given time.
+func (s *Source) GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error) {
+
+	newest, err := latestFacts[fact.GroupSnapshot](ctx, s, fact.GroupSnapshotFact, since, 1)
+
+	if err != nil {
+		return nil, err
+	}
+
+	snapshots := map[string]fact.GroupSnapshot{}
+
+	for agentID, list := range newest {
+		snapshots[agentID] = list[0]
+	}
+
+	return snapshots, nil
+}
+
+// GroupRecords returns every group_record of one pass of one agent.
+func (s *Source) GroupRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.GroupRecord, error) {
+	return passRecords[fact.GroupRecord](ctx, s, fact.GroupRecordFact, agentID, runID, since)
+}
+
 // IdentitySnapshots returns, per agent ID, up to n identity_snapshot facts
 // indexed since the given time, newest first.
 func (s *Source) IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {

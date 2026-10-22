@@ -23,6 +23,8 @@ type Facts interface {
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
 	SSHLogins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
 	AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error)
+	GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error)
+	GroupRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.GroupRecord, error)
 }
 
 // identityDepth bounds how many earlier passes are tried when looking for the
@@ -80,6 +82,12 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg
 
 	if err != nil {
 		return 0, fmt.Errorf("authentication activity: %w", err)
+	}
+
+	groupSnapshots, err := facts.GroupSnapshots(ctx, windowStart)
+
+	if err != nil {
+		return 0, fmt.Errorf("group snapshots: %w", err)
 	}
 
 	var errs []error
@@ -140,14 +148,27 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, sink Sink, cfg
 			write(agent, "EV-02", opacc1.JudgeEV02(ev02), runID)
 		}
 
-		// EV-03 and EV-05 read the same logins against different lists.
+		// EV-03, EV-05 and EV-06 read the same logins.
 		logins, err := facts.SSHLogins(ctx, agent.ID, windowStart)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("agent %s sshd logins: %w", agent.ID, err))
+			continue
+		}
+
+		_, authSeen := authActivity[agent.ID]
+		write(agent, "EV-03", opacc1.JudgeEV03(loginInput(policy, agent.ID, "P-04", authSeen, logins)), "")
+		write(agent, "EV-05", opacc1.JudgeEV05(loginInput(policy, agent.ID, "P-03", authSeen, logins)), "")
+
+		ev06, err := inputEV06(ctx, facts, policy, agent.ID, groupSnapshots, ev02, lookbackStart)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("agent %s EV-06: %w", agent.ID, err))
 		} else {
-			_, authSeen := authActivity[agent.ID]
-			write(agent, "EV-03", opacc1.JudgeEV03(loginInput(policy, agent.ID, "P-04", authSeen, logins)), "")
-			write(agent, "EV-05", opacc1.JudgeEV05(loginInput(policy, agent.ID, "P-03", authSeen, logins)), "")
+			ev06.AuthSeen, ev06.Logins = authSeen, logins
+			runID := ""
+			if ev06.Groups != nil {
+				runID = ev06.Groups.RunID
+			}
+			write(agent, "EV-06", opacc1.JudgeEV06(ev06), runID)
 		}
 	}
 
@@ -236,4 +257,68 @@ func loginInput(policy params.Lister, agentID, paramID string, authSeen bool, lo
 	in.Forbidden = list
 
 	return in
+}
+
+// inputEV06 gathers the group pass, the account list of the EV-02 input
+// (current pass when complete, otherwise the previous complete one) and P-11
+// and P-12.
+func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID string, snapshots map[string]fact.GroupSnapshot, ev02 opacc1.EV02Input, since time.Time) (opacc1.EV06Input, error) {
+
+	in := opacc1.EV06Input{}
+
+	privileged, err := policy.List(agentID, "op.acc.1", "P-11")
+	switch {
+	case errors.Is(err, params.ErrNotSet):
+		in.Privileged, in.PrivilegedDefault = opacc1.DefaultPrivilegedGroups, true
+	case err != nil:
+		in.ConfigProblem = "P-11: " + err.Error()
+	default:
+		in.Privileged = privileged
+	}
+
+	suffix, err := policy.List(agentID, "op.acc.1", "P-12")
+	switch {
+	case errors.Is(err, params.ErrNotSet):
+		// No suffix: nobody is excluded.
+	case err != nil:
+		in.ConfigProblem = "P-12: " + err.Error()
+	default:
+		in.Suffix = suffix[0]
+	}
+
+	switch {
+	case ev02.Current != nil && readBoth(*ev02.Current) && ev02.Current.RecordsEmitted != nil && len(ev02.Records) >= *ev02.Current.RecordsEmitted:
+		in.Accounts = identityNames(ev02.Records)
+	case ev02.Previous != nil:
+		in.Accounts = identityNames(ev02.PreviousRecords)
+	default:
+		in.AccountsProblem = "no complete identity pass (EV-02) in the lookback"
+	}
+
+	snapshot, ok := snapshots[agentID]
+	if !ok {
+		return in, nil
+	}
+
+	in.Groups = &snapshot
+
+	if snapshot.GroupStatus != fact.SourceRead {
+		return in, nil
+	}
+
+	records, err := facts.GroupRecords(ctx, agentID, snapshot.RunID, since)
+	in.GroupRecords = records
+
+	return in, err
+}
+
+func identityNames(records []fact.IdentityRecord) []string {
+
+	names := make([]string, 0, len(records))
+
+	for _, record := range records {
+		names = append(names, record.AccountName)
+	}
+
+	return names
 }

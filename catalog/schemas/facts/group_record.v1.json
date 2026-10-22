@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/group_record.v1.json",
+  "title": "group_record v1",
+  "description": "One group of the group file with its explicit members. Emitted once per group, before the group_snapshot of the same run_id. Which groups grant privilege is decided by the engine (P-11), not here.",
+  "type": "object",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "required": ["group_name", "gid", "members"],
+  "properties": {
+    "fact": { "const": "group_record" },
+    "group_name": { "type": "string", "minLength": 1 },
+    "gid": { "type": "integer", "minimum": 0 },
+    "members": {
+      "description": "Member list of the group line (field 4), in file order. Accounts whose primary group this is are not listed, as in the file.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "unevaluatedProperties": false
+}

@@ -32,6 +32,14 @@ func (f *fakeFacts) AuthActivity(context.Context, time.Time) (map[string]time.Ti
 	return nil, nil
 }
 
+func (f *fakeFacts) GroupSnapshots(context.Context, time.Time) (map[string]fact.GroupSnapshot, error) {
+	return nil, nil
+}
+
+func (f *fakeFacts) GroupRecords(context.Context, string, string, time.Time) ([]fact.GroupRecord, error) {
+	return nil, nil
+}
+
 type noParams struct{}
 
 func (noParams) List(string, string, string) ([]string, error) { return nil, errors.New("not set") }
@@ -95,10 +103,10 @@ func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
 	if err == nil {
 		t.Error("want the error of agent 004")
 	}
-	// EV-01 and EV-07 for 001, 002, 003 (004 fails); EV-02, EV-03 and EV-05
-	// for all four.
-	if n != 18 || len(sink.got) != 18 {
-		t.Fatalf("want 18 verdicts, got %d: %+v", n, sink.got)
+	// EV-01 and EV-07 for 001, 002, 003 (004 fails); EV-02, EV-03, EV-05
+	// and EV-06 for all four.
+	if n != 22 || len(sink.got) != 22 {
+		t.Fatalf("want 22 verdicts, got %d: %+v", n, sink.got)
 	}
 	// Records are read only for snapshots that were read.
 	if len(facts.asked) != 2 || facts.asked[0] != "r1" || facts.asked[1] != "r4" {

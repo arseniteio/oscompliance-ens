@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/group_snapshot.v1.json",
+  "title": "group_snapshot v1",
+  "description": "Summary of one read of the group file. Emitted once per pass, after every group_record of the same run_id. Emitted even when the file could not be read; then no group_record is emitted.",
+  "type": "object",
+  "required": ["group_path", "group_status"],
+  "properties": {
+    "fact": { "const": "group_snapshot" },
+    "group_path": { "type": "string", "minLength": 1 },
+    "group_status": {
+      "description": "read, unreadable, or implausible (no GID 0 entry).",
+      "enum": ["read", "unreadable", "implausible"]
+    },
+    "group_error": { "description": "Only when group_status is not read.", "type": "string" },
+    "records_emitted": {
+      "description": "group_record facts emitted in this run_id. Only when read.",
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    { "$ref": "envelope.v1.json" },
+    {
+      "if": { "properties": { "group_status": { "const": "read" } } },
+      "then": { "required": ["records_emitted"], "not": { "required": ["group_error"] } },
+      "else": { "required": ["group_error"], "not": { "required": ["records_emitted"] } }
+    }
+  ],
+  "unevaluatedProperties": false
+}
