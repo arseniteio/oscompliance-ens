@@ -1,4 +1,4 @@
-module github.com/OpenSourceCompliance/oscompliance-core/catalog/fact
+module github.com/OpenSourceCompliance/oscompliance-core/catalog
 
 go 1.27.2
 

@@ -2,7 +2,7 @@
 # catalog/fact tests also validate the schemas and their examples. -count=1
 # because the Go test cache does not see changes to the schema files.
 
-MODULES := catalog/fact agent engine
+MODULES := catalog agent engine
 
 .PHONY: check test
 

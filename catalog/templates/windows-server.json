@@ -1,0 +1,14 @@
+{
+  "id": "windows-server",
+  "name": "Windows",
+  "kind": "base",
+  "system_type": "windows",
+  "type_default": true,
+  "values": {
+    "op.acc.1": {
+      "P-11": [
+        "Administrators"
+      ]
+    }
+  }
+}

@@ -2,7 +2,7 @@ module github.com/OpenSourceCompliance/oscompliance-core/engine
 
 go 1.27.2
 
-require github.com/OpenSourceCompliance/oscompliance-core/catalog/fact v0.0.0
+require github.com/OpenSourceCompliance/oscompliance-core/catalog v0.0.0
 
-// The fact types live in this repository, next to the schemas they mirror.
-replace github.com/OpenSourceCompliance/oscompliance-core/catalog/fact => ../catalog/fact
+// The catalog (fact types, controls, templates) lives in this repository.
+replace github.com/OpenSourceCompliance/oscompliance-core/catalog => ../catalog

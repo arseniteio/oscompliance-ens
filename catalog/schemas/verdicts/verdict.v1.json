@@ -4,36 +4,125 @@
   "title": "verdict v1",
   "description": "One document of the oscompliance-verdicts index: the engine's judgement of one evidence on one agent. Written only by the engine. Judging the same pass again replaces the document (ID: agent.id/control/evidence/run_id, or 'none' when there was no snapshot).",
   "type": "object",
-  "required": ["oscompliance_verdict", "@timestamp", "control", "evidence", "agent", "status", "window_start", "window_end", "engine_version"],
+  "required": [
+    "oscompliance_verdict",
+    "@timestamp",
+    "control",
+    "evidence",
+    "agent",
+    "status",
+    "window_start",
+    "window_end",
+    "engine_version"
+  ],
   "properties": {
-    "oscompliance_verdict": { "const": "1" },
-    "@timestamp": { "description": "Evaluation time.", "type": "string", "format": "date-time" },
-    "control": { "type": "string", "examples": ["op.acc.1"] },
-    "evidence": { "type": "string", "examples": ["EV-01"] },
+    "oscompliance_verdict": {
+      "const": "1"
+    },
+    "@timestamp": {
+      "description": "Evaluation time.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "control": {
+      "type": "string",
+      "examples": [
+        "op.acc.1"
+      ]
+    },
+    "evidence": {
+      "type": "string",
+      "examples": [
+        "EV-01"
+      ]
+    },
     "agent": {
       "description": "Wazuh agent the facts came from, as Wazuh recorded it.",
       "type": "object",
-      "required": ["id", "name"],
-      "properties": { "id": { "type": "string" }, "name": { "type": "string" } },
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
       "additionalProperties": false
     },
-    "status": { "enum": ["COMPLIANT", "NON_COMPLIANT", "NOT_EVALUABLE"] },
+    "status": {
+      "enum": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "NOT_EVALUABLE",
+        "NOT_APPLICABLE"
+      ]
+    },
     "cause": {
       "description": "Only with NOT_EVALUABLE.",
-      "enum": ["COLLECTION", "CONFIGURATION", "EVIDENCE"]
+      "enum": [
+        "COLLECTION",
+        "CONFIGURATION",
+        "EVIDENCE"
+      ]
     },
-    "reason": { "description": "Why; required unless COMPLIANT.", "type": "string" },
-    "run_id": { "description": "Pass judged. Absent when the agent sent no snapshot in the window.", "type": "string" },
-    "window_start": { "type": "string", "format": "date-time" },
-    "window_end": { "type": "string", "format": "date-time" },
-    "engine_version": { "type": "string" }
+    "reason": {
+      "description": "Why; required unless COMPLIANT.",
+      "type": "string"
+    },
+    "run_id": {
+      "description": "Pass judged. Absent when the agent sent no snapshot in the window.",
+      "type": "string"
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "engine_version": {
+      "type": "string"
+    }
   },
-  "if": { "properties": { "status": { "const": "NOT_EVALUABLE" } } },
-  "then": { "required": ["cause", "reason"] },
+  "if": {
+    "properties": {
+      "status": {
+        "const": "NOT_EVALUABLE"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "cause",
+      "reason"
+    ]
+  },
   "else": {
-    "not": { "required": ["cause"] },
-    "if": { "properties": { "status": { "const": "NON_COMPLIANT" } } },
-    "then": { "required": ["reason"] }
+    "not": {
+      "required": [
+        "cause"
+      ]
+    },
+    "if": {
+      "properties": {
+        "status": {
+          "enum": [
+            "NON_COMPLIANT",
+            "NOT_APPLICABLE"
+          ]
+        }
+      }
+    },
+    "then": {
+      "required": [
+        "reason"
+      ]
+    }
   },
   "additionalProperties": false
 }
