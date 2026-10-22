@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
@@ -102,7 +103,12 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, 
 	var errs []error
 	written := 0
 
+	control, _ := catalog.LookupControl("op.acc.1")
+
 	write := func(agent verdict.Agent, evidence string, j verdict.Judgement, runID string) {
+		if na, ok := notApplicable(policy, control, evidence); ok {
+			j = na
+		}
 		v := verdict.Verdict{
 			OSComplianceVerdict: verdict.SchemaVersion,
 			Timestamp:           now.UTC().Format(time.RFC3339),
@@ -481,4 +487,26 @@ func identityNames(records []fact.IdentityRecord) []string {
 	}
 
 	return names
+}
+
+// notApplicable decides, before any judgement counts, whether the evidence
+// applies at all: the engine decides it, from the configuration's level and
+// the catalog's evidence levels. Without a known level nothing is ruled out.
+func notApplicable(policy params.Lister, control catalog.Control, evidenceID string) (verdict.Judgement, bool) {
+
+	if !policy.ControlEnabled(control.Control) {
+		return verdict.Judgement{Status: verdict.NotApplicable, Reason: control.Control + " is disabled in the configuration"}, true
+	}
+
+	level := policy.Level()
+	evidence, known := control.Evidence(evidenceID)
+
+	if level == "" || !known || evidence.AppliesAt(level) {
+		return verdict.Judgement{}, false
+	}
+
+	return verdict.Judgement{
+		Status: verdict.NotApplicable,
+		Reason: fmt.Sprintf("%s applies at %s; active ENS level %s", evidenceID, strings.Join(evidence.Levels, ", "), level),
+	}, true
 }

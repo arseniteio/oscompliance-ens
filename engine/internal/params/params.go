@@ -4,8 +4,10 @@ package params
 
 import (
 	"context"
+
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,20 +22,54 @@ var ErrNotSet = errors.New("not set")
 
 // Config is the plugin's active configuration, reduced to what the engine reads.
 type Config struct {
+	Global struct {
+		EnsLevel string `json:"ensLevel"`
+	} `json:"global"`
 	Controls []struct {
 		ControlID  string `json:"controlId"`
+		Enabled    *bool  `json:"enabled"`
 		Parameters []struct {
 			ID        string `json:"id"`
 			Value     any    `json:"value"`
 			MatchMode string `json:"matchMode"`
 		} `json:"parameters"`
 	} `json:"controls"`
+	Templates []struct {
+		ID         string            `json:"id"`
+		ControlID  string            `json:"controlId"`
+		Values     map[string]any    `json:"values"`
+		MatchModes map[string]string `json:"matchModes"`
+	} `json:"templates"`
 	Agents map[string]struct {
-		Controls map[string]struct {
+		TypeOverride string `json:"typeOverride"`
+		DetectedType string `json:"detectedType"`
+		Controls     map[string]struct {
+			TemplateID string            `json:"templateId"`
 			Parameters map[string]any    `json:"parameters"`
 			MatchModes map[string]string `json:"matchModes"`
 		} `json:"controls"`
 	} `json:"agents"`
+}
+
+// NoTemplate is the plugin's explicit "no template" assignment.
+const NoTemplate = "none"
+
+// systemTypes are the system types the plugin knows; any other value is ignored.
+var systemTypes = map[string]bool{"linux": true, "zimbra-ldap": true, "windows": true, "manager": true}
+
+// Level is the active ENS level (BAJO, MEDIO, ALTO); "" when not set.
+func (c *Config) Level() string {
+	return c.Global.EnsLevel
+}
+
+// ControlEnabled: false only when the configuration disables the control.
+func (c *Config) ControlEnabled(controlID string) bool {
+	for _, control := range c.Controls {
+		if control.ControlID == controlID {
+			return control.Enabled == nil || *control.Enabled
+		}
+	}
+	return true
 }
 
 // Load reads the ACTIVE_CONFIGURATION document of index (usually
@@ -66,8 +102,7 @@ func Load(ctx context.Context, client *indexer.Client, index string) (*Config, e
 	return &resp.Hits.Hits[0].Source.Configuration, nil
 }
 
-// List returns a list parameter for one agent: the agent's own value when it
-// has one, otherwise the control's. Plugin templates are not applied yet. A
+// List returns a list parameter for one agent, resolved as valueAndMode. A
 // parameter written as a regular expression is an error here: use Matcher.
 func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 
@@ -87,31 +122,8 @@ func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 // Number returns a numeric parameter for one agent (agent value first, then
 // the control's). The plugin stores numbers as JSON numbers or as strings.
 func (c *Config) Number(agentID, controlID, paramID string) (float64, error) {
-	return number(c.value(agentID, controlID, paramID))
-}
-
-// value finds the raw value of a parameter: the agent's own, else the
-// control's. ok is false when neither exists.
-func (c *Config) value(agentID, controlID, paramID string) (any, bool) {
-
-	if agent, ok := c.Agents[agentID]; ok {
-		if value, ok := agent.Controls[controlID].Parameters[paramID]; ok {
-			return value, true
-		}
-	}
-
-	for _, control := range c.Controls {
-		if control.ControlID != controlID {
-			continue
-		}
-		for _, p := range control.Parameters {
-			if p.ID == paramID {
-				return p.Value, true
-			}
-		}
-	}
-
-	return nil, false
+	value, _, ok := c.valueAndMode(agentID, controlID, paramID)
+	return number(value, ok)
 }
 
 func number(value any, ok bool) (float64, error) {
@@ -238,8 +250,8 @@ func (m Matcher) String() string {
 	return strings.Join(m.list, ", ")
 }
 
-// Matcher returns a list-or-pattern parameter for one agent: the agent's own
-// value and mode when it has one, otherwise the control's.
+// Matcher returns a list-or-pattern parameter for one agent, resolved as
+// valueAndMode.
 func (c *Config) Matcher(agentID, controlID, paramID string) (Matcher, error) {
 
 	value, mode, ok := c.valueAndMode(agentID, controlID, paramID)
@@ -261,13 +273,36 @@ func (c *Config) Matcher(agentID, controlID, paramID string) (Matcher, error) {
 	return PatternMatcher(source)
 }
 
-// valueAndMode is value plus the match mode stored at the same level.
+// valueAndMode resolves a parameter for one agent as the plugin does
+// (configuration-resolver.ts), with the match mode stored at the level the
+// value comes from:
+//
+//  1. Organisation parameters (and those the catalog does not know): the
+//     control's common value only; an agent value is ignored.
+//  2. System and platform parameters: the agent's own value; else its
+//     template (the assigned one, built-in or custom; NoTemplate disables;
+//     with none assigned or found, the built-in default of its system type);
+//     else the common value.
+//
+// Union parameters (read whole across agents) do not occur in op.acc.1 and
+// are not resolved here.
 func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, bool) {
 
-	if agent, ok := c.Agents[agentID]; ok {
-		control := agent.Controls[controlID]
-		if value, ok := control.Parameters[paramID]; ok {
-			return value, control.MatchModes[paramID], true
+	if catalog.IsAgentLevel(controlID, paramID) {
+
+		agent, hasProfile := c.Agents[agentID]
+		entry := agent.Controls[controlID]
+
+		if hasProfile {
+			if value, ok := entry.Parameters[paramID]; ok {
+				return value, entry.MatchModes[paramID], true
+			}
+		}
+
+		if values, modes, ok := c.template(agent.TypeOverride, agent.DetectedType, entry.TemplateID, controlID); ok {
+			if value, ok := values[paramID]; ok {
+				return value, modes[paramID], true
+			}
 		}
 	}
 
@@ -283,6 +318,39 @@ func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, 
 	}
 
 	return nil, "", false
+}
+
+// template finds the values of the agent's effective template for a control.
+func (c *Config) template(typeOverride, detectedType, assigned, controlID string) (map[string]any, map[string]string, bool) {
+
+	if assigned == NoTemplate {
+		return nil, nil, false
+	}
+
+	if assigned != "" {
+		if t, ok := catalog.BuiltinTemplate(assigned, controlID); ok {
+			return t.Values[controlID], t.MatchModes[controlID], true
+		}
+		for _, t := range c.Templates {
+			if t.ID == assigned && t.ControlID == controlID {
+				return t.Values, t.MatchModes, true
+			}
+		}
+	}
+
+	systemType := typeOverride
+	if !systemTypes[systemType] {
+		systemType = detectedType
+	}
+	if !systemTypes[systemType] {
+		return nil, nil, false
+	}
+
+	if t, ok := catalog.TypeDefaultTemplate(controlID, systemType); ok {
+		return t.Values[controlID], t.MatchModes[controlID], true
+	}
+
+	return nil, nil, false
 }
 
 // listValue accepts a JSON list of strings or one string with one entry per
@@ -330,6 +398,8 @@ type Lister interface {
 	ListColumn(agentID, controlID, paramID string, col int) ([]string, error)
 	Number(agentID, controlID, paramID string) (float64, error)
 	Matcher(agentID, controlID, paramID string) (Matcher, error)
+	Level() string
+	ControlEnabled(controlID string) bool
 }
 
 // Unavailable answers every List with err: used when the configuration could
@@ -355,3 +425,8 @@ func (u unavailable) Number(string, string, string) (float64, error) {
 func (u unavailable) Matcher(string, string, string) (Matcher, error) {
 	return Matcher{}, fmt.Errorf("configuration not loaded: %w", u.err)
 }
+
+// Without a configuration the level is not known: nothing is ruled out.
+func (u unavailable) Level() string { return "" }
+
+func (u unavailable) ControlEnabled(string) bool { return true }

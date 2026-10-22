@@ -3,6 +3,7 @@ package run
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,7 +54,15 @@ func (m *memHistory) Save(_ context.Context, accounts []history.Account) error {
 	return nil
 }
 
-type noParams struct{}
+// noParams: no parameter set, level as given, every control enabled.
+type noParams struct {
+	level    string
+	disabled bool
+}
+
+func (p noParams) Level() string { return p.level }
+
+func (p noParams) ControlEnabled(string) bool { return !p.disabled }
 
 func (noParams) List(string, string, string) ([]string, error) { return nil, errors.New("not set") }
 
@@ -183,6 +192,45 @@ func TestOncePicksPreviousCompleteIdentityPass(t *testing.T) {
 	for i := range want {
 		if facts.identityAsked[i] != want[i] {
 			t.Fatalf("records asked for %v, want %v", facts.identityAsked, want)
+		}
+	}
+}
+
+func TestOnceNotApplicable(t *testing.T) {
+	facts := &fakeFacts{agents: []verdict.Agent{{ID: "001", Name: "a"}}}
+	cfg := Config{Window: time.Hour, Lookback: 2 * time.Hour}
+
+	byEvidence := func(policy noParams) map[string]verdict.Verdict {
+		sink := &fakeSink{}
+		if _, err := Once(context.Background(), facts, policy, &memHistory{}, sink, cfg, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]verdict.Verdict{}
+		for _, v := range sink.got {
+			got[v.Evidence] = v
+		}
+		return got
+	}
+
+	bajo := byEvidence(noParams{level: "BAJO"})
+	if v := bajo["EV-07"]; v.Status != verdict.NotApplicable || !strings.Contains(v.Reason, "MEDIO, ALTO") {
+		t.Errorf("EV-07 at BAJO: %+v", v)
+	}
+	if bajo["EV-01"].Status == verdict.NotApplicable {
+		t.Errorf("EV-01 applies at BAJO: %+v", bajo["EV-01"])
+	}
+
+	if v := byEvidence(noParams{level: "MEDIO"})["EV-07"]; v.Status == verdict.NotApplicable {
+		t.Errorf("EV-07 at MEDIO: %+v", v)
+	}
+
+	if v := byEvidence(noParams{})["EV-07"]; v.Status == verdict.NotApplicable {
+		t.Errorf("EV-07 with no level: %+v", v)
+	}
+
+	for ev, v := range byEvidence(noParams{level: "ALTO", disabled: true}) {
+		if v.Status != verdict.NotApplicable || !strings.Contains(v.Reason, "disabled") {
+			t.Errorf("%s with op.acc.1 disabled: %+v", ev, v)
 		}
 	}
 }

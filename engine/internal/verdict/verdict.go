@@ -9,6 +9,9 @@ const (
 	Compliant    Status = "COMPLIANT"
 	NonCompliant Status = "NON_COMPLIANT"
 	NotEvaluable Status = "NOT_EVALUABLE"
+	// NotApplicable: the evidence does not apply at the active ENS level, or
+	// the control is disabled in the configuration.
+	NotApplicable Status = "NOT_APPLICABLE"
 )
 
 // Cause says why an evidence is NotEvaluable. Never set with another status.
