@@ -254,26 +254,27 @@ Disabled (EV-04, EV-08): a no-login shell, an expired account, or no usable
 password (`locked` or `missing`) and `authorized_keys` = 0. Unknown when the
 password is unusable and `authorized_keys` is absent. v1 also counted a locked
 password with keys as disabled, though sshd still accepts the key; v2 does
-not. In EV-08 history an unknown state counts as enabled: only a provable
-disabling is recorded.
+not. The EV-08 history records an unknown state as such (`state_unknown`):
+it neither proves nor clears a disabling.
 
 EV-08 over the per-account history the engine keeps in
 `oscompliance-identity-history` (one document per agent and account:
 `first_seen`, `last_seen`, `disabled_since`, `disabled_observed`,
-`deleted_at`, last `account_expires`). Each complete current EV-02 pass moves
+`state_unknown`, `deleted_at`, last `account_expires`). Each complete current EV-02 pass moves
 it forward; applying a pass twice changes nothing. It replaces v1
 `deshabilitadas.tsv` on the host.
 
 1. P-06, P-09 or P-10 unusable: `NOT_EVALUABLE`, cause `CONFIGURATION`.
 2. No complete current identity pass: `NOT_EVALUABLE`, cause `COLLECTION`.
-3. An account with UID >= P-10, disabled before being deleted in the window,
-   deleted less than P-06 days after its start date: `NON_COMPLIANT`. Start
-   date: its P-09 row, else its last expiry date, else the day the engine saw
-   it change from enabled to disabled.
+3. An account with UID >= P-10 deleted in the window less than P-06 days
+   after its start date, or deleted while still enabled (kept zero days):
+   `NON_COMPLIANT`. Start date: its P-09 row, else its last expiry date, else
+   the day the engine saw it change from enabled to disabled. v1 did not
+   track accounts deleted while enabled.
 4. A deleted account with no start date (already disabled when the history
-   began, no P-09 row, no expiry): `NOT_EVALUABLE`, cause `EVIDENCE`, as v1.
-5. Otherwise `COMPLIANT`. As v1, an account deleted while still enabled is
-   not tracked.
+   began, no P-09 row, no expiry) or whose last state was unknown:
+   `NOT_EVALUABLE`, cause `EVIDENCE`.
+5. Otherwise `COMPLIANT`.
 
 EV-06 over the newest group pass, the account list of the newest complete
 EV-02 pass, P-11, P-12 and the sshd logins:
@@ -361,8 +362,6 @@ current state.
 
 ## 10. Open decisions
 
-- EV-08 ignores accounts deleted while still enabled (v1 did too); they were
-  kept zero days.
 
 - `uid_min`: the agent applies its own flag for EV-01 while P-10 lives in the
   plugin. Moving it to the engine means emitting `account_record` for every

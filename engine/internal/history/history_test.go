@@ -11,8 +11,12 @@ func record(name, state string) fact.IdentityRecord {
 	return fact.IdentityRecord{AccountName: name, UID: 1500, Shell: "/bin/bash", PasswordState: state}
 }
 
-func lockedIsDisabled(r fact.IdentityRecord, _ time.Time) bool {
-	return r.PasswordState == fact.PasswordLocked
+// lockedIsDisabled: "locked" disabled, "other" unknown, anything else enabled.
+func lockedIsDisabled(r fact.IdentityRecord, _ time.Time) (bool, bool) {
+	if r.PasswordState == fact.PasswordOther {
+		return false, false
+	}
+	return r.PasswordState == fact.PasswordLocked, true
 }
 
 // apply runs Update and merges the changes, as the engine does with the index.
@@ -71,5 +75,27 @@ func TestUpdateLifecycle(t *testing.T) {
 	apply(known, []fact.IdentityRecord{record("ana", "set")}, t4.AddDate(0, 0, 2), "r6")
 	if a := known["ana"]; a.DeletedAt != nil || a.DisabledSince != nil {
 		t.Errorf("ana re-created: %+v", a)
+	}
+}
+
+func TestUpdateUnknownState(t *testing.T) {
+	t1 := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	known := map[string]Account{}
+
+	apply(known, []fact.IdentityRecord{record("kim", "other")}, t1, "r1")
+	if a := known["kim"]; !a.StateUnknown || a.DisabledSince != nil {
+		t.Errorf("unknown at first sight: %+v", a)
+	}
+
+	// Becomes disabled after an unknown state: not an observed change.
+	apply(known, []fact.IdentityRecord{record("kim", "locked")}, t1.AddDate(0, 0, 1), "r2")
+	if a := known["kim"]; a.StateUnknown || a.DisabledSince == nil || a.DisabledObserved {
+		t.Errorf("disabled after unknown: %+v", a)
+	}
+
+	// Unknown again: the recorded disabling stays.
+	apply(known, []fact.IdentityRecord{record("kim", "other")}, t1.AddDate(0, 0, 2), "r3")
+	if a := known["kim"]; !a.StateUnknown || a.DisabledSince == nil {
+		t.Errorf("unknown after disabled: %+v", a)
 	}
 }

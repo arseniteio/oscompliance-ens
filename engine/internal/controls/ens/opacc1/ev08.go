@@ -33,8 +33,9 @@ type EV08Input struct {
 //
 //  1. P-06, P-09 or P-10 unusable: NOT_EVALUABLE, CONFIGURATION.
 //  2. No complete current identity pass: NOT_EVALUABLE, COLLECTION.
-//  3. A disabled account with UID >= P-10, deleted in the window less than
-//     P-06 days after its offboarding date: NON_COMPLIANT.
+//  3. An account with UID >= P-10, deleted in the window less than P-06
+//     days after its offboarding date, or deleted while still enabled (kept
+//     zero days): NON_COMPLIANT.
 //  4. A deleted account whose start date is unknown: NOT_EVALUABLE, EVIDENCE.
 //  5. Otherwise COMPLIANT.
 func JudgeEV08(in EV08Input) verdict.Judgement {
@@ -55,8 +56,21 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 
 	for _, account := range in.Deleted {
 
-		// As v1: only accounts disabled before deletion are tracked.
-		if account.UID < in.UIDMin || account.DisabledSince == nil || account.DeletedAt == nil {
+		if account.UID < in.UIDMin || account.DeletedAt == nil {
+			continue
+		}
+
+		// Last seen in an unknown state: whether it was disabled is not known.
+		if account.DisabledSince == nil && account.StateUnknown {
+			unknown = append(unknown, account.AccountName)
+			continue
+		}
+
+		// Deleted without being disabled first: kept zero days. v1 did not
+		// track these accounts at all.
+		if account.DisabledSince == nil {
+			checked++
+			violations = append(violations, account.AccountName+" (deleted while enabled)")
 			continue
 		}
 
@@ -87,17 +101,17 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	// 4. Deleted, but since when was it out of use is not known.
 	if len(unknown) > 0 {
 		return notEvaluable(verdict.CauseEvidence,
-			"no offboarding date for deleted accounts, retention cannot be measured: "+strings.Join(unknown, ", "))
+			"deleted accounts with no known offboarding date or state, retention cannot be measured: "+strings.Join(unknown, ", "))
 	}
 
 	// 5. Nothing deleted too early.
 	if checked == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no disabled account deleted in the window"}
+		return verdict.Judgement{Status: verdict.Compliant, Reason: "no account deleted in the window"}
 	}
 
 	return verdict.Judgement{
 		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d disabled accounts deleted in the window, all kept at least %d days (P-06)", checked, in.RetentionDays),
+		Reason: fmt.Sprintf("%d accounts deleted in the window, all kept at least %d days (P-06)", checked, in.RetentionDays),
 	}
 }
 

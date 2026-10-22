@@ -115,13 +115,18 @@ func (c *Client) Put(ctx context.Context, index, id string, doc any) error {
 }
 
 // EnsureIndex creates index with the given body (settings and mappings) when
-// it does not exist yet.
-func (c *Client) EnsureIndex(ctx context.Context, index string, body any) error {
+// it does not exist yet. When it exists, the mappings are put again: new
+// fields are added, existing ones must not change (the indexer refuses that).
+func (c *Client) EnsureIndex(ctx context.Context, index string, body map[string]any) error {
 
 	err := c.Do(ctx, http.MethodHead, "/"+url.PathEscape(index), nil, nil)
 
 	if err == nil {
-		return nil
+		mappings, ok := body["mappings"]
+		if !ok {
+			return nil
+		}
+		return c.Do(ctx, http.MethodPut, "/"+url.PathEscape(index)+"/_mapping", mappings, nil)
 	}
 
 	if e, ok := err.(*Error); !ok || e.Status != http.StatusNotFound {

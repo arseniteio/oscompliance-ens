@@ -34,6 +34,9 @@ func TestJudgeEV08(t *testing.T) {
 	declared := base(deletedAccount("ana", "2026-10-01", "2026-10-20", false, ""))
 	declared.Declared["ana"] = day("2026-09-01")
 
+	unknownState := deletedAccount("lee", "", "2026-10-10", false, "")
+	unknownState.StateUnknown = true
+
 	system := deletedAccount("svc", "2026-10-01", "2026-10-02", true, "")
 	system.UID = 500
 
@@ -46,13 +49,15 @@ func TestJudgeEV08(t *testing.T) {
 	}{
 		{"configuration problem", badConfig, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-06"}},
 		{"no identity pass", noIdentity, verdict.NotEvaluable, verdict.CauseCollection, nil},
-		{"nothing deleted", base(), verdict.Compliant, "", []string{"no disabled account deleted"}},
+		{"nothing deleted", base(), verdict.Compliant, "", []string{"no account deleted"}},
 		{"observed disabling, deleted too early", base(deletedAccount("ana", "2026-10-01", "2026-10-11", true, "")), verdict.NonCompliant, "", []string{"ana (10 days)", "30 days (P-06)"}},
-		{"observed disabling, kept long enough", base(deletedAccount("ana", "2026-08-01", "2026-10-11", true, "")), verdict.Compliant, "", []string{"1 disabled accounts"}},
+		{"observed disabling, kept long enough", base(deletedAccount("ana", "2026-08-01", "2026-10-11", true, "")), verdict.Compliant, "", []string{"1 accounts deleted"}},
 		{"P-09 date wins", declared, verdict.Compliant, "", nil},
 		{"expiry date used", base(deletedAccount("eva", "2026-10-05", "2026-10-10", false, "2026-10-01")), verdict.NonCompliant, "", []string{"eva (9 days)"}},
 		{"start unknown", base(deletedAccount("old", "2026-10-05", "2026-10-10", false, "")), verdict.NotEvaluable, verdict.CauseEvidence, []string{"old"}},
-		{"deleted while enabled is not tracked", base(deletedAccount("bob", "", "2026-10-10", false, "")), verdict.Compliant, "", nil},
+		{"last state unknown", base(unknownState), verdict.NotEvaluable, verdict.CauseEvidence, []string{"lee"}},
+		{"deleted while enabled", base(deletedAccount("bob", "", "2026-10-10", false, "")), verdict.NonCompliant, "", []string{"bob (deleted while enabled)"}},
+		{"too early wins over unknown", base(deletedAccount("bob", "", "2026-10-10", false, ""), deletedAccount("old", "2026-10-05", "2026-10-10", false, "")), verdict.NonCompliant, "", []string{"bob"}},
 		{"system account ignored", base(system), verdict.Compliant, "", nil},
 	}
 

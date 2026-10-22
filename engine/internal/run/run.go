@@ -402,14 +402,7 @@ func inputEV08(ctx context.Context, hist History, policy params.Lister, agent ve
 			return in, fmt.Errorf("identity pass %s: ts: %w", current.RunID, err)
 		}
 
-		// "Unknown" counts as enabled: the history only records a disabling
-		// it can prove.
-		disabled := func(r fact.IdentityRecord, day time.Time) bool {
-			d, known := opacc1.IsDisabled(r, day)
-			return d && known
-		}
-
-		changed := history.Update(known, agent.ID, agent.Name, ev02.Records, at, current.RunID, disabled)
+		changed := history.Update(known, agent.ID, agent.Name, ev02.Records, at, current.RunID, opacc1.IsDisabled)
 
 		if err := hist.Save(ctx, changed); err != nil {
 			return in, fmt.Errorf("history: %w", err)

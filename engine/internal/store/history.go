@@ -24,6 +24,7 @@ var historyMapping = map[string]any{
 			"account_expires":   kw(),
 			"disabled_since":    date(),
 			"disabled_observed": map[string]any{"type": "boolean"},
+			"state_unknown":     map[string]any{"type": "boolean"},
 			"deleted_at":        date(),
 		},
 	},

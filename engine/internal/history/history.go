@@ -32,13 +32,18 @@ type Account struct {
 	DisabledSince    *time.Time `json:"disabled_since,omitempty"`
 	DisabledObserved bool       `json:"disabled_observed"`
 
+	// StateUnknown: on the last pass it could not be known whether the
+	// account was disabled (locked password, SSH keys not countable).
+	StateUnknown bool `json:"state_unknown"`
+
 	// DeletedAt is the first pass where the account was missing; nil while
 	// it exists.
 	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 }
 
-// DisabledFunc says whether an account is disabled at a given day.
-type DisabledFunc func(fact.IdentityRecord, time.Time) bool
+// DisabledFunc says whether an account is disabled at a given day, and
+// whether that can be known.
+type DisabledFunc func(fact.IdentityRecord, time.Time) (disabled, known bool)
 
 // Update applies one complete identity pass taken at "at" to the known
 // history of one agent and returns the accounts that changed, new ones
@@ -75,14 +80,22 @@ func Update(known map[string]Account, agentID, agentName string, records []fact.
 			after.LastRunID = runID
 		}
 
-		if disabled(record, day) {
+		isDisabled, known := disabled(record, day)
+
+		switch {
+		case !known:
+			// Neither proves a disabling nor clears one already recorded.
+			after.StateUnknown = true
+		case isDisabled:
+			after.StateUnknown = false
 			if after.DisabledSince == nil {
 				since := at
 				after.DisabledSince = &since
-				// Seen enabled before: the change itself was observed.
-				after.DisabledObserved = existed
+				// Seen enabled (and known) before: the change was observed.
+				after.DisabledObserved = existed && !before.StateUnknown
 			}
-		} else {
+		default:
+			after.StateUnknown = false
 			after.DisabledSince = nil
 			after.DisabledObserved = false
 		}
@@ -110,6 +123,7 @@ func same(a, b Account) bool {
 	return a.AgentName == b.AgentName && a.UID == b.UID && a.AccountExpires == b.AccountExpires &&
 		a.LastSeen.Equal(b.LastSeen) && a.LastRunID == b.LastRunID &&
 		equalTime(a.DisabledSince, b.DisabledSince) && a.DisabledObserved == b.DisabledObserved &&
+		a.StateUnknown == b.StateUnknown &&
 		equalTime(a.DeletedAt, b.DeletedAt)
 }
 
