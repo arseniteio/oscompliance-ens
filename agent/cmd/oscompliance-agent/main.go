@@ -87,6 +87,7 @@ func run() error {
 			return sysconf.CollectConfig(e, sysconf.ConfigConfig{Files: sysconf.DefaultConfigFiles, SSHD: *sshd})
 		},
 		"authprobe": func() error { return sysconf.CollectAuthProbe(e) },
+		"firewall":  func() error { return sysconf.CollectFirewall(e, sysconf.DefaultFirewall) },
 		"wazuh":     func() error { return sysconf.CollectWazuhConfig(e, sysconf.DefaultWazuhConfig) },
 		"acl":       func() error { return sysconf.CollectACL(e, sysconf.ACLConfig{SharedPaths: sysconf.DefaultSharedPaths}) },
 		"audit": func() error {
@@ -115,7 +116,12 @@ func run() error {
 	var errs []error
 	for _, name := range allCollectors {
 		if selected[name] {
-			if err := collectors[name](); err != nil {
+			collect, ok := collectors[name]
+			if !ok {
+				errs = append(errs, fmt.Errorf("%s: no collector", name))
+				continue
+			}
+			if err := collect(); err != nil {
 				errs = append(errs, fmt.Errorf("%s: %w", name, err))
 			}
 		}
