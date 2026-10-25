@@ -30,7 +30,7 @@ type EV02Input struct {
 	Listening Listening
 	Settings  Settings
 	PAM       PAM
-	Log       AuthLog
+	Log       passes.AuthLog
 
 	// Zones is P-02; ZonesProblem says why it cannot be used.
 	Zones        Zones

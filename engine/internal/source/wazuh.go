@@ -42,7 +42,9 @@ type Login struct {
 	Time     time.Time
 	Account  string // data.dstuser: the account logged in as
 	SourceIP string // data.srcip, sshd only
-	Method   string // one of the Method* values
+	// SourceUser is data.srcuser: who became Account (su).
+	SourceUser string
+	Method     string // one of the Method* values
 	// Auth is how sshd authenticated it (publickey, password,
 	// keyboard-interactive/pam...), "" for the other methods. With
 	// AuthenticationMethods, the methods before it are in "Partial" lines.
@@ -95,6 +97,7 @@ func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([
 			} `json:"decoder"`
 			Data struct {
 				DstUser string `json:"dstuser"`
+				SrcUser string `json:"srcuser"`
 				SrcIP   string `json:"srcip"`
 			} `json:"data"`
 			FullLog string `json:"full_log"`
@@ -115,7 +118,7 @@ func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([
 			method = pamPrograms[a.Predecoder.ProgramName]
 		}
 
-		login := Login{Time: ts, Account: a.Data.DstUser, SourceIP: a.Data.SrcIP, Method: method, AlertID: a.ID}
+		login := Login{Time: ts, Account: a.Data.DstUser, SourceUser: a.Data.SrcUser, SourceIP: a.Data.SrcIP, Method: method, AlertID: a.ID}
 		if m := accepted.FindStringSubmatch(a.FullLog); method == MethodSSHD && m != nil {
 			login.Auth, login.KeyType = m[1], m[2]
 		}

@@ -19,7 +19,7 @@ type EV07Input struct {
 	Logins []source.Login
 	// Log: when the authentication log does not reach Wazuh, an empty
 	// Logins proves nothing.
-	Log AuthLog
+	Log passes.AuthLog
 
 	// Channels is the canal column of P-07; ChannelsProblem says why it
 	// cannot be used.

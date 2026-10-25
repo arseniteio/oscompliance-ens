@@ -3,7 +3,6 @@ package opacc2
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
@@ -78,63 +77,8 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 			fmt.Sprintf("sudoers read %s incomplete: %d of %d sudo_grant received", sudoers.RunID, len(in.Sudoers.Grants), sudoers.RecordsEmitted))
 	}
 
-	idx := indexAccounts(in.Accounts)
-
 	// 3. Everyone with privilege, and where it comes from.
-	privileged := map[string][]string{}
-	add := func(name, via string) {
-		privileged[name] = append(privileged[name], via)
-	}
-
-	for _, g := range in.Groups {
-		for _, name := range idx.members(g) {
-			add(name, "group "+g)
-		}
-	}
-
-	var unresolved []string
-
-	for _, grant := range in.Sudoers.Grants {
-
-		via := fmt.Sprintf("sudoers %s:%d", grant.File, grant.Line)
-
-		switch grant.SubjectKind {
-		case "user":
-			if grant.Subject != "root" {
-				add(grant.Subject, via)
-			}
-		case "uid":
-			uid, err := strconv.Atoi(grant.Subject)
-			name, ok := idx.byUID[uid]
-			if err != nil || !ok {
-				unresolved = append(unresolved, "#"+grant.Subject)
-				continue
-			}
-			if name != "root" {
-				add(name, via)
-			}
-		case "group", "gid":
-			group := grant.Subject
-			if grant.SubjectKind == "gid" {
-				gid, err := strconv.Atoi(grant.Subject)
-				name, ok := idx.groupByGID[gid]
-				if err != nil || !ok {
-					unresolved = append(unresolved, "%#"+grant.Subject)
-					continue
-				}
-				group = name
-			}
-			if _, ok := idx.groupGID[group]; !ok {
-				unresolved = append(unresolved, "%"+group)
-				continue
-			}
-			for _, name := range idx.members(group) {
-				if name != "root" {
-					add(name, via+" via %"+group)
-				}
-			}
-		}
-	}
+	privileged, unresolved := privilegedAccounts(indexAccounts(in.Accounts), in.Groups, in.Sudoers.Grants)
 
 	declared := map[string]bool{}
 	for _, name := range in.Declared {

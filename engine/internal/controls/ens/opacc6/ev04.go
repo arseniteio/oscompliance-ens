@@ -21,7 +21,7 @@ type EV04Input struct {
 	// Failures and Lockouts in the window, as Wazuh decoded them.
 	Failures []source.Failure
 	Lockouts []source.Lockout
-	Log      AuthLog
+	Log      passes.AuthLog
 
 	// MaxAttempts is P-05; MaxAttemptsProblem says why it cannot be used.
 	MaxAttempts        int

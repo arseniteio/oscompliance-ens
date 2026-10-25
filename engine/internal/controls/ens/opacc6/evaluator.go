@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
 	"strconv"
 	"strings"
 	"time"
@@ -159,7 +160,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results[id] = j()
 	}
 
-	authLog := ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now)
+	authLog := passes.ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now)
 	configRun := runOf(settings.Snapshot)
 
 	// EV-01: logging of accesses.

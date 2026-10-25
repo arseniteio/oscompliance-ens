@@ -1,4 +1,4 @@
-package opacc6
+package passes
 
 import (
 	"fmt"

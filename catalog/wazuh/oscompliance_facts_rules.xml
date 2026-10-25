@@ -14,6 +14,9 @@
     119003  an event of an external-user service's authentication log
             (op.acc.5 contract), read by a <localfile> whose label
             oscompliance_service names the service (level 3, indexed)
+    119004  an auditd record of a watch the agent loaded (audit.key
+            oscompliance_read, _write, _exec or _attr): Wazuh's own audit
+            rules leave unknown keys at level 0, not indexed
 -->
 <group name="oscompliance,">
 
@@ -37,7 +40,21 @@
     <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
     <field name="tipo" type="pcre2">^[a-z_]+$</field>
     <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,</group>
+    <group>oscompliance_service,  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
   </rule>
 
 </group>
@@ -48,7 +65,21 @@
     <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
     <field name="tipo" type="pcre2">^[a-z_]+$</field>
     <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,</group>
+    <group>oscompliance_service,  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
   </rule>
 
 </group>
@@ -63,7 +94,21 @@
     <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
     <field name="tipo" type="pcre2">^[a-z_]+$</field>
     <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,</group>
+    <group>oscompliance_service,  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
   </rule>
 
 </group>
@@ -74,7 +119,21 @@
     <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
     <field name="tipo" type="pcre2">^[a-z_]+$</field>
     <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,</group>
+    <group>oscompliance_service,  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119004" level="3">
+    <if_sid>80700</if_sid>
+    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr)$</field>
+    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
+    <group>oscompliance_audit,</group>
   </rule>
 
 </group>

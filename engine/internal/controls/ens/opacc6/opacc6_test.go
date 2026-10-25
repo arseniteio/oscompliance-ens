@@ -1,6 +1,7 @@
 package opacc6
 
 import (
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
 	"strings"
 	"testing"
 	"time"
@@ -255,8 +256,8 @@ func TestJudgeEV12(t *testing.T) {
 }
 
 var (
-	reaches = AuthLog{Known: true, Reaches: true, Detail: "probe came back"}
-	lost    = AuthLog{Known: true, Detail: "3 probes written to the authentication log never reached Wazuh"}
+	reaches = passes.AuthLog{Known: true, Reaches: true, Detail: "probe came back"}
+	lost    = passes.AuthLog{Known: true, Detail: "3 probes written to the authentication log never reached Wazuh"}
 )
 
 func TestProbeResult(t *testing.T) {
@@ -284,7 +285,7 @@ func TestProbeResult(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		got := ProbeResult(c.probes, c.seen, today)
+		got := passes.ProbeResult(c.probes, c.seen, today)
 		if got.Known != c.known || got.Reaches != c.reaches {
 			t.Errorf("%s: got %+v", c.name, got)
 		}
@@ -307,7 +308,7 @@ func TestJudgeEV01(t *testing.T) {
 		{"no local source", EV01Input{Sources: []string{"ldap"}}, verdict.Compliant, "", "ldap"},
 		{"probe came back", EV01Input{Settings: info, Sources: []string{"local"}, Log: reaches}, verdict.Compliant, "", "reaches Wazuh"},
 		{"probe lost", EV01Input{Settings: info, Sources: []string{"local"}, Log: lost}, verdict.NonCompliant, "", "never reached Wazuh"},
-		{"probe not known", EV01Input{Settings: info, Sources: []string{"local"}, Log: AuthLog{Detail: "no auth_log_probe in the window"}}, verdict.NotEvaluable, verdict.CauseCollection, "no auth_log_probe"},
+		{"probe not known", EV01Input{Settings: info, Sources: []string{"local"}, Log: passes.AuthLog{Detail: "no auth_log_probe in the window"}}, verdict.NotEvaluable, verdict.CauseCollection, "no auth_log_probe"},
 		{"sshd quiet", EV01Input{Settings: quiet, Sources: []string{"local"}, Log: reaches}, verdict.NonCompliant, "", "LogLevel QUIET"},
 	}
 

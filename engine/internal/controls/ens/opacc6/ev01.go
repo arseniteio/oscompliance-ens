@@ -13,7 +13,7 @@ type EV01Input struct {
 	Settings Settings
 
 	// Log says whether the authentication log reaches Wazuh (the probe).
-	Log AuthLog
+	Log passes.AuthLog
 
 	// Sources is P-03; SourcesProblem says why it cannot be used.
 	Sources        []string
