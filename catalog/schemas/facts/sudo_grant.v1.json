@@ -44,6 +44,14 @@
     "nopasswd": {
       "description": "The specification carries a NOPASSWD tag.",
       "type": "boolean"
+    },
+    "nopasswd_commands": {
+      "description": "Commands this subject runs without a password (NOPASSWD tag, which carries over to the next commands of the list until PASSWD), in order, Cmnd_Alias expanded. ALL is every command. A name left in capitals is a Cmnd_Alias that is not defined. Negated commands are left out.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   },
   "unevaluatedProperties": false

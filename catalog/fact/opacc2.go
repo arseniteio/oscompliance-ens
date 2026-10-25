@@ -71,6 +71,8 @@ type SudoGrant struct {
 	File        string `json:"file"`
 	Line        int    `json:"line"`
 	NoPasswd    bool   `json:"nopasswd,omitempty"`
+	// NoPasswdCommands are the commands run without a password.
+	NoPasswdCommands []string `json:"nopasswd_commands,omitempty"`
 }
 
 // SudoersFile is one file of sudoers_snapshot.v1.json.
@@ -80,6 +82,14 @@ type SudoersFile struct {
 	Error  string `json:"error,omitempty"`
 }
 
+// SudoDefault is one Defaults setting of sudoers_snapshot.v1.json.
+type SudoDefault struct {
+	Binding string `json:"binding"`
+	Setting string `json:"setting"`
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+}
+
 // SudoersSnapshot mirrors sudoers_snapshot.v1.json.
 type SudoersSnapshot struct {
 	Envelope
@@ -87,5 +97,6 @@ type SudoersSnapshot struct {
 	Status           string        `json:"status"`
 	BlindSpots       int           `json:"blind_spots"`
 	BlindSpotReasons []string      `json:"blind_spot_reasons,omitempty"`
+	Defaults         []SudoDefault `json:"defaults,omitempty"`
 	RecordsEmitted   int           `json:"records_emitted"`
 }

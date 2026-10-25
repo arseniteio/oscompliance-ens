@@ -60,6 +60,37 @@
         "type": "string"
       }
     },
+    "defaults": {
+      "description": "Every Defaults setting, in file order: binding is what follows Defaults (\"\" global, @host, :user, !command, >runas), setting is one entry as written (!authenticate, timestamp_timeout=-1).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "binding",
+          "setting",
+          "file",
+          "line"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "binding": {
+            "type": "string"
+          },
+          "setting": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
     "records_emitted": {
       "type": "integer",
       "minimum": 0

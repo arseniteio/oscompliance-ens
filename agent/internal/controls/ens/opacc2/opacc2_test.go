@@ -259,3 +259,50 @@ ALL ALL = /usr/bin/who
 		t.Errorf("absent: %v", facts)
 	}
 }
+
+func TestSudoersReauthentication(t *testing.T) {
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "sudoers"), `Defaults env_reset, timestamp_timeout=-1
+Defaults:backup !authenticate
+Defaults env_keep += "LANG, LC_ALL"
+Cmnd_Alias SVC = /usr/bin/systemctl restart nginx, /usr/bin/systemctl reload nginx
+Cmnd_Alias NESTED = SVC, !/usr/bin/su
+ana ALL = (root) NOPASSWD: /usr/bin/apt, PASSWD: /usr/bin/vi, /bin/ls
+ops ALL = (ALL : ALL) CWD=/tmp NOPASSWD:SETENV: NESTED, ALL, !/usr/bin/passwd
+bob ALL = NOPASSWD: UNDEFINED
+eve ALL = /usr/bin/who, NOPASSWD: /usr/bin/x\, y
+`, 0o440)
+
+	facts := run(t, func(e *emit.Emitter) error {
+		return CollectSudoers(e, SudoersConfig{Path: filepath.Join(dir, "sudoers")})
+	})
+
+	got := map[string]string{}
+	for _, f := range facts[:len(facts)-1] {
+		cmds, _ := json.Marshal(f["nopasswd_commands"])
+		got[f["subject"].(string)] = string(cmds)
+	}
+
+	want := map[string]string{
+		"ana": `["/usr/bin/apt"]`,
+		"ops": `["/usr/bin/systemctl restart nginx","/usr/bin/systemctl reload nginx","ALL"]`,
+		"bob": `["UNDEFINED"]`,
+		"eve": `["/usr/bin/x\\, y"]`,
+	}
+	for subject, cmds := range want {
+		if got[subject] != cmds {
+			t.Errorf("%s: got %s, want %s", subject, got[subject], cmds)
+		}
+	}
+
+	var defaults []string
+	for _, d := range facts[len(facts)-1]["defaults"].([]any) {
+		m := d.(map[string]any)
+		defaults = append(defaults, m["binding"].(string)+"|"+m["setting"].(string))
+	}
+
+	want2 := `|env_reset ; |timestamp_timeout=-1 ; :backup|!authenticate ; |env_keep += "LANG, LC_ALL"`
+	if strings.Join(defaults, " ; ") != want2 {
+		t.Errorf("defaults\n got %s\nwant %s", strings.Join(defaults, " ; "), want2)
+	}
+}

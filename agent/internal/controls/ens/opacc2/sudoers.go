@@ -34,7 +34,7 @@ var aliasName = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 // the engine does it against the identity and group facts.
 func CollectSudoers(e *emit.Emitter, cfg SudoersConfig) error {
 
-	p := sudoParser{aliases: map[string][]string{}, seen: map[string]bool{}}
+	p := sudoParser{aliases: map[string][]string{}, commands: map[string][]string{}, seen: map[string]bool{}}
 
 	snapshot := fact.SudoersSnapshot{Envelope: e.Envelope(fact.SudoersSnapshotFact), Files: []fact.SudoersFile{}}
 
@@ -49,6 +49,7 @@ func CollectSudoers(e *emit.Emitter, cfg SudoersConfig) error {
 	}
 
 	snapshot.Files = p.files
+	snapshot.Defaults = p.defaults
 
 	// Aliases may be defined after their use: subjects are expanded once
 	// every file is read.
@@ -77,14 +78,18 @@ type userSpec struct {
 	file     string
 	line     int
 	nopasswd bool
+	// commands is the right-hand side, expanded once every alias is known.
+	commands string
 }
 
 type sudoParser struct {
-	aliases map[string][]string
-	specs   []userSpec
-	files   []fact.SudoersFile
-	blind   []string
-	seen    map[string]bool
+	aliases  map[string][]string
+	commands map[string][]string
+	defaults []fact.SudoDefault
+	specs    []userSpec
+	files    []fact.SudoersFile
+	blind    []string
+	seen     map[string]bool
 }
 
 func (p *sudoParser) blindSpot(file string, line int, why string) {
@@ -175,8 +180,12 @@ func (p *sudoParser) statement(path string, line int, stmt string, depth int) {
 
 	switch {
 	case strings.HasPrefix(first, "Defaults"):
+		p.defaultsLine(path, line, first, strings.TrimSpace(strings.TrimPrefix(trimmed, first)))
 		return
-	case first == "Host_Alias" || first == "Runas_Alias" || first == "Cmnd_Alias" || first == "Cmd_Alias":
+	case first == "Cmnd_Alias" || first == "Cmd_Alias":
+		p.cmndAlias(strings.TrimSpace(strings.TrimPrefix(trimmed, first)))
+		return
+	case first == "Host_Alias" || first == "Runas_Alias":
 		return
 	case first == "User_Alias":
 		p.userAlias(path, line, strings.TrimSpace(strings.TrimPrefix(trimmed, "User_Alias")))
@@ -242,6 +251,27 @@ func stripComment(s string) string {
 	return s
 }
 
+// defaultsLine records every setting of "Defaults[binding] a, b=c, !d".
+func (p *sudoParser) defaultsLine(path string, line int, keyword, settings string) {
+
+	binding := strings.TrimPrefix(keyword, "Defaults")
+
+	for _, setting := range splitCommas(settings) {
+		p.defaults = append(p.defaults, fact.SudoDefault{Binding: binding, Setting: setting, File: path, Line: line})
+	}
+}
+
+// cmndAlias: NAME = /bin/a, /bin/b [: NAME2 = c].
+func (p *sudoParser) cmndAlias(rest string) {
+
+	for _, def := range strings.Split(rest, ":") {
+		name, members, ok := strings.Cut(def, "=")
+		if name = strings.TrimSpace(name); ok && aliasName.MatchString(name) {
+			p.commands[name] = splitCommas(members)
+		}
+	}
+}
+
 // userAlias: NAME = a, b [: NAME2 = c].
 func (p *sudoParser) userAlias(path string, line int, rest string) {
 
@@ -280,6 +310,7 @@ func (p *sudoParser) userSpecification(path string, line int, stmt string) {
 		file:     path,
 		line:     line,
 		nopasswd: strings.Contains(rhs, "NOPASSWD:"),
+		commands: rhs,
 	})
 }
 
@@ -288,6 +319,128 @@ func (p *sudoParser) expand(spec userSpec) []fact.SudoGrant {
 
 	var out []fact.SudoGrant
 	p.expandInto(spec, spec.users, 0, &out)
+
+	commands := p.noPasswdCommands(spec.commands)
+	for i := range out {
+		out[i].NoPasswdCommands = commands
+	}
+
+	return out
+}
+
+// sudoTags are the tags that may precede a command; NOPASSWD and PASSWD
+// carry over to the commands after them until the other one appears.
+var sudoTags = regexp.MustCompile(`^(NOPASSWD|PASSWD|NOEXEC|EXEC|SETENV|NOSETENV|LOG_INPUT|NOLOG_INPUT|LOG_OUTPUT|NOLOG_OUTPUT|MAIL|NOMAIL|FOLLOW|NOFOLLOW|INTERCEPT|NOINTERCEPT)\s*:\s*`)
+
+// sudoOptions are the Option_Spec words before a command (CWD=/tmp).
+var sudoOptions = regexp.MustCompile(`^(ROLE|TYPE|CHROOT|CWD|NOTBEFORE|NOTAFTER|TIMEOUT|APPARMOR_PROFILE|PRIVS|LIMITPRIVS)=\S+\s*`)
+
+// runasSpec is the "(user : group)" in front of a command.
+var runasSpec = regexp.MustCompile(`^\([^)]*\)\s*`)
+
+// noPasswdCommands lists the commands of a right-hand side that run without
+// a password.
+func (p *sudoParser) noPasswdCommands(rhs string) []string {
+
+	var out []string
+	nopasswd := false
+
+	for _, item := range splitCommas(rhs) {
+
+		cmd := stripCommandPrefix(item, &nopasswd)
+
+		if !nopasswd || cmd == "" || strings.HasPrefix(cmd, "!") {
+			continue
+		}
+
+		out = append(out, p.expandCommand(cmd, 0)...)
+	}
+
+	return out
+}
+
+// stripCommandPrefix drops the runas, options and tags in front of a
+// command, updating nopasswd when a NOPASSWD or PASSWD tag is among them.
+func stripCommandPrefix(item string, nopasswd *bool) string {
+
+	for {
+		item = strings.TrimSpace(item)
+
+		switch {
+		case runasSpec.MatchString(item):
+			item = runasSpec.ReplaceAllString(item, "")
+		case sudoOptions.MatchString(item):
+			item = sudoOptions.ReplaceAllString(item, "")
+		case sudoTags.MatchString(item):
+			tag := sudoTags.FindStringSubmatch(item)[1]
+			if tag == "NOPASSWD" || tag == "PASSWD" {
+				*nopasswd = tag == "NOPASSWD"
+			}
+			item = sudoTags.ReplaceAllString(item, "")
+		default:
+			return item
+		}
+	}
+}
+
+// expandCommand replaces a Cmnd_Alias by its commands; an unknown alias
+// stays as its name, which the engine reads as not resolved.
+func (p *sudoParser) expandCommand(cmd string, depth int) []string {
+
+	members, ok := p.commands[cmd]
+
+	if cmd == "ALL" || !aliasName.MatchString(cmd) || !ok || depth >= maxAliasDepth {
+		return []string{cmd}
+	}
+
+	var out []string
+	for _, m := range members {
+		if !strings.HasPrefix(m, "!") {
+			out = append(out, p.expandCommand(m, depth+1)...)
+		}
+	}
+	return out
+}
+
+// splitCommas splits a sudoers list on commas outside parentheses and
+// quotes; "\," is an escaped comma inside a command.
+func splitCommas(s string) []string {
+
+	var out []string
+	var current strings.Builder
+	depth, quoted := 0, false
+
+	flush := func() {
+		if item := strings.TrimSpace(current.String()); item != "" {
+			out = append(out, item)
+		}
+		current.Reset()
+	}
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch {
+		case c == '\\' && i+1 < len(s):
+			current.WriteByte(c)
+			current.WriteByte(s[i+1])
+			i++
+		case c == '"':
+			quoted = !quoted
+			current.WriteByte(c)
+		case c == '(' && !quoted:
+			depth++
+			current.WriteByte(c)
+		case c == ')' && !quoted && depth > 0:
+			depth--
+			current.WriteByte(c)
+		case c == ',' && !quoted && depth == 0:
+			flush()
+		default:
+			current.WriteByte(c)
+		}
+	}
+	flush()
+
 	return out
 }
 
