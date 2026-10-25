@@ -82,3 +82,14 @@ func TestAuthLines(t *testing.T) {
 		}
 	}
 }
+
+func TestDecodeWideIntegers(t *testing.T) {
+
+	var v fact.ServiceLog
+	if err := Decode(map[string]any{"inode": "12717944", "size": "1028", "rotated": []any{}}, &v); err != nil {
+		t.Fatal(err)
+	}
+	if v.Inode != 12717944 || v.Size != 1028 {
+		t.Errorf("got %+v", v)
+	}
+}

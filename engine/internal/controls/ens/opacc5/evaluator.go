@@ -227,8 +227,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV07(in)}
 	})
 
-	// EV-08: certificate validation.
+	// EV-08: certificate validation, only under a certificate mechanism.
 	judge("EV-08", []string{"logs", "events"}, func() evaluator.Result {
+		if mechanism != "" && mechanism != "R3" && mechanism != "R4" {
+			return evaluator.Result{Judgement: verdict.Judgement{Status: verdict.NotApplicable, Reason: "certificates are judged with R3 or R4; P-01 is " + mechanism}}
+		}
 		in := EV08Input{Services: services}
 		in.Rows, in.RowsProblem = listParam(policy, agent.ID, "P-07")
 		certs, err := e.facts.ServiceCertificates(ctx, agent.ID, window)

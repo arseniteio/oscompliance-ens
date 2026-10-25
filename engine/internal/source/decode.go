@@ -27,8 +27,14 @@ func Decode(data map[string]any, v any) error {
 		}
 
 		switch kinds[name] {
-		case reflect.Int:
-			n, err := strconv.Atoi(s)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			n, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return fmt.Errorf("decode %s: %w", name, err)
+			}
+			converted[name] = n
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			n, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return fmt.Errorf("decode %s: %w", name, err)
 			}
