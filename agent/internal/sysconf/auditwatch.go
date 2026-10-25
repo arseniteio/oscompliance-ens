@@ -22,6 +22,10 @@ var AuditKeys = []struct{ Perm, Key string }{
 	{"a", "oscompliance_attr"},
 }
 
+// execKey is the key of the execution watches of exec_watches; it is the
+// same as the x watch of a path, so either reads as an execution.
+const execKey = "oscompliance_exec"
+
 // AuditConfig says where auditctl and the shared path list are.
 type AuditConfig struct {
 	Auditctl    string
@@ -43,6 +47,7 @@ func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 		return e.Emit(snapshot)
 	}
 	snapshot.Wanted = append(snapshot.Wanted, paths.AuditWatches...)
+	snapshot.ExecWanted = append(snapshot.ExecWanted, paths.ExecWatches...)
 
 	if _, err := os.Stat(cfg.Auditctl); errors.Is(err, fs.ErrNotExist) {
 		snapshot.Auditd = fact.AuditdAbsent
@@ -82,6 +87,18 @@ func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 		if ok {
 			snapshot.Loaded = append(snapshot.Loaded, p)
 		}
+	}
+
+	// Binaries: their executions only.
+	for _, b := range paths.ExecWatches {
+
+		if !slices.Contains(loaded, b+" "+execKey) {
+			if _, err := runCommand(cfg.Auditctl, "-w", b, "-p", "x", "-k", execKey); err != nil {
+				snapshot.Failed = append(snapshot.Failed, b+" x: "+err.Error())
+				continue
+			}
+		}
+		snapshot.ExecLoaded = append(snapshot.ExecLoaded, b)
 	}
 
 	return e.Emit(snapshot)

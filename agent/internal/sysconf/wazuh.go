@@ -114,6 +114,8 @@ func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {
 type SharedPaths struct {
 	ACLPaths     []string `json:"acl_paths"`
 	AuditWatches []string `json:"audit_watches"`
+	// ExecWatches are binaries whose executions are audited (op.acc.3).
+	ExecWatches []string `json:"exec_watches"`
 }
 
 // DefaultSharedPaths is where the Wazuh agent keeps that file.
