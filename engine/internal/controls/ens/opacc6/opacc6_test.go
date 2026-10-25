@@ -327,6 +327,27 @@ func TestJudgeEV07(t *testing.T) {
 	check(t, "P-07 missing", JudgeEV07(EV07Input{ChannelsProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-07")
 }
 
+func TestJudgeEV04(t *testing.T) {
+
+	fail := func(account string, minutes ...int) []source.Failure {
+		var out []source.Failure
+		for _, m := range minutes {
+			out = append(out, source.Failure{Account: account, Time: today.Add(time.Duration(m) * time.Minute)})
+		}
+		return out
+	}
+
+	burst := fail("ana", 0, 1, 2, 3, 4, 5)        // 6 within 15 minutes
+	spread := fail("bob", 0, 20, 40, 60, 80, 100) // 6, never 2 within 15 minutes
+
+	check(t, "burst without lockout", JudgeEV04(EV04Input{Failures: burst, Log: reaches, MaxAttempts: 5}), verdict.NonCompliant, "", "ana (6 failures within 15m0s)")
+	check(t, "burst stopped", JudgeEV04(EV04Input{Failures: burst, Lockouts: []source.Lockout{{Account: "ana"}}, Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "stopped by a lockout")
+	check(t, "spread out", JudgeEV04(EV04Input{Failures: spread, Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "at most 1 within")
+	check(t, "quiet", JudgeEV04(EV04Input{Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "no failed attempt")
+	check(t, "quiet and blind", JudgeEV04(EV04Input{Log: lost, MaxAttempts: 5}), verdict.NotEvaluable, verdict.CauseCollection, "")
+	check(t, "P-05 missing", JudgeEV04(EV04Input{MaxAttemptsProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-05")
+}
+
 func TestJudgeEV10(t *testing.T) {
 
 	accounts := func(records ...fact.IdentityRecord) Accounts {

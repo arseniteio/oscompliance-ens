@@ -59,3 +59,26 @@ func TestDecodeRejectsBadScalars(t *testing.T) {
 		t.Error("authorized_keys many: want error")
 	}
 }
+
+func TestAuthLines(t *testing.T) {
+
+	m := accepted.FindStringSubmatch("2026-10-25T21:12:01+00:00 h sshd[1]: Accepted publickey for jperez from 10.0.0.9 port 4242 ssh2: ED25519-SK SHA256:abc")
+	if m == nil || m[1] != "publickey" || m[2] != "ED25519-SK" {
+		t.Errorf("publickey: %q", m)
+	}
+
+	m = accepted.FindStringSubmatch("h sshd[1]: Accepted keyboard-interactive/pam for ana from 10.0.0.9 port 1 ssh2")
+	if m == nil || m[1] != "keyboard-interactive/pam" || m[2] != "" {
+		t.Errorf("keyboard-interactive: %q", m)
+	}
+
+	for line, user := range map[string]string{
+		"h sshd[1]: pam_faillock(sshd:auth): Consecutive login failures for user jperez account temporarily locked": "jperez",
+		"h login[2]: pam_tally2(login:auth): user ana (1000) tally 6, deny 5":                                       "ana",
+	} {
+		m := lockoutLine.FindStringSubmatch(line)
+		if m == nil || (m[1] != user && m[2] != user) {
+			t.Errorf("%s: %q", line, m)
+		}
+	}
+}

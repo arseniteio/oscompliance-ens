@@ -26,6 +26,8 @@ type Facts interface {
 	SudoersSnapshots(ctx context.Context, since time.Time) (map[string]fact.SudoersSnapshot, error)
 	SudoGrants(ctx context.Context, agentID, runID string, since time.Time) ([]fact.SudoGrant, error)
 	Logins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
+	Failures(ctx context.Context, agentID string, since time.Time) ([]source.Failure, error)
+	Lockouts(ctx context.Context, agentID string, since time.Time) ([]source.Lockout, error)
 	AuthLogProbes(ctx context.Context, since time.Time, n int) (map[string][]fact.AuthLogProbe, error)
 	ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error)
 }
@@ -93,7 +95,7 @@ func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// Agent judges the evidences built so far: EV-01, EV-03, EV-05, EV-07,
+// Agent judges the evidences built so far: EV-01, EV-03, EV-04, EV-05, EV-07,
 // EV-09, EV-10, EV-11 and EV-12. The others are missing from the result and
 // count as COLLECTION gaps.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
@@ -125,6 +127,10 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	read("sudoers", err)
 	logins, err := e.facts.Logins(ctx, agent.ID, since)
 	read("logins", err)
+	failures, err := e.facts.Failures(ctx, agent.ID, e.pass.WindowStart)
+	read("failures", err)
+	lockouts, err := e.facts.Lockouts(ctx, agent.ID, e.pass.WindowStart)
+	read("failures", err)
 
 	judge := func(id string, needs []string, j func() evaluator.Result) {
 		for _, n := range needs {
@@ -150,6 +156,13 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		in := EV03Input{Settings: settings, PAM: pam}
 		in.MaxAttempts, in.MaxAttemptsProblem = intParam(policy, agent.ID, "P-05")
 		return evaluator.Result{Judgement: JudgeEV03(in), RunID: configRun}
+	})
+
+	// EV-04: failed attempts without lockout, in the window.
+	judge("EV-04", []string{"failures"}, func() evaluator.Result {
+		in := EV04Input{Failures: failures, Lockouts: lockouts, Log: authLog}
+		in.MaxAttempts, in.MaxAttemptsProblem = intParam(policy, agent.ID, "P-05")
+		return evaluator.Result{Judgement: JudgeEV04(in)}
 	})
 
 	// EV-05: credential age.
