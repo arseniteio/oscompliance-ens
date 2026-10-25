@@ -86,6 +86,7 @@ func run() error {
 		"config": func() error {
 			return sysconf.CollectConfig(e, sysconf.ConfigConfig{Files: sysconf.DefaultConfigFiles, SSHD: *sshd})
 		},
+		"authprobe": func() error { return sysconf.CollectAuthProbe(e) },
 		"pam": func() error {
 			return sysconf.CollectPAM(e, sysconf.PAMConfig{Dir: *pamDir, Services: sysconf.DefaultPAMServices, Types: sysconf.DefaultPAMTypes})
 		},
@@ -114,7 +115,7 @@ func run() error {
 
 // allCollectors in the order they run. The facts each one emits are in
 // catalog/docs/contracts.
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "sweep"}
 
 // defaultCollectors is the hourly run; the sweep has its own daily run.
-const defaultCollectors = "identity,groups,umask,sudoers,config,pam"
+const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe"

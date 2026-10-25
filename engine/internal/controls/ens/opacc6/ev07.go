@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
@@ -18,9 +17,9 @@ var channels = map[string]string{source.MethodSSHD: "ssh"}
 type EV07Input struct {
 	// Logins in the window, as Wazuh decoded them.
 	Logins []source.Login
-	// LastAuthEvent: zero when no authentication event reached Wazuh in the
-	// lookback, so an empty Logins proves nothing.
-	LastAuthEvent time.Time
+	// Log: when the authentication log does not reach Wazuh, an empty
+	// Logins proves nothing.
+	Log AuthLog
 
 	// Channels is the canal column of P-07; ChannelsProblem says why it
 	// cannot be used.
@@ -33,8 +32,8 @@ type EV07Input struct {
 //  1. P-07 unusable: NOT_EVALUABLE, CONFIGURATION.
 //  2. A remote login through a channel not in P-07 (case-insensitive):
 //     NON_COMPLIANT.
-//  3. No remote login and no authentication event reaching Wazuh:
-//     NOT_EVALUABLE, COLLECTION.
+//  3. No remote login while the authentication log is not known to reach
+//     Wazuh: NOT_EVALUABLE, COLLECTION.
 //  4. Otherwise COMPLIANT.
 func JudgeEV07(in EV07Input) verdict.Judgement {
 
@@ -76,8 +75,8 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 
 	// 3. Silence proves nothing when the log does not arrive.
 	if len(used) == 0 {
-		if in.LastAuthEvent.IsZero() {
-			return passes.NotEvaluable(verdict.CauseCollection, "no authentication event reached Wazuh: remote logins cannot be seen")
+		if !in.Log.Reaches {
+			return passes.NotEvaluable(verdict.CauseCollection, "remote logins cannot be seen: "+in.Log.Detail)
 		}
 		return verdict.Judgement{Status: verdict.Compliant, Reason: "no remote login in the window"}
 	}

@@ -7,7 +7,21 @@ const (
 	ConfigSnapshotFact = "config_snapshot"
 	PAMRuleFact        = "pam_rule"
 	PAMSnapshotFact    = "pam_snapshot"
+	AuthLogProbeFact   = "auth_log_probe"
 )
+
+// Values of AuthLogProbe.Status.
+const (
+	ProbeWritten = "written"
+	ProbeError   = "error"
+)
+
+// AuthLogProbe mirrors auth_log_probe.v1.json.
+type AuthLogProbe struct {
+	Envelope
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
+}
 
 // Values of ConfigFile.Kind and the extra ConfigFile.Status.
 const (

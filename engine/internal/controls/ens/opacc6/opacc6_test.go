@@ -253,6 +253,43 @@ func TestJudgeEV12(t *testing.T) {
 	}
 }
 
+var (
+	reaches = AuthLog{Known: true, Reaches: true, Detail: "probe came back"}
+	lost    = AuthLog{Known: true, Detail: "3 probes written to the authentication log never reached Wazuh"}
+)
+
+func TestProbeResult(t *testing.T) {
+
+	probe := func(run string, age time.Duration, status string) fact.AuthLogProbe {
+		p := fact.AuthLogProbe{Status: status}
+		p.RunID, p.TS = run, today.Add(-age).Format(time.RFC3339)
+		if status == fact.ProbeError {
+			p.Error = "dial unixgram /dev/log: no such file"
+		}
+		return p
+	}
+
+	cases := []struct {
+		name           string
+		probes         []fact.AuthLogProbe
+		seen           map[string]bool
+		known, reaches bool
+	}{
+		{"none", nil, nil, false, false},
+		{"seen", []fact.AuthLogProbe{probe("a", time.Minute, fact.ProbeWritten), probe("b", time.Hour, fact.ProbeWritten)}, map[string]bool{"b": true}, true, true},
+		{"too recent", []fact.AuthLogProbe{probe("a", time.Minute, fact.ProbeWritten)}, nil, false, false},
+		{"lost", []fact.AuthLogProbe{probe("a", time.Minute, fact.ProbeWritten), probe("b", time.Hour, fact.ProbeWritten)}, nil, true, false},
+		{"cannot write", []fact.AuthLogProbe{probe("a", time.Hour, fact.ProbeError)}, nil, false, false},
+	}
+
+	for _, c := range cases {
+		got := ProbeResult(c.probes, c.seen, today)
+		if got.Known != c.known || got.Reaches != c.reaches {
+			t.Errorf("%s: got %+v", c.name, got)
+		}
+	}
+}
+
 func TestJudgeEV01(t *testing.T) {
 
 	info := config(sshdT("loglevel", "INFO"))
@@ -267,9 +304,10 @@ func TestJudgeEV01(t *testing.T) {
 	}{
 		{"P-03 missing", EV01Input{SourcesProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-03"},
 		{"no local source", EV01Input{Sources: []string{"ldap"}}, verdict.Compliant, "", "ldap"},
-		{"events arrive", EV01Input{Settings: info, Sources: []string{"local"}, LastAuthEvent: today}, verdict.Compliant, "", "reach Wazuh"},
-		{"silent machine", EV01Input{Settings: info, Sources: []string{"local"}, Lookback: 168 * time.Hour}, verdict.NonCompliant, "", "no authentication event"},
-		{"sshd quiet", EV01Input{Settings: quiet, Sources: []string{"local"}, LastAuthEvent: today}, verdict.NonCompliant, "", "LogLevel QUIET"},
+		{"probe came back", EV01Input{Settings: info, Sources: []string{"local"}, Log: reaches}, verdict.Compliant, "", "reaches Wazuh"},
+		{"probe lost", EV01Input{Settings: info, Sources: []string{"local"}, Log: lost}, verdict.NonCompliant, "", "never reached Wazuh"},
+		{"probe not known", EV01Input{Settings: info, Sources: []string{"local"}, Log: AuthLog{Detail: "no auth_log_probe in the window"}}, verdict.NotEvaluable, verdict.CauseCollection, "no auth_log_probe"},
+		{"sshd quiet", EV01Input{Settings: quiet, Sources: []string{"local"}, Log: reaches}, verdict.NonCompliant, "", "LogLevel QUIET"},
 	}
 
 	for _, c := range cases {
@@ -282,10 +320,10 @@ func TestJudgeEV07(t *testing.T) {
 	ssh := source.Login{Account: "ana", SourceIP: "10.0.0.5", Method: source.MethodSSHD}
 	console := source.Login{Account: "root", Method: source.MethodConsole}
 
-	check(t, "authorized", JudgeEV07(EV07Input{Logins: []source.Login{ssh, console}, LastAuthEvent: today, Channels: []string{"SSH"}}), verdict.Compliant, "", "ssh (1 logins)")
-	check(t, "not in P-07", JudgeEV07(EV07Input{Logins: []source.Login{ssh}, LastAuthEvent: today, Channels: []string{"rdp"}}), verdict.NonCompliant, "", "ssh by ana from 10.0.0.5 (1)")
-	check(t, "quiet but logging", JudgeEV07(EV07Input{LastAuthEvent: today, Channels: []string{"ssh"}}), verdict.Compliant, "", "no remote login")
-	check(t, "quiet and blind", JudgeEV07(EV07Input{Channels: []string{"ssh"}}), verdict.NotEvaluable, verdict.CauseCollection, "")
+	check(t, "authorized", JudgeEV07(EV07Input{Logins: []source.Login{ssh, console}, Log: reaches, Channels: []string{"SSH"}}), verdict.Compliant, "", "ssh (1 logins)")
+	check(t, "not in P-07", JudgeEV07(EV07Input{Logins: []source.Login{ssh}, Log: reaches, Channels: []string{"rdp"}}), verdict.NonCompliant, "", "ssh by ana from 10.0.0.5 (1)")
+	check(t, "quiet but logging", JudgeEV07(EV07Input{Log: reaches, Channels: []string{"ssh"}}), verdict.Compliant, "", "no remote login")
+	check(t, "quiet and blind", JudgeEV07(EV07Input{Log: lost, Channels: []string{"ssh"}}), verdict.NotEvaluable, verdict.CauseCollection, "never reached")
 	check(t, "P-07 missing", JudgeEV07(EV07Input{ChannelsProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-07")
 }
 

@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
+
+	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
 // Facts that Wazuh produces by itself, from its own decoders and rules. The
@@ -152,4 +155,55 @@ func (s *Source) AuthActivity(ctx context.Context, since time.Time) (map[string]
 	}
 
 	return activity, nil
+}
+
+// ProbeRule is the Wazuh rule of the agent's authentication log probe
+// (catalog/wazuh).
+const ProbeRule = "119002"
+
+var probeMarker = regexp.MustCompile(`auth log probe ([0-9a-f-]{36})`)
+
+// ProbesSeen returns, per agent ID, the run IDs of the authentication log
+// probes that came back as alerts since the given time.
+func (s *Source) ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error) {
+
+	filter := []any{
+		map[string]any{"term": map[string]any{"rule.id": ProbeRule}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+
+	seen := map[string]map[string]bool{}
+
+	err := s.page(ctx, filter, func(h hit) error {
+
+		var a struct {
+			Agent struct {
+				ID string `json:"id"`
+			} `json:"agent"`
+			FullLog string `json:"full_log"`
+		}
+
+		if err := json.Unmarshal(h.Source, &a); err != nil {
+			return fmt.Errorf("alert %s: %w", h.ID, err)
+		}
+
+		m := probeMarker.FindStringSubmatch(a.FullLog)
+		if m == nil {
+			return nil
+		}
+
+		if seen[a.Agent.ID] == nil {
+			seen[a.Agent.ID] = map[string]bool{}
+		}
+		seen[a.Agent.ID][m[1]] = true
+		return nil
+	})
+
+	return seen, err
+}
+
+// AuthLogProbes returns, per agent, up to n auth_log_probe facts since the
+// given time, newest first.
+func (s *Source) AuthLogProbes(ctx context.Context, since time.Time, n int) (map[string][]fact.AuthLogProbe, error) {
+	return latestFacts[fact.AuthLogProbe](ctx, s, fact.AuthLogProbeFact, since, n)
 }

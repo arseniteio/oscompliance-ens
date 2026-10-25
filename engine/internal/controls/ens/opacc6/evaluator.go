@@ -26,8 +26,13 @@ type Facts interface {
 	SudoersSnapshots(ctx context.Context, since time.Time) (map[string]fact.SudoersSnapshot, error)
 	SudoGrants(ctx context.Context, agentID, runID string, since time.Time) ([]fact.SudoGrant, error)
 	Logins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
-	AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error)
+	AuthLogProbes(ctx context.Context, since time.Time, n int) (map[string][]fact.AuthLogProbe, error)
+	ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error)
 }
+
+// maxProbes is how many probes of the window are compared: an hourly agent
+// writes 26 in the default window.
+const maxProbes = 48
 
 const control = "op.acc.6"
 
@@ -40,7 +45,8 @@ type Evaluator struct {
 	configs    map[string]fact.ConfigSnapshot
 	pams       map[string]fact.PAMSnapshot
 	sudoers    map[string]fact.SudoersSnapshot
-	activity   map[string]time.Time
+	probes     map[string][]fact.AuthLogProbe
+	seen       map[string]map[string]bool
 
 	decisions map[string]map[string]verdict.Judgement
 }
@@ -72,8 +78,11 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.sudoers, err = e.facts.SudoersSnapshots(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("sudoers snapshots: %w", err)
 	}
-	if e.activity, err = e.facts.AuthActivity(ctx, pass.LookbackStart); err != nil {
-		return fmt.Errorf("authentication activity: %w", err)
+	if e.probes, err = e.facts.AuthLogProbes(ctx, pass.WindowStart, maxProbes); err != nil {
+		return fmt.Errorf("auth log probes: %w", err)
+	}
+	if e.seen, err = e.facts.ProbesSeen(ctx, pass.WindowStart); err != nil {
+		return fmt.Errorf("probe alerts: %w", err)
 	}
 
 	return nil
@@ -126,12 +135,12 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results[id] = j()
 	}
 
-	lastAuth := e.activity[agent.ID]
+	authLog := ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now)
 	configRun := runOf(settings.Snapshot)
 
 	// EV-01: logging of accesses.
 	judge("EV-01", []string{"config"}, func() evaluator.Result {
-		in := EV01Input{Settings: settings, LastAuthEvent: lastAuth, Lookback: e.pass.Now.Sub(since)}
+		in := EV01Input{Settings: settings, Log: authLog}
 		in.Sources, in.SourcesProblem = listParam(policy, agent.ID, "P-03")
 		return evaluator.Result{Judgement: JudgeEV01(in), RunID: configRun}
 	})
@@ -152,7 +161,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	// EV-07: remote channels used, in the window.
 	judge("EV-07", []string{"logins"}, func() evaluator.Result {
-		in := EV07Input{LastAuthEvent: lastAuth}
+		in := EV07Input{Log: authLog}
 		for _, l := range logins {
 			if !l.Time.Before(e.pass.WindowStart) {
 				in.Logins = append(in.Logins, l)

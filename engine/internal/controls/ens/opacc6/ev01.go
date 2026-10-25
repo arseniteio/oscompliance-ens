@@ -1,9 +1,7 @@
 package opacc6
 
 import (
-	"fmt"
 	"strings"
-	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
@@ -14,10 +12,8 @@ import (
 type EV01Input struct {
 	Settings Settings
 
-	// LastAuthEvent is the newest authentication alert of the agent in the
-	// lookback, zero when there is none.
-	LastAuthEvent time.Time
-	Lookback      time.Duration
+	// Log says whether the authentication log reaches Wazuh (the probe).
+	Log AuthLog
 
 	// Sources is P-03; SourcesProblem says why it cannot be used.
 	Sources        []string
@@ -31,12 +27,12 @@ var quietLogLevels = map[string]bool{"QUIET": true, "FATAL": true, "ERROR": true
 //
 //  1. P-03 unusable: NOT_EVALUABLE, CONFIGURATION. P-03 without "local":
 //     COMPLIANT, the directory sources are measured on their own servers.
-//  2. Gaps of the local source: no authentication event of the machine
-//     reached Wazuh in the lookback (cron alone opens a PAM session every
-//     hour, so silence means the log is not collected), or sshd logs below
-//     INFO, which drops its Accepted and Failed lines.
-//  3. A gap: NON_COMPLIANT. sshd configuration not readable: NOT_EVALUABLE,
-//     COLLECTION. Otherwise COMPLIANT.
+//  2. Gaps of the local source: the agent's probe line, written each pass to
+//     the authpriv facility, never came back as a Wazuh alert (the log is
+//     not written or not collected), or sshd logs below INFO, which drops
+//     its Accepted and Failed lines.
+//  3. A gap: NON_COMPLIANT. The probe or the sshd configuration not known:
+//     NOT_EVALUABLE, COLLECTION. Otherwise COMPLIANT.
 func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	// 1. Which sources must log.
@@ -57,8 +53,8 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 	// 2. The gaps.
 	var gaps []string
 
-	if in.LastAuthEvent.IsZero() {
-		gaps = append(gaps, fmt.Sprintf("no authentication event of this machine reached Wazuh in %s", in.Lookback))
+	if in.Log.Known && !in.Log.Reaches {
+		gaps = append(gaps, in.Log.Detail)
 	}
 
 	if gap, found := in.Settings.Gap(); found {
@@ -87,8 +83,9 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(gaps, "; ")}
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: "authentication events reach Wazuh (newest " + in.LastAuthEvent.UTC().Format(time.RFC3339) + ") and sshd logs logins",
+	if !in.Log.Known {
+		return passes.NotEvaluable(verdict.CauseCollection, in.Log.Detail)
 	}
+
+	return verdict.Judgement{Status: verdict.Compliant, Reason: "the authentication log reaches Wazuh (" + in.Log.Detail + ") and sshd logs logins"}
 }

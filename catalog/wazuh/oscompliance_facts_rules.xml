@@ -8,6 +8,9 @@
 
     119000  base: any line with the v1 envelope (level 0, not indexed)
     119001  any fact (level 3, indexed)
+    119002  the agent's authentication log probe (level 3, indexed): a line
+            the agent writes to the authpriv facility each pass, proving that
+            the authentication log reaches Wazuh even when nobody logs in
 -->
 <group name="oscompliance,">
 
@@ -22,7 +25,21 @@
     <field name="fact" type="pcre2">^[a-z][a-z0-9_]*$</field>
     <field name="run_id" type="pcre2">^[0-9a-f-]{36}$</field>
     <description>OSCompliance fact $(fact)</description>
-    <group>oscompliance_fact,</group>
+    <group>oscompliance_fact,  <rule id="119002" level="3">
+    <program_name>^oscompliance-agent$</program_name>
+    <match>^auth log probe </match>
+    <description>OSCompliance authentication log probe</description>
+    <group>oscompliance_probe,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119002" level="3">
+    <program_name>^oscompliance-agent$</program_name>
+    <match>^auth log probe </match>
+    <description>OSCompliance authentication log probe</description>
+    <group>oscompliance_probe,</group>
   </rule>
 
 </group>
