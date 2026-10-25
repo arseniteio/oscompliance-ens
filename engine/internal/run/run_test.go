@@ -76,6 +76,8 @@ func (noParams) ListColumn(string, string, string, int) ([]string, error) {
 
 func (noParams) Number(string, string, string) (float64, error) { return 0, params.ErrNotSet }
 
+func (noParams) Bool(string, string, string) (bool, error) { return false, params.ErrNotSet }
+
 func (noParams) Matcher(string, string, string) (params.Matcher, error) {
 	return params.Matcher{}, params.ErrNotSet
 }

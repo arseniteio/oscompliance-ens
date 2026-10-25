@@ -141,6 +141,50 @@ func (s *Source) Agents(ctx context.Context, since time.Time) ([]verdict.Agent, 
 	})
 }
 
+// newest returns, per agent ID, the newest fact of type name since the given
+// time.
+func newest[T any](ctx context.Context, s *Source, name string, since time.Time) (map[string]T, error) {
+
+	lists, err := latestFacts[T](ctx, s, name, since, 1)
+
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[string]T{}
+
+	for agentID, list := range lists {
+		out[agentID] = list[0]
+	}
+
+	return out, nil
+}
+
+// SweepSnapshots returns, per agent, the newest file_sweep_snapshot.
+func (s *Source) SweepSnapshots(ctx context.Context, since time.Time) (map[string]fact.FileSweepSnapshot, error) {
+	return newest[fact.FileSweepSnapshot](ctx, s, fact.FileSweepSnapshotFact, since)
+}
+
+// SpecialFiles returns every special_file of one sweep of one agent.
+func (s *Source) SpecialFiles(ctx context.Context, agentID, runID string, since time.Time) ([]fact.SpecialFile, error) {
+	return passRecords[fact.SpecialFile](ctx, s, fact.SpecialFileFact, agentID, runID, since)
+}
+
+// UmaskSnapshots returns, per agent, the newest umask_snapshot.
+func (s *Source) UmaskSnapshots(ctx context.Context, since time.Time) (map[string]fact.UmaskSnapshot, error) {
+	return newest[fact.UmaskSnapshot](ctx, s, fact.UmaskSnapshotFact, since)
+}
+
+// SudoersSnapshots returns, per agent, the newest sudoers_snapshot.
+func (s *Source) SudoersSnapshots(ctx context.Context, since time.Time) (map[string]fact.SudoersSnapshot, error) {
+	return newest[fact.SudoersSnapshot](ctx, s, fact.SudoersSnapshotFact, since)
+}
+
+// SudoGrants returns every sudo_grant of one read of one agent.
+func (s *Source) SudoGrants(ctx context.Context, agentID, runID string, since time.Time) ([]fact.SudoGrant, error) {
+	return passRecords[fact.SudoGrant](ctx, s, fact.SudoGrantFact, agentID, runID, since)
+}
+
 // GroupSnapshots returns, per agent ID, the newest group_snapshot indexed
 // since the given time.
 func (s *Source) GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error) {

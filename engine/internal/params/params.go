@@ -126,6 +126,33 @@ func (c *Config) Number(agentID, controlID, paramID string) (float64, error) {
 	return number(value, ok)
 }
 
+// Bool returns a yes/no parameter: a JSON boolean, or the words the plugin
+// screens use (sí/si/yes/true, no/false).
+func (c *Config) Bool(agentID, controlID, paramID string) (bool, error) {
+
+	value, _, ok := c.valueAndMode(agentID, controlID, paramID)
+	if !ok || value == nil {
+		return false, ErrNotSet
+	}
+
+	switch v := value.(type) {
+	case bool:
+		return v, nil
+	case string:
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "":
+			return false, ErrNotSet
+		case "sí", "si", "yes", "true":
+			return true, nil
+		case "no", "false":
+			return false, nil
+		}
+		return false, fmt.Errorf("%q is not yes or no", v)
+	}
+
+	return false, fmt.Errorf("value of type %T is not yes or no", value)
+}
+
 func number(value any, ok bool) (float64, error) {
 
 	if !ok {
@@ -397,6 +424,7 @@ type Lister interface {
 	List(agentID, controlID, paramID string) ([]string, error)
 	ListColumn(agentID, controlID, paramID string, col int) ([]string, error)
 	Number(agentID, controlID, paramID string) (float64, error)
+	Bool(agentID, controlID, paramID string) (bool, error)
 	Matcher(agentID, controlID, paramID string) (Matcher, error)
 	Level() string
 	ControlEnabled(controlID string) bool
@@ -420,6 +448,10 @@ func (u unavailable) ListColumn(agentID, controlID, paramID string, _ int) ([]st
 
 func (u unavailable) Number(string, string, string) (float64, error) {
 	return 0, fmt.Errorf("configuration not loaded: %w", u.err)
+}
+
+func (u unavailable) Bool(string, string, string) (bool, error) {
+	return false, fmt.Errorf("configuration not loaded: %w", u.err)
 }
 
 func (u unavailable) Matcher(string, string, string) (Matcher, error) {

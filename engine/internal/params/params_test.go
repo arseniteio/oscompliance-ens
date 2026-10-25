@@ -22,7 +22,11 @@ const active = `{
       {"id": "P-08", "value": "many"},
       {"id": "P-09", "value": ""},
       {"id": "P-10", "value": " 1000 "},
-      {"id": "P-12", "value": "root\n\nadmin\n"}
+      {"id": "P-12", "value": "root\n\nadmin\n"},
+      {"id": "P-15", "value": true},
+      {"id": "P-16", "value": "Sí"},
+      {"id": "P-17", "value": "no"},
+      {"id": "P-18", "value": "quizá"}
     ]},
     {"controlId": "op.acc.2", "enabled": false, "parameters": []}
   ],
@@ -191,5 +195,21 @@ func TestPatternMatcher(t *testing.T) {
 	list := ListMatcher("admin", "guest")
 	if !list.Match("ADMIN") || list.Match("guests") {
 		t.Errorf("list matcher: %v", list)
+	}
+}
+
+func TestBool(t *testing.T) {
+	c := load(t)
+
+	for id, want := range map[string]bool{"P-15": true, "P-16": true, "P-17": false} {
+		if got, err := c.Bool("999", "op.acc.1", id); err != nil || got != want {
+			t.Errorf("%s: %v %v", id, got, err)
+		}
+	}
+	if _, err := c.Bool("999", "op.acc.1", "P-18"); err == nil || errors.Is(err, ErrNotSet) {
+		t.Errorf("P-18: want a non-ErrNotSet error, got %v", err)
+	}
+	if _, err := c.Bool("999", "op.acc.1", "P-99"); !errors.Is(err, ErrNotSet) {
+		t.Errorf("P-99: %v", err)
 	}
 }

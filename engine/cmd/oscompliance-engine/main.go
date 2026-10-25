@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc2"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
@@ -81,6 +82,7 @@ func runMain() error {
 	// One evaluator per migrated control.
 	controls := []evaluator.Evaluator{
 		opacc1.NewEvaluator(facts, hist),
+		opacc2.NewEvaluator(facts),
 	}
 	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
 

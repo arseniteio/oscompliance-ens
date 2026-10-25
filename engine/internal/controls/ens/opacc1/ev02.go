@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
@@ -157,38 +158,7 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 }
 
 // identityGap checks that an identity pass can be used at all: steps 1 to 4
-// of EV-02, shared with EV-01 and EV-07, which judge the same table. found is
-// true when it cannot; the judgement says why.
-func identityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (gap verdict.Judgement, found bool) {
-
-	// 1. Nothing to judge.
-	if current == nil {
-		return notEvaluable(verdict.CauseCollection, "no identity_snapshot in the window"), true
-	}
-
-	// 2. The agent could not read the identity files.
-	if current.PasswdStatus != fact.SourceRead {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("%s %s: %s", current.PasswdPath, current.PasswdStatus, current.PasswdError)), true
-	}
-
-	if current.ShadowStatus != fact.SourceRead {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("%s %s: %s", current.ShadowPath, current.ShadowStatus, current.ShadowError)), true
-	}
-
-	// 3. A complete read always carries the counter (schema). Without it the
-	// fact is broken, not missing, hence EVIDENCE and not COLLECTION.
-	if current.RecordsEmitted == nil {
-		return notEvaluable(verdict.CauseEvidence, "read snapshot without records_emitted"), true
-	}
-
-	// 4. Records lost on the way. More than announced is fine: Wazuh can
-	// deliver a line twice.
-	if len(records) < *current.RecordsEmitted {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("pass %s incomplete: %d of %d identity_record received", current.RunID, len(records), *current.RecordsEmitted)), true
-	}
-
-	return verdict.Judgement{}, false
+// of EV-02, shared with EV-01 and EV-07 (and other controls, in passes).
+func identityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (verdict.Judgement, bool) {
+	return passes.IdentityGap(current, records)
 }
