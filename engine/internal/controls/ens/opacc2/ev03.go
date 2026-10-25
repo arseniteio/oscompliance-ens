@@ -115,5 +115,9 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseCollection, "elevations cannot be seen: "+in.Log.Detail)
 	}
 
+	if used == 0 && denied == 0 {
+		return verdict.Judgement{Status: verdict.Compliant, Reason: "no sudo or su in the window"}
+	}
+
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d elevations by privileged accounts or to ordinary ones, %d refused", used, denied)}
 }

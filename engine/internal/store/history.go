@@ -83,7 +83,9 @@ func (h *History) Load(ctx context.Context, agentID string) (map[string]history.
 	return accounts, nil
 }
 
-// Save writes each account under agent/account, replacing the earlier version.
+// Save writes each account under agent/account, replacing the earlier
+// version, and refreshes the index: later controls of the same pass read the
+// history (op.acc.6 EV-06) and must see this pass.
 func (h *History) Save(ctx context.Context, accounts []history.Account) error {
 
 	for _, a := range accounts {
@@ -92,5 +94,9 @@ func (h *History) Save(ctx context.Context, accounts []history.Account) error {
 		}
 	}
 
-	return nil
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	return h.client.Refresh(ctx, h.index)
 }

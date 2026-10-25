@@ -208,6 +208,9 @@ func JudgeEV06(logins []source.Login, authorised []string, problem string, log p
 	if remote == 0 && !log.Reaches {
 		return passes.NotEvaluable(verdict.CauseCollection, "remote logins cannot be seen: "+log.Detail)
 	}
+	if remote == 0 {
+		return verdict.Judgement{Status: verdict.Compliant, Reason: "no remote login in the window"}
+	}
 
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d remote logins, all by accounts of P-05", remote)}
 }

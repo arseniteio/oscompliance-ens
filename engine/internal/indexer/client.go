@@ -109,6 +109,12 @@ func (c *Client) Search(ctx context.Context, index string, query, out any) error
 	return c.Do(ctx, http.MethodPost, "/"+url.PathEscape(index)+"/_search", query, out)
 }
 
+// Refresh makes what was written to index searchable now, instead of at the
+// indexer's next periodic refresh.
+func (c *Client) Refresh(ctx context.Context, index string) error {
+	return c.Do(ctx, http.MethodPost, "/"+url.PathEscape(index)+"/_refresh", nil, nil)
+}
+
 // Put writes doc under id, replacing any earlier version.
 func (c *Client) Put(ctx context.Context, index, id string, doc any) error {
 	return c.Do(ctx, http.MethodPut, "/"+url.PathEscape(index)+"/_doc/"+url.PathEscape(id), doc, nil)
