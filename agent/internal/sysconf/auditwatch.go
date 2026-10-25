@@ -26,6 +26,27 @@ var AuditKeys = []struct{ Perm, Key string }{
 // same as the x watch of a path, so either reads as an execution.
 const execKey = "oscompliance_exec"
 
+// permKey marks the fixed rules of op.acc.4 EV-04: who changes rights.
+const permKey = "oscompliance_perm"
+
+// permRules record, independently of any parameter, every change of mode,
+// owner or extended attributes made by a person (login uid 1000 and
+// above), on both syscall tables, and every write to the account and sudo
+// files. v1 wrote them for 64-bit calls only and left loading them to the
+// administrator.
+var permRules = [][]string{
+	{"-a", "always,exit", "-F", "arch=b64", "-S", "chmod,fchmod,fchmodat", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
+	{"-a", "always,exit", "-F", "arch=b32", "-S", "chmod,fchmod,fchmodat", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
+	{"-a", "always,exit", "-F", "arch=b64", "-S", "chown,fchown,fchownat,lchown", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
+	{"-a", "always,exit", "-F", "arch=b32", "-S", "chown,fchown,fchownat,lchown", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
+	{"-a", "always,exit", "-F", "arch=b64", "-S", "setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
+	{"-a", "always,exit", "-F", "arch=b32", "-S", "setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
+	{"-w", "/etc/group", "-p", "wa", "-k", permKey},
+	{"-w", "/etc/gshadow", "-p", "wa", "-k", permKey},
+	{"-w", "/etc/sudoers", "-p", "wa", "-k", permKey},
+	{"-w", "/etc/sudoers.d", "-p", "wa", "-k", permKey},
+}
+
 // AuditConfig says where auditctl and the shared path list are.
 type AuditConfig struct {
 	Auditctl    string
@@ -70,6 +91,23 @@ func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 		snapshot.Auditd, snapshot.Error = fact.AuditdError, err.Error()
 		return e.Emit(snapshot)
 	}
+
+	// The fixed permission rules: loaded as a set when none is.
+	perm, err := loadedPermRules(cfg.Auditctl)
+	if err != nil {
+		snapshot.Auditd, snapshot.Error = fact.AuditdError, err.Error()
+		return e.Emit(snapshot)
+	}
+	if perm == 0 {
+		for _, rule := range permRules {
+			if _, err := runCommand(cfg.Auditctl, rule...); err != nil {
+				snapshot.Failed = append(snapshot.Failed, strings.Join(rule, " ")+": "+err.Error())
+				continue
+			}
+			perm++
+		}
+	}
+	snapshot.PermRules = perm
 
 	for _, p := range paths.AuditWatches {
 
@@ -164,4 +202,23 @@ func parseWatches(listing string) []string {
 	}
 
 	return out
+}
+
+// loadedPermRules counts the loaded rules with the permission key.
+func loadedPermRules(auditctl string) (int, error) {
+
+	out, err := runCommand(auditctl, "-l")
+	if err != nil {
+		return 0, err
+	}
+
+	n := 0
+	for _, line := range strings.Split(out, "\n") {
+		f := strings.Fields(line)
+		if slices.Contains(f, "key="+permKey) || (slices.Contains(f, "-k") && len(f) > 0 && f[len(f)-1] == permKey) {
+			n++
+		}
+	}
+
+	return n, nil
 }

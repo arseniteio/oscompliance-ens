@@ -278,9 +278,14 @@ eve ALL = /usr/bin/who, NOPASSWD: /usr/bin/x\, y
 	})
 
 	got := map[string]string{}
+	specs := map[string]string{}
 	for _, f := range facts[:len(facts)-1] {
 		cmds, _ := json.Marshal(f["nopasswd_commands"])
 		got[f["subject"].(string)] = string(cmds)
+		specs[f["subject"].(string)], _ = f["spec"].(string)
+	}
+	if specs["ana"] != "ALL=(root) NOPASSWD: /usr/bin/apt, PASSWD: /usr/bin/vi, /bin/ls" {
+		t.Errorf("spec: %q", specs["ana"])
 	}
 
 	want := map[string]string{

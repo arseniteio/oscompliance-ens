@@ -33,7 +33,8 @@ type ConfigConfig struct {
 
 // DefaultConfigFiles are the files read by the controls that judge
 // authentication: login.defs, faillock, pwquality, pwhistory, journald and
-// sshd_config with its drop-ins (for the Match blocks sshd -T hides).
+// sshd_config with its drop-ins (for the Match blocks sshd -T hides), and
+// the services that can open access to anyone: Samba and vsftpd.
 var DefaultConfigFiles = []string{
 	"/etc/login.defs",
 	"/etc/security/faillock.conf",
@@ -44,6 +45,8 @@ var DefaultConfigFiles = []string{
 	"/etc/systemd/journald.conf.d/*.conf",
 	"/etc/ssh/sshd_config",
 	"/etc/ssh/sshd_config.d/*.conf",
+	"/etc/samba/smb.conf",
+	"/etc/vsftpd.conf",
 }
 
 // maxEntries bounds one source so its fact stays under the 64 KiB event
@@ -113,7 +116,7 @@ func readConfigFile(path string) fact.ConfigFile {
 
 	defer file.Close()
 
-	entries, err := parseEntries(file)
+	entries, err := parseEntries(file, iniKeys(path))
 
 	if err != nil {
 		src.Status, src.Error = fact.SourceUnreadable, err.Error()
@@ -128,7 +131,7 @@ func readConfigFile(path string) fact.ConfigFile {
 // first blank or "="; a "=" right after the key is dropped, so
 // "minlen = 8", "Storage=none" and "PASS_MAX_DAYS 90" all read as key and
 // value, and "ENV_PATH PATH=/usr/bin" keeps "PATH=/usr/bin" as the value.
-func parseEntries(r io.Reader) ([]fact.ConfigEntry, error) {
+func parseEntries(r io.Reader, ini bool) ([]fact.ConfigEntry, error) {
 
 	entries := []fact.ConfigEntry{}
 	section := ""
@@ -151,6 +154,9 @@ func parseEntries(r io.Reader) ([]fact.ConfigEntry, error) {
 		}
 
 		key, value := splitEntry(line)
+		if ini {
+			key, value = splitINI(line)
+		}
 
 		if strings.EqualFold(key, "match") {
 			entries = append(entries, fact.ConfigEntry{Key: key, Value: value, Line: n})
@@ -166,6 +172,20 @@ func parseEntries(r io.Reader) ([]fact.ConfigEntry, error) {
 	}
 
 	return entries, scanner.Err()
+}
+
+// iniKeys: files whose keys may hold blanks ("guest ok = yes"), so the key
+// ends at the "=".
+func iniKeys(path string) bool {
+	return strings.HasSuffix(path, "smb.conf")
+}
+
+func splitINI(line string) (key, value string) {
+	k, v, ok := strings.Cut(line, "=")
+	if !ok {
+		return strings.TrimSpace(line), ""
+	}
+	return strings.Join(strings.Fields(k), " "), strings.TrimSpace(v)
 }
 
 func splitEntry(line string) (key, value string) {
@@ -200,7 +220,7 @@ func sshdEffective(sshd string) fact.ConfigFile {
 		return src
 	}
 
-	entries, err := parseEntries(strings.NewReader(out))
+	entries, err := parseEntries(strings.NewReader(out), false)
 
 	if err != nil {
 		src.Status, src.Error = fact.SourceError, err.Error()

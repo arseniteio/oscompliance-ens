@@ -73,6 +73,8 @@ type SudoGrant struct {
 	NoPasswd    bool   `json:"nopasswd,omitempty"`
 	// NoPasswdCommands are the commands run without a password.
 	NoPasswdCommands []string `json:"nopasswd_commands,omitempty"`
+	// Spec is what the specification grants, as written.
+	Spec string `json:"spec,omitempty"`
 }
 
 // SudoersFile is one file of sudoers_snapshot.v1.json.
@@ -175,4 +177,26 @@ type AuditWatchSnapshot struct {
 
 	ExecWanted []string `json:"exec_wanted,omitempty"`
 	ExecLoaded []string `json:"exec_loaded,omitempty"`
+	PermRules  int      `json:"perm_rules,omitempty"`
+}
+
+// FirewallSnapshotFact is the fact name of the packet filter.
+const FirewallSnapshotFact = "firewall_snapshot"
+
+// FirewallChain is one base chain of FirewallSnapshot.
+type FirewallChain struct {
+	Family string `json:"family"`
+	Table  string `json:"table,omitempty"`
+	Name   string `json:"name"`
+	Hook   string `json:"hook"`
+	Policy string `json:"policy"`
+}
+
+// FirewallSnapshot mirrors firewall_snapshot.v1.json.
+type FirewallSnapshot struct {
+	Envelope
+	Tool   string          `json:"tool"`
+	Status string          `json:"status"`
+	Error  string          `json:"error,omitempty"`
+	Chains []FirewallChain `json:"chains"`
 }

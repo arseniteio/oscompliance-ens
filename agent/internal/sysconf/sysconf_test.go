@@ -59,7 +59,7 @@ Storage=none
 Match User backup
 	PasswordAuthentication yes
 `
-	got, err := parseEntries(strings.NewReader(in))
+	got, err := parseEntries(strings.NewReader(in), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,5 +463,36 @@ func TestParseWatches(t *testing.T) {
 
 	if !auditRunning("enabled 1\nfailure 1\npid 812\n") || auditRunning("enabled 1\npid 0\n") || auditRunning("enabled 0\npid 9\n") {
 		t.Error("auditctl -s reading")
+	}
+}
+
+func TestParseSambaEntries(t *testing.T) {
+
+	got, err := parseEntries(strings.NewReader("[global]\n  map to guest = Bad User\n[public]\n  guest   ok = yes\n; comment\n"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Key != "map to guest" || got[1].Key != "guest ok" || got[1].Value != "yes" || got[1].Section != "public" {
+		t.Errorf("samba: %+v", got)
+	}
+}
+
+func TestFirewallParsing(t *testing.T) {
+
+	chains, err := nftChains(`{"nftables":[{"metainfo":{"version":"1.0.9"}},
+{"chain":{"family":"inet","table":"filter","name":"input","handle":1,"type":"filter","hook":"input","prio":0,"policy":"drop"}},
+{"chain":{"family":"inet","table":"filter","name":"forward","handle":2,"type":"filter","hook":"forward","prio":0,"policy":"accept"}},
+{"chain":{"family":"ip","table":"nat","name":"post","handle":3,"type":"nat","hook":"postrouting","prio":100,"policy":"accept"}},
+{"chain":{"family":"inet","table":"filter","name":"user_rules","handle":4}}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(chains) != 2 || chains[0].Policy != "drop" || chains[1].Hook != "forward" {
+		t.Errorf("nft: %+v", chains)
+	}
+
+	ipt := iptablesChains("-P INPUT ACCEPT\n-P FORWARD DROP\n-P OUTPUT ACCEPT\n-A INPUT -i lo -j ACCEPT\n", "ip")
+	if len(ipt) != 2 || ipt[0].Policy != "accept" || ipt[1].Policy != "drop" {
+		t.Errorf("iptables: %+v", ipt)
 	}
 }

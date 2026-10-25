@@ -58,6 +58,11 @@
       "items": {
         "type": "string"
       }
+    },
+    "perm_rules": {
+      "description": "Rules loaded with the key oscompliance_perm: changes of mode, owner and attributes by people (auid 1000 and above) and writes to /etc/group, /etc/gshadow, /etc/sudoers and /etc/sudoers.d. The agent loads them when none is.",
+      "type": "integer",
+      "minimum": 0
     }
   },
   "allOf": [

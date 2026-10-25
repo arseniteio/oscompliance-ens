@@ -126,7 +126,7 @@ func run() error {
 
 // allCollectors in the order they run. The facts each one emits are in
 // catalog/docs/contracts.
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "sweep"}
 
 // defaultCollectors is the hourly run; the sweep has its own daily run.
-const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services,wazuh,acl,audit"
+const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services,wazuh,acl,audit,firewall"

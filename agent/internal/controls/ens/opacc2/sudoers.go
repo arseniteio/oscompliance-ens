@@ -80,6 +80,8 @@ type userSpec struct {
 	nopasswd bool
 	// commands is the right-hand side, expanded once every alias is known.
 	commands string
+	// spec is what is granted as written: hosts = runas commands.
+	spec string
 }
 
 type sudoParser struct {
@@ -311,6 +313,7 @@ func (p *sudoParser) userSpecification(path string, line int, stmt string) {
 		line:     line,
 		nopasswd: strings.Contains(rhs, "NOPASSWD:"),
 		commands: rhs,
+		spec:     strings.Join(fields[1:], " ") + "=" + strings.Join(strings.Fields(rhs), " "),
 	})
 }
 
@@ -323,6 +326,7 @@ func (p *sudoParser) expand(spec userSpec) []fact.SudoGrant {
 	commands := p.noPasswdCommands(spec.commands)
 	for i := range out {
 		out[i].NoPasswdCommands = commands
+		out[i].Spec = spec.spec
 	}
 
 	return out

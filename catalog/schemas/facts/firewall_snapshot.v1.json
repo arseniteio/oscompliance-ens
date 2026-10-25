@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/firewall_snapshot.v1.json",
+  "title": "firewall_snapshot v1",
+  "description": "The packet filter of the machine: its base chains on the input and forward hooks and their default policy. A machine with no base input chain accepts everything.",
+  "type": "object",
+  "required": [
+    "tool",
+    "status",
+    "chains"
+  ],
+  "properties": {
+    "fact": {
+      "const": "firewall_snapshot"
+    },
+    "tool": {
+      "description": "nft, iptables, or none (no packet filter tool installed).",
+      "enum": [
+        "nft",
+        "iptables",
+        "none"
+      ]
+    },
+    "status": {
+      "enum": [
+        "read",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "chains": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "family",
+          "name",
+          "hook",
+          "policy"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "family": {
+            "type": "string"
+          },
+          "table": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "hook": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "error"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}
