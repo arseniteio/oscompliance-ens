@@ -71,6 +71,34 @@
         "type": "string",
         "minLength": 1
       }
+    },
+    "login_records": {
+      "description": "Login record files read for last_login, in order. A missing file records nothing; last_login is only as complete as the files read.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "read",
+              "absent",
+              "unreadable"
+            ]
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "allOf": [

@@ -26,6 +26,20 @@ type IdentityRecord struct {
 	AccountExpires string `json:"account_expires,omitempty"`
 	// AuthorizedKeys is nil when the number of keys cannot be known.
 	AuthorizedKeys *int `json:"authorized_keys,omitempty"`
+
+	PasswordChanged       string `json:"password_changed,omitempty"`
+	PasswordChangeForced  bool   `json:"password_change_forced,omitempty"`
+	PasswordMaxDays       *int   `json:"password_max_days,omitempty"`
+	PasswordInactiveDays  *int   `json:"password_inactive_days,omitempty"`
+	AuthorizedKeysChanged string `json:"authorized_keys_changed,omitempty"`
+	LastLogin             string `json:"last_login,omitempty"`
+}
+
+// LoginRecordFile is one entry of IdentitySnapshot.LoginRecords.
+type LoginRecordFile struct {
+	Path   string `json:"path"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 // Values of IdentitySnapshot.SSHDStatus.
@@ -52,4 +66,6 @@ type IdentitySnapshot struct {
 	SSHDStatus          string   `json:"sshd_status"`
 	SSHDError           string   `json:"sshd_error,omitempty"`
 	AuthorizedKeysFiles []string `json:"authorized_keys_files,omitempty"`
+
+	LoginRecords []LoginRecordFile `json:"login_records,omitempty"`
 }

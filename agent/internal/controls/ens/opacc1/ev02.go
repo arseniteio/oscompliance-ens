@@ -18,12 +18,20 @@ type EV02Config struct {
 	// SSHDPath is the sshd binary asked for its effective configuration
 	// (sshd -T). Missing binary: no key logins are possible.
 	SSHDPath string
+	// LoginRecords are wtmp files (any number, rotated ones too) and
+	// LastlogPath the lastlog file, read for each account's last login.
+	LoginRecords []string
+	LastlogPath  string
 }
 
 // shadowEntry is what EV-02 reports from one shadow line. Never the hash.
 type shadowEntry struct {
 	passwordState  string // one of the fact.Password* values
 	accountExpires string // YYYY-MM-DD, or "" when the field is empty
+	changed        string // YYYY-MM-DD of the last change, "" when unknown
+	changeForced   bool   // field 3 is 0: change at next login
+	maxDays        *int   // nil: the password never expires
+	inactiveDays   *int
 }
 
 // CollectEV02 emits one identity_record per passwd entry, at any UID, joined
@@ -72,6 +80,9 @@ func CollectEV02(e *emit.Emitter, cfg EV02Config) error {
 	snapshot.SSHDError = keys.err
 	snapshot.AuthorizedKeysFiles = keys.files
 
+	logins, sources := readLogins(cfg.LoginRecords, cfg.LastlogPath, entries)
+	snapshot.LoginRecords = sources
+
 	recordsEmitted := 0
 
 	for _, entry := range entries {
@@ -84,15 +95,29 @@ func CollectEV02(e *emit.Emitter, cfg EV02Config) error {
 			state = s
 		}
 
+		key := keys.inspect(entry)
+
 		record := fact.IdentityRecord{
-			Envelope:       e.Envelope(fact.IdentityRecordFact),
-			AccountName:    entry.user,
-			UID:            entry.uid,
-			GID:            entry.gid,
-			Shell:          entry.shell,
-			PasswordState:  state.passwordState,
-			AccountExpires: state.accountExpires,
-			AuthorizedKeys: keys.count(entry),
+			Envelope:             e.Envelope(fact.IdentityRecordFact),
+			AccountName:          entry.user,
+			UID:                  entry.uid,
+			GID:                  entry.gid,
+			Shell:                entry.shell,
+			PasswordState:        state.passwordState,
+			AccountExpires:       state.accountExpires,
+			AuthorizedKeys:       key.count,
+			PasswordChanged:      state.changed,
+			PasswordChangeForced: state.changeForced,
+			PasswordMaxDays:      state.maxDays,
+			PasswordInactiveDays: state.inactiveDays,
+		}
+
+		if !key.changed.IsZero() {
+			record.AuthorizedKeysChanged = key.changed.UTC().Format(time.RFC3339)
+		}
+
+		if last, ok := logins[entry.user]; ok {
+			record.LastLogin = last.UTC().Format(time.RFC3339)
 		}
 
 		if err := e.Emit(record); err != nil {
@@ -152,10 +177,21 @@ func readShadow(path string) (map[string]shadowEntry, error) {
 			continue
 		}
 
-		entries[fields[0]] = shadowEntry{
+		entry := shadowEntry{
 			passwordState:  passwordState(fields[1]),
-			accountExpires: accountExpires(fields[7]),
+			accountExpires: shadowDate(fields[7]),
+			changed:        shadowDate(fields[2]),
+			changeForced:   fields[2] == "0",
+			maxDays:        optionalDays(fields[4]),
+			inactiveDays:   optionalDays(fields[6]),
 		}
+
+		// Day 0 is not a date: it forces a change at the next login.
+		if entry.changeForced {
+			entry.changed = ""
+		}
+
+		entries[fields[0]] = entry
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -186,9 +222,22 @@ func passwordState(field string) string {
 	}
 }
 
-// accountExpires converts shadow field 8 (days since 1970-01-01) to a
-// YYYY-MM-DD date in UTC. An empty or non-numeric field returns "".
-func accountExpires(field string) string {
+// optionalDays reads a shadow day count; empty or invalid is nil.
+func optionalDays(field string) *int {
+
+	days, err := parseID(field)
+
+	if err != nil {
+		return nil
+	}
+
+	return &days
+}
+
+// shadowDate converts a shadow date field (days since 1970-01-01: field 3,
+// last change, and field 8, expiry) to a YYYY-MM-DD date in UTC. An empty or
+// non-numeric field returns "".
+func shadowDate(field string) string {
 
 	// parseID (ev01.go) already accepts only unsigned decimals: "-1" and
 	// "abc" fail here and mean "no date".

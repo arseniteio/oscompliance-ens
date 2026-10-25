@@ -48,8 +48,8 @@ func TestAccountExpires(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		if got := accountExpires(c.field); got != c.want {
-			t.Errorf("accountExpires(%q) = %q, want %q", c.field, got, c.want)
+		if got := shadowDate(c.field); got != c.want {
+			t.Errorf("shadowDate(%q) = %q, want %q", c.field, got, c.want)
 		}
 	}
 }
@@ -57,7 +57,7 @@ func TestAccountExpires(t *testing.T) {
 const shadowFixture = `root:!:20000:0:99999:7:::
 daemon:*:20000:0:99999:7:::
 alice:$6$salt$hash:20000:0:99999:7::20634:
-bob::20000:0:99999:7:::
+bob::0:0::7:30::
 broken line
 :$6$x:20000:0:99999:7:::
 alice:!:20000:0:99999:7:::
@@ -75,18 +75,32 @@ func TestReadShadow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := map[string]shadowEntry{
-		"root":   {passwordState: "locked"},
-		"daemon": {passwordState: "locked"},
-		"alice":  {passwordState: "set", accountExpires: "2026-06-30"}, // first line wins
-		"bob":    {passwordState: "empty"},
+	type aging struct {
+		state, expires, changed string
+		forced                  bool
+		max, inactive           int // -1: not set
+	}
+	days := func(p *int) int {
+		if p == nil {
+			return -1
+		}
+		return *p
+	}
+
+	want := map[string]aging{
+		"root":   {"locked", "", "2024-10-04", false, 99999, -1},
+		"daemon": {"locked", "", "2024-10-04", false, 99999, -1},
+		"alice":  {"set", "2026-06-30", "2024-10-04", false, 99999, -1}, // first line wins
+		"bob":    {"empty", "", "", true, -1, 30},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d entries %v, want %d", len(got), got, len(want))
 	}
 	for name, w := range want {
-		if got[name] != w {
-			t.Errorf("%s: got %+v, want %+v", name, got[name], w)
+		g := got[name]
+		a := aging{g.passwordState, g.accountExpires, g.changed, g.changeForced, days(g.maxDays), days(g.inactiveDays)}
+		if a != w {
+			t.Errorf("%s: got %+v, want %+v", name, a, w)
 		}
 	}
 

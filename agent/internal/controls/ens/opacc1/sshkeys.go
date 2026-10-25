@@ -90,26 +90,43 @@ func matchSpec(user string) string {
 	return "user=" + user + ",host=localhost,addr=127.0.0.1"
 }
 
+// keyInfo is what EV-02 reports about one account's keys.
+type keyInfo struct {
+	// count is nil when the number of keys cannot be known.
+	count *int
+	// changed is the newest modification time of the key files, zero when
+	// none exists or it cannot be known.
+	changed time.Time
+}
+
 // count returns how many keys sshd would accept for the account, or nil when
 // that cannot be known.
 func (k sshdKeys) count(entry passwdEntry) *int {
+	return k.inspect(entry).count
+}
+
+// inspect counts the keys sshd would accept for the account and when its
+// key files last changed.
+func (k sshdKeys) inspect(entry passwdEntry) keyInfo {
 
 	total := 0
 
 	switch k.status {
 	case fact.SSHDAbsent:
-		return &total
+		return keyInfo{count: &total}
 	case fact.SSHDRead:
 	default:
-		return nil
+		return keyInfo{}
 	}
 
 	// Match blocks can give one account other key files, or a command.
 	files, command, err := sshdT(k.path, "-C", matchSpec(entry.user))
 
 	if err != nil || command {
-		return nil
+		return keyInfo{}
 	}
+
+	var changed time.Time
 
 	for _, pattern := range files {
 
@@ -117,16 +134,21 @@ func (k sshdKeys) count(entry passwdEntry) *int {
 			continue
 		}
 
-		n, err := countKeyLines(keyFilePath(pattern, entry))
+		path := keyFilePath(pattern, entry)
+		n, err := countKeyLines(path)
 
 		if err != nil {
-			return nil
+			return keyInfo{}
 		}
 
 		total += n
+
+		if info, err := os.Stat(path); err == nil && n > 0 && info.ModTime().After(changed) {
+			changed = info.ModTime()
+		}
 	}
 
-	return &total
+	return keyInfo{count: &total, changed: changed}
 }
 
 // keyFilePath expands the sshd tokens %%, %h, %u and %U; a relative path is

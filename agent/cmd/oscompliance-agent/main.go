@@ -73,7 +73,10 @@ func run() error {
 
 	collectors := map[string]func() error{
 		"identity": func() error {
-			return opacc1.CollectEV02(e, opacc1.EV02Config{PasswdPath: *passwd, ShadowPath: *shadow, SSHDPath: *sshd})
+			return opacc1.CollectEV02(e, opacc1.EV02Config{
+				PasswdPath: *passwd, ShadowPath: *shadow, SSHDPath: *sshd,
+				LoginRecords: opacc1.DefaultLoginRecords, LastlogPath: opacc1.DefaultLastlog,
+			})
 		},
 		"groups": func() error { return opacc1.CollectEV06(e, opacc1.EV06Config{GroupPath: *group}) },
 		"umask": func() error {

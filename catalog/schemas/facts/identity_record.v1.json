@@ -55,6 +55,35 @@
       "description": "Public keys sshd would accept for the account: non-empty, non-comment lines of the AuthorizedKeysFile paths of the identity_snapshot. 0 when sshd is not installed. Absent when it cannot be known: sshd -T failed, an AuthorizedKeysCommand is in use, or a key file exists but cannot be read.",
       "type": "integer",
       "minimum": 0
+    },
+    "password_changed": {
+      "description": "Date of the last password change (shadow field 3), UTC. Absent when the field is empty or 0.",
+      "type": "string",
+      "format": "date"
+    },
+    "password_change_forced": {
+      "description": "Shadow field 3 is 0: the password must be changed at the next login.",
+      "type": "boolean"
+    },
+    "password_max_days": {
+      "description": "Maximum password age in days (shadow field 5). Absent when the field is empty: the password never expires. 99999 is written as is.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "password_inactive_days": {
+      "description": "Days after expiry before the account is disabled (shadow field 7). Absent when empty.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "authorized_keys_changed": {
+      "description": "Newest modification time of the account's authorized keys files: the last time a key was added or removed, so some key is at least this old. Absent when no key file exists or it cannot be known.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_login": {
+      "description": "Newest interactive login of the account recorded in the login records of the identity_snapshot (wtmp, lastlog). Absent when none records one.",
+      "type": "string",
+      "format": "date-time"
     }
   },
   "unevaluatedProperties": false
