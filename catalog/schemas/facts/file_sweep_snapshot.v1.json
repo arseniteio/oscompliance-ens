@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/file_sweep_snapshot.v1.json",
+  "title": "file_sweep_snapshot v1",
+  "description": "Summary of one filesystem sweep, emitted after its special_file records. The sweep walks every local filesystem (one device per root, never crossing into another), pruning pseudo and container filesystems. It is complete only with status complete and no unreadable directories.",
+  "type": "object",
+  "required": [
+    "roots",
+    "status",
+    "unreadable",
+    "records_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "file_sweep_snapshot"
+    },
+    "roots": {
+      "description": "Mount points swept.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pruned": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "status": {
+      "description": "complete; timeout: the time limit stopped it; truncated: more special files than the agent emits; error: the sweep could not start (sweep_error says why).",
+      "enum": [
+        "complete",
+        "timeout",
+        "truncated",
+        "error"
+      ]
+    },
+    "sweep_error": {
+      "type": "string"
+    },
+    "unreadable": {
+      "description": "Directories the sweep could not read: what is inside them was not seen.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "records_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "error"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "sweep_error"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "sweep_error"
+          ]
+        }
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/special_file.v1.json",
+  "title": "special_file v1",
+  "description": "One file or directory the filesystem sweep found with at least one property access control cares about: SUID, SGID, world-writable, or no owner or group in the local account database. Emitted before the file_sweep_snapshot of the same run_id. Which ones are allowed (P-10 SUID baseline, P-11 world-writable exceptions, P-02 scope) is decided by the engine.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "required": [
+    "path",
+    "kind",
+    "mode",
+    "uid",
+    "gid",
+    "suid",
+    "sgid",
+    "sticky",
+    "world_writable",
+    "no_owner",
+    "no_group"
+  ],
+  "properties": {
+    "fact": {
+      "const": "special_file"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "file",
+        "directory"
+      ]
+    },
+    "mode": {
+      "description": "Permission bits in octal, 4 digits, as a string (keeps the leading zero).",
+      "type": "string",
+      "pattern": "^[0-7]{4}$"
+    },
+    "uid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "gid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "suid": {
+      "type": "boolean"
+    },
+    "sgid": {
+      "type": "boolean"
+    },
+    "sticky": {
+      "type": "boolean"
+    },
+    "world_writable": {
+      "type": "boolean"
+    },
+    "no_owner": {
+      "description": "uid has no passwd entry.",
+      "type": "boolean"
+    },
+    "no_group": {
+      "description": "gid has no group entry.",
+      "type": "boolean"
+    }
+  },
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/umask_snapshot.v1.json",
+  "title": "umask_snapshot v1",
+  "description": "The umask declared by every system-wide shell and login source, read in one pass. The engine takes the least restrictive declaration and compares it bit by bit with P-07.",
+  "type": "object",
+  "required": [
+    "sources"
+  ],
+  "properties": {
+    "fact": {
+      "const": "umask_snapshot"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "description": "read, absent (the file does not exist: nothing to declare) or unreadable.",
+            "enum": [
+              "read",
+              "absent",
+              "unreadable"
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "umasks": {
+            "description": "Octal umask declarations found, normalised to 3 or 4 digits, in file order.",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[0-7]{3,4}$"
+            }
+          },
+          "uninterpretable": {
+            "description": "Declarations that are not octal (symbolic u=rwx, variables): the file's umask cannot be known.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

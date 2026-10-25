@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/sudo_grant.v1.json",
+  "title": "sudo_grant v1",
+  "description": "One subject of a sudoers user specification, with aliases expanded but groups not resolved: the engine resolves groups and UIDs against the identity and group facts. Emitted before the sudoers_snapshot of the same run_id. Negated subjects grant nothing and are not emitted.",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "required": [
+    "subject_kind",
+    "subject",
+    "file",
+    "line"
+  ],
+  "properties": {
+    "fact": {
+      "const": "sudo_grant"
+    },
+    "subject_kind": {
+      "description": "user: a login name; group: %group; uid: #uid; gid: %#gid.",
+      "enum": [
+        "user",
+        "group",
+        "uid",
+        "gid"
+      ]
+    },
+    "subject": {
+      "description": "The name or number, without % or #.",
+      "type": "string",
+      "minLength": 1
+    },
+    "file": {
+      "type": "string",
+      "minLength": 1
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "nopasswd": {
+      "description": "The specification carries a NOPASSWD tag.",
+      "type": "boolean"
+    }
+  },
+  "unevaluatedProperties": false
+}

@@ -142,6 +142,16 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &GroupRecord{}
 		case GroupSnapshotFact:
 			v = &GroupSnapshot{}
+		case SpecialFileFact:
+			v = &SpecialFile{}
+		case FileSweepSnapshotFact:
+			v = &FileSweepSnapshot{}
+		case UmaskSnapshotFact:
+			v = &UmaskSnapshot{}
+		case SudoGrantFact:
+			v = &SudoGrant{}
+		case SudoersSnapshotFact:
+			v = &SudoersSnapshot{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}
@@ -169,6 +179,12 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	const groupRead = `{"oscompliance":"1","fact":"group_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_path":"/etc/group","group_status":"read","records_emitted":1}`
 	const groupUnread = `{"oscompliance":"1","fact":"group_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_path":"/etc/group","group_status":"unreadable","group_error":"denied"}`
 	const groupRecord = `{"oscompliance":"1","fact":"group_record","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","group_name":"sudo","gid":27,"members":["a"]}`
+
+	const specialFile = `{"oscompliance":"1","fact":"special_file","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","path":"/usr/bin/sudo","kind":"file","mode":"4755","uid":0,"gid":0,"suid":true,"sgid":false,"sticky":false,"world_writable":false,"no_owner":false,"no_group":false}`
+	const sweepSnapshot = `{"oscompliance":"1","fact":"file_sweep_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","roots":["/"],"status":"complete","unreadable":0,"records_emitted":1}`
+	const umaskSnapshot = `{"oscompliance":"1","fact":"umask_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","sources":[{"path":"/etc/login.defs","status":"read","umasks":["022"]}]}`
+	const sudoGrant = `{"oscompliance":"1","fact":"sudo_grant","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","subject_kind":"group","subject":"sudo","file":"/etc/sudoers","line":50}`
+	const sudoersSnapshot = `{"oscompliance":"1","fact":"sudoers_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","files":[{"path":"/etc/sudoers","status":"read"}],"status":"read","blind_spots":0,"records_emitted":1}`
 
 	cases := []struct {
 		name string
@@ -199,6 +215,15 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		{"identity: no sshd_status", identityRead, func(m map[string]any) { delete(m, "sshd_status") }},
 		{"identity: negative key count", identityRecord, func(m map[string]any) { m["authorized_keys"] = -1 }},
 		{"identity: the keys themselves", identityRecord, func(m map[string]any) { m["authorized_keys"] = []any{"ssh-ed25519 AAAA"} }},
+		{"sweep: mode without leading digit", specialFile, func(m map[string]any) { m["mode"] = "755" }},
+		{"sweep: unknown kind", specialFile, func(m map[string]any) { m["kind"] = "symlink" }},
+		{"sweep: error without reason", sweepSnapshot, func(m map[string]any) { m["status"] = "error" }},
+		{"sweep: reason without error", sweepSnapshot, func(m map[string]any) { m["sweep_error"] = "x" }},
+		{"umask: not octal", umaskSnapshot, func(m map[string]any) {
+			m["sources"] = []any{map[string]any{"path": "/etc/profile", "status": "read", "umasks": []any{"0o22"}}}
+		}},
+		{"sudo: unknown subject kind", sudoGrant, func(m map[string]any) { m["subject_kind"] = "netgroup" }},
+		{"sudo: negative blind spots", sudoersSnapshot, func(m map[string]any) { m["blind_spots"] = -1 }},
 		{"identity: expiry not a date", identityRecord, func(m map[string]any) { m["account_expires"] = "20612" }},
 	}
 
@@ -216,7 +241,7 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	}
 
 	// The bases themselves are valid, so each rejection above is the edit's.
-	for _, base := range []string{identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord} {
+	for _, base := range []string{identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord, specialFile, sweepSnapshot, umaskSnapshot, sudoGrant, sudoersSnapshot} {
 		if err := validate(schemas, []byte(base)); err != nil {
 			t.Errorf("base rejected: %v", err)
 		}

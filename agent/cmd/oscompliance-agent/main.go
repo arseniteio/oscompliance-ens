@@ -7,8 +7,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"slices"
+	"strings"
+	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc2"
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
@@ -30,7 +34,19 @@ func run() error {
 	shadow := flag.String("shadow", "/etc/shadow", "shadow file read by EV-02")
 	group := flag.String("group", "/etc/group", "group file read by EV-06")
 	sshd := flag.String("sshd", "/usr/sbin/sshd", "sshd binary asked for AuthorizedKeysFile (EV-02)")
+	sudoers := flag.String("sudoers", "/etc/sudoers", "main sudoers file; its includes are followed")
+	collect := flag.String("collect", defaultCollectors, "comma-separated collectors to run: "+strings.Join(allCollectors, ", ")+"; the sweep is heavy and meant for a daily run")
+	sweepTimeout := flag.Duration("sweep-timeout", 15*time.Minute, "time limit of the filesystem sweep")
 	flag.Parse()
+
+	selected := map[string]bool{}
+	for _, name := range strings.Split(*collect, ",") {
+		name = strings.TrimSpace(name)
+		if !slices.Contains(allCollectors, name) {
+			return fmt.Errorf("unknown collector %q (known: %s)", name, strings.Join(allCollectors, ", "))
+		}
+		selected[name] = true
+	}
 
 	if *host == "" {
 		h, err := os.Hostname()
@@ -53,10 +69,41 @@ func run() error {
 
 	e := emit.New(f, *host, version, runID)
 
+	collectors := map[string]func() error{
+		"identity": func() error {
+			return opacc1.CollectEV02(e, opacc1.EV02Config{PasswdPath: *passwd, ShadowPath: *shadow, SSHDPath: *sshd})
+		},
+		"groups": func() error { return opacc1.CollectEV06(e, opacc1.EV06Config{GroupPath: *group}) },
+		"umask": func() error {
+			return opacc2.CollectUmask(e, opacc2.UmaskConfig{Files: opacc2.DefaultUmaskFiles, ProfileDir: "/etc/profile.d"})
+		},
+		"sudoers": func() error { return opacc2.CollectSudoers(e, opacc2.SudoersConfig{Path: *sudoers}) },
+		"sweep": func() error {
+			return opacc2.CollectSweep(e, opacc2.SweepConfig{
+				MountsPath: "/proc/self/mounts", Prune: opacc2.DefaultPrune,
+				PasswdPath: *passwd, GroupPath: *group,
+				Timeout: *sweepTimeout, MaxRecords: 20000,
+			})
+		},
+	}
+
 	// Every collector runs even when an earlier one fails: one broken
 	// evidence must not silence the others.
-	return errors.Join(
-		opacc1.CollectEV02(e, opacc1.EV02Config{PasswdPath: *passwd, ShadowPath: *shadow, SSHDPath: *sshd}),
-		opacc1.CollectEV06(e, opacc1.EV06Config{GroupPath: *group}),
-	)
+	var errs []error
+	for _, name := range allCollectors {
+		if selected[name] {
+			if err := collectors[name](); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", name, err))
+			}
+		}
+	}
+
+	return errors.Join(errs...)
 }
+
+// allCollectors in the order they run. The facts each one emits are in
+// catalog/docs/contracts.
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "sweep"}
+
+// defaultCollectors is the hourly run; the sweep has its own daily run.
+const defaultCollectors = "identity,groups,umask,sudoers"
