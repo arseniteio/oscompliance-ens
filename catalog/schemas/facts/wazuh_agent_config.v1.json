@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/wazuh_agent_config.v1.json",
+  "title": "wazuh_agent_config v1",
+  "description": "What the Wazuh agent of the machine is configured to watch, from its ossec.conf and the shared agent.conf blocks that apply to it: the FIM directories and the log files it reads. The engine checks with it that a silence of Wazuh is a real silence.",
+  "type": "object",
+  "required": [
+    "status",
+    "syscheck_disabled",
+    "directories",
+    "localfiles"
+  ],
+  "properties": {
+    "fact": {
+      "const": "wazuh_agent_config"
+    },
+    "status": {
+      "description": "read; absent (no Wazuh agent installed); unreadable.",
+      "enum": [
+        "read",
+        "absent",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "syscheck_disabled": {
+      "description": "FIM is switched off (<disabled>yes</disabled>).",
+      "type": "boolean"
+    },
+    "syscheck_frequency": {
+      "description": "Seconds between scheduled FIM scans.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "directories": {
+      "description": "FIM <directories>, one entry per path.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "realtime": {
+            "type": "boolean"
+          },
+          "whodata": {
+            "type": "boolean"
+          },
+          "source": {
+            "description": "ossec.conf or the shared agent.conf.",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ignored": {
+      "description": "FIM <ignore> entries.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "localfiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "location",
+          "format"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "format": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "unreadable"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}

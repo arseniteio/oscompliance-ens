@@ -3,6 +3,7 @@ package sysconf
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/binary"
 	"encoding/json"
 	"net"
 	"os"
@@ -339,5 +340,128 @@ func TestCollectServiceLogs(t *testing.T) {
 	})
 	if len(facts) != 1 || facts[0]["status"] != "absent" {
 		t.Errorf("no config: %v", facts)
+	}
+}
+
+func TestCollectWazuhConfig(t *testing.T) {
+
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "client.keys"), "001 lab-agent-01 any 0123\n")
+	write(t, filepath.Join(dir, "ossec.conf"), `<ossec_config>
+  <syscheck>
+    <disabled>no</disabled>
+    <frequency>43200</frequency>
+    <directories>/etc,/usr/bin,/usr/sbin</directories>
+    <ignore>/etc/mtab</ignore>
+  </syscheck>
+  <localfile><log_format>syslog</log_format><location>/var/log/dpkg.log</location></localfile>
+</ossec_config>
+`)
+	write(t, filepath.Join(dir, "agent.conf"), `<agent_config>
+  <syscheck><directories realtime="yes">/srv/datos</directories></syscheck>
+  <localfile><log_format>audit</log_format><location>/var/log/audit/audit.log</location></localfile>
+</agent_config>
+<agent_config name="other"><syscheck><disabled>yes</disabled></syscheck></agent_config>
+`)
+
+	facts := run(t, func(e *emit.Emitter) error {
+		return CollectWazuhConfig(e, WazuhConfig{OssecConf: filepath.Join(dir, "ossec.conf"), SharedConf: filepath.Join(dir, "agent.conf"), ClientKeys: filepath.Join(dir, "client.keys")})
+	})
+
+	c := facts[0]
+	dirs := c["directories"].([]any)
+	if c["status"] != "read" || c["syscheck_disabled"] != false || c["syscheck_frequency"] != 43200.0 || len(dirs) != 4 {
+		t.Fatalf("config: %v", c)
+	}
+	if last := dirs[3].(map[string]any); last["path"] != "/srv/datos" || last["realtime"] != true {
+		t.Errorf("shared directory: %v", last)
+	}
+	if lf := c["localfiles"].([]any); len(lf) != 2 || lf[1].(map[string]any)["format"] != "audit" {
+		t.Errorf("localfiles: %v", lf)
+	}
+
+	facts = run(t, func(e *emit.Emitter) error {
+		return CollectWazuhConfig(e, WazuhConfig{OssecConf: filepath.Join(dir, "none")})
+	})
+	if facts[0]["status"] != "absent" {
+		t.Errorf("no agent: %v", facts[0])
+	}
+}
+
+func TestCollectACL(t *testing.T) {
+
+	dir := t.TempDir()
+	datos := filepath.Join(dir, "datos")
+	if err := os.Mkdir(datos, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(datos, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, "oscompliance.json"), `{"acl_paths":["`+datos+`","`+filepath.Join(dir, "missing")+`"]}`)
+
+	facts := run(t, func(e *emit.Emitter) error {
+		return CollectACL(e, ACLConfig{SharedPaths: filepath.Join(dir, "oscompliance.json")})
+	})
+
+	if len(facts) != 3 || facts[0]["mode"] != "0750" || facts[0]["acl"] == nil || facts[1]["status"] != "absent" || facts[2]["records_emitted"] != 2.0 {
+		t.Errorf("acl: %v", facts)
+	}
+
+	facts = run(t, func(e *emit.Emitter) error {
+		return CollectACL(e, ACLConfig{SharedPaths: filepath.Join(dir, "none.json")})
+	})
+	if len(facts) != 1 || facts[0]["status"] != "absent" {
+		t.Errorf("no shared file: %v", facts)
+	}
+}
+
+func TestParseACL(t *testing.T) {
+
+	entry := func(tag, perm uint16, id uint32) []byte {
+		b := make([]byte, 8)
+		binary.LittleEndian.PutUint16(b, tag)
+		binary.LittleEndian.PutUint16(b[2:], perm)
+		binary.LittleEndian.PutUint32(b[4:], id)
+		return b
+	}
+
+	data := []byte{2, 0, 0, 0}
+	data = append(data, entry(aclUserObj, 7, 0)...)
+	data = append(data, entry(aclUser, 5, 4242424)...)
+	data = append(data, entry(aclGroupObj, 5, 0)...)
+	data = append(data, entry(aclMask, 5, 0)...)
+	data = append(data, entry(aclOther, 0, 0)...)
+
+	got, err := parseACL(data, "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(got, ",") != "u:4242424:r-x,m::r-x" {
+		t.Errorf("access ACL: %v", got)
+	}
+
+	got, _ = parseACL(data, "d:", true)
+	if len(got) != 5 || got[0] != "d:u::rwx" || got[4] != "d:o::---" {
+		t.Errorf("default ACL: %v", got)
+	}
+
+	if _, err := parseACL([]byte{1, 0, 0, 0}, "", false); err == nil {
+		t.Error("bad version must fail")
+	}
+}
+
+func TestParseWatches(t *testing.T) {
+
+	got := parseWatches(`-w /srv/datos -p rwxa -k oscompliance_obj
+-w /etc/passwd -p wa -k identity
+-a always,exit -F arch=b64 -S all -F dir=/srv/app -F perm=rwxa -F key=oscompliance_obj
+`)
+	if strings.Join(got, ",") != "/srv/datos,/srv/app" {
+		t.Errorf("watches: %v", got)
+	}
+
+	if !auditRunning("enabled 1\nfailure 1\npid 812\n") || auditRunning("enabled 1\npid 0\n") || auditRunning("enabled 0\npid 9\n") {
+		t.Error("auditctl -s reading")
 	}
 }

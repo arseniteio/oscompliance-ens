@@ -90,19 +90,34 @@ func agentName(clientKeys string) string {
 	return fields[1]
 }
 
+// agentConfig is one <agent_config> block of the shared configuration, or
+// one <ossec_config> block of ossec.conf: both hold the same sections.
 type agentConfig struct {
 	Name       string      `xml:"name,attr"`
 	OS         string      `xml:"os,attr"`
 	Profile    string      `xml:"profile,attr"`
 	Localfiles []localfile `xml:"localfile"`
+	Syscheck   []syscheck  `xml:"syscheck"`
 }
 
 type localfile struct {
 	Location string `xml:"location"`
+	Format   string `xml:"log_format"`
 	Labels   []struct {
 		Key   string `xml:"key,attr"`
 		Value string `xml:",chardata"`
 	} `xml:"label"`
+}
+
+type syscheck struct {
+	Disabled    string `xml:"disabled"`
+	Frequency   string `xml:"frequency"`
+	Directories []struct {
+		Realtime string `xml:"realtime,attr"`
+		Whodata  string `xml:"whodata,attr"`
+		Paths    string `xml:",chardata"`
+	} `xml:"directories"`
+	Ignore []string `xml:"ignore"`
 }
 
 type serviceFile struct {
@@ -115,29 +130,15 @@ type serviceFile struct {
 // the profiles are in the agent's own ossec.conf.
 func labelledLocalfiles(data []byte, name string) ([]serviceFile, error) {
 
-	decoder := xml.NewDecoder(io.MultiReader(strings.NewReader("<root>"), strings.NewReader(string(data)), strings.NewReader("</root>")))
-	decoder.Strict = false
-
-	var root struct {
-		Blocks []agentConfig `xml:"agent_config"`
-	}
-	if err := decoder.Decode(&root); err != nil {
+	blocks, err := applicableBlocks(data, "agent_config", name)
+	if err != nil {
 		return nil, err
 	}
 
 	var out []serviceFile
 	seen := map[string]bool{}
 
-	for _, b := range root.Blocks {
-
-		switch {
-		case b.Profile != "":
-			continue
-		case b.Name != "" && !nameMatches(b.Name, name):
-			continue
-		case b.OS != "" && !strings.Contains(strings.ToLower(b.OS), "linux"):
-			continue
-		}
+	for _, b := range blocks {
 
 		for _, l := range b.Localfiles {
 			for _, label := range l.Labels {
@@ -147,6 +148,40 @@ func labelledLocalfiles(data []byte, name string) ([]serviceFile, error) {
 					out = append(out, serviceFile{service: strings.TrimSpace(label.Value), path: strings.TrimSpace(l.Location)})
 				}
 			}
+		}
+	}
+
+	return out, nil
+}
+
+// applicableBlocks parses the <element> blocks of a Wazuh configuration and
+// keeps those that apply to the agent named name, as the Wazuh agent does.
+func applicableBlocks(data []byte, element, name string) ([]agentConfig, error) {
+
+	decoder := xml.NewDecoder(io.MultiReader(strings.NewReader("<root>"), strings.NewReader(string(data)), strings.NewReader("</root>")))
+	decoder.Strict = false
+
+	var root struct {
+		Agent []agentConfig `xml:"agent_config"`
+		Ossec []agentConfig `xml:"ossec_config"`
+	}
+	if err := decoder.Decode(&root); err != nil {
+		return nil, err
+	}
+
+	all := root.Agent
+	if element == "ossec_config" {
+		all = root.Ossec
+	}
+
+	var out []agentConfig
+	for _, b := range all {
+		switch {
+		case b.Profile != "":
+		case b.Name != "" && !nameMatches(b.Name, name):
+		case b.OS != "" && !strings.Contains(strings.ToLower(b.OS), "linux"):
+		default:
+			out = append(out, b)
 		}
 	}
 

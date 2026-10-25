@@ -87,6 +87,11 @@ func run() error {
 			return sysconf.CollectConfig(e, sysconf.ConfigConfig{Files: sysconf.DefaultConfigFiles, SSHD: *sshd})
 		},
 		"authprobe": func() error { return sysconf.CollectAuthProbe(e) },
+		"wazuh":     func() error { return sysconf.CollectWazuhConfig(e, sysconf.DefaultWazuhConfig) },
+		"acl":       func() error { return sysconf.CollectACL(e, sysconf.ACLConfig{SharedPaths: sysconf.DefaultSharedPaths}) },
+		"audit": func() error {
+			return sysconf.CollectAuditWatches(e, sysconf.AuditConfig{Auditctl: "/usr/sbin/auditctl", SharedPaths: sysconf.DefaultSharedPaths})
+		},
 		"services": func() error {
 			return sysconf.CollectServiceLogs(e, sysconf.ServiceLogConfig{SharedConf: "/var/ossec/etc/shared/agent.conf", ClientKeys: "/var/ossec/etc/client.keys"})
 		},
@@ -121,7 +126,7 @@ func run() error {
 
 // allCollectors in the order they run. The facts each one emits are in
 // catalog/docs/contracts.
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "sweep"}
 
 // defaultCollectors is the hourly run; the sweep has its own daily run.
-const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services"
+const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services,wazuh,acl,audit"

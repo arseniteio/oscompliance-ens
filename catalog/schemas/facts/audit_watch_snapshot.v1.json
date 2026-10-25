@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/audit_watch_snapshot.v1.json",
+  "title": "audit_watch_snapshot v1",
+  "description": "The auditd watches the manager asked for (audit_watches of the shared oscompliance.json) and whether they are loaded. The agent loads a missing watch with auditctl and never removes one.",
+  "type": "object",
+  "required": [
+    "auditd",
+    "wanted",
+    "loaded"
+  ],
+  "properties": {
+    "fact": {
+      "const": "audit_watch_snapshot"
+    },
+    "auditd": {
+      "description": "running; stopped (the daemon is not running or the kernel audit is off); absent (auditctl not installed); error.",
+      "enum": [
+        "running",
+        "stopped",
+        "absent",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "wanted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "loaded": {
+      "description": "Wanted paths whose watch is loaded with the oscompliance key.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "failed": {
+      "description": "Wanted paths whose watch could not be loaded, with the reason.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/acl_snapshot.v1.json",
+  "title": "acl_snapshot v1",
+  "description": "Summary of one read of the paths of the shared oscompliance.json, emitted after their acl_record facts.",
+  "type": "object",
+  "required": [
+    "config",
+    "status",
+    "records_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "acl_snapshot"
+    },
+    "config": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "read; absent (the manager sent no oscompliance.json); unreadable.",
+      "enum": [
+        "read",
+        "absent",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "records_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

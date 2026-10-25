@@ -100,3 +100,76 @@ type SudoersSnapshot struct {
 	Defaults         []SudoDefault `json:"defaults,omitempty"`
 	RecordsEmitted   int           `json:"records_emitted"`
 }
+
+// Fact names of the manager-driven observations of op.acc.2.
+const (
+	WazuhAgentConfigFact   = "wazuh_agent_config"
+	ACLRecordFact          = "acl_record"
+	ACLSnapshotFact        = "acl_snapshot"
+	AuditWatchSnapshotFact = "audit_watch_snapshot"
+)
+
+// FIMDirectory is one FIM <directories> path of WazuhAgentConfig.
+type FIMDirectory struct {
+	Path     string `json:"path"`
+	Realtime bool   `json:"realtime,omitempty"`
+	Whodata  bool   `json:"whodata,omitempty"`
+	Source   string `json:"source,omitempty"`
+}
+
+// AgentLocalfile is one <localfile> of WazuhAgentConfig.
+type AgentLocalfile struct {
+	Location string `json:"location"`
+	Format   string `json:"format"`
+	Source   string `json:"source,omitempty"`
+}
+
+// WazuhAgentConfig mirrors wazuh_agent_config.v1.json.
+type WazuhAgentConfig struct {
+	Envelope
+	Status            string           `json:"status"`
+	Error             string           `json:"error,omitempty"`
+	SyscheckDisabled  bool             `json:"syscheck_disabled"`
+	SyscheckFrequency int              `json:"syscheck_frequency,omitempty"`
+	Directories       []FIMDirectory   `json:"directories"`
+	Ignored           []string         `json:"ignored,omitempty"`
+	Localfiles        []AgentLocalfile `json:"localfiles"`
+}
+
+// ACLRecord mirrors acl_record.v1.json.
+type ACLRecord struct {
+	Envelope
+	Path   string   `json:"path"`
+	Status string   `json:"status"`
+	Error  string   `json:"error,omitempty"`
+	Mode   string   `json:"mode,omitempty"`
+	Owner  string   `json:"owner,omitempty"`
+	ACL    []string `json:"acl,omitzero"`
+}
+
+// ACLSnapshot mirrors acl_snapshot.v1.json.
+type ACLSnapshot struct {
+	Envelope
+	Config         string `json:"config"`
+	Status         string `json:"status"`
+	Error          string `json:"error,omitempty"`
+	RecordsEmitted int    `json:"records_emitted"`
+}
+
+// Values of AuditWatchSnapshot.Auditd.
+const (
+	AuditdRunning = "running"
+	AuditdStopped = "stopped"
+	AuditdAbsent  = "absent"
+	AuditdError   = "error"
+)
+
+// AuditWatchSnapshot mirrors audit_watch_snapshot.v1.json.
+type AuditWatchSnapshot struct {
+	Envelope
+	Auditd string   `json:"auditd"`
+	Error  string   `json:"error,omitempty"`
+	Wanted []string `json:"wanted"`
+	Loaded []string `json:"loaded"`
+	Failed []string `json:"failed,omitempty"`
+}
