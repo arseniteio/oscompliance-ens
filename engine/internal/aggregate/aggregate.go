@@ -128,6 +128,29 @@ func EvaluateRequirement(req catalog.Requirement, level string, controlEnabled b
 	return out
 }
 
+// FromDecision is the requirement verdict of a control's own decision (see
+// evaluator.Decider). NOT_EVALUABLE counts against, as everywhere: it is
+// NON_COMPLIANT and not evidenced.
+func FromDecision(id string, d verdict.Judgement) Requirement {
+
+	out := Requirement{ID: id, Status: d.Status, Reason: d.Reason}
+
+	switch d.Status {
+	case verdict.Compliant, verdict.NonCompliant:
+		out.Evidenced = true
+	case verdict.NotApplicable:
+	default:
+		out.Status = verdict.NonCompliant
+		if d.Cause != "" {
+			out.Reason = fmt.Sprintf("not evidenced (%s): %s", d.Cause, d.Reason)
+		} else {
+			out.Reason = "not evidenced: " + d.Reason
+		}
+	}
+
+	return out
+}
+
 // EvaluateControl: all applicable compliant is COMPLIANT (100), all failing
 // is NON_COMPLIANT, a mix is PARTIAL with the average score; nothing
 // applicable is NOT_APPLICABLE with no score. The denominator is every

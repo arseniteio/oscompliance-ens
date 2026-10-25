@@ -35,3 +35,14 @@ type Evaluator interface {
 	// requirements; the error says why.
 	Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]Result, error)
 }
+
+// Decider is implemented by a control some of whose requirements are not
+// decided by their evidences alone (op.acc.6: the mechanism chosen in P-01
+// rules requirements out, and r1.1, r2.1 and r8.1 each judge EV-02 their own
+// way). Decisions is called after Agent for the same agent, keyed by
+// requirement ID. A decision applies only where the requirement applies by
+// level; it then replaces the aggregation of its evidences and any P-ATT
+// attestation.
+type Decider interface {
+	Decisions(agentID string) map[string]verdict.Judgement
+}

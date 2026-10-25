@@ -149,3 +149,24 @@ func TestOpAcc1EndToEnd(t *testing.T) {
 		t.Errorf("BAJO: %+v score %d", got, *got.Score)
 	}
 }
+
+func TestFromDecision(t *testing.T) {
+
+	cases := []struct {
+		in        verdict.Judgement
+		status    verdict.Status
+		evidenced bool
+	}{
+		{verdict.Judgement{Status: verdict.NotApplicable, Reason: "P-01 is R2"}, verdict.NotApplicable, false},
+		{verdict.Judgement{Status: verdict.Compliant}, verdict.Compliant, true},
+		{verdict.Judgement{Status: verdict.NonCompliant}, verdict.NonCompliant, true},
+		{verdict.Judgement{Status: verdict.NotEvaluable, Cause: verdict.CauseConfiguration, Reason: "P-01 not set"}, verdict.NonCompliant, false},
+	}
+
+	for _, c := range cases {
+		got := FromDecision("r", c.in)
+		if got.Status != c.status || got.Evidenced != c.evidenced || got.Attested {
+			t.Errorf("%+v: got %+v", c.in, got)
+		}
+	}
+}

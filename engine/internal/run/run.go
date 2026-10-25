@@ -93,10 +93,14 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		for _, agent := range agents {
 
 			results := map[string]evaluator.Result{}
+			var decisions map[string]verdict.Judgement
 			if begun {
 				var err error
 				if results, err = ev.Agent(ctx, agent, policy); err != nil {
 					errs = append(errs, fmt.Errorf("%s agent %s: %w", control.Control, agent.ID, err))
+				}
+				if d, ok := ev.(evaluator.Decider); ok {
+					decisions = d.Decisions(agent.ID)
 				}
 			}
 
@@ -126,7 +130,7 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 
 			// Requirements and control, from whatever evidence verdicts exist:
 			// an evidence that could not be judged counts as a COLLECTION gap.
-			for _, v := range aggregateVerdicts(policy, control, agent, evidences, base) {
+			for _, v := range aggregateVerdicts(policy, control, agent, evidences, decisions, base) {
 				store(v)
 			}
 		}
@@ -168,7 +172,7 @@ func judgedAgents(ctx context.Context, list Agents, since time.Time) ([]verdict.
 }
 
 // aggregateVerdicts builds the requirement and control verdicts of one agent.
-func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verdict.Agent, evidences map[string]verdict.Judgement, base func(verdict.Agent, string) verdict.Verdict) []verdict.Verdict {
+func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verdict.Agent, evidences, decisions map[string]verdict.Judgement, base func(verdict.Agent, string) verdict.Verdict) []verdict.Verdict {
 
 	level := policy.Level()
 	enabled := policy.ControlEnabled(control.Control)
@@ -187,6 +191,11 @@ func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verd
 		}
 
 		r := aggregate.EvaluateRequirement(req, level, enabled, evidences, att)
+
+		// The control's own decision, where the requirement applies at all.
+		if d, ok := decisions[req.ID]; ok && r.Status != verdict.NotApplicable {
+			r = aggregate.FromDecision(req.ID, d)
+		}
 		reqs = append(reqs, r)
 
 		v := base(agent, verdict.ScopeRequirement)
