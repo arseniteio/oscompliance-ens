@@ -23,6 +23,8 @@ type Facts interface {
 	ConfigFiles(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ConfigFile, error)
 	PAMSnapshots(ctx context.Context, since time.Time) (map[string]fact.PAMSnapshot, error)
 	PAMRules(ctx context.Context, agentID, runID string, since time.Time) ([]fact.PAMRule, error)
+	ListeningSnapshots(ctx context.Context, since time.Time) (map[string]fact.ListeningSnapshot, error)
+	ListeningSockets(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ListeningSocket, error)
 	SudoersSnapshots(ctx context.Context, since time.Time) (map[string]fact.SudoersSnapshot, error)
 	SudoGrants(ctx context.Context, agentID, runID string, since time.Time) ([]fact.SudoGrant, error)
 	Logins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
@@ -46,6 +48,7 @@ type Evaluator struct {
 	identities map[string][]fact.IdentitySnapshot
 	configs    map[string]fact.ConfigSnapshot
 	pams       map[string]fact.PAMSnapshot
+	listening  map[string]fact.ListeningSnapshot
 	sudoers    map[string]fact.SudoersSnapshot
 	probes     map[string][]fact.AuthLogProbe
 	seen       map[string]map[string]bool
@@ -77,6 +80,9 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.pams, err = e.facts.PAMSnapshots(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("pam snapshots: %w", err)
 	}
+	if e.listening, err = e.facts.ListeningSnapshots(ctx, pass.WindowStart); err != nil {
+		return fmt.Errorf("listening snapshots: %w", err)
+	}
 	if e.sudoers, err = e.facts.SudoersSnapshots(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("sudoers snapshots: %w", err)
 	}
@@ -95,9 +101,9 @@ func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// Agent judges the evidences built so far: EV-01, EV-03, EV-04, EV-05, EV-07,
-// EV-09, EV-10, EV-11 and EV-12. The others are missing from the result and
-// count as COLLECTION gaps.
+// Agent judges every evidence but EV-06, whose register of compromised and
+// departed accounts is not a parameter yet: it is missing from the result
+// and counts as a COLLECTION gap.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	results := map[string]evaluator.Result{}
@@ -105,7 +111,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	since := e.pass.LookbackStart
 	today := e.pass.Now
 
-	e.decisions[agent.ID] = MechanismDecisions(Mechanism(policy.List(agent.ID, control, "P-01")))
+	decisions := MechanismDecisions(Mechanism(policy.List(agent.ID, control, "P-01")))
+	e.decisions[agent.ID] = decisions
 
 	// The facts, each read once. A read that fails leaves out only the
 	// evidences that need it.
@@ -125,6 +132,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	read("identity", err)
 	sudoers, err := e.sudoersOf(ctx, agent.ID, since)
 	read("sudoers", err)
+	listening, err := e.listeningOf(ctx, agent.ID, since)
+	read("listening", err)
 	logins, err := e.facts.Logins(ctx, agent.ID, since)
 	read("logins", err)
 	failures, err := e.facts.Failures(ctx, agent.ID, e.pass.WindowStart)
@@ -149,6 +158,34 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		in := EV01Input{Settings: settings, Log: authLog}
 		in.Sources, in.SourcesProblem = listParam(policy, agent.ID, "P-03")
 		return evaluator.Result{Judgement: JudgeEV01(in), RunID: configRun}
+	})
+
+	// EV-02: factors by zone, decided per requirement; the evidence is the
+	// worst of the requirements that apply.
+	judge("EV-02", []string{"config", "pam", "listening", "logins"}, func() evaluator.Result {
+		in := EV02Input{Listening: listening, Settings: settings, PAM: pam, Log: authLog}
+		for _, l := range logins {
+			if !l.Time.Before(e.pass.WindowStart) {
+				in.Logins = append(in.Logins, l)
+			}
+		}
+		zones, err := policy.List(agent.ID, control, "P-02")
+		if err != nil {
+			in.ZonesProblem = err.Error()
+		} else {
+			in.Zones, in.ZonesProblem = ParseZones(zones)
+		}
+
+		var applied []verdict.Judgement
+		for req, j := range JudgeEV02(in) {
+			if _, ruled := decisions[req]; ruled {
+				continue // P-01 ruled it out, or P-01 is unknown
+			}
+			decisions[req] = j
+			applied = append(applied, j)
+		}
+
+		return evaluator.Result{Judgement: worst(applied...), RunID: runOfListening(listening.Snapshot)}
 	})
 
 	// EV-03: attempt limit.
@@ -182,6 +219,13 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		in.Channels, in.ChannelsProblem = columnParam(policy, agent.ID, "P-07", 0)
 		return evaluator.Result{Judgement: JudgeEV07(in)}
+	})
+
+	// EV-08: listening channels.
+	judge("EV-08", []string{"listening"}, func() evaluator.Result {
+		in := EV08Input{Listening: listening}
+		in.Rows, in.RowsProblem = listParam(policy, agent.ID, "P-07")
+		return evaluator.Result{Judgement: JudgeEV08(in), RunID: runOfListening(listening.Snapshot)}
 	})
 
 	// EV-09: re-authentication.
@@ -245,6 +289,22 @@ func (e *Evaluator) accounts(ctx context.Context, agentID string, since time.Tim
 	}
 	records, err := e.facts.IdentityRecords(ctx, agentID, list[0].RunID, since)
 	return Accounts{Snapshot: &list[0], Records: records}, err
+}
+
+func (e *Evaluator) listeningOf(ctx context.Context, agentID string, since time.Time) (Listening, error) {
+	s, ok := e.listening[agentID]
+	if !ok {
+		return Listening{}, nil
+	}
+	sockets, err := e.facts.ListeningSockets(ctx, agentID, s.RunID, since)
+	return Listening{Snapshot: &s, Sockets: sockets}, err
+}
+
+func runOfListening(s *fact.ListeningSnapshot) string {
+	if s == nil {
+		return ""
+	}
+	return s.RunID
 }
 
 func (e *Evaluator) sudoersOf(ctx context.Context, agentID string, since time.Time) (Sudoers, error) {

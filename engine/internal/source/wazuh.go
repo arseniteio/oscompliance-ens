@@ -341,3 +341,13 @@ func (s *Source) Lockouts(ctx context.Context, agentID string, since time.Time) 
 func alertTime(s string) (time.Time, error) {
 	return time.Parse("2006-01-02T15:04:05.000-0700", s)
 }
+
+// ListeningSnapshots returns, per agent, the newest listening_snapshot.
+func (s *Source) ListeningSnapshots(ctx context.Context, since time.Time) (map[string]fact.ListeningSnapshot, error) {
+	return newest[fact.ListeningSnapshot](ctx, s, fact.ListeningSnapshotFact, since)
+}
+
+// ListeningSockets returns every listening_socket of one read of one agent.
+func (s *Source) ListeningSockets(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ListeningSocket, error) {
+	return passRecords[fact.ListeningSocket](ctx, s, fact.ListeningSocketFact, agentID, runID, since)
+}

@@ -396,3 +396,94 @@ func TestMechanismDecisions(t *testing.T) {
 		t.Errorf("R5: %q %q", m, p)
 	}
 }
+
+func listening(addresses []string, sockets ...fact.ListeningSocket) Listening {
+	return Listening{
+		Snapshot: &fact.ListeningSnapshot{Status: fact.SourceRead, Addresses: addresses, ProcessesMatched: true, RecordsEmitted: len(sockets)},
+		Sockets:  sockets,
+	}
+}
+
+func TestParseZones(t *testing.T) {
+
+	z, problem := ParseZones([]string{"10.0.0.0/8 office", "192.168.1.7", "fd00::/8", "local console"})
+	if problem != "" {
+		t.Fatal(problem)
+	}
+
+	for origin, want := range map[string]bool{"10.1.2.3": true, "192.168.1.7": true, "192.168.1.8": false, "fd12::1": true, "8.8.8.8": false, "local": true, "::ffff:10.0.0.1": true} {
+		if got, known := z.Controlled(origin); got != want || !known {
+			t.Errorf("%s: got %v %v, want %v", origin, got, known, want)
+		}
+	}
+	if _, known := z.Controlled(""); known {
+		t.Error("empty origin must be unknown")
+	}
+	if _, problem := ParseZones([]string{"10.0.0.0/33"}); problem == "" {
+		t.Error("bad prefix must make P-02 unusable")
+	}
+}
+
+func TestJudgeEV08(t *testing.T) {
+
+	sshd := fact.ListeningSocket{Protocol: "tcp", Address: "0.0.0.0", Port: 22, Process: "sshd", Unit: "ssh.service", UnitEnabled: "enabled"}
+	telnet := fact.ListeningSocket{Protocol: "tcp", Address: "0.0.0.0", Port: 23, Process: "in.telnetd"}
+	nginx := fact.ListeningSocket{Protocol: "tcp", Address: "0.0.0.0", Port: 443, Process: "nginx"}
+	container := fact.ListeningSocket{Protocol: "tcp", Address: "0.0.0.0", Port: 22, Process: "sshd"}
+	addrs := []string{"192.168.10.5"}
+
+	always := []string{"ssh | si | Responsable de Seguridad | si"}
+	onDemand := []string{"ssh | si | Responsable de Seguridad | no"}
+
+	check(t, "ssh declared", JudgeEV08(EV08Input{Listening: listening(addrs, sshd, nginx), Rows: always}), verdict.Compliant, "", "ssh; 1 other")
+	check(t, "constant use allows disabled too", JudgeEV08(EV08Input{Listening: listening(addrs, container), Rows: always}), verdict.Compliant, "", "ssh")
+	check(t, "on demand but enabled", JudgeEV08(EV08Input{Listening: listening(addrs, sshd), Rows: onDemand}), verdict.NonCompliant, "", "enabled at boot")
+	check(t, "on demand, no systemd", JudgeEV08(EV08Input{Listening: listening(addrs, container), Rows: onDemand}), verdict.NotEvaluable, verdict.CauseEvidence, "unknown")
+	check(t, "telnet", JudgeEV08(EV08Input{Listening: listening(addrs, sshd, telnet), Rows: append(always, "telnet | no | x | si")}), verdict.NonCompliant, "", "telnet (in.telnetd on [23]): not encrypted")
+	check(t, "no row", JudgeEV08(EV08Input{Listening: listening(addrs, sshd), Rows: []string{"rdp | si | x | si"}}), verdict.NonCompliant, "", "no P-07 row")
+	check(t, "nothing listens", JudgeEV08(EV08Input{Listening: listening(addrs), Rows: always}), verdict.Compliant, "", "no remote access channel")
+	check(t, "not root", JudgeEV08(EV08Input{Listening: Listening{Snapshot: &fact.ListeningSnapshot{Status: fact.SourceRead, RecordsEmitted: 1}, Sockets: []fact.ListeningSocket{container}}, Rows: always}), verdict.NotEvaluable, verdict.CauseCollection, "root")
+}
+
+func TestJudgeEV02(t *testing.T) {
+
+	keys := sshdT("pubkeyauthentication", "yes", "passwordauthentication", "no", "kbdinteractiveauthentication", "no", "authenticationmethods", "any")
+	mfa := sshdT("pubkeyauthentication", "yes", "passwordauthentication", "no", "kbdinteractiveauthentication", "yes", "authenticationmethods", "publickey,keyboard-interactive")
+	totp := pam("sshd auth required pam_google_authenticator.so", "login auth required pam_unix.so")
+	plain := pam("sshd auth required pam_unix.so", "login auth required pam_unix.so")
+	ssh := fact.ListeningSocket{Protocol: "tcp", Address: "0.0.0.0", Port: 22, Process: "sshd"}
+	office, _ := ParseZones([]string{"192.168.10.0/24"})
+
+	keyLogin := source.Login{Account: "ana", SourceIP: "203.0.113.9", Method: source.MethodSSHD, Auth: "publickey", KeyType: "ED25519"}
+	officeLogin := source.Login{Account: "ana", SourceIP: "192.168.10.20", Method: source.MethodSSHD, Auth: "publickey", KeyType: "ED25519"}
+	mfaLogin := source.Login{Account: "ana", SourceIP: "203.0.113.9", Method: source.MethodSSHD, Auth: "keyboard-interactive/pam"}
+
+	// Exposed on a public address with keys only: r8.1 fails, r1.1 passes
+	// (no password anywhere), r2.1 fails.
+	got := JudgeEV02(EV02Input{Logins: []source.Login{keyLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(keys), PAM: plain, Log: reaches, Zones: office})
+	check(t, "r8.1 public keys", got[ReqR81], verdict.NonCompliant, "", "one factor")
+	check(t, "r1.1 public keys", got[ReqR11], verdict.Compliant, "", "")
+	check(t, "r2.1 public keys", got[ReqR21], verdict.NonCompliant, "", "")
+
+	// Only inside the office: r8.1 holds.
+	got = JudgeEV02(EV02Input{Logins: []source.Login{officeLogin}, Listening: listening([]string{"192.168.10.5"}, ssh), Settings: config(keys), PAM: plain, Log: reaches, Zones: office})
+	check(t, "r8.1 office", got[ReqR81], verdict.Compliant, "", "")
+
+	// Key plus TOTP everywhere: all three hold.
+	got = JudgeEV02(EV02Input{Logins: []source.Login{mfaLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(mfa), PAM: totp, Log: reaches, Zones: office})
+	for _, req := range []string{ReqR81, ReqR11, ReqR21} {
+		check(t, req+" mfa", got[req], verdict.Compliant, "", "")
+	}
+
+	// A Match block hides per-user settings.
+	match := file("/etc/ssh/sshd_config", "Match", "User backup")
+	got = JudgeEV02(EV02Input{Logins: []source.Login{keyLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(keys, match), PAM: plain, Log: reaches, Zones: office})
+	check(t, "r8.1 match", got[ReqR81], verdict.NotEvaluable, verdict.CauseEvidence, "Match block")
+
+	got = JudgeEV02(EV02Input{ZonesProblem: "not set"})
+	check(t, "no P-02", got[ReqR81], verdict.NotEvaluable, verdict.CauseConfiguration, "P-02")
+
+	if w := worst(got[ReqR81], verdict.Judgement{Status: verdict.NonCompliant}); w.Status != verdict.NonCompliant {
+		t.Errorf("worst: %+v", w)
+	}
+}
