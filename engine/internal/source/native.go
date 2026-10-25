@@ -207,3 +207,8 @@ func (s *Source) AuditAccesses(ctx context.Context, agentID string, since time.T
 
 	return out, err
 }
+
+// FirewallSnapshots returns, per agent, the newest firewall_snapshot.
+func (s *Source) FirewallSnapshots(ctx context.Context, since time.Time) (map[string]fact.FirewallSnapshot, error) {
+	return newest[fact.FirewallSnapshot](ctx, s, fact.FirewallSnapshotFact, since)
+}

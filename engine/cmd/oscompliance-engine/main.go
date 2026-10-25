@@ -15,6 +15,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc2"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc3"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc4"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc5"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
@@ -87,6 +88,7 @@ func runMain() error {
 		opacc1.NewEvaluator(facts, hist),
 		opacc2.NewEvaluator(facts),
 		opacc3.NewEvaluator(facts),
+		opacc4.NewEvaluator(facts),
 		opacc5.NewEvaluator(facts),
 		opacc6.NewEvaluator(facts, hist),
 	}
