@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/config_file.v1.json",
+  "title": "config_file v1",
+  "description": "One configuration source read as key/value entries, in source order: a file (login.defs, faillock.conf, pwquality.conf, journald.conf...) or the effective configuration a program prints (sshd -T). Values are as written; which keys matter and what they mean is the engine's decision. Emitted before the config_snapshot of the same run_id.",
+  "type": "object",
+  "required": [
+    "source",
+    "kind",
+    "status",
+    "entries"
+  ],
+  "properties": {
+    "fact": {
+      "const": "config_file"
+    },
+    "source": {
+      "description": "Path, or the command for kind command.",
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "enum": [
+        "file",
+        "command"
+      ]
+    },
+    "status": {
+      "description": "read; absent (file missing or program not installed: nothing configured); unreadable; error (the command failed).",
+      "enum": [
+        "read",
+        "absent",
+        "unreadable",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "entries": {
+      "description": "Every setting, in order; a key may repeat (later wins where the program says so).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1
+          },
+          "value": {
+            "type": "string"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "section": {
+            "description": "[section] of an ini-style file, or the Match block of sshd_config.",
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "enum": [
+              "unreadable",
+              "error"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}

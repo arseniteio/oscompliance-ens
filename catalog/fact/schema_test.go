@@ -152,6 +152,14 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &SudoGrant{}
 		case SudoersSnapshotFact:
 			v = &SudoersSnapshot{}
+		case ConfigFileFact:
+			v = &ConfigFile{}
+		case ConfigSnapshotFact:
+			v = &ConfigSnapshot{}
+		case PAMRuleFact:
+			v = &PAMRule{}
+		case PAMSnapshotFact:
+			v = &PAMSnapshot{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}
@@ -185,6 +193,9 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	const umaskSnapshot = `{"oscompliance":"1","fact":"umask_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","sources":[{"path":"/etc/login.defs","status":"read","umasks":["022"]}]}`
 	const sudoGrant = `{"oscompliance":"1","fact":"sudo_grant","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","subject_kind":"group","subject":"sudo","file":"/etc/sudoers","line":50}`
 	const sudoersSnapshot = `{"oscompliance":"1","fact":"sudoers_snapshot","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","files":[{"path":"/etc/sudoers","status":"read"}],"status":"read","blind_spots":0,"records_emitted":1}`
+
+	const configFile = `{"oscompliance":"1","fact":"config_file","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","source":"/etc/login.defs","kind":"file","status":"read","entries":[{"key":"PASS_MAX_DAYS","value":"90","line":1}]}`
+	const pamRule = `{"oscompliance":"1","fact":"pam_rule","ts":"2026-10-21T14:00:00Z","host":"h","agent_version":"x","run_id":"5f0c7a1e-2b9d-4c3e-9a51-6d2f8e4b7c10","service":"sshd","position":0,"type":"auth","control":"required","module":"pam_unix.so","args":[],"file":"/etc/pam.d/common-auth","line":1}`
 
 	cases := []struct {
 		name string
@@ -224,6 +235,10 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		}},
 		{"sudo: unknown subject kind", sudoGrant, func(m map[string]any) { m["subject_kind"] = "netgroup" }},
 		{"sudo: negative blind spots", sudoersSnapshot, func(m map[string]any) { m["blind_spots"] = -1 }},
+		{"config: unreadable without error", configFile, func(m map[string]any) { m["status"] = "unreadable" }},
+		{"config: entries as an object", configFile, func(m map[string]any) { m["entries"] = map[string]any{"loglevel": "INFO"} }},
+		{"pam: unknown type", pamRule, func(m map[string]any) { m["type"] = "authz" }},
+		{"pam: missing module", pamRule, func(m map[string]any) { delete(m, "module") }},
 		{"identity: expiry not a date", identityRecord, func(m map[string]any) { m["account_expires"] = "20612" }},
 	}
 
@@ -241,7 +256,7 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	}
 
 	// The bases themselves are valid, so each rejection above is the edit's.
-	for _, base := range []string{identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord, specialFile, sweepSnapshot, umaskSnapshot, sudoGrant, sudoersSnapshot} {
+	for _, base := range []string{identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord, specialFile, sweepSnapshot, umaskSnapshot, sudoGrant, sudoersSnapshot, configFile, pamRule} {
 		if err := validate(schemas, []byte(base)); err != nil {
 			t.Errorf("base rejected: %v", err)
 		}

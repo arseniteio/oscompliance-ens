@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/config_snapshot.v1.json",
+  "title": "config_snapshot v1",
+  "description": "Summary of one read of the configuration sources, emitted after their config_file records.",
+  "type": "object",
+  "required": [
+    "records_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "config_snapshot"
+    },
+    "records_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

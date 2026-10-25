@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/pam_rule.v1.json",
+  "title": "pam_rule v1",
+  "description": "One rule of a PAM service stack, in evaluation order, with include, substack and @include already resolved: the engine sees the stack PAM runs. Emitted before the pam_snapshot of the same run_id.",
+  "type": "object",
+  "required": [
+    "service",
+    "position",
+    "type",
+    "control",
+    "module",
+    "args",
+    "file",
+    "line"
+  ],
+  "properties": {
+    "fact": {
+      "const": "pam_rule"
+    },
+    "service": {
+      "description": "PAM service: the file name under /etc/pam.d (sshd, login, su, common-password...).",
+      "type": "string",
+      "minLength": 1
+    },
+    "position": {
+      "description": "0-based order inside the resolved stack of the service.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "type": {
+      "enum": [
+        "auth",
+        "account",
+        "password",
+        "session"
+      ]
+    },
+    "control": {
+      "description": "required, requisite, sufficient, optional, or a [value=action ...] block as written.",
+      "type": "string",
+      "minLength": 1
+    },
+    "module": {
+      "description": "Module name without path (pam_unix.so).",
+      "type": "string",
+      "minLength": 1
+    },
+    "args": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "file": {
+      "description": "File the rule is written in (an included one, possibly).",
+      "type": "string",
+      "minLength": 1
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "via": {
+      "description": "Include chain from the service file, outermost first.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

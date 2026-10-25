@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/pam_snapshot.v1.json",
+  "title": "pam_snapshot v1",
+  "description": "Summary of one read of /etc/pam.d, emitted after its pam_rule records.",
+  "type": "object",
+  "required": [
+    "services",
+    "status",
+    "records_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "pam_snapshot"
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "description": "read; absent (no /etc/pam.d); unreadable.",
+      "enum": [
+        "read",
+        "absent",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "problems": {
+      "description": "Rules or includes that could not be followed (missing include, loop, unreadable file), up to 20.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "records_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}
