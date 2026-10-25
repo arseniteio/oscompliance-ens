@@ -10,6 +10,7 @@ import (
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
@@ -40,9 +41,16 @@ const maxProbes = 48
 
 const control = "op.acc.6"
 
+// History is the account history op.acc.1 keeps (store.History in
+// production); op.acc.6 only reads it, after op.acc.1 updated it.
+type History interface {
+	Load(ctx context.Context, agentID string) (map[string]history.Account, error)
+}
+
 // Evaluator judges op.acc.6.
 type Evaluator struct {
 	facts Facts
+	hist  History
 
 	pass       evaluator.Pass
 	identities map[string][]fact.IdentitySnapshot
@@ -57,8 +65,8 @@ type Evaluator struct {
 }
 
 // NewEvaluator returns the op.acc.6 evaluator.
-func NewEvaluator(facts Facts) *Evaluator {
-	return &Evaluator{facts: facts}
+func NewEvaluator(facts Facts, hist History) *Evaluator {
+	return &Evaluator{facts: facts, hist: hist}
 }
 
 // Control is the catalog id.
@@ -101,9 +109,8 @@ func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// Agent judges every evidence but EV-06, whose register of compromised and
-// departed accounts is not a parameter yet: it is missing from the result
-// and counts as a COLLECTION gap.
+// Agent judges every evidence of op.acc.6. A fact read that fails leaves
+// out the evidences that need it: they count as COLLECTION gaps.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	results := map[string]evaluator.Result{}
@@ -134,6 +141,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	read("sudoers", err)
 	listening, err := e.listeningOf(ctx, agent.ID, since)
 	read("listening", err)
+	accountHistory, err := e.hist.Load(ctx, agent.ID)
+	read("history", err)
 	logins, err := e.facts.Logins(ctx, agent.ID, since)
 	read("logins", err)
 	failures, err := e.facts.Failures(ctx, agent.ID, e.pass.WindowStart)
@@ -207,6 +216,18 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		in := EV05Input{Accounts: accounts, Settings: settings, Today: today}
 		in.MaxAge, in.MaxAgeProblem = intParam(policy, agent.ID, "P-04")
 		return evaluator.Result{Judgement: JudgeEV05(in), RunID: identityRun(accounts)}
+	})
+
+	// EV-06: disablement after a notice.
+	judge("EV-06", []string{"history"}, func() evaluator.Result {
+		in := EV06Input{History: accountHistory, Now: today}
+		if rows, err := policy.List(agent.ID, control, RegisterParam); err != nil {
+			in.NoticesProblem = err.Error()
+		} else {
+			in.Notices, in.NoticesProblem = ParseRegister(rows)
+		}
+		in.MaxHours, in.MaxHoursProblem = intParam(policy, agent.ID, "P-06")
+		return evaluator.Result{Judgement: JudgeEV06(in)}
 	})
 
 	// EV-07: remote channels used, in the window.

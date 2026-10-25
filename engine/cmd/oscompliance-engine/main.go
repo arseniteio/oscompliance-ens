@@ -84,7 +84,7 @@ func runMain() error {
 	controls := []evaluator.Evaluator{
 		opacc1.NewEvaluator(facts, hist),
 		opacc2.NewEvaluator(facts),
-		opacc6.NewEvaluator(facts),
+		opacc6.NewEvaluator(facts, hist),
 	}
 	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
 

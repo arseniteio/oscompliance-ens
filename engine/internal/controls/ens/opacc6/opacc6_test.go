@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -485,5 +486,42 @@ func TestJudgeEV02(t *testing.T) {
 
 	if w := worst(got[ReqR81], verdict.Judgement{Status: verdict.NonCompliant}); w.Status != verdict.NonCompliant {
 		t.Errorf("worst: %+v", w)
+	}
+}
+
+func TestJudgeEV06(t *testing.T) {
+
+	at := func(s string) *time.Time { v, _ := time.Parse(time.RFC3339, s); return &v }
+	hist := map[string]history.Account{
+		"left":    {AccountName: "left", DisabledSince: at("2026-10-20T10:00:00Z"), DisabledObserved: true},
+		"slow":    {AccountName: "slow", DisabledSince: at("2026-10-23T10:00:00Z"), DisabledObserved: true},
+		"active":  {AccountName: "active"},
+		"gone":    {AccountName: "gone", DeletedAt: at("2026-10-20T12:00:00Z")},
+		"preseen": {AccountName: "preseen", DisabledSince: at("2026-10-24T09:00:00Z")},
+	}
+
+	notices, problem := ParseRegister([]string{
+		"left | 2026-10-20T08:00:00Z | baja",
+		"gone | 2026-10-20 | compromiso",
+		"elsewhere | 2026-10-01 | baja",
+	})
+	if problem != "" {
+		t.Fatal(problem)
+	}
+
+	check(t, "on time", JudgeEV06(EV06Input{History: hist, Now: today, Notices: notices, MaxHours: 24}), verdict.Compliant, "", "left (baja")
+
+	late, _ := ParseRegister([]string{"slow | 2026-10-20T08:00:00Z | baja", "active | 2026-10-22 | compromiso"})
+	check(t, "late", JudgeEV06(EV06Input{History: hist, Now: today, Notices: late, MaxHours: 24}), verdict.NonCompliant, "", "active (compromiso 2026-10-22T00:00:00Z): still enabled after 84 hours; slow (baja 2026-10-20T08:00:00Z): disabled after 74 hours")
+
+	bound, _ := ParseRegister([]string{"preseen | 2026-10-20T08:00:00Z | baja"})
+	check(t, "upper bound beyond", JudgeEV06(EV06Input{History: hist, Now: today, Notices: bound, MaxHours: 24}), verdict.NotEvaluable, verdict.CauseEvidence, "when it took is unknown")
+	check(t, "upper bound within", JudgeEV06(EV06Input{History: hist, Now: today, Notices: bound, MaxHours: 200}), verdict.Compliant, "", "preseen")
+
+	check(t, "empty register", JudgeEV06(EV06Input{History: hist, Now: today, MaxHours: 24}), verdict.Compliant, "", "no notice")
+	check(t, "no register", JudgeEV06(EV06Input{NoticesProblem: "not set", MaxHours: 24}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-12")
+
+	if _, problem := ParseRegister([]string{"ana | yesterday | baja"}); problem == "" {
+		t.Error("bad date must make the register unusable")
 	}
 }
