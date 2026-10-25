@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/audit_watch_snapshot.v1.json",
   "title": "audit_watch_snapshot v1",
-  "description": "The auditd watches the manager asked for (audit_watches of the shared oscompliance.json) and whether they are loaded. The agent loads a missing watch with auditctl and never removes one.",
+  "description": "The auditd watches the manager asked for (audit_watches of the shared oscompliance.json) and whether they are loaded: four per path, one per permission (r, w, x, a) with keys oscompliance_read, oscompliance_write, oscompliance_exec and oscompliance_attr, so each access carries its kind. The agent loads a missing watch with auditctl and never removes one.",
   "type": "object",
   "required": [
     "auditd",
@@ -32,7 +32,7 @@
       }
     },
     "loaded": {
-      "description": "Wanted paths whose watch is loaded with the oscompliance key.",
+      "description": "Wanted paths whose four watches are loaded.",
       "type": "array",
       "items": {
         "type": "string"

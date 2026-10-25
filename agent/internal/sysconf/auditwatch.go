@@ -11,9 +11,16 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
-// AuditKey marks the watches the agent loads; Wazuh's audit decoder gives
-// it as audit.key.
-const AuditKey = "oscompliance_obj"
+// AuditKeys are the keys of the watches the agent loads, one per kind of
+// access: the kernel classifies each access by the permission it uses, and
+// Wazuh's audit decoder gives the key as audit.key. A watch per permission
+// tells the engine the kind without decoding syscalls and flags.
+var AuditKeys = []struct{ Perm, Key string }{
+	{"r", "oscompliance_read"},
+	{"w", "oscompliance_write"},
+	{"x", "oscompliance_exec"},
+	{"a", "oscompliance_attr"},
+}
 
 // AuditConfig says where auditctl and the shared path list are.
 type AuditConfig struct {
@@ -21,10 +28,11 @@ type AuditConfig struct {
 	SharedPaths string
 }
 
-// CollectAuditWatches loads a watch (read, write, execute, attribute
-// change) for each audit_watches path of the shared oscompliance.json that
-// is not loaded yet, then emits the audit_watch_snapshot. It never removes
-// a rule: what the administrator loaded stays.
+// CollectAuditWatches loads the four watches (read, write, execute,
+// attribute change) of each audit_watches path of the shared
+// oscompliance.json that are not loaded yet, then emits the
+// audit_watch_snapshot. It never removes a rule: what the administrator
+// loaded stays.
 func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 
 	snapshot := fact.AuditWatchSnapshot{Envelope: e.Envelope(fact.AuditWatchSnapshotFact), Auditd: fact.AuditdRunning, Wanted: []string{}, Loaded: []string{}}
@@ -60,13 +68,20 @@ func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 
 	for _, p := range paths.AuditWatches {
 
-		if !slices.Contains(loaded, p) {
-			if _, err := runCommand(cfg.Auditctl, "-w", p, "-p", "rwxa", "-k", AuditKey); err != nil {
-				snapshot.Failed = append(snapshot.Failed, p+": "+err.Error())
+		ok := true
+		for _, w := range AuditKeys {
+			if slices.Contains(loaded, p+" "+w.Key) {
 				continue
 			}
+			if _, err := runCommand(cfg.Auditctl, "-w", p, "-p", w.Perm, "-k", w.Key); err != nil {
+				snapshot.Failed = append(snapshot.Failed, p+" "+w.Perm+": "+err.Error())
+				ok = false
+			}
 		}
-		snapshot.Loaded = append(snapshot.Loaded, p)
+
+		if ok {
+			snapshot.Loaded = append(snapshot.Loaded, p)
+		}
 	}
 
 	return e.Emit(snapshot)
@@ -90,9 +105,9 @@ func auditRunning(status string) bool {
 	return enabled && pid
 }
 
-// loadedWatches lists the paths of the loaded watches with our key, in
-// either form auditctl -l prints them: "-w /srv/datos -p rwxa -k KEY" or
-// "-a always,exit -F dir=/srv/datos -F perm=rwxa -F key=KEY".
+// loadedWatches lists the loaded watches with one of our keys as "path key",
+// in either form auditctl -l prints them: "-w /srv/datos -p r -k KEY" or
+// "-a always,exit -F dir=/srv/datos -F perm=r -F key=KEY".
 func loadedWatches(auditctl string) ([]string, error) {
 
 	out, err := runCommand(auditctl, "-l")
@@ -105,28 +120,31 @@ func loadedWatches(auditctl string) ([]string, error) {
 
 func parseWatches(listing string) []string {
 
-	var paths []string
+	var out []string
 
 	for _, line := range strings.Split(listing, "\n") {
 
 		f := strings.Fields(line)
 
-		if len(f) >= 2 && f[0] == "-w" && slices.Contains(f, "-k") && f[len(f)-1] == AuditKey {
-			paths = append(paths, f[1])
-			continue
-		}
+		for _, w := range AuditKeys {
 
-		if !slices.Contains(f, "key="+AuditKey) {
-			continue
-		}
-		for _, field := range f {
-			if v, ok := strings.CutPrefix(field, "dir="); ok {
-				paths = append(paths, v)
-			} else if v, ok := strings.CutPrefix(field, "path="); ok {
-				paths = append(paths, v)
+			if len(f) >= 2 && f[0] == "-w" && slices.Contains(f, "-k") && f[len(f)-1] == w.Key {
+				out = append(out, f[1]+" "+w.Key)
+				continue
+			}
+
+			if !slices.Contains(f, "key="+w.Key) {
+				continue
+			}
+			for _, field := range f {
+				if v, ok := strings.CutPrefix(field, "dir="); ok {
+					out = append(out, v+" "+w.Key)
+				} else if v, ok := strings.CutPrefix(field, "path="); ok {
+					out = append(out, v+" "+w.Key)
+				}
 			}
 		}
 	}
 
-	return paths
+	return out
 }

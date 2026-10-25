@@ -453,11 +453,11 @@ func TestParseACL(t *testing.T) {
 
 func TestParseWatches(t *testing.T) {
 
-	got := parseWatches(`-w /srv/datos -p rwxa -k oscompliance_obj
+	got := parseWatches(`-w /srv/datos -p r -k oscompliance_read
 -w /etc/passwd -p wa -k identity
--a always,exit -F arch=b64 -S all -F dir=/srv/app -F perm=rwxa -F key=oscompliance_obj
+-a always,exit -F arch=b64 -S all -F dir=/srv/app -F perm=w -F key=oscompliance_write
 `)
-	if strings.Join(got, ",") != "/srv/datos,/srv/app" {
+	if strings.Join(got, ",") != "/srv/datos oscompliance_read,/srv/app oscompliance_write" {
 		t.Errorf("watches: %v", got)
 	}
 
