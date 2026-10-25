@@ -3,12 +3,40 @@ package fact
 // Fact names of configuration observations, shared by every control that
 // judges how the system is configured.
 const (
-	ConfigFileFact     = "config_file"
-	ConfigSnapshotFact = "config_snapshot"
-	PAMRuleFact        = "pam_rule"
-	PAMSnapshotFact    = "pam_snapshot"
-	AuthLogProbeFact   = "auth_log_probe"
+	ConfigFileFact        = "config_file"
+	ConfigSnapshotFact    = "config_snapshot"
+	PAMRuleFact           = "pam_rule"
+	PAMSnapshotFact       = "pam_snapshot"
+	AuthLogProbeFact      = "auth_log_probe"
+	ListeningSocketFact   = "listening_socket"
+	ListeningSnapshotFact = "listening_snapshot"
 )
+
+// ListeningSocket mirrors listening_socket.v1.json.
+type ListeningSocket struct {
+	Envelope
+	Protocol      string `json:"protocol"`
+	Address       string `json:"address"`
+	Port          int    `json:"port"`
+	PID           int    `json:"pid,omitempty"`
+	Process       string `json:"process,omitempty"`
+	Exe           string `json:"exe,omitempty"`
+	Unit          string `json:"unit,omitempty"`
+	UnitEnabled   string `json:"unit_enabled,omitempty"`
+	SocketUnit    string `json:"socket_unit,omitempty"`
+	SocketEnabled string `json:"socket_enabled,omitempty"`
+}
+
+// ListeningSnapshot mirrors listening_snapshot.v1.json.
+type ListeningSnapshot struct {
+	Envelope
+	Status           string   `json:"status"`
+	Error            string   `json:"error,omitempty"`
+	Addresses        []string `json:"addresses"`
+	ProcessesMatched bool     `json:"processes_matched,omitempty"`
+	Systemd          string   `json:"systemd,omitempty"`
+	RecordsEmitted   int      `json:"records_emitted"`
+}
 
 // Values of AuthLogProbe.Status.
 const (

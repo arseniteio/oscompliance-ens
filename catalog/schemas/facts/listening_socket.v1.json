@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/listening_socket.v1.json",
+  "title": "listening_socket v1",
+  "description": "One socket accepting connections from outside the machine (loopback is left out): TCP in LISTEN, or UDP bound without a peer. What service it is, and whether it encrypts, is the engine's decision. Emitted before the listening_snapshot of the same run_id.",
+  "type": "object",
+  "required": [
+    "protocol",
+    "address",
+    "port"
+  ],
+  "properties": {
+    "fact": {
+      "const": "listening_socket"
+    },
+    "protocol": {
+      "enum": [
+        "tcp",
+        "udp"
+      ]
+    },
+    "address": {
+      "description": "Local address as bound: 0.0.0.0 or :: is every address of the machine (listening_snapshot.addresses).",
+      "type": "string",
+      "minLength": 1
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 65535
+    },
+    "pid": {
+      "description": "Process holding the socket; absent when no process could be matched (not root).",
+      "type": "integer",
+      "minimum": 1
+    },
+    "process": {
+      "description": "Process name (/proc/<pid>/comm).",
+      "type": "string"
+    },
+    "exe": {
+      "description": "Executable path, when readable.",
+      "type": "string"
+    },
+    "unit": {
+      "description": "systemd unit of the process (from its cgroup), or the service a listening socket unit activates.",
+      "type": "string"
+    },
+    "unit_enabled": {
+      "description": "systemctl is-enabled of unit, as printed (enabled, disabled, static, masked...).",
+      "type": "string"
+    },
+    "socket_unit": {
+      "description": "systemd socket unit listening on this address (socket activation), when there is one.",
+      "type": "string"
+    },
+    "socket_enabled": {
+      "description": "systemctl is-enabled of socket_unit.",
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

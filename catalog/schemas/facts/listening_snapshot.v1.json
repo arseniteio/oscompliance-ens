@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/listening_snapshot.v1.json",
+  "title": "listening_snapshot v1",
+  "description": "Summary of one read of the listening sockets, emitted after their listening_socket records.",
+  "type": "object",
+  "required": [
+    "status",
+    "addresses",
+    "records_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "listening_snapshot"
+    },
+    "status": {
+      "description": "read; unreadable (/proc/net could not be read).",
+      "enum": [
+        "read",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "addresses": {
+      "description": "Addresses of the machine's interfaces, loopback left out: what 0.0.0.0 and :: expose.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "processes_matched": {
+      "description": "false when sockets could not be matched to processes (the agent is not root).",
+      "type": "boolean"
+    },
+    "systemd": {
+      "description": "read: unit states were asked; absent: no systemctl (containers, non-systemd systems); error.",
+      "enum": [
+        "read",
+        "absent",
+        "error"
+      ]
+    },
+    "records_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "unreadable"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}
