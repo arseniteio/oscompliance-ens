@@ -185,6 +185,26 @@ func (s *Source) SudoGrants(ctx context.Context, agentID, runID string, since ti
 	return passRecords[fact.SudoGrant](ctx, s, fact.SudoGrantFact, agentID, runID, since)
 }
 
+// ConfigSnapshots returns, per agent, the newest config_snapshot.
+func (s *Source) ConfigSnapshots(ctx context.Context, since time.Time) (map[string]fact.ConfigSnapshot, error) {
+	return newest[fact.ConfigSnapshot](ctx, s, fact.ConfigSnapshotFact, since)
+}
+
+// ConfigFiles returns every config_file of one read of one agent.
+func (s *Source) ConfigFiles(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ConfigFile, error) {
+	return passRecords[fact.ConfigFile](ctx, s, fact.ConfigFileFact, agentID, runID, since)
+}
+
+// PAMSnapshots returns, per agent, the newest pam_snapshot.
+func (s *Source) PAMSnapshots(ctx context.Context, since time.Time) (map[string]fact.PAMSnapshot, error) {
+	return newest[fact.PAMSnapshot](ctx, s, fact.PAMSnapshotFact, since)
+}
+
+// PAMRules returns every pam_rule of one read of one agent.
+func (s *Source) PAMRules(ctx context.Context, agentID, runID string, since time.Time) ([]fact.PAMRule, error) {
+	return passRecords[fact.PAMRule](ctx, s, fact.PAMRuleFact, agentID, runID, since)
+}
+
 // GroupSnapshots returns, per agent ID, the newest group_snapshot indexed
 // since the given time.
 func (s *Source) GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error) {

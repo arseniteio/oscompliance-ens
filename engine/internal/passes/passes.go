@@ -108,3 +108,39 @@ func Partial(sweep fact.FileSweepSnapshot) string {
 
 	return ""
 }
+
+// ConfigGap: the configuration read cannot be used. One unreadable source is
+// not a gap of the whole read: each judge asks for the sources it needs.
+func ConfigGap(snapshot *fact.ConfigSnapshot, records []fact.ConfigFile) (gap verdict.Judgement, found bool) {
+
+	if snapshot == nil {
+		return NotEvaluable(verdict.CauseCollection, "no config_snapshot in the window"), true
+	}
+
+	if len(records) < snapshot.RecordsEmitted {
+		return NotEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("configuration read %s incomplete: %d of %d config_file received", snapshot.RunID, len(records), snapshot.RecordsEmitted)), true
+	}
+
+	return verdict.Judgement{}, false
+}
+
+// PAMGap: the PAM read cannot be used. A missing /etc/pam.d is not a gap:
+// nothing authenticates through PAM, and the judge decides what that means.
+func PAMGap(snapshot *fact.PAMSnapshot, records []fact.PAMRule) (gap verdict.Judgement, found bool) {
+
+	if snapshot == nil {
+		return NotEvaluable(verdict.CauseCollection, "no pam_snapshot in the window"), true
+	}
+
+	if snapshot.Status == fact.SourceUnreadable {
+		return NotEvaluable(verdict.CauseCollection, "PAM configuration unreadable: "+snapshot.Error), true
+	}
+
+	if len(records) < snapshot.RecordsEmitted {
+		return NotEvaluable(verdict.CauseCollection,
+			fmt.Sprintf("PAM read %s incomplete: %d of %d pam_rule received", snapshot.RunID, len(records), snapshot.RecordsEmitted)), true
+	}
+
+	return verdict.Judgement{}, false
+}
