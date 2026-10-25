@@ -1,4 +1,5 @@
-// Package run is one evaluation pass: read facts, judge, write verdicts.
+// Package run is one evaluation pass: list the agents, let every control
+// judge its evidences, then write evidence, requirement and control verdicts.
 package run
 
 import (
@@ -9,36 +10,16 @@ import (
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/aggregate"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
-// Facts is where the facts come from (source.Source in production).
-type Facts interface {
+// Agents lists the agents to judge (source.Source in production).
+type Agents interface {
 	Agents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
-	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
-	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
-	Logins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
-	AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error)
-	GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error)
-	GroupRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.GroupRecord, error)
 	RegisteredAgents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
-}
-
-// identityDepth bounds how many earlier passes are tried when looking for the
-// previous complete identity pass.
-const identityDepth = 10
-
-// History is the per-account history EV-08 needs (store.History in
-// production).
-type History interface {
-	Load(ctx context.Context, agentID string) (map[string]history.Account, error)
-	Save(ctx context.Context, accounts []history.Account) error
 }
 
 // Sink is where verdicts go (store.Verdicts in production).
@@ -56,148 +37,98 @@ type Config struct {
 	EngineVersion string
 }
 
-// Once judges every known agent and writes one verdict per agent and
-// evidence. A failure on one agent or evidence does not stop the others; all
-// failures are returned together.
-func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, sink Sink, cfg Config, now time.Time) (int, error) {
+// Once judges every known agent with every control and writes the evidence,
+// requirement and control verdicts. A failure on one agent, evidence or
+// control does not stop the others; all failures are returned together.
+func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator, policy params.Lister, sink Sink, cfg Config, now time.Time) (int, error) {
 
-	windowStart := now.Add(-cfg.Window)
-	lookbackStart := now.Add(-cfg.Lookback)
+	pass := evaluator.Pass{Now: now, WindowStart: now.Add(-cfg.Window), LookbackStart: now.Add(-cfg.Lookback)}
 
-	agents, err := judgedAgents(ctx, facts, lookbackStart)
+	agents, err := judgedAgents(ctx, agentList, pass.LookbackStart)
 
 	if err != nil {
 		return 0, err
 	}
 
-	currentIdentities, err := facts.IdentitySnapshots(ctx, windowStart, 1)
-
-	if err != nil {
-		return 0, fmt.Errorf("identity snapshots: %w", err)
-	}
-
-	earlierIdentities, err := facts.IdentitySnapshots(ctx, lookbackStart, identityDepth)
-
-	if err != nil {
-		return 0, fmt.Errorf("identity snapshots: %w", err)
-	}
-
-	authActivity, err := facts.AuthActivity(ctx, lookbackStart)
-
-	if err != nil {
-		return 0, fmt.Errorf("authentication activity: %w", err)
-	}
-
-	groupSnapshots, err := facts.GroupSnapshots(ctx, windowStart)
-
-	if err != nil {
-		return 0, fmt.Errorf("group snapshots: %w", err)
-	}
-
 	var errs []error
 	written := 0
 
-	control, _ := catalog.LookupControl("op.acc.1")
-
-	base := func(agent verdict.Agent, scope string) verdict.Verdict {
-		return verdict.Verdict{
-			OSComplianceVerdict: verdict.SchemaVersion,
-			Timestamp:           now.UTC().Format(time.RFC3339),
-			Scope:               scope,
-			Control:             control.Control,
-			Agent:               agent,
-			WindowStart:         windowStart.UTC().Format(time.RFC3339),
-			WindowEnd:           now.UTC().Format(time.RFC3339),
-			EngineVersion:       cfg.EngineVersion,
-		}
-	}
-
 	store := func(v verdict.Verdict) {
 		if err := sink.Write(ctx, v); err != nil {
-			errs = append(errs, fmt.Errorf("agent %s %s %s%s: write: %w", v.Agent.ID, v.Scope, v.Requirement, v.Evidence, err))
+			errs = append(errs, fmt.Errorf("agent %s %s %s %s%s: write: %w", v.Agent.ID, v.Control, v.Scope, v.Requirement, v.Evidence, err))
 			return
 		}
 		written++
 	}
 
-	for _, agent := range agents {
+	for _, ev := range controls {
 
-		// The final evidence verdicts of this agent, for the requirements.
-		evidences := map[string]verdict.Judgement{}
-
-		write := func(evidence string, j verdict.Judgement, runID string) {
-			if na, ok := notApplicable(policy, control, evidence); ok {
-				j = na
-			}
-			evidences[evidence] = j
-
-			v := base(agent, verdict.ScopeEvidence)
-			v.Evidence, v.Status, v.Cause, v.Reason, v.RunID = evidence, j.Status, j.Cause, j.Reason, runID
-			store(v)
+		control, ok := catalog.LookupControl(ev.Control())
+		if !ok {
+			errs = append(errs, fmt.Errorf("%s: not in the catalog", ev.Control()))
+			continue
 		}
 
-		// EV-01, EV-02 and EV-07 judge the same identity passes; EV-04,
-		// EV-06 and EV-08 use them too.
-		ev02, err := inputEV02(ctx, facts, agent.ID, currentIdentities[agent.ID], earlierIdentities[agent.ID], lookbackStart)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("agent %s identity passes: %w", agent.ID, err))
-		} else {
-			runID := ""
-			if ev02.Current != nil {
-				runID = ev02.Current.RunID
-			}
+		// A control that cannot read its facts at all still writes verdicts:
+		// every evidence becomes a COLLECTION gap.
+		begun := true
+		if err := ev.Begin(ctx, pass); err != nil {
+			errs = append(errs, fmt.Errorf("%s: %w", control.Control, err))
+			begun = false
+		}
 
-			inventory := opacc1.Inventory{Current: ev02.Current, Records: ev02.Records, Today: now.UTC().Truncate(24 * time.Hour)}
-			inventory.UIDMin, inventory.UIDMinProblem = uidMinParam(policy, agent.ID)
-
-			write("EV-01", opacc1.JudgeEV01(inventory), runID)
-			write("EV-02", opacc1.JudgeEV02(ev02), runID)
-
-			// EV-07: the same inventory against P-07 (column usuario).
-			ev07 := opacc1.EV07Input{Inventory: inventory}
-			authorized, err := policy.ListColumn(agent.ID, "op.acc.1", "P-07", 0)
-			if err != nil {
-				ev07.AuthorizedProblem = err.Error()
-			}
-			ev07.Authorized = authorized
-			write("EV-07", opacc1.JudgeEV07(ev07), runID)
-
-			write("EV-04", opacc1.JudgeEV04(inputEV04(policy, agent.ID, ev02, now)), "")
-
-			ev08, err := inputEV08(ctx, hist, policy, agent, ev02, windowStart)
-			if err != nil {
-				errs = append(errs, fmt.Errorf("agent %s EV-08: %w", agent.ID, err))
-			} else {
-				write("EV-08", opacc1.JudgeEV08(ev08), "")
+		base := func(agent verdict.Agent, scope string) verdict.Verdict {
+			return verdict.Verdict{
+				OSComplianceVerdict: verdict.SchemaVersion,
+				Timestamp:           now.UTC().Format(time.RFC3339),
+				Scope:               scope,
+				Control:             control.Control,
+				Agent:               agent,
+				WindowStart:         pass.WindowStart.UTC().Format(time.RFC3339),
+				WindowEnd:           now.UTC().Format(time.RFC3339),
+				EngineVersion:       cfg.EngineVersion,
 			}
 		}
 
-		// EV-03, EV-05 and EV-06 read the same logins.
-		logins, err := facts.Logins(ctx, agent.ID, windowStart)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("agent %s logins: %w", agent.ID, err))
-		} else {
-			_, authSeen := authActivity[agent.ID]
-			write("EV-03", opacc1.JudgeEV03(loginInput(policy, agent.ID, "P-04", authSeen, logins)), "")
-			write("EV-05", opacc1.JudgeEV05(loginInput(policy, agent.ID, "P-03", authSeen, logins)), "")
+		for _, agent := range agents {
 
-			ev06, err := inputEV06(ctx, facts, policy, agent.ID, groupSnapshots, ev02, lookbackStart)
-			if err != nil {
-				errs = append(errs, fmt.Errorf("agent %s EV-06: %w", agent.ID, err))
-			} else {
-				ev06.AuthSeen, ev06.Logins = authSeen, logins
-				runID := ""
-				if ev06.Groups != nil {
-					runID = ev06.Groups.RunID
+			results := map[string]evaluator.Result{}
+			if begun {
+				var err error
+				if results, err = ev.Agent(ctx, agent, policy); err != nil {
+					errs = append(errs, fmt.Errorf("%s agent %s: %w", control.Control, agent.ID, err))
 				}
-				write("EV-06", opacc1.JudgeEV06(ev06), runID)
 			}
-		}
 
-		// Requirements and control, from whatever evidence verdicts exist: an
-		// evidence that could not be judged counts as a COLLECTION gap.
-		for _, v := range aggregateVerdicts(policy, control, agent, evidences, base) {
-			store(v)
+			// The final evidence verdicts, in catalog order, for the
+			// requirements. Applicability rules over any judgement; an
+			// evidence without a result is not written.
+			evidences := map[string]verdict.Judgement{}
+
+			for _, e := range control.Evidences {
+
+				r, judged := results[e.ID]
+				na, notApp := notApplicable(policy, control, e.ID)
+
+				switch {
+				case notApp:
+					r.Judgement = na
+				case !judged:
+					continue
+				}
+
+				evidences[e.ID] = r.Judgement
+
+				v := base(agent, verdict.ScopeEvidence)
+				v.Evidence, v.Status, v.Cause, v.Reason, v.RunID = e.ID, r.Judgement.Status, r.Judgement.Cause, r.Judgement.Reason, r.RunID
+				store(v)
+			}
+
+			// Requirements and control, from whatever evidence verdicts exist:
+			// an evidence that could not be judged counts as a COLLECTION gap.
+			for _, v := range aggregateVerdicts(policy, control, agent, evidences, base) {
+				store(v)
+			}
 		}
 	}
 
@@ -207,14 +138,14 @@ func Once(ctx context.Context, facts Facts, policy params.Lister, hist History, 
 // judgedAgents is every agent with facts in the lookback plus every agent
 // Wazuh has registered (and the manager): a silent agent keeps getting
 // verdicts instead of disappearing.
-func judgedAgents(ctx context.Context, facts Facts, since time.Time) ([]verdict.Agent, error) {
+func judgedAgents(ctx context.Context, list Agents, since time.Time) ([]verdict.Agent, error) {
 
-	senders, err := facts.Agents(ctx, since)
+	senders, err := list.Agents(ctx, since)
 	if err != nil {
 		return nil, fmt.Errorf("agents: %w", err)
 	}
 
-	registered, err := facts.RegisteredAgents(ctx, since)
+	registered, err := list.RegisteredAgents(ctx, since)
 	if err != nil {
 		return nil, fmt.Errorf("registered agents: %w", err)
 	}
@@ -297,268 +228,6 @@ func countCompliant(reqs []aggregate.Requirement) int {
 	return n
 }
 
-// inputEV02 takes the newest pass in the window as current and the newest
-// complete pass before it as previous. A pass counts as complete when both
-// files were read and every announced record arrived.
-func inputEV02(ctx context.Context, facts Facts, agentID string, current, earlier []fact.IdentitySnapshot, since time.Time) (opacc1.EV02Input, error) {
-
-	in := opacc1.EV02Input{}
-
-	if len(current) == 0 {
-		return in, nil
-	}
-
-	in.Current = &current[0]
-
-	if readBoth(*in.Current) {
-		records, err := facts.IdentityRecords(ctx, agentID, in.Current.RunID, since)
-		if err != nil {
-			return in, err
-		}
-		in.Records = records
-	}
-
-	for i := range earlier {
-
-		candidate := earlier[i]
-
-		if candidate.RunID == in.Current.RunID || !readBoth(candidate) || candidate.RecordsEmitted == nil {
-			continue
-		}
-
-		records, err := facts.IdentityRecords(ctx, agentID, candidate.RunID, since)
-		if err != nil {
-			return in, err
-		}
-
-		if len(records) >= *candidate.RecordsEmitted {
-			in.Previous = &candidate
-			in.PreviousRecords = records
-			break
-		}
-	}
-
-	return in, nil
-}
-
-func readBoth(s fact.IdentitySnapshot) bool {
-	return s.PasswdStatus == fact.SourceRead && s.ShadowStatus == fact.SourceRead
-}
-
-func loginInput(policy params.Lister, agentID, paramID string, authSeen bool, logins []source.Login) opacc1.LoginInput {
-
-	in := opacc1.LoginInput{AuthSeen: authSeen, Logins: logins}
-
-	matcher, err := policy.Matcher(agentID, "op.acc.1", paramID)
-	if err != nil {
-		in.ForbiddenProblem = err.Error()
-	}
-	in.Forbidden = matcher
-
-	return in
-}
-
-// inputEV06 gathers the group pass, the account list of the EV-02 input
-// (current pass when complete, otherwise the previous complete one) and P-11
-// and P-12.
-func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID string, snapshots map[string]fact.GroupSnapshot, ev02 opacc1.EV02Input, since time.Time) (opacc1.EV06Input, error) {
-
-	in := opacc1.EV06Input{}
-
-	privileged, err := policy.List(agentID, "op.acc.1", "P-11")
-	switch {
-	case errors.Is(err, params.ErrNotSet):
-		in.Privileged, in.PrivilegedDefault = opacc1.DefaultPrivilegedGroups, true
-	case err != nil:
-		in.ConfigProblem = "P-11: " + err.Error()
-	default:
-		in.Privileged = privileged
-	}
-
-	suffix, err := policy.List(agentID, "op.acc.1", "P-12")
-	switch {
-	case errors.Is(err, params.ErrNotSet):
-		// No suffix: nobody is excluded.
-	case err != nil:
-		in.ConfigProblem = "P-12: " + err.Error()
-	default:
-		in.Suffix = suffix[0]
-	}
-
-	if records, problem := completeIdentity(ev02); problem != "" {
-		in.AccountsProblem = problem
-	} else {
-		in.Accounts = identityNames(records)
-	}
-
-	snapshot, ok := snapshots[agentID]
-	if !ok {
-		return in, nil
-	}
-
-	in.Groups = &snapshot
-
-	if snapshot.GroupStatus != fact.SourceRead {
-		return in, nil
-	}
-
-	records, err := facts.GroupRecords(ctx, agentID, snapshot.RunID, since)
-	in.GroupRecords = records
-
-	return in, err
-}
-
-// completeIdentity returns the identity table of the EV-02 input: the current
-// pass when complete, otherwise the previous complete one.
-func completeIdentity(ev02 opacc1.EV02Input) ([]fact.IdentityRecord, string) {
-
-	current := ev02.Current
-
-	if current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted {
-		return ev02.Records, ""
-	}
-
-	if ev02.Previous != nil {
-		return ev02.PreviousRecords, ""
-	}
-
-	return nil, "no complete identity pass (EV-02) in the lookback"
-}
-
-// inputEV04 gathers the identity table and P-05, P-09 and P-10.
-func inputEV04(policy params.Lister, agentID string, ev02 opacc1.EV02Input, now time.Time) opacc1.EV04Input {
-
-	in := opacc1.EV04Input{Now: now}
-
-	in.Accounts, in.AccountsProblem = completeIdentity(ev02)
-
-	off := offboardingParams(policy, agentID)
-	in.Declared, in.DeclaredSet, in.UIDMin = off.declared, off.declaredSet, off.uidMin
-
-	problems := off.problems
-
-	deadline, err := policy.Number(agentID, "op.acc.1", "P-05")
-	if err != nil {
-		problems = append(problems, "P-05: "+err.Error())
-	}
-	in.DeadlineDays = int(deadline)
-
-	in.ConfigProblem = strings.Join(problems, "; ")
-
-	return in
-}
-
-// inputEV08 brings the agent's history up to date with its current complete
-// identity pass, saves the changes, and returns the accounts deleted in the
-// window with P-06, P-09 and P-10.
-func inputEV08(ctx context.Context, hist History, policy params.Lister, agent verdict.Agent, ev02 opacc1.EV02Input, windowStart time.Time) (opacc1.EV08Input, error) {
-
-	off := offboardingParams(policy, agent.ID)
-	in := opacc1.EV08Input{Declared: off.declared, UIDMin: off.uidMin}
-
-	problems := off.problems
-
-	retention, err := policy.Number(agent.ID, "op.acc.1", "P-06")
-	if err != nil {
-		problems = append(problems, "P-06: "+err.Error())
-	}
-	in.RetentionDays = int(retention)
-	in.ConfigProblem = strings.Join(problems, "; ")
-
-	known, err := hist.Load(ctx, agent.ID)
-	if err != nil {
-		return in, fmt.Errorf("history: %w", err)
-	}
-
-	// Only the current pass moves the history forward: the previous one was
-	// applied when it was current.
-	current := ev02.Current
-	complete := current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted
-
-	if !complete {
-		in.IdentityProblem = "no complete current identity pass (EV-02) in the window"
-	} else {
-		at, err := time.Parse(time.RFC3339, current.TS)
-		if err != nil {
-			return in, fmt.Errorf("identity pass %s: ts: %w", current.RunID, err)
-		}
-
-		changed := history.Update(known, agent.ID, agent.Name, ev02.Records, at, current.RunID, opacc1.IsDisabled)
-
-		if err := hist.Save(ctx, changed); err != nil {
-			return in, fmt.Errorf("history: %w", err)
-		}
-
-		for _, account := range changed {
-			known[account.AccountName] = account
-		}
-	}
-
-	for _, account := range known {
-		if account.DeletedAt != nil && !account.DeletedAt.Before(windowStart) {
-			in.Deleted = append(in.Deleted, account)
-		}
-	}
-
-	return in, nil
-}
-
-type offboarding struct {
-	declared    map[string]time.Time
-	declaredSet bool
-	uidMin      int
-	problems    []string
-}
-
-// offboardingParams reads P-09 and P-10, shared by EV-04 and EV-08.
-func offboardingParams(policy params.Lister, agentID string) offboarding {
-
-	off := offboarding{declared: map[string]time.Time{}}
-
-	var problem string
-	if off.uidMin, problem = uidMinParam(policy, agentID); problem != "" {
-		off.problems = append(off.problems, problem)
-	}
-
-	// P-09 rows are "usuario | fecha_baja"; a date that cannot be read is a
-	// configuration error, not a row to skip.
-	rows, err := policy.List(agentID, "op.acc.1", "P-09")
-	switch {
-	case errors.Is(err, params.ErrNotSet):
-	case err != nil:
-		off.problems = append(off.problems, "P-09: "+err.Error())
-	default:
-		for _, row := range rows {
-			cells := strings.Split(row, "|")
-			if len(cells) < 2 {
-				off.problems = append(off.problems, fmt.Sprintf("P-09: row %q has no date", row))
-				continue
-			}
-			name, date := strings.TrimSpace(cells[0]), strings.TrimSpace(cells[1])
-			left, err := time.Parse("2006-01-02", date)
-			if name == "" || err != nil {
-				off.problems = append(off.problems, fmt.Sprintf("P-09: row %q is not \"usuario | YYYY-MM-DD\"", row))
-				continue
-			}
-			off.declared[name] = left
-			off.declaredSet = true
-		}
-	}
-
-	return off
-}
-
-func identityNames(records []fact.IdentityRecord) []string {
-
-	names := make([]string, 0, len(records))
-
-	for _, record := range records {
-		names = append(names, record.AccountName)
-	}
-
-	return names
-}
-
 // notApplicable decides, before any judgement counts, whether the evidence
 // applies at all: the engine decides it, from the configuration's level and
 // the catalog's evidence levels. Without a known level nothing is ruled out.
@@ -579,22 +248,4 @@ func notApplicable(policy params.Lister, control catalog.Control, evidenceID str
 		Status: verdict.NotApplicable,
 		Reason: fmt.Sprintf("%s applies at %s; active ENS level %s", evidenceID, strings.Join(evidence.Levels, ", "), level),
 	}, true
-}
-
-// uidMinParam reads P-10, with the product default when it is not set (as
-// the plugin says in the report). The second value names an unusable P-10.
-func uidMinParam(policy params.Lister, agentID string) (int, string) {
-
-	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")
-
-	switch {
-	case errors.Is(err, params.ErrNotSet):
-		return opacc1.DefaultUIDMin, ""
-	case err != nil:
-		return opacc1.DefaultUIDMin, "P-10: " + err.Error()
-	case uidMin < 0 || uidMin != float64(int(uidMin)):
-		return opacc1.DefaultUIDMin, fmt.Sprintf("P-10: %v is not a UID", uidMin)
-	}
-
-	return int(uidMin), ""
 }

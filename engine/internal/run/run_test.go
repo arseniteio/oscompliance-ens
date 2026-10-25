@@ -7,52 +7,58 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
-type fakeFacts struct {
-	agents []verdict.Agent
-
-	currentIdentity map[string][]fact.IdentitySnapshot
-	earlierIdentity map[string][]fact.IdentitySnapshot
-	identityRecords map[string][]fact.IdentityRecord // by run_id
-	identityAsked   []string
-	failIdentityRun string
-	registered      []verdict.Agent
+type fakeAgents struct {
+	senders, registered []verdict.Agent
 }
 
-func (f *fakeFacts) RegisteredAgents(context.Context, time.Time) ([]verdict.Agent, error) {
+func (f fakeAgents) Agents(context.Context, time.Time) ([]verdict.Agent, error) {
+	return f.senders, nil
+}
+
+func (f fakeAgents) RegisteredAgents(context.Context, time.Time) ([]verdict.Agent, error) {
 	return f.registered, nil
 }
 
-func (f *fakeFacts) Logins(context.Context, string, time.Time) ([]source.Login, error) {
-	return nil, nil
+// fakeControl judges op.acc.1 with fixed results per agent.
+type fakeControl struct {
+	beginErr error
+	results  map[string]map[string]evaluator.Result // by agent ID
+	failing  map[string]bool                        // agents whose read fails
 }
 
-func (f *fakeFacts) AuthActivity(context.Context, time.Time) (map[string]time.Time, error) {
-	return nil, nil
+func (f *fakeControl) Control() string { return "op.acc.1" }
+
+func (f *fakeControl) Begin(context.Context, evaluator.Pass) error { return f.beginErr }
+
+func (f *fakeControl) Agent(_ context.Context, agent verdict.Agent, _ params.Lister) (map[string]evaluator.Result, error) {
+	if f.failing[agent.ID] {
+		return map[string]evaluator.Result{"EV-03": compliant()}, errors.New("boom")
+	}
+	return f.results[agent.ID], nil
 }
 
-func (f *fakeFacts) GroupSnapshots(context.Context, time.Time) (map[string]fact.GroupSnapshot, error) {
-	return nil, nil
+func compliant() evaluator.Result {
+	return evaluator.Result{Judgement: verdict.Judgement{Status: verdict.Compliant}}
 }
 
-func (f *fakeFacts) GroupRecords(context.Context, string, string, time.Time) ([]fact.GroupRecord, error) {
-	return nil, nil
+// allCompliant is every op.acc.1 evidence COMPLIANT.
+func allCompliant() map[string]evaluator.Result {
+	out := map[string]evaluator.Result{}
+	for _, id := range []string{"EV-01", "EV-02", "EV-03", "EV-04", "EV-05", "EV-06", "EV-07", "EV-08"} {
+		out[id] = compliant()
+	}
+	return out
 }
 
-type memHistory struct{ saved []history.Account }
+type fakeSink struct{ got []verdict.Verdict }
 
-func (m *memHistory) Load(context.Context, string) (map[string]history.Account, error) {
-	return map[string]history.Account{}, nil
-}
-
-func (m *memHistory) Save(_ context.Context, accounts []history.Account) error {
-	m.saved = append(m.saved, accounts...)
+func (s *fakeSink) Write(_ context.Context, v verdict.Verdict) error {
+	s.got = append(s.got, v)
 	return nil
 }
 
@@ -61,10 +67,6 @@ type noParams struct {
 	level    string
 	disabled bool
 }
-
-func (p noParams) Level() string { return p.level }
-
-func (p noParams) ControlEnabled(string) bool { return !p.disabled }
 
 func (noParams) List(string, string, string) ([]string, error) { return nil, params.ErrNotSet }
 
@@ -78,98 +80,88 @@ func (noParams) Matcher(string, string, string) (params.Matcher, error) {
 	return params.Matcher{}, params.ErrNotSet
 }
 
-func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
-	if n == 1 {
-		return f.currentIdentity, nil
+func (p noParams) Level() string { return p.level }
+
+func (p noParams) ControlEnabled(string) bool { return !p.disabled }
+
+var cfg = Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}
+
+func index(got []verdict.Verdict) map[string]verdict.Verdict {
+	out := map[string]verdict.Verdict{}
+	for _, v := range got {
+		out[v.Agent.ID+" "+v.Scope+" "+v.Requirement+v.Evidence] = v
 	}
-	return f.earlierIdentity, nil
+	return out
 }
 
-func (f *fakeFacts) IdentityRecords(_ context.Context, _, runID string, _ time.Time) ([]fact.IdentityRecord, error) {
-	f.identityAsked = append(f.identityAsked, runID)
-	if runID == f.failIdentityRun {
-		return nil, errors.New("boom")
-	}
-	return f.identityRecords[runID], nil
-}
-
-func (f *fakeFacts) Agents(context.Context, time.Time) ([]verdict.Agent, error) {
-	return f.agents, nil
-}
-
-type fakeSink struct{ got []verdict.Verdict }
-
-func (s *fakeSink) Write(_ context.Context, v verdict.Verdict) error {
-	s.got = append(s.got, v)
-	return nil
-}
-
-func TestOnceWritesOneVerdictPerAgent(t *testing.T) {
-	pass := func(run string) []fact.IdentitySnapshot { return []fact.IdentitySnapshot{identityPass(run, 1, true)} }
-
-	facts := &fakeFacts{
-		agents: []verdict.Agent{{ID: "001", Name: "a"}, {ID: "002", Name: "b"}, {ID: "003", Name: "c"}},
-		currentIdentity: map[string][]fact.IdentitySnapshot{
-			"001": pass("r1"),
-			"003": pass("r3"),
-		},
-		identityRecords: map[string][]fact.IdentityRecord{"r1": {{AccountName: "root"}}},
-		failIdentityRun: "r3",
+func TestOnceWritesEveryScope(t *testing.T) {
+	control := &fakeControl{
+		results: map[string]map[string]evaluator.Result{"001": allCompliant()},
+		failing: map[string]bool{"002": true},
 	}
 	sink := &fakeSink{}
 	now := time.Date(2026, 10, 21, 16, 0, 0, 0, time.UTC)
 
-	n, err := Once(context.Background(), facts, noParams{}, &memHistory{}, sink, Config{Window: 26 * time.Hour, Lookback: 168 * time.Hour, EngineVersion: "test"}, now)
+	n, err := Once(context.Background(), fakeAgents{senders: []verdict.Agent{{ID: "001", Name: "a"}, {ID: "002", Name: "b"}}}, []evaluator.Evaluator{control}, noParams{level: "MEDIO"}, sink, cfg, now)
 
-	if err == nil {
-		t.Error("want the error of agent 003")
+	if err == nil || !strings.Contains(err.Error(), "boom") {
+		t.Errorf("want the read error of 002, got %v", err)
 	}
 
-	// 001 and 002: 8 evidences, 8 requirements and the control (17 each).
-	// 003 loses the 5 evidences that read its identity pass (EV-01, EV-02,
-	// EV-04, EV-07, EV-08) and still gets 3 evidences, 8 requirements and
-	// the control (12).
-	if n != 46 || len(sink.got) != 46 {
-		t.Fatalf("want 46 verdicts, got %d", n)
+	// 001: 8 evidences, 8 requirements, 1 control. 002: only EV-03 judged,
+	// plus its 8 requirements and the control.
+	if n != 17+10 {
+		t.Fatalf("want 27 verdicts, got %d", n)
 	}
 
-	got := map[string]verdict.Verdict{}
-	for _, v := range sink.got {
-		got[v.Agent.ID+" "+v.Scope+" "+v.Requirement+v.Evidence] = v
-	}
+	got := index(sink.got)
 
-	if v := got["001 evidence EV-01"]; v.RunID != "r1" || v.Control != "op.acc.1" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
+	if v := got["001 evidence EV-01"]; v.Control != "op.acc.1" || v.WindowStart != "2026-10-20T14:00:00Z" || v.WindowEnd != "2026-10-21T16:00:00Z" || v.Agent.Name != "a" {
 		t.Errorf("001 EV-01: %+v", v)
 	}
-	if v := got["002 evidence EV-01"]; v.RunID != "" || v.Status != verdict.NotEvaluable {
-		t.Errorf("002 without identity pass: %+v", v)
-	}
-	for _, ev := range []string{"EV-01", "EV-02", "EV-04", "EV-07", "EV-08"} {
-		if _, ok := got["003 evidence "+ev]; ok {
-			t.Errorf("003 %s written despite the read error", ev)
-		}
+
+	// Every evidence compliant, no attestation: op.acc.1.5 and r1.1 fail.
+	if v := got["001 control "]; v.Status != verdict.Partial || v.Score == nil || *v.Score != 75 {
+		t.Errorf("001 control: %+v", v)
 	}
 
-	// The requirements of 003 still come out, its unread evidences counted
-	// as COLLECTION gaps, never as compliant by absence.
-	if v := got["003 requirement op.acc.1.4"]; v.Status != verdict.NonCompliant || !strings.Contains(v.Reason, "EV-01 (COLLECTION)") {
-		t.Errorf("003 op.acc.1.4: %+v", v)
+	// 002: unread evidences are COLLECTION gaps, never compliant by absence.
+	if v := got["002 requirement op.acc.1.4"]; v.Status != verdict.NonCompliant || v.Evidenced == nil || *v.Evidenced || !strings.Contains(v.Reason, "EV-01 (COLLECTION)") {
+		t.Errorf("002 op.acc.1.4: %+v", v)
 	}
-	if v := got["001 control "]; v.Score == nil || v.Coverage == nil || v.ApplicableRequirements == nil {
-		t.Errorf("001 control: %+v", v)
+	if _, ok := got["002 evidence EV-01"]; ok {
+		t.Error("an evidence without a result must not be written")
+	}
+}
+
+// A control whose facts cannot be read at all still gives every agent its
+// requirement and control verdicts.
+func TestOnceControlBeginFails(t *testing.T) {
+	control := &fakeControl{beginErr: errors.New("indexer down")}
+	sink := &fakeSink{}
+
+	_, err := Once(context.Background(), fakeAgents{senders: []verdict.Agent{{ID: "001"}}}, []evaluator.Evaluator{control}, noParams{}, sink, cfg, time.Now())
+
+	if err == nil {
+		t.Error("want the Begin error")
+	}
+	got := index(sink.got)
+	if v := got["001 control "]; v.Status != verdict.NonCompliant || v.MeasuredRequirements == nil || *v.MeasuredRequirements != 0 {
+		t.Errorf("control: %+v", v)
 	}
 }
 
 // A registered agent that sends nothing still gets every verdict, and the
 // name of an agent known both ways is kept.
 func TestOnceJudgesRegisteredSilentAgents(t *testing.T) {
-	facts := &fakeFacts{
-		agents:     []verdict.Agent{{ID: "001"}},
+	agents := fakeAgents{
+		senders:    []verdict.Agent{{ID: "001"}},
 		registered: []verdict.Agent{{ID: "001", Name: "web"}, {ID: "002", Name: "silent"}, {ID: "000", Name: "wazuh.manager"}},
 	}
+	control := &fakeControl{results: map[string]map[string]evaluator.Result{"001": allCompliant()}}
 	sink := &fakeSink{}
 
-	if _, err := Once(context.Background(), facts, noParams{}, &memHistory{}, sink, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
+	if _, err := Once(context.Background(), agents, []evaluator.Evaluator{control}, noParams{}, sink, cfg, time.Now()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -178,98 +170,46 @@ func TestOnceJudgesRegisteredSilentAgents(t *testing.T) {
 	for _, v := range sink.got {
 		byAgent[v.Agent.ID]++
 		names[v.Agent.ID] = v.Agent.Name
-		if v.Scope == verdict.ScopeEvidence && v.Status == verdict.Compliant {
-			t.Errorf("%s %s compliant with no facts", v.Agent.ID, v.Evidence)
-		}
 	}
 
-	for _, id := range []string{"000", "001", "002"} {
-		if byAgent[id] != 17 {
-			t.Errorf("agent %s: %d verdicts, want 17", id, byAgent[id])
-		}
+	if byAgent["001"] != 17 || byAgent["002"] != 9 || byAgent["000"] != 9 {
+		t.Errorf("verdicts by agent: %v", byAgent)
 	}
 	if names["001"] != "web" {
 		t.Errorf("name of 001: %q", names["001"])
 	}
 }
 
-func identityPass(runID string, emitted int, read bool) fact.IdentitySnapshot {
-	s := fact.IdentitySnapshot{Envelope: fact.Envelope{RunID: runID, TS: "2026-10-22T12:00:00Z"}, PasswdStatus: fact.SourceRead, ShadowStatus: fact.SourceRead, RecordsEmitted: &emitted}
-	if !read {
-		s.ShadowStatus, s.ShadowError, s.RecordsEmitted = fact.SourceUnreadable, "denied", nil
-	}
-	return s
-}
-
-func TestOncePicksPreviousCompleteIdentityPass(t *testing.T) {
-	cur := identityPass("cur", 1, true)
-	facts := &fakeFacts{
-		agents:          []verdict.Agent{{ID: "001", Name: "a"}},
-		currentIdentity: map[string][]fact.IdentitySnapshot{"001": {cur}},
-		earlierIdentity: map[string][]fact.IdentitySnapshot{"001": {
-			cur,                                 // the current pass itself: skipped
-			identityPass("unread", 0, false),    // shadow not read: skipped
-			identityPass("incomplete", 2, true), // 1 of 2 records: skipped
-			identityPass("good", 1, true),       // previous
-			identityPass("older", 1, true),      // never reached
-		}},
-		identityRecords: map[string][]fact.IdentityRecord{
-			"cur": {{}}, "incomplete": {{}}, "good": {{}}, "older": {{}},
-		},
-	}
-
-	if _, err := Once(context.Background(), facts, noParams{}, &memHistory{}, &fakeSink{}, Config{Window: time.Hour, Lookback: 2 * time.Hour}, time.Now()); err != nil {
-		t.Fatal(err)
-	}
-
-	want := []string{"cur", "incomplete", "good"}
-	if len(facts.identityAsked) != len(want) {
-		t.Fatalf("records asked for %v, want %v", facts.identityAsked, want)
-	}
-	for i := range want {
-		if facts.identityAsked[i] != want[i] {
-			t.Fatalf("records asked for %v, want %v", facts.identityAsked, want)
-		}
-	}
-}
-
 func TestOnceNotApplicable(t *testing.T) {
-	facts := &fakeFacts{agents: []verdict.Agent{{ID: "001", Name: "a"}}}
-	cfg := Config{Window: time.Hour, Lookback: 2 * time.Hour}
+	control := &fakeControl{results: map[string]map[string]evaluator.Result{"001": allCompliant()}}
+	agents := fakeAgents{senders: []verdict.Agent{{ID: "001"}}}
 
-	byEvidence := func(policy noParams) map[string]verdict.Verdict {
+	run := func(policy noParams) map[string]verdict.Verdict {
 		sink := &fakeSink{}
-		if _, err := Once(context.Background(), facts, policy, &memHistory{}, sink, cfg, time.Now()); err != nil {
+		if _, err := Once(context.Background(), agents, []evaluator.Evaluator{control}, policy, sink, cfg, time.Now()); err != nil {
 			t.Fatal(err)
 		}
-		got := map[string]verdict.Verdict{}
-		for _, v := range sink.got {
-			if v.Scope == verdict.ScopeEvidence {
-				got[v.Evidence] = v
-			}
-		}
-		return got
+		return index(sink.got)
 	}
 
-	bajo := byEvidence(noParams{level: "BAJO"})
-	if v := bajo["EV-07"]; v.Status != verdict.NotApplicable || !strings.Contains(v.Reason, "MEDIO, ALTO") {
+	bajo := run(noParams{level: "BAJO"})
+	if v := bajo["001 evidence EV-07"]; v.Status != verdict.NotApplicable || !strings.Contains(v.Reason, "MEDIO, ALTO") {
 		t.Errorf("EV-07 at BAJO: %+v", v)
 	}
-	if bajo["EV-01"].Status == verdict.NotApplicable {
-		t.Errorf("EV-01 applies at BAJO: %+v", bajo["EV-01"])
+	if v := bajo["001 requirement op.acc.1.r1.3"]; v.Status != verdict.NotApplicable {
+		t.Errorf("r1.3 at BAJO: %+v", v)
+	}
+	if v := bajo["001 evidence EV-01"]; v.Status != verdict.Compliant {
+		t.Errorf("EV-01 at BAJO: %+v", v)
 	}
 
-	if v := byEvidence(noParams{level: "MEDIO"})["EV-07"]; v.Status == verdict.NotApplicable {
+	if v := run(noParams{level: "MEDIO"})["001 evidence EV-07"]; v.Status != verdict.Compliant {
 		t.Errorf("EV-07 at MEDIO: %+v", v)
 	}
 
-	if v := byEvidence(noParams{})["EV-07"]; v.Status == verdict.NotApplicable {
-		t.Errorf("EV-07 with no level: %+v", v)
-	}
-
-	for ev, v := range byEvidence(noParams{level: "ALTO", disabled: true}) {
+	for key, v := range run(noParams{level: "ALTO", disabled: true}) {
 		if v.Status != verdict.NotApplicable || !strings.Contains(v.Reason, "disabled") {
-			t.Errorf("%s with op.acc.1 disabled: %+v", ev, v)
+			t.Errorf("%s with op.acc.1 disabled: %+v", key, v)
 		}
 	}
 }

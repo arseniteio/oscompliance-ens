@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/run"
@@ -75,6 +77,11 @@ func runMain() error {
 	}
 
 	facts := source.New(client, *alerts, *monitoring)
+
+	// One evaluator per migrated control.
+	controls := []evaluator.Evaluator{
+		opacc1.NewEvaluator(facts, hist),
+	}
 	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
 
 	for {
@@ -88,7 +95,7 @@ func runMain() error {
 			policy = loaded
 		}
 
-		n, err := run.Once(ctx, facts, policy, hist, sink, cfg, time.Now())
+		n, err := run.Once(ctx, facts, controls, policy, sink, cfg, time.Now())
 		if err != nil {
 			slog.Error("pass", "verdicts", n, "error", err)
 		} else {
