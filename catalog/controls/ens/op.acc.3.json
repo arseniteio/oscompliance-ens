@@ -1,0 +1,167 @@
+{
+  "framework": "ENS",
+  "control": "op.acc.3",
+  "title": "Segregación de funciones y tareas",
+  "status": "ACTIVE",
+  "requirements": [
+    {
+      "id": "op.acc.3.1",
+      "title": "Siempre que sea posible, las capacidades de desarrollo y…",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.3.2",
+      "title": "Siempre que sea posible, las personas que autorizan y…",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02",
+        "EV-03",
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.3.r1.1",
+      "title": "Siempre que sea posible, la misma persona no aunará…",
+      "levels": [
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-04",
+        "EV-06"
+      ],
+      "applicability_reason": "Exigible en ALTO. Para MEDIO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.3.r1.2",
+      "title": "La misma persona no puede aunar funciones de auditoría o…",
+      "levels": [
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05"
+      ],
+      "applicability_reason": "Exigible en ALTO. Para MEDIO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.3.r2.1",
+      "title": "Refuerzo R2 – Privilegios de auditoría: Existirán cuentas…",
+      "levels": [],
+      "evidence_ids": [],
+      "applicability_reason": "Exigible en . Para MEDIO y ALTO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.3.r3.1",
+      "title": "Refuerzo R3 – Acceso a la información de seguridad: El…",
+      "levels": [],
+      "evidence_ids": [
+        "EV-07"
+      ],
+      "applicability_reason": "Exigible en . Para MEDIO y ALTO debe mostrarse como NO_APLICA."
+    }
+  ],
+  "evidences": [
+    {
+      "id": "EV-01",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.1"
+      ]
+    },
+    {
+      "id": "EV-02",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.2"
+      ]
+    },
+    {
+      "id": "EV-03",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.2"
+      ]
+    },
+    {
+      "id": "EV-04",
+      "levels": [
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.r1.1"
+      ]
+    },
+    {
+      "id": "EV-05",
+      "levels": [
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.r1.2"
+      ]
+    },
+    {
+      "id": "EV-06",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.1",
+        "op.acc.3.2",
+        "op.acc.3.r1.1"
+      ]
+    },
+    {
+      "id": "EV-07",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.3.r3.1"
+      ]
+    }
+  ],
+  "parameters": {
+    "P-01": {
+      "class": "organisation"
+    },
+    "P-02": {
+      "class": "organisation"
+    },
+    "P-03": {
+      "class": "platform"
+    },
+    "P-04": {
+      "class": "organisation"
+    },
+    "P-05": {
+      "class": "organisation"
+    },
+    "P-06": {
+      "class": "organisation"
+    },
+    "P-ATT": {
+      "class": "organisation"
+    }
+  }
+}

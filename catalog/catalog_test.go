@@ -12,23 +12,6 @@ func TestOpAcc1(t *testing.T) {
 		t.Fatalf("requirements: %s %d", c.Status, len(c.Requirements))
 	}
 
-	// Every evidence a requirement names exists, and every evidence
-	// accredits some requirement.
-	used := map[string]bool{}
-	for _, r := range c.Requirements {
-		for _, id := range r.EvidenceIDs {
-			if _, ok := c.Evidence(id); !ok {
-				t.Errorf("%s names unknown evidence %s", r.ID, id)
-			}
-			used[id] = true
-		}
-	}
-	for _, e := range c.Evidences {
-		if !used[e.ID] {
-			t.Errorf("%s accredits no requirement", e.ID)
-		}
-	}
-
 	ev07, _ := c.Evidence("EV-07")
 	if ev07.AppliesAt("BAJO") || !ev07.AppliesAt("MEDIO") || !ev07.AppliesAt("ALTO") {
 		t.Errorf("EV-07 levels: %v", ev07.Levels)
@@ -57,5 +40,51 @@ func TestTemplates(t *testing.T) {
 
 	if _, ok := BuiltinTemplate("zimbra-ldap", "op.acc.1"); !ok {
 		t.Error("zimbra-ldap by id")
+	}
+}
+
+// Every control: the evidences a requirement names exist, every evidence
+// accredits a requirement that lists it, levels are ENS levels, and every
+// parameter has a known class.
+func TestCatalogConsistency(t *testing.T) {
+	levels := map[string]bool{"BAJO": true, "MEDIO": true, "ALTO": true}
+	classes := map[string]bool{ClassOrganisation: true, ClassSystem: true, ClassPlatform: true}
+
+	all := Controls()
+	if len(all) < 6 {
+		t.Fatalf("want at least op.acc.1 to op.acc.6, got %d controls", len(all))
+	}
+
+	for _, c := range all {
+		if c.Title == "" || c.Status == "" || len(c.Requirements) == 0 {
+			t.Errorf("%s: title %q, status %q, %d requirements", c.Control, c.Title, c.Status, len(c.Requirements))
+		}
+
+		used := map[string]bool{}
+		for _, r := range c.Requirements {
+			for _, l := range r.Levels {
+				if !levels[l] {
+					t.Errorf("%s %s: level %q", c.Control, r.ID, l)
+				}
+			}
+			for _, id := range r.EvidenceIDs {
+				if _, ok := c.Evidence(id); !ok {
+					t.Errorf("%s %s names unknown evidence %s", c.Control, r.ID, id)
+				}
+				used[id] = true
+			}
+		}
+
+		for _, e := range c.Evidences {
+			if !used[e.ID] {
+				t.Errorf("%s %s accredits no requirement", c.Control, e.ID)
+			}
+		}
+
+		for id, p := range c.Parameters {
+			if !classes[p.Class] {
+				t.Errorf("%s %s: class %q", c.Control, id, p.Class)
+			}
+		}
 	}
 }

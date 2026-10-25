@@ -1,0 +1,190 @@
+{
+  "framework": "ENS",
+  "control": "op.acc.2",
+  "title": "Requisitos de acceso",
+  "status": "ACTIVE",
+  "requirements": [
+    {
+      "id": "op.acc.2.1",
+      "title": "Protección de los recursos mediante control de acceso",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-03",
+        "EV-07"
+      ]
+    },
+    {
+      "id": "op.acc.2.2",
+      "title": "Derechos de acceso según el responsable del recurso",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-03",
+        "EV-04"
+      ]
+    },
+    {
+      "id": "op.acc.2.3",
+      "title": "Control de acceso a componentes y ficheros del sistema operativo",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02",
+        "EV-03",
+        "EV-07"
+      ]
+    },
+    {
+      "id": "op.acc.2.r1.1",
+      "title": "Privilegios de seguridad mantenidos individualmente",
+      "levels": [
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05"
+      ],
+      "applicability_reason": "Refuerzo R1 exigible únicamente en nivel ALTO. Para BAJO y MEDIO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.2.r1.2",
+      "title": "Privilegios que restringen el tipo de acceso",
+      "levels": [
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05",
+        "EV-06"
+      ],
+      "applicability_reason": "Refuerzo R1 exigible únicamente en nivel ALTO. Para BAJO y MEDIO debe mostrarse como NO_APLICA."
+    }
+  ],
+  "evidences": [
+    {
+      "id": "EV-01",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.1",
+        "op.acc.2.3"
+      ]
+    },
+    {
+      "id": "EV-02",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.3"
+      ]
+    },
+    {
+      "id": "EV-03",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.1",
+        "op.acc.2.2"
+      ]
+    },
+    {
+      "id": "EV-04",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.2",
+        "op.acc.2.r1.2"
+      ]
+    },
+    {
+      "id": "EV-05",
+      "levels": [
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.r1.1",
+        "op.acc.2.r1.2"
+      ]
+    },
+    {
+      "id": "EV-06",
+      "levels": [
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.r1.2"
+      ]
+    },
+    {
+      "id": "EV-07",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.2.1",
+        "op.acc.2.3"
+      ]
+    }
+  ],
+  "parameters": {
+    "P-01": {
+      "class": "system"
+    },
+    "P-02": {
+      "class": "platform"
+    },
+    "P-03": {
+      "class": "organisation"
+    },
+    "P-04": {
+      "class": "organisation"
+    },
+    "P-05": {
+      "class": "organisation"
+    },
+    "P-06": {
+      "class": "system"
+    },
+    "P-07": {
+      "class": "organisation"
+    },
+    "P-08": {
+      "class": "system"
+    },
+    "P-09": {
+      "class": "system"
+    },
+    "P-10": {
+      "class": "platform"
+    },
+    "P-11": {
+      "class": "platform"
+    },
+    "P-12": {
+      "class": "platform"
+    }
+  }
+}

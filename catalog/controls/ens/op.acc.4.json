@@ -1,0 +1,188 @@
+{
+  "framework": "ENS",
+  "control": "op.acc.4",
+  "title": "Proceso de gestión de derechos de acceso",
+  "status": "ACTIVE",
+  "requirements": [
+    {
+      "id": "op.acc.4.1",
+      "title": "Todo acceso estará prohibido, salvo autorización expresa.",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-02"
+      ]
+    },
+    {
+      "id": "op.acc.4.2",
+      "title": "Mínimo privilegio: los privilegios de cada entidad, usuario…",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02",
+        "EV-03",
+        "EV-08"
+      ]
+    },
+    {
+      "id": "op.acc.4.3",
+      "title": "Necesidad de conocer y responsabilidad de compartir: los…",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-07"
+      ]
+    },
+    {
+      "id": "op.acc.4.4",
+      "title": "Capacidad de autorizar: Exclusivamente el personal con…",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-03",
+        "EV-04",
+        "EV-05"
+      ]
+    },
+    {
+      "id": "op.acc.4.5",
+      "title": "Se establecerá una política específica de acceso remoto,…",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-06"
+      ]
+    }
+  ],
+  "evidences": [
+    {
+      "id": "EV-01",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.1"
+      ]
+    },
+    {
+      "id": "EV-02",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.1",
+        "op.acc.4.2"
+      ]
+    },
+    {
+      "id": "EV-03",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.2",
+        "op.acc.4.4"
+      ]
+    },
+    {
+      "id": "EV-04",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.4"
+      ]
+    },
+    {
+      "id": "EV-05",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.4"
+      ]
+    },
+    {
+      "id": "EV-06",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.5"
+      ]
+    },
+    {
+      "id": "EV-07",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.3"
+      ]
+    },
+    {
+      "id": "EV-08",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.4.2"
+      ]
+    }
+  ],
+  "parameters": {
+    "P-01": {
+      "class": "system"
+    },
+    "P-02": {
+      "class": "organisation"
+    },
+    "P-03": {
+      "class": "organisation"
+    },
+    "P-04": {
+      "class": "platform"
+    },
+    "P-05": {
+      "class": "system"
+    },
+    "P-06": {
+      "class": "platform"
+    },
+    "P-07": {
+      "class": "system"
+    }
+  }
+}

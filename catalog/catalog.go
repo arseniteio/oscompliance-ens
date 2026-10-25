@@ -134,6 +134,20 @@ func decodeStrict(p string, v any) error {
 	return nil
 }
 
+// Controls returns every control of the catalog, sorted by id.
+func Controls() []Control {
+
+	var out []Control
+
+	for _, c := range controls {
+		out = append(out, c)
+	}
+
+	slices.SortFunc(out, func(a, b Control) int { return strings.Compare(a.Control, b.Control) })
+
+	return out
+}
+
 // LookupControl returns a control by id.
 func LookupControl(id string) (Control, bool) {
 	c, ok := controls[id]

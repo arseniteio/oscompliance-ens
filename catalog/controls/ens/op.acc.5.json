@@ -1,0 +1,399 @@
+{
+  "framework": "ENS",
+  "control": "op.acc.5",
+  "title": "Mecanismo de autenticación (usuarios externos)",
+  "status": "ACTIVE",
+  "requirements": [
+    {
+      "id": "op.acc.5.1",
+      "title": "Registro fidedigno previo a la entrega",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.5.2",
+      "title": "Acuse de recibo y deber de custodia",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.5.3",
+      "title": "Credencial bajo control exclusivo del usuario",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.5.4",
+      "title": "Cambio periódico de credenciales",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-04"
+      ]
+    },
+    {
+      "id": "op.acc.5.5",
+      "title": "Inhabilitación ante compromiso",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05"
+      ]
+    },
+    {
+      "id": "op.acc.5.6",
+      "title": "Inhabilitación al terminar la relación",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05"
+      ]
+    },
+    {
+      "id": "op.acc.5.7",
+      "title": "Autenticación que no revela información",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.5.8",
+      "title": "Límite de intentos y reactivación",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02",
+        "EV-03"
+      ]
+    },
+    {
+      "id": "op.acc.5.9",
+      "title": "Información de derechos y obligaciones",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.5.r1.1",
+      "title": "Contraseña como mecanismo (R1)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-07"
+      ],
+      "applicability_reason": "Refuerzo R1: solo cuenta si P-01 lo declara, y solo es admisible en nivel BAJO."
+    },
+    {
+      "id": "op.acc.5.r1.2",
+      "title": "Complejidad mínima de la contraseña (R1)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02"
+      ],
+      "applicability_reason": "Refuerzo R1: solo cuenta si P-01 lo declara, y solo es admisible en nivel BAJO."
+    },
+    {
+      "id": "op.acc.5.r2.1",
+      "title": "Segundo factor OTP (R2)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-07"
+      ],
+      "applicability_reason": "Refuerzo R2: solo cuenta si P-01 lo declara."
+    },
+    {
+      "id": "op.acc.5.r3.1",
+      "title": "Certificado cualificado (R3)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-08"
+      ],
+      "applicability_reason": "Refuerzo R3: solo cuenta si P-01 lo declara."
+    },
+    {
+      "id": "op.acc.5.r3.2",
+      "title": "Segundo factor sobre el certificado (R3)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-07"
+      ],
+      "applicability_reason": "Refuerzo R3: solo cuenta si P-01 lo declara."
+    },
+    {
+      "id": "op.acc.5.r3.3",
+      "title": "Registro previo cualificado (R3)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Refuerzo R3: solo cuenta si P-01 lo declara. Documental: se acredita en P-ATT."
+    },
+    {
+      "id": "op.acc.5.r4.1",
+      "title": "Certificado en soporte físico autorizado (R4)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-08"
+      ],
+      "applicability_reason": "Refuerzo R4: solo cuenta si P-01 lo declara."
+    },
+    {
+      "id": "op.acc.5.r4.2",
+      "title": "Segundo factor sobre el certificado (R4)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-07"
+      ],
+      "applicability_reason": "Refuerzo R4: solo cuenta si P-01 lo declara."
+    },
+    {
+      "id": "op.acc.5.r4.3",
+      "title": "Registro previo cualificado (R4)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Refuerzo R4: solo cuenta si P-01 lo declara. Documental: se acredita en P-ATT."
+    },
+    {
+      "id": "op.acc.5.r5.1",
+      "title": "Registro de accesos con éxito y fallidos (R5)",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01",
+        "EV-09"
+      ],
+      "applicability_reason": "Exigible en MEDIO y ALTO. Para BAJO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.5.r5.2",
+      "title": "Aviso del último acceso efectuado (R5)",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Exigible en MEDIO y ALTO. Documental: P-09 declara la funcionalidad y P-ATT la acredita."
+    },
+    {
+      "id": "op.acc.5.r6.1",
+      "title": "Renovación de la autenticación (R6)",
+      "levels": [],
+      "evidence_ids": [],
+      "applicability_reason": "R6 no es obligatorio en ningún nivel de op.acc.5 (sí en op.acc.6 ALTO): fuera del denominador."
+    },
+    {
+      "id": "op.acc.5.r7.1",
+      "title": "Suspensión por no utilización (R7)",
+      "levels": [],
+      "evidence_ids": [],
+      "applicability_reason": "R7 no es obligatorio en ningún nivel de op.acc.5 (sí en op.acc.6 ALTO): fuera del denominador."
+    }
+  ],
+  "evidences": [
+    {
+      "id": "EV-01",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.r5.1"
+      ]
+    },
+    {
+      "id": "EV-02",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.8",
+        "op.acc.5.r1.2"
+      ]
+    },
+    {
+      "id": "EV-03",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.8"
+      ]
+    },
+    {
+      "id": "EV-04",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.4"
+      ]
+    },
+    {
+      "id": "EV-05",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.5",
+        "op.acc.5.6"
+      ]
+    },
+    {
+      "id": "EV-06",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.7"
+      ]
+    },
+    {
+      "id": "EV-07",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.r1.1",
+        "op.acc.5.r2.1",
+        "op.acc.5.r3.2",
+        "op.acc.5.r4.2"
+      ]
+    },
+    {
+      "id": "EV-08",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.r3.1",
+        "op.acc.5.r4.1"
+      ]
+    },
+    {
+      "id": "EV-09",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.5.r5.1"
+      ]
+    }
+  ],
+  "parameters": {
+    "P-01": {
+      "class": "organisation"
+    },
+    "P-02": {
+      "class": "system"
+    },
+    "P-03": {
+      "class": "organisation"
+    },
+    "P-04": {
+      "class": "organisation"
+    },
+    "P-05": {
+      "class": "organisation"
+    },
+    "P-06": {
+      "class": "organisation"
+    },
+    "P-07": {
+      "class": "organisation"
+    },
+    "P-08": {
+      "class": "organisation"
+    },
+    "P-09": {
+      "class": "organisation"
+    },
+    "P-ATT": {
+      "class": "organisation"
+    },
+    "P-DA": {
+      "class": "organisation"
+    }
+  }
+}

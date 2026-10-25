@@ -1,0 +1,441 @@
+{
+  "framework": "ENS",
+  "control": "op.acc.6",
+  "title": "Mecanismo de autenticación (usuarios de la organización)",
+  "status": "ACTIVE",
+  "requirements": [
+    {
+      "id": "op.acc.6.1",
+      "title": "Aceptación previa de la política de seguridad",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.6.2",
+      "title": "Acuse de recibo y obligaciones de custodia",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.6.3",
+      "title": "Credencial bajo control exclusivo del usuario",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.6.4",
+      "title": "Cambio periódico de credenciales",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-05"
+      ]
+    },
+    {
+      "id": "op.acc.6.5",
+      "title": "Inhabilitación ante compromiso",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.6.6",
+      "title": "Inhabilitación al cesar la relación",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-06"
+      ]
+    },
+    {
+      "id": "op.acc.6.7",
+      "title": "Rechazo que no revela el motivo",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-12"
+      ]
+    },
+    {
+      "id": "op.acc.6.8",
+      "title": "Límite de intentos con bloqueo efectivo",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-03",
+        "EV-04"
+      ]
+    },
+    {
+      "id": "op.acc.6.9",
+      "title": "Información de derechos tras el acceso",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.6.r1.1",
+      "title": "Contraseña solo desde zona controlada (R1)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02"
+      ],
+      "applicability_reason": "Rige solo si P-01 declara R1. Con otro refuerzo elegido se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r1.2",
+      "title": "Complejidad mínima de la contraseña (R1)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-11"
+      ],
+      "applicability_reason": "Rige solo si P-01 declara R1 o R2. Con R3 o R4 se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r2.1",
+      "title": "Segundo factor junto a la contraseña (R2)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02"
+      ],
+      "applicability_reason": "Rige solo si P-01 declara R2. Con otro refuerzo elegido se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r3.1",
+      "title": "Certificado cualificado (R3)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Rige solo si P-01 declara R3. Con otro refuerzo elegido se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r3.2",
+      "title": "Certificado protegido por PIN o biometría (R3)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Rige solo si P-01 declara R3. Con otro refuerzo elegido se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r4.1",
+      "title": "Certificado en soporte físico autorizado (R4)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Rige solo si P-01 declara R4. Con otro refuerzo elegido se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r4.2",
+      "title": "Soporte físico protegido por PIN o biometría (R4)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Rige solo si P-01 declara R4. Con otro refuerzo elegido se muestra NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r5.1",
+      "title": "Registro de accesos con éxito y fallidos (R5)",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-01"
+      ],
+      "applicability_reason": "Exigible en MEDIO y ALTO. Para BAJO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r5.2",
+      "title": "Aviso del último acceso efectuado (R5)",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [],
+      "applicability_reason": "Exigible en MEDIO y ALTO. Para BAJO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r6.1",
+      "title": "Reautenticación en operaciones críticas (R6)",
+      "levels": [
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-09"
+      ],
+      "applicability_reason": "Exigible en ALTO. Para BAJO y MEDIO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r7.1",
+      "title": "Suspensión por no utilización (R7)",
+      "levels": [
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-10"
+      ],
+      "applicability_reason": "Exigible en ALTO. Para BAJO y MEDIO debe mostrarse como NO_APLICA."
+    },
+    {
+      "id": "op.acc.6.r8.1",
+      "title": "Doble factor desde zona no controlada (R8)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-02"
+      ]
+    },
+    {
+      "id": "op.acc.6.r9.1",
+      "title": "Aplicación de la ITS de interconexión (R9)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": []
+    },
+    {
+      "id": "op.acc.6.r9.2",
+      "title": "Acceso remoto autorizado, cifrado y auditado (R9)",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "evidence_ids": [
+        "EV-07",
+        "EV-08"
+      ]
+    }
+  ],
+  "evidences": [
+    {
+      "id": "EV-01",
+      "levels": [
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r5.1"
+      ]
+    },
+    {
+      "id": "EV-02",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r1.1",
+        "op.acc.6.r2.1",
+        "op.acc.6.r8.1"
+      ]
+    },
+    {
+      "id": "EV-03",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.8"
+      ]
+    },
+    {
+      "id": "EV-04",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.8"
+      ]
+    },
+    {
+      "id": "EV-05",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.4"
+      ]
+    },
+    {
+      "id": "EV-06",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.5",
+        "op.acc.6.6"
+      ]
+    },
+    {
+      "id": "EV-07",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r9.2"
+      ]
+    },
+    {
+      "id": "EV-08",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r9.2"
+      ]
+    },
+    {
+      "id": "EV-09",
+      "levels": [
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r6.1"
+      ]
+    },
+    {
+      "id": "EV-10",
+      "levels": [
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r7.1"
+      ]
+    },
+    {
+      "id": "EV-11",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.r1.2"
+      ]
+    },
+    {
+      "id": "EV-12",
+      "levels": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "requirements": [
+        "op.acc.6.7"
+      ]
+    }
+  ],
+  "parameters": {
+    "P-01": {
+      "class": "organisation"
+    },
+    "P-02": {
+      "class": "organisation"
+    },
+    "P-03": {
+      "class": "platform"
+    },
+    "P-04": {
+      "class": "organisation"
+    },
+    "P-05": {
+      "class": "organisation"
+    },
+    "P-06": {
+      "class": "organisation"
+    },
+    "P-07": {
+      "class": "platform"
+    },
+    "P-08": {
+      "class": "platform"
+    },
+    "P-09": {
+      "class": "organisation"
+    },
+    "P-10": {
+      "class": "organisation"
+    },
+    "P-11": {
+      "class": "platform"
+    },
+    "P-ATT": {
+      "class": "organisation"
+    }
+  }
+}
