@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/listening_socket.v1.json",
   "title": "listening_socket v1",
-  "description": "One socket accepting connections from outside the machine (loopback is left out): TCP in LISTEN, or UDP bound without a peer. What service it is, and whether it encrypts, is the engine's decision. Emitted before the listening_snapshot of the same run_id.",
+  "description": "One socket accepting connections from outside the machine (loopback is left out): TCP in LISTEN, or UDP bound without a peer. What service it is, and whether it encrypts, is the engine's decision. Emitted before the listening_snapshot of the same run_id. Field names avoid the objects of the Wazuh alerts template (data.port, data.process).",
   "type": "object",
   "required": [
     "protocol",
-    "address",
-    "port"
+    "local_address",
+    "local_port"
   ],
   "properties": {
     "fact": {
@@ -19,26 +19,26 @@
         "udp"
       ]
     },
-    "address": {
+    "local_address": {
       "description": "Local address as bound: 0.0.0.0 or :: is every address of the machine (listening_snapshot.addresses).",
       "type": "string",
       "minLength": 1
     },
-    "port": {
+    "local_port": {
       "type": "integer",
       "minimum": 0,
       "maximum": 65535
     },
-    "pid": {
+    "process_id": {
       "description": "Process holding the socket; absent when no process could be matched (not root).",
       "type": "integer",
       "minimum": 1
     },
-    "process": {
+    "process_name": {
       "description": "Process name (/proc/<pid>/comm).",
       "type": "string"
     },
-    "exe": {
+    "process_exe": {
       "description": "Executable path, when readable.",
       "type": "string"
     },

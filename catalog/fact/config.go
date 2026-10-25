@@ -16,11 +16,11 @@ const (
 type ListeningSocket struct {
 	Envelope
 	Protocol      string `json:"protocol"`
-	Address       string `json:"address"`
-	Port          int    `json:"port"`
-	PID           int    `json:"pid,omitempty"`
-	Process       string `json:"process,omitempty"`
-	Exe           string `json:"exe,omitempty"`
+	Address       string `json:"local_address"`
+	Port          int    `json:"local_port"`
+	PID           int    `json:"process_id,omitempty"`
+	Process       string `json:"process_name,omitempty"`
+	Exe           string `json:"process_exe,omitempty"`
 	Unit          string `json:"unit,omitempty"`
 	UnitEnabled   string `json:"unit_enabled,omitempty"`
 	SocketUnit    string `json:"socket_unit,omitempty"`

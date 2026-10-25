@@ -258,10 +258,10 @@ func TestCollectListening(t *testing.T) {
 
 	ssh, vpn, snapshot := facts[0], facts[1], facts[2]
 
-	if ssh["address"] != "0.0.0.0" || ssh["port"] != 22.0 || ssh["process"] != "sshd" || ssh["unit"] != "ssh.service" || ssh["pid"] != 812.0 {
+	if ssh["local_address"] != "0.0.0.0" || ssh["local_port"] != 22.0 || ssh["process_name"] != "sshd" || ssh["unit"] != "ssh.service" || ssh["process_id"] != 812.0 {
 		t.Errorf("ssh: %v", ssh)
 	}
-	if vpn["protocol"] != "udp" || vpn["port"] != 1194.0 || vpn["pid"] != nil {
+	if vpn["protocol"] != "udp" || vpn["local_port"] != 1194.0 || vpn["process_id"] != nil {
 		t.Errorf("udp: %v", vpn)
 	}
 	if snapshot["records_emitted"] != 2.0 || snapshot["systemd"] != "absent" || snapshot["processes_matched"] != true {

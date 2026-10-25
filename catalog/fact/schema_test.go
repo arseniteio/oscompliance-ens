@@ -268,3 +268,42 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		}
 	}
 }
+
+// wazuhReserved are names a fact field must not take: objects of the Wazuh
+// alerts template under data (a scalar there makes the indexer reject the
+// whole alert) and fields Wazuh's JSON decoder renames (user -> dstuser).
+var wazuhReserved = []string{
+	"YARA", "audit", "aws", "azureSignInStatus", "cis", "docker", "gcp", "github",
+	"hardware", "ms-graph", "netinfo", "office365", "os", "oscap", "osquery",
+	"parameters", "port", "process", "program", "sca", "virustotal", "vulnerability",
+	"timestamp", "user",
+}
+
+func TestFieldsAvoidWazuhTemplate(t *testing.T) {
+
+	files, err := filepath.Glob(filepath.Join(schemaDir, "*.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, f := range files {
+
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var s struct {
+			Properties map[string]json.RawMessage `json:"properties"`
+		}
+		if err := json.Unmarshal(raw, &s); err != nil {
+			t.Fatal(err)
+		}
+
+		for _, name := range wazuhReserved {
+			if _, taken := s.Properties[name]; taken {
+				t.Errorf("%s: field %q collides with the Wazuh alerts template", filepath.Base(f), name)
+			}
+		}
+	}
+}
