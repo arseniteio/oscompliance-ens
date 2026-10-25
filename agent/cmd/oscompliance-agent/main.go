@@ -14,6 +14,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc1"
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc2"
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/sysconf"
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
 )
 
@@ -33,8 +34,9 @@ func run() error {
 	passwd := flag.String("passwd", "/etc/passwd", "account database read by EV-02 (EV-01, EV-04, EV-07 and EV-08 judge the same table)")
 	shadow := flag.String("shadow", "/etc/shadow", "shadow file read by EV-02")
 	group := flag.String("group", "/etc/group", "group file read by EV-06")
-	sshd := flag.String("sshd", "/usr/sbin/sshd", "sshd binary asked for AuthorizedKeysFile (EV-02)")
+	sshd := flag.String("sshd", "/usr/sbin/sshd", "sshd binary asked for its effective configuration")
 	sudoers := flag.String("sudoers", "/etc/sudoers", "main sudoers file; its includes are followed")
+	pamDir := flag.String("pam-dir", "/etc/pam.d", "PAM configuration directory")
 	collect := flag.String("collect", defaultCollectors, "comma-separated collectors to run: "+strings.Join(allCollectors, ", ")+"; the sweep is heavy and meant for a daily run")
 	sweepTimeout := flag.Duration("sweep-timeout", 15*time.Minute, "time limit of the filesystem sweep")
 	flag.Parse()
@@ -78,6 +80,12 @@ func run() error {
 			return opacc2.CollectUmask(e, opacc2.UmaskConfig{Files: opacc2.DefaultUmaskFiles, ProfileDir: "/etc/profile.d"})
 		},
 		"sudoers": func() error { return opacc2.CollectSudoers(e, opacc2.SudoersConfig{Path: *sudoers}) },
+		"config": func() error {
+			return sysconf.CollectConfig(e, sysconf.ConfigConfig{Files: sysconf.DefaultConfigFiles, SSHD: *sshd})
+		},
+		"pam": func() error {
+			return sysconf.CollectPAM(e, sysconf.PAMConfig{Dir: *pamDir, Services: sysconf.DefaultPAMServices, Types: sysconf.DefaultPAMTypes})
+		},
 		"sweep": func() error {
 			return opacc2.CollectSweep(e, opacc2.SweepConfig{
 				MountsPath: "/proc/self/mounts", Prune: opacc2.DefaultPrune,
@@ -103,7 +111,7 @@ func run() error {
 
 // allCollectors in the order they run. The facts each one emits are in
 // catalog/docs/contracts.
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "sweep"}
 
 // defaultCollectors is the hourly run; the sweep has its own daily run.
-const defaultCollectors = "identity,groups,umask,sudoers"
+const defaultCollectors = "identity,groups,umask,sudoers,config,pam"
