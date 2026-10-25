@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/service_log.v1.json",
+  "title": "service_log v1",
+  "description": "The authentication log of one external-user service, as the Wazuh agent reads it: a <localfile> of the agent's shared configuration whose label oscompliance_service names the service. Reports the file and its rotated copies, so the engine can tell retention and continuity (a log deleted, truncated or rotated without a trace). Emitted before the service_log_snapshot of the same run_id.",
+  "type": "object",
+  "required": [
+    "service",
+    "path",
+    "status",
+    "rotated"
+  ],
+  "properties": {
+    "fact": {
+      "const": "service_log"
+    },
+    "service": {
+      "type": "string",
+      "minLength": 1
+    },
+    "path": {
+      "description": "The <location> of the localfile.",
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "read; absent (the file does not exist); unreadable.",
+      "enum": [
+        "read",
+        "absent",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "inode": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "modified": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rotated": {
+      "description": "Rotated copies next to it (path.N, path-DATE, path.N.gz...), oldest first.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "inode",
+          "size",
+          "modified"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "inode": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "modified": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "earliest_event": {
+      "description": "ts of the first contract line of the oldest copy: how far back the service's log reaches on disk. Absent when no line could be read.",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "unreadable"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "error"
+        ]
+      }
+    }
+  ],
+  "unevaluatedProperties": false
+}

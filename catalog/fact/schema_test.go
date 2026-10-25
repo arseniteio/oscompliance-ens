@@ -166,6 +166,10 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &ListeningSocket{}
 		case ListeningSnapshotFact:
 			v = &ListeningSnapshot{}
+		case ServiceLogFact:
+			v = &ServiceLog{}
+		case ServiceLogSnapshotFact:
+			v = &ServiceLogSnapshot{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}

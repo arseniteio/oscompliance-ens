@@ -3,14 +3,48 @@ package fact
 // Fact names of configuration observations, shared by every control that
 // judges how the system is configured.
 const (
-	ConfigFileFact        = "config_file"
-	ConfigSnapshotFact    = "config_snapshot"
-	PAMRuleFact           = "pam_rule"
-	PAMSnapshotFact       = "pam_snapshot"
-	AuthLogProbeFact      = "auth_log_probe"
-	ListeningSocketFact   = "listening_socket"
-	ListeningSnapshotFact = "listening_snapshot"
+	ConfigFileFact         = "config_file"
+	ConfigSnapshotFact     = "config_snapshot"
+	PAMRuleFact            = "pam_rule"
+	PAMSnapshotFact        = "pam_snapshot"
+	AuthLogProbeFact       = "auth_log_probe"
+	ListeningSocketFact    = "listening_socket"
+	ListeningSnapshotFact  = "listening_snapshot"
+	ServiceLogFact         = "service_log"
+	ServiceLogSnapshotFact = "service_log_snapshot"
 )
+
+// LogFile is one copy of a service log.
+type LogFile struct {
+	Path     string `json:"path"`
+	Inode    uint64 `json:"inode"`
+	Size     int64  `json:"size"`
+	Modified string `json:"modified"`
+}
+
+// ServiceLog mirrors service_log.v1.json. Rotated is never nil.
+type ServiceLog struct {
+	Envelope
+	Service       string    `json:"service"`
+	Path          string    `json:"path"`
+	Status        string    `json:"status"`
+	Error         string    `json:"error,omitempty"`
+	Inode         uint64    `json:"inode,omitempty"`
+	Size          int64     `json:"size,omitempty"`
+	Modified      string    `json:"modified,omitempty"`
+	Rotated       []LogFile `json:"rotated"`
+	EarliestEvent string    `json:"earliest_event,omitempty"`
+}
+
+// ServiceLogSnapshot mirrors service_log_snapshot.v1.json.
+type ServiceLogSnapshot struct {
+	Envelope
+	Config         string `json:"config"`
+	Status         string `json:"status"`
+	Error          string `json:"error,omitempty"`
+	AgentName      string `json:"agent_name,omitempty"`
+	RecordsEmitted int    `json:"records_emitted"`
+}
 
 // ListeningSocket mirrors listening_socket.v1.json.
 type ListeningSocket struct {

@@ -87,6 +87,9 @@ func run() error {
 			return sysconf.CollectConfig(e, sysconf.ConfigConfig{Files: sysconf.DefaultConfigFiles, SSHD: *sshd})
 		},
 		"authprobe": func() error { return sysconf.CollectAuthProbe(e) },
+		"services": func() error {
+			return sysconf.CollectServiceLogs(e, sysconf.ServiceLogConfig{SharedConf: "/var/ossec/etc/shared/agent.conf", ClientKeys: "/var/ossec/etc/client.keys"})
+		},
 		"listening": func() error {
 			return sysconf.CollectListening(e, sysconf.ListenConfig{Proc: "/proc", Systemctl: "/usr/bin/systemctl"})
 		},
@@ -118,7 +121,7 @@ func run() error {
 
 // allCollectors in the order they run. The facts each one emits are in
 // catalog/docs/contracts.
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "sweep"}
 
 // defaultCollectors is the hourly run; the sweep has its own daily run.
-const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening"
+const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services"

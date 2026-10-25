@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/service_log_snapshot.v1.json",
+  "title": "service_log_snapshot v1",
+  "description": "Summary of one read of the external-user service logs declared to the Wazuh agent, emitted after their service_log records. No service declared is a valid read with no record.",
+  "type": "object",
+  "required": [
+    "config",
+    "status",
+    "records_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "service_log_snapshot"
+    },
+    "config": {
+      "description": "The Wazuh agent shared configuration read.",
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "description": "read; absent (no shared configuration: the agent is not enrolled in a group); unreadable.",
+      "enum": [
+        "read",
+        "absent",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "agent_name": {
+      "description": "Wazuh agent name the agent_config blocks are matched against.",
+      "type": "string"
+    },
+    "records_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

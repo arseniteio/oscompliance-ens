@@ -2,6 +2,7 @@ package sysconf
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"net"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
@@ -269,5 +271,73 @@ func TestCollectListening(t *testing.T) {
 	}
 	if addrs := snapshot["addresses"].([]any); len(addrs) != 1 || addrs[0] != "192.168.10.5" {
 		t.Errorf("addresses: %v", addrs)
+	}
+}
+
+func TestCollectServiceLogs(t *testing.T) {
+
+	dir := t.TempDir()
+	sede := filepath.Join(dir, "sede", "auth.json")
+	write(t, sede, `{"ts":"2026-10-25T08:00:00Z","tipo":"autenticacion","usuario":"c1"}`+"\n")
+
+	// The rotated copy, compressed, holds older lines.
+	var gz bytes.Buffer
+	zw := gzip.NewWriter(&gz)
+	zw.Write([]byte("not json\n" + `{"ts":"2026-09-01T07:30:00+02:00","tipo":"autenticacion","usuario":"c0"}` + "\n"))
+	zw.Close()
+	write(t, sede+".1.gz", gz.String())
+	old := time.Now().Add(-48 * time.Hour)
+	if err := os.Chtimes(sede+".1.gz", old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	write(t, filepath.Join(dir, "client.keys"), "001 lab-agent-01 any 0123\n")
+	write(t, filepath.Join(dir, "agent.conf"), `<agent_config>
+  <!-- every agent of the group -->
+  <localfile><log_format>json</log_format><location>/var/log/other.json</location></localfile>
+</agent_config>
+<agent_config name="lab-agent-01">
+  <localfile>
+    <log_format>json</log_format>
+    <location>`+sede+`</location>
+    <label key="oscompliance_service">sede</label>
+  </localfile>
+  <localfile>
+    <log_format>json</log_format>
+    <location>`+filepath.Join(dir, "api.json")+`</location>
+    <label key="oscompliance_service">api</label>
+  </localfile>
+</agent_config>
+<agent_config name="someone-else">
+  <localfile><location>/x</location><label key="oscompliance_service">x</label></localfile>
+</agent_config>
+`)
+
+	facts := run(t, func(e *emit.Emitter) error {
+		return CollectServiceLogs(e, ServiceLogConfig{SharedConf: filepath.Join(dir, "agent.conf"), ClientKeys: filepath.Join(dir, "client.keys")})
+	})
+
+	if len(facts) != 3 {
+		t.Fatalf("want sede, api and the snapshot: %v", facts)
+	}
+
+	s, api, snap := facts[0], facts[1], facts[2]
+
+	if s["service"] != "sede" || s["status"] != "read" || s["earliest_event"] != "2026-09-01T05:30:00Z" || len(s["rotated"].([]any)) != 1 {
+		t.Errorf("sede: %v", s)
+	}
+	if api["status"] != "absent" {
+		t.Errorf("api: %v", api)
+	}
+	if snap["agent_name"] != "lab-agent-01" || snap["records_emitted"] != 2.0 {
+		t.Errorf("snapshot: %v", snap)
+	}
+
+	// Not enrolled in a group: no shared configuration.
+	facts = run(t, func(e *emit.Emitter) error {
+		return CollectServiceLogs(e, ServiceLogConfig{SharedConf: filepath.Join(dir, "none.conf")})
+	})
+	if len(facts) != 1 || facts[0]["status"] != "absent" {
+		t.Errorf("no config: %v", facts)
 	}
 }

@@ -11,6 +11,9 @@
     119002  the agent's authentication log probe (level 3, indexed): a line
             the agent writes to the authpriv facility each pass, proving that
             the authentication log reaches Wazuh even when nobody logs in
+    119003  an event of an external-user service's authentication log
+            (op.acc.5 contract), read by a <localfile> whose label
+            oscompliance_service names the service (level 3, indexed)
 -->
 <group name="oscompliance,">
 
@@ -29,7 +32,23 @@
     <program_name>^oscompliance-agent$</program_name>
     <match>^auth log probe </match>
     <description>OSCompliance authentication log probe</description>
-    <group>oscompliance_probe,</group>
+    <group>oscompliance_probe,  <rule id="119003" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
+    <field name="tipo" type="pcre2">^[a-z_]+$</field>
+    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
+    <group>oscompliance_service,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119003" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
+    <field name="tipo" type="pcre2">^[a-z_]+$</field>
+    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
+    <group>oscompliance_service,</group>
   </rule>
 
 </group>
@@ -39,7 +58,23 @@
     <program_name>^oscompliance-agent$</program_name>
     <match>^auth log probe </match>
     <description>OSCompliance authentication log probe</description>
-    <group>oscompliance_probe,</group>
+    <group>oscompliance_probe,  <rule id="119003" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
+    <field name="tipo" type="pcre2">^[a-z_]+$</field>
+    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
+    <group>oscompliance_service,</group>
+  </rule>
+
+</group>
+  </rule>
+
+  <rule id="119003" level="3">
+    <decoded_as>json</decoded_as>
+    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
+    <field name="tipo" type="pcre2">^[a-z_]+$</field>
+    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
+    <group>oscompliance_service,</group>
   </rule>
 
 </group>
