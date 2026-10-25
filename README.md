@@ -30,11 +30,13 @@ catalog/            Go module .../catalog: embeds controls/ and templates/
   templates/        built-in parameter templates by system type
 agent/              Go module github.com/OpenSourceCompliance/oscompliance-core/agent
   cmd/oscompliance-agent/
-  internal/controls/ens/opacc1/   collectors
+  internal/controls/ens/opacc1/, opacc2/   collectors of those controls
+  internal/sysconf/ configuration, PAM, sockets, ACLs, audit watches, the
+                    Wazuh agent's own configuration, shared by every control
   internal/emit/    fact output (the agent keeps no state between passes)
 engine/             Go module github.com/OpenSourceCompliance/oscompliance-core/engine
   cmd/oscompliance-engine/
-  internal/controls/ens/opacc1/   judges
+  internal/controls/ens/opacc1/ ... opacc6/   judges, one package per control
   internal/source/  facts read from wazuh-alerts-*
   internal/store/   verdicts index
   internal/params/  policy parameters from the plugin configuration
@@ -44,8 +46,25 @@ engine/             Go module github.com/OpenSourceCompliance/oscompliance-core/
 
 ## Status
 
-Pre-alpha. op.acc.1 (EV-01 to EV-08) runs end to end on Linux: agent, Wazuh
-rules, engine, verdicts. Contract: `catalog/docs/contracts/op.acc.1.md`.
+Pre-alpha. op.acc.1 to op.acc.6 run end to end on Linux: agent, Wazuh rules,
+engine, verdicts. Contracts: `catalog/docs/contracts/`. Pending work:
+`docs/roadmap.md`.
+
+## Prerequisites
+
+On every audited machine (the manager included):
+
+| Requirement | Why |
+|---|---|
+| Linux, root | The agent reads shadow, sudoers, /proc and every file system. |
+| Wazuh agent 4.x, enrolled in a group | It ships the facts and the logs; the group's shared configuration carries the paths that come from parameters. |
+| auditd, running | op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04 and EV-07 judge audited accesses. The agent loads its own watches and rules; Wazuh reads `/var/log/audit/audit.log` (localfile with `log_format audit`). Without it those evidences are NOT_EVALUABLE by COLLECTION. |
+| An authentication log Wazuh reads (auth.log or journald) | Logins, failures, sudo and su come from Wazuh's own rules. |
+| systemd (optional) | Whether a listening service starts at boot (op.acc.6 EV-08). |
+
+On the manager: the rules of `catalog/wazuh/oscompliance_facts_rules.xml`
+(119000-119004) and the facts `<localfile>` of
+`catalog/wazuh/agent.conf.fragment.xml` in each group.
 
 ## Development
 
