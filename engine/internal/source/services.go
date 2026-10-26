@@ -155,8 +155,14 @@ func scalar(v any) string {
 	}
 }
 
-// composite walks every bucket of a composite aggregation.
+// composite walks every bucket of a composite aggregation over the alerts.
+// Paging through after_key, it has no limit on the number of agents or
+// accounts: a terms aggregation would cut silently at its size.
 func (s *Source) composite(ctx context.Context, filter, sources []any, sub map[string]any, fn func(key map[string]any, bucket json.RawMessage) error) error {
+	return s.compositeIn(ctx, s.index, filter, sources, sub, fn)
+}
+
+func (s *Source) compositeIn(ctx context.Context, index string, filter, sources []any, sub map[string]any, fn func(key map[string]any, bucket json.RawMessage) error) error {
 
 	var after map[string]any
 
@@ -186,7 +192,7 @@ func (s *Source) composite(ctx context.Context, filter, sources []any, sub map[s
 			} `json:"aggregations"`
 		}
 
-		if err := s.client.Search(ctx, s.index, query, &resp); err != nil {
+		if err := s.client.Search(ctx, index, query, &resp); err != nil {
 			return err
 		}
 

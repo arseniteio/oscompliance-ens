@@ -136,42 +136,21 @@ func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([
 // ever authenticated on it, and silence cannot be read as compliance.
 func (s *Source) AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error) {
 
-	query := map[string]any{
-		"size": 0,
-		"query": map[string]any{"bool": map[string]any{"filter": []any{
-			map[string]any{"terms": map[string]any{"rule.groups": authGroups}},
-			map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
-		}}},
-		"aggs": map[string]any{"agents": map[string]any{
-			"terms": map[string]any{"field": "agent.id", "size": maxAgents},
-			"aggs":  map[string]any{"newest": map[string]any{"max": map[string]any{"field": "timestamp"}}},
-		}},
-	}
-
-	var resp struct {
-		Aggregations struct {
-			Agents struct {
-				Buckets []struct {
-					Key    string `json:"key"`
-					Newest struct {
-						Value float64 `json:"value"` // epoch milliseconds
-					} `json:"newest"`
-				} `json:"buckets"`
-			} `json:"agents"`
-		} `json:"aggregations"`
-	}
-
-	if err := s.client.Search(ctx, s.index, query, &resp); err != nil {
-		return nil, err
+	filter := []any{
+		map[string]any{"terms": map[string]any{"rule.groups": authGroups}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	}
 
 	activity := map[string]time.Time{}
 
-	for _, b := range resp.Aggregations.Agents.Buckets {
-		activity[b.Key] = time.UnixMilli(int64(b.Newest.Value)).UTC()
-	}
+	err := s.composite(ctx, filter, []any{map[string]any{"a": map[string]any{"terms": map[string]any{"field": "agent.id"}}}}, lastSeen,
+		func(key map[string]any, b json.RawMessage) error {
+			_, last, err := countAndLast(b)
+			activity[keyString(key, "a")] = last
+			return err
+		})
 
-	return activity, nil
+	return activity, err
 }
 
 // ProbeRule is the Wazuh rule of the agent's authentication log probe

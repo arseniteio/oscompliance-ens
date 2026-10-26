@@ -18,9 +18,6 @@ const FactRule = "119001"
 // pageSize is the number of hits per page when paging through facts.
 const pageSize = 1000
 
-// maxAgents bounds the per-agent aggregations.
-const maxAgents = 10000
-
 // Source reads facts from one alerts index pattern, and the registered agents
 // from Wazuh's monitoring index.
 type Source struct {
@@ -70,47 +67,31 @@ func (s *Source) RegisteredAgents(ctx context.Context, since time.Time) ([]verdi
 // newest value of nameField.
 func (s *Source) agentNames(ctx context.Context, index, idField, nameField string, filter []any) ([]verdict.Agent, error) {
 
-	query := map[string]any{
-		"size":  0,
-		"query": map[string]any{"bool": map[string]any{"filter": filter}},
-		"aggs": map[string]any{"agents": map[string]any{
-			"terms": map[string]any{"field": idField, "size": maxAgents},
-			"aggs": map[string]any{"name": map[string]any{
-				"terms": map[string]any{"field": nameField, "size": 1},
-			}},
-		}},
-	}
-
-	var resp struct {
-		Aggregations struct {
-			Agents struct {
-				Buckets []struct {
-					Key  string `json:"key"`
-					Name struct {
-						Buckets []struct {
-							Key string `json:"key"`
-						} `json:"buckets"`
-					} `json:"name"`
-				} `json:"buckets"`
-			} `json:"agents"`
-		} `json:"aggregations"`
-	}
-
-	if err := s.client.Search(ctx, index, query, &resp); err != nil {
-		return nil, err
-	}
+	sub := map[string]any{"name": map[string]any{"terms": map[string]any{"field": nameField, "size": 1}}}
 
 	var agents []verdict.Agent
 
-	for _, b := range resp.Aggregations.Agents.Buckets {
-		a := verdict.Agent{ID: b.Key}
-		if len(b.Name.Buckets) > 0 {
-			a.Name = b.Name.Buckets[0].Key
-		}
-		agents = append(agents, a)
-	}
+	err := s.compositeIn(ctx, index, filter, []any{map[string]any{"a": map[string]any{"terms": map[string]any{"field": idField}}}}, sub,
+		func(key map[string]any, b json.RawMessage) error {
+			var c struct {
+				Name struct {
+					Buckets []struct {
+						Key string `json:"key"`
+					} `json:"buckets"`
+				} `json:"name"`
+			}
+			if err := json.Unmarshal(b, &c); err != nil {
+				return err
+			}
+			a := verdict.Agent{ID: keyString(key, "a")}
+			if len(c.Name.Buckets) > 0 {
+				a.Name = c.Name.Buckets[0].Key
+			}
+			agents = append(agents, a)
+			return nil
+		})
 
-	return agents, nil
+	return agents, err
 }
 
 type hit struct {
@@ -235,52 +216,39 @@ func (s *Source) IdentitySnapshots(ctx context.Context, since time.Time, n int) 
 	return latestFacts[fact.IdentitySnapshot](ctx, s, fact.IdentitySnapshotFact, since, n)
 }
 
-// latestFacts returns, per agent ID, up to n facts of type name, newest first.
+// latestFacts returns, per agent ID, up to n facts of type name, newest
+// first, for every agent however many there are.
 func latestFacts[T any](ctx context.Context, s *Source, name string, since time.Time, n int) (map[string][]T, error) {
 
-	query := map[string]any{
-		"size":  0,
-		"query": map[string]any{"bool": map[string]any{"filter": factFilter(name, since)}},
-		"aggs": map[string]any{"agents": map[string]any{
-			"terms": map[string]any{"field": "agent.id", "size": maxAgents},
-			"aggs": map[string]any{"latest": map[string]any{
-				"top_hits": map[string]any{"size": n, "sort": []any{map[string]any{"timestamp": "desc"}}},
-			}},
-		}},
-	}
+	sub := map[string]any{"latest": map[string]any{
+		"top_hits": map[string]any{"size": n, "sort": []any{map[string]any{"timestamp": "desc"}}},
+	}}
 
-	var resp struct {
-		Aggregations struct {
-			Agents struct {
-				Buckets []struct {
-					Key    string `json:"key"`
-					Latest struct {
-						Hits struct {
-							Hits []hit `json:"hits"`
-						} `json:"hits"`
-					} `json:"latest"`
-				} `json:"buckets"`
-			} `json:"agents"`
-		} `json:"aggregations"`
-	}
+	out := map[string][]T{}
 
-	if err := s.client.Search(ctx, s.index, query, &resp); err != nil {
-		return nil, err
-	}
-
-	facts := map[string][]T{}
-
-	for _, b := range resp.Aggregations.Agents.Buckets {
-		for _, h := range b.Latest.Hits.Hits {
-			var f T
-			if err := decodeHit(h, &f); err != nil {
-				return nil, fmt.Errorf("agent %s: %w", b.Key, err)
+	err := s.composite(ctx, factFilter(name, since), []any{map[string]any{"a": map[string]any{"terms": map[string]any{"field": "agent.id"}}}}, sub,
+		func(key map[string]any, b json.RawMessage) error {
+			var c struct {
+				Latest struct {
+					Hits struct {
+						Hits []hit `json:"hits"`
+					} `json:"hits"`
+				} `json:"latest"`
 			}
-			facts[b.Key] = append(facts[b.Key], f)
-		}
-	}
+			if err := json.Unmarshal(b, &c); err != nil {
+				return err
+			}
+			for _, h := range c.Latest.Hits.Hits {
+				var v T
+				if err := decodeHit(h, &v); err != nil {
+					return err
+				}
+				out[keyString(key, "a")] = append(out[keyString(key, "a")], v)
+			}
+			return nil
+		})
 
-	return facts, nil
+	return out, err
 }
 
 // IdentityRecords returns every identity_record of one pass of one agent.
