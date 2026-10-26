@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,6 +24,7 @@ type Client struct {
 	user     string
 	password string
 	http     *http.Client
+	requests atomic.Uint64
 }
 
 // New returns a Client. caFile, when set, is the only CA trusted for the
@@ -61,8 +63,13 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("indexer: HTTP %d: %s", e.Status, e.Body)
 }
 
+// Requests is how many requests the client sent: the cost of a pass.
+func (c *Client) Requests() uint64 { return c.requests.Load() }
+
 // Do sends body as JSON and decodes the answer into out when out is not nil.
 func (c *Client) Do(ctx context.Context, method, path string, body, out any) error {
+
+	c.requests.Add(1)
 
 	var reader io.Reader
 
@@ -107,6 +114,8 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) err
 // Bulk sends NDJSON bulk actions and fails when any item failed, naming
 // the first failure.
 func (c *Client) Bulk(ctx context.Context, body []byte) error {
+
+	c.requests.Add(1)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/_bulk", bytes.NewReader(body))
 	if err != nil {

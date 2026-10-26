@@ -105,11 +105,13 @@ func runMain() error {
 			policy = loaded
 		}
 
+		start, before := time.Now(), client.Requests()
 		n, err := run.Once(ctx, facts, controls, policy, sink, cfg, time.Now())
+		took, requests := time.Since(start).Round(time.Millisecond), client.Requests()-before
 		if err != nil {
-			slog.Error("pass", "verdicts", n, "error", err)
+			slog.Error("pass", "verdicts", n, "seconds", took.Seconds(), "requests", requests, "error", err)
 		} else {
-			slog.Info("pass", "verdicts", n)
+			slog.Info("pass", "verdicts", n, "seconds", took.Seconds(), "requests", requests)
 		}
 
 		if *interval == 0 {
