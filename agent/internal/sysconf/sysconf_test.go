@@ -170,7 +170,7 @@ auth required /lib/security/pam_faillock.so authfail \
 
 	// The continuation is joined and the include chain recorded.
 	faillock := rules[2]
-	if args := faillock["args"].([]any); len(args) != 3 || args[1] != "deny=3" {
+	if args := faillock["args"].([]any); len(args) != 2 || args[0] != "deny=3" {
 		t.Errorf("faillock args: %v", faillock["args"])
 	}
 	if via := faillock["via"].([]any); len(via) != 1 || via[0] != filepath.Join(dir, "sshd") || faillock["line"] != 3.0 {

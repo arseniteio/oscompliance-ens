@@ -50,7 +50,8 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "The arguments the controls judge (deny, unlock_time, minlen, minclass, the credits, dictcheck, remember, obscure, trust); others never leave the machine."
     },
     "file": {
       "description": "File the rule is written in (an included one, possibly).",

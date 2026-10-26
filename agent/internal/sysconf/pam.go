@@ -163,7 +163,7 @@ func (s *stack) read(path, only string, via []string) {
 			Type:          kind,
 			Control:       fields[1],
 			Module:        filepath.Base(fields[2]),
-			Args:          append([]string{}, fields[3:]...),
+			Args:          judgedArgs(fields[3:]),
 			File:          path,
 			Line:          l.n,
 			Via:           via,
@@ -306,4 +306,22 @@ func moduleInstalled(module string) bool {
 
 	installed[module] = found
 	return found
+}
+
+// pamArgs are the module arguments the controls judge; others (pam_exec
+// commands, LDAP binds, keys) never leave the machine.
+var pamArgs = map[string]bool{
+	"deny": true, "unlock_time": true, "minlen": true, "minclass": true, "dcredit": true, "ucredit": true,
+	"lcredit": true, "ocredit": true, "dictcheck": true, "remember": true, "obscure": true, "trust": true,
+}
+
+func judgedArgs(args []string) []string {
+	out := []string{}
+	for _, a := range args {
+		name, _, _ := strings.Cut(a, "=")
+		if pamArgs[name] {
+			out = append(out, a)
+		}
+	}
+	return out
 }

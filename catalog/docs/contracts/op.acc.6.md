@@ -48,13 +48,14 @@ Schemas: `catalog/schemas/facts`. What each collector reads:
   the last password change, the maximum and inactive days, the newest change
   of the key files, and the last login from wtmp, wtmp.1 and lastlog.
 - **config**: login.defs, faillock.conf, pwquality.conf and its drop-ins,
-  pwhistory.conf, journald.conf and its drop-ins, sshd_config and its drop-ins
-  (for Match blocks), `sshd -T` and `ssh -V`. Values as written; the engine
-  decides which keys matter.
+  pwhistory.conf, sshd_config and its drop-ins (Match lines), `sshd -T` and
+  `ssh -V`. Only the keys the controls judge are sent: configuration files
+  can hold secrets.
 - **pam**: the auth and password stacks of sshd, login, the graphical
   greeters, su, su-l, sudo and passwd, with `@include`, `include` and
   `substack` resolved, so Debian (`common-*`) and RHEL (`system-auth`,
-  `password-auth`) read the same.
+  `password-auth`) read the same. Only the judged arguments are sent, and a
+  rule whose module is not installed is marked.
 - **sudoers**: every user specification with the commands it runs without a
   password (tags carried over, Cmnd_Alias expanded) and every Defaults setting.
 - **listening**: TCP sockets in LISTEN and UDP sockets without a peer, loopback

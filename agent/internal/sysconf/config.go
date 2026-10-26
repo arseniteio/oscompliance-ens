@@ -33,7 +33,7 @@ type ConfigConfig struct {
 }
 
 // DefaultConfigFiles are the files read by the controls that judge
-// authentication: login.defs, faillock, pwquality, pwhistory, journald and
+// authentication: login.defs, faillock, pwquality, pwhistory and
 // sshd_config with its drop-ins (for the Match blocks sshd -T hides), and
 // the services that can open access to anyone: Samba and vsftpd.
 var DefaultConfigFiles = []string{
@@ -42,12 +42,47 @@ var DefaultConfigFiles = []string{
 	"/etc/security/pwquality.conf",
 	"/etc/security/pwquality.conf.d/*.conf",
 	"/etc/security/pwhistory.conf",
-	"/etc/systemd/journald.conf",
-	"/etc/systemd/journald.conf.d/*.conf",
 	"/etc/ssh/sshd_config",
 	"/etc/ssh/sshd_config.d/*.conf",
 	"/etc/samba/smb.conf",
 	"/etc/vsftpd.conf",
+}
+
+// Keys are what the controls judge, by source (the main file and its
+// drop-ins share a set), compared without case. Nothing else leaves the
+// machine: configuration files can hold secrets and are mostly noise.
+var Keys = map[string][]string{
+	"/etc/login.defs":              {"PASS_MAX_DAYS", "UID_MIN"},
+	"/etc/security/faillock.conf":  {"deny", "unlock_time"},
+	"/etc/security/pwquality.conf": {"minlen", "minclass", "dcredit", "ucredit", "lcredit", "ocredit", "dictcheck"},
+	"/etc/security/pwhistory.conf": {"remember"},
+	"/etc/ssh/sshd_config":         {"Match"},
+	"/etc/samba/smb.conf":          {"guest ok", "public"},
+	"/etc/vsftpd.conf":             {"anonymous_enable"},
+	"sshd -T": {"passwordauthentication", "kbdinteractiveauthentication", "usepam", "pubkeyauthentication",
+		"pubkeyauthoptions", "authenticationmethods", "loglevel", "debianbanner", "versionaddendum", "banner"},
+}
+
+// keep drops the entries a source's key set does not name.
+func keep(source string, entries []fact.ConfigEntry) []fact.ConfigEntry {
+
+	set := Keys[source]
+	for main, keys := range Keys {
+		if strings.HasPrefix(source, main+".d/") {
+			set = keys
+		}
+	}
+
+	out := []fact.ConfigEntry{}
+	for _, e := range entries {
+		for _, k := range set {
+			if strings.EqualFold(e.Key, k) {
+				out = append(out, e)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // maxEntries bounds one source so its fact stays under the 64 KiB event
@@ -124,7 +159,7 @@ func readConfigFile(path string) fact.ConfigFile {
 		return src
 	}
 
-	src.Entries = entries
+	src.Entries = keep(path, entries)
 	return src
 }
 
@@ -228,7 +263,7 @@ func sshdEffective(sshd string) fact.ConfigFile {
 		return src
 	}
 
-	src.Entries = entries
+	src.Entries = keep("sshd -T", entries)
 	return src
 }
 
