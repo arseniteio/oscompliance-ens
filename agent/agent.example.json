@@ -1,0 +1,15 @@
+{
+  "output": "/var/log/oscompliance/facts.ndjson",
+  "host": "",
+  "state": "/var/lib/oscompliance/state.json",
+  "collectors": ["identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall"],
+  "sweep_timeout": "15m",
+  "paths": {
+    "passwd": "/etc/passwd",
+    "shadow": "/etc/shadow",
+    "group": "/etc/group",
+    "sshd": "/usr/sbin/sshd",
+    "sudoers": "/etc/sudoers",
+    "pam_dir": "/etc/pam.d"
+  }
+}

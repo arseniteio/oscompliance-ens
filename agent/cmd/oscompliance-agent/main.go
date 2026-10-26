@@ -3,13 +3,10 @@ package main
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
 	"syscall"
 	"time"
 
@@ -35,23 +32,6 @@ const maxPass = 50 * time.Minute
 
 var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "sweep"}
 
-const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services,wazuh,acl,audit,firewall"
-
-type options struct {
-	output       string
-	host         string
-	passwd       string
-	shadow       string
-	group        string
-	sshd         string
-	sudoers      string
-	pamDir       string
-	statePath    string
-	sweepTimeout time.Duration
-	full         bool
-	selected     map[string]bool
-}
-
 func main() {
 	opts, err := parseOptions()
 	if err == nil {
@@ -63,46 +43,9 @@ func main() {
 	}
 }
 
-func parseOptions() (options, error) {
-
-	var opts options
-	flag.StringVar(&opts.output, "output", "/var/log/oscompliance/facts.ndjson", "file the facts are appended to")
-	flag.StringVar(&opts.host, "host", "", "host name to report (default: the system host name)")
-	flag.StringVar(&opts.passwd, "passwd", "/etc/passwd", "passwd file")
-	flag.StringVar(&opts.shadow, "shadow", "/etc/shadow", "shadow file")
-	flag.StringVar(&opts.group, "group", "/etc/group", "group file")
-	flag.StringVar(&opts.sshd, "sshd", "/usr/sbin/sshd", "sshd binary, asked for its effective configuration")
-	flag.StringVar(&opts.sudoers, "sudoers", "/etc/sudoers", "main sudoers file; its includes are followed")
-	flag.StringVar(&opts.pamDir, "pam-dir", "/etc/pam.d", "PAM configuration directory")
-	flag.StringVar(&opts.statePath, "state", "/var/lib/oscompliance/state.json", "what each collector last sent")
-	flag.DurationVar(&opts.sweepTimeout, "sweep-timeout", 15*time.Minute, "time limit of the filesystem sweep")
-	flag.BoolVar(&opts.full, "full", false, "send everything even when nothing changed")
-	collect := flag.String("collect", defaultCollectors, "comma-separated collectors: "+strings.Join(allCollectors, ", ")+"; sweep is meant for a daily run")
-	flag.Parse()
-
-	opts.selected = map[string]bool{}
-	for _, name := range strings.Split(*collect, ",") {
-		name = strings.TrimSpace(name)
-		if !slices.Contains(allCollectors, name) {
-			return opts, fmt.Errorf("unknown collector %q (known: %s)", name, strings.Join(allCollectors, ", "))
-		}
-		opts.selected[name] = true
-	}
-
-	if opts.host == "" {
-		h, err := os.Hostname()
-		if err != nil {
-			return opts, fmt.Errorf("hostname: %w", err)
-		}
-		opts.host = h
-	}
-
-	return opts, nil
-}
-
 func runPass(opts options) error {
 
-	unlock, err := lockPass(filepath.Join(filepath.Dir(opts.statePath), "agent.lock"))
+	unlock, err := lockPass(filepath.Join(filepath.Dir(opts.State), "agent.lock"))
 	if err != nil {
 		return err
 	}
@@ -119,15 +62,15 @@ func runPass(opts options) error {
 		return fmt.Errorf("run id: %w", err)
 	}
 
-	out, err := emit.OpenFile(opts.output)
+	out, err := emit.OpenFile(opts.Output)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
 
 	var buf bytes.Buffer
-	e := emit.New(&buf, opts.host, version, runID)
-	state := emit.LoadState(opts.statePath)
+	e := emit.New(&buf, opts.Host, version, runID)
+	state := emit.LoadState(opts.State)
 
 	inForce, errs := runCollectors(out, &buf, state, collectorsFor(e, opts), opts)
 
@@ -146,17 +89,17 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 	return map[string]func() error{
 		"identity": func() error {
 			return accounts.CollectIdentity(e, accounts.IdentityConfig{
-				PasswdPath: opts.passwd, ShadowPath: opts.shadow, SSHDPath: opts.sshd,
+				PasswdPath: opts.Paths.Passwd, ShadowPath: opts.Paths.Shadow, SSHDPath: opts.Paths.SSHD,
 				LoginRecords: accounts.DefaultLoginRecords, LastlogPath: accounts.DefaultLastlog,
 			})
 		},
-		"groups": func() error { return accounts.CollectGroups(e, accounts.GroupsConfig{GroupPath: opts.group}) },
+		"groups": func() error { return accounts.CollectGroups(e, accounts.GroupsConfig{GroupPath: opts.Paths.Group}) },
 		"umask": func() error {
 			return umask.Collect(e, umask.Config{Files: umask.DefaultFiles, ProfileDir: "/etc/profile.d"})
 		},
-		"sudoers": func() error { return sudoers.Collect(e, sudoers.Config{Path: opts.sudoers}) },
+		"sudoers": func() error { return sudoers.Collect(e, sudoers.Config{Path: opts.Paths.Sudoers}) },
 		"config": func() error {
-			return config.Collect(e, config.Config{Files: config.DefaultFiles, SSHD: opts.sshd})
+			return config.Collect(e, config.Config{Files: config.DefaultFiles, SSHD: opts.Paths.SSHD})
 		},
 		"authprobe": func() error { return authprobe.Collect(e) },
 		"firewall":  func() error { return firewall.Collect(e, firewall.Default) },
@@ -172,13 +115,13 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 			return listening.Collect(e, listening.Config{Proc: "/proc", Systemctl: "/usr/bin/systemctl"})
 		},
 		"pam": func() error {
-			return pam.Collect(e, pam.Config{Dir: opts.pamDir, Services: pam.DefaultServices, Types: pam.DefaultTypes})
+			return pam.Collect(e, pam.Config{Dir: opts.Paths.PAMDir, Services: pam.DefaultServices, Types: pam.DefaultTypes})
 		},
 		"sweep": func() error {
 			return sweep.Collect(e, sweep.Config{
 				MountsPath: "/proc/self/mounts", Prune: sweep.DefaultPrune,
-				PasswdPath: opts.passwd, GroupPath: opts.group,
-				Timeout: opts.sweepTimeout, MaxRecords: 20000,
+				PasswdPath: opts.Paths.Passwd, GroupPath: opts.Paths.Group,
+				Timeout: opts.SweepTimeout.Duration, MaxRecords: 20000,
 			})
 		},
 	}
