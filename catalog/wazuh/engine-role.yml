@@ -1,0 +1,29 @@
+# Recommended role of the engine's indexer user (OpenSearch security
+# plugin, roles.yml format). The engine runs with any user the indexer
+# accepts; this is the least it needs: read the alerts, the agent inventory
+# and the plugin configuration, and manage its own two indices.
+#
+# Map it to a dedicated user and pass that user with -user; the password goes
+# in OSC_INDEXER_PASSWORD. Checked against Wazuh indexer 4.14.7.
+
+oscompliance_engine:
+  reserved: false
+  cluster_permissions:
+    - "cluster_composite_ops_ro"
+  index_permissions:
+    - index_patterns:
+        - "wazuh-alerts-*"
+        - "wazuh-monitoring-*"
+        - "wazuh-ens-configuration"
+      allowed_actions:
+        - "read"
+    - index_patterns:
+        - "oscompliance-verdicts"
+        - "oscompliance-identity-history"
+      allowed_actions:
+        - "create_index"
+        - "manage_mapping"
+        - "crud"
+        - "indices:admin/get"
+        - "indices:admin/refresh*"
+        - "indices:data/write/bulk*"
