@@ -6,14 +6,18 @@
   name, so a new fact type reaches the index without a new rule. Facts carry no
   verdict, so no rule here raises a level above 3 or adds a compliance group.
 
-    119000  base: any line with the v1 envelope (level 0, not indexed)
+    119000  base: a line with the v1 envelope read from the facts file (level
+            0, not indexed). The location (agent events carry
+            "(agent) ip->path") keeps out JSON a local user could write to
+            syslog to forge a fact.
     119001  any fact (level 3, indexed)
     119002  the agent's authentication log probe (level 3, indexed): a line
             the agent writes to the authpriv facility each pass, proving that
             the authentication log reaches Wazuh even when nobody logs in
     119003  an event of an external-user service's authentication log
             (op.acc.5 contract), read by a <localfile> whose label
-            oscompliance_service names the service (level 3, indexed)
+            oscompliance_service names the service (level 3, indexed); never
+            from syslog or journald, where anyone can write
     119004  an auditd record of a rule the agent loaded (audit.key
             oscompliance_read, _write, _exec, _attr or _perm): Wazuh's own
             audit rules leave unknown keys at level 0, not indexed
@@ -22,6 +26,7 @@
 
   <rule id="119000" level="0">
     <decoded_as>json</decoded_as>
+    <location>/var/log/oscompliance/facts.ndjson$</location>
     <field name="oscompliance" type="pcre2">^1$</field>
     <description>OSCompliance fact envelope v1</description>
   </rule>
@@ -31,102 +36,23 @@
     <field name="fact" type="pcre2">^[a-z][a-z0-9_]*$</field>
     <field name="run_id" type="pcre2">^[0-9a-f-]{36}$</field>
     <description>OSCompliance fact $(fact)</description>
-    <group>oscompliance_fact,  <rule id="119002" level="3">
-    <program_name>^oscompliance-agent$</program_name>
-    <match>^auth log probe </match>
-    <description>OSCompliance authentication log probe</description>
-    <group>oscompliance_probe,  <rule id="119003" level="3">
-    <decoded_as>json</decoded_as>
-    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
-    <field name="tipo" type="pcre2">^[a-z_]+$</field>
-    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
-  </rule>
-
-  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
-  </rule>
-
-  <rule id="119003" level="3">
-    <decoded_as>json</decoded_as>
-    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
-    <field name="tipo" type="pcre2">^[a-z_]+$</field>
-    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
-  </rule>
-
-  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
+    <group>oscompliance_fact,</group>
   </rule>
 
   <rule id="119002" level="3">
     <program_name>^oscompliance-agent$</program_name>
     <match>^auth log probe </match>
     <description>OSCompliance authentication log probe</description>
-    <group>oscompliance_probe,  <rule id="119003" level="3">
-    <decoded_as>json</decoded_as>
-    <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
-    <field name="tipo" type="pcre2">^[a-z_]+$</field>
-    <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
-  </rule>
-
-  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
+    <group>oscompliance_probe,</group>
   </rule>
 
   <rule id="119003" level="3">
     <decoded_as>json</decoded_as>
+    <location negate="yes" type="pcre2">journald$|syslog|auth\.log|messages|secure|/var/log/oscompliance/</location>
     <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
     <field name="tipo" type="pcre2">^[a-z_]+$</field>
     <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
-    <group>oscompliance_service,  <rule id="119004" level="3">
-    <if_sid>80700</if_sid>
-    <field name="audit.key" type="pcre2">^oscompliance_(read|write|exec|attr|perm)$</field>
-    <description>OSCompliance audited access ($(audit.key)) to a watched path</description>
-    <group>oscompliance_audit,</group>
-  </rule>
-
-</group>
+    <group>oscompliance_service,</group>
   </rule>
 
   <rule id="119004" level="3">
