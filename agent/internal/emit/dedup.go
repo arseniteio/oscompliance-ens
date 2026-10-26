@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"os"
 	"path/filepath"
 	"time"
@@ -43,7 +44,7 @@ func LoadState(path string) *State {
 
 	s := &State{path: path, Collectors: map[string]Sent{}}
 
-	data, err := os.ReadFile(path)
+	data, err := fsread.ReadFile(path)
 	if err != nil {
 		return s
 	}

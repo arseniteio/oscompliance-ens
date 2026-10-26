@@ -496,3 +496,23 @@ func TestFirewallParsing(t *testing.T) {
 		t.Errorf("iptables: %+v", ipt)
 	}
 }
+
+func TestAuditSafety(t *testing.T) {
+
+	for p, ok := range map[string]bool{"/srv/datos": true, "/": false, "/etc": false, "relative": false, "/srv/../etc": false, "/srv/a b": false} {
+		if (unsafeWatch(p) == "") != ok {
+			t.Errorf("%q: %q", p, unsafeWatch(p))
+		}
+	}
+
+	if n := len(permRules("amd64")); n != 10 {
+		t.Errorf("amd64 rules: %d", n)
+	}
+	for _, r := range permRules("arm64") {
+		for _, f := range r {
+			if strings.Contains(f, "arch=b32") || strings.HasPrefix(f, "chmod") || strings.HasPrefix(f, "chown") {
+				t.Errorf("arm64 rule %v", r)
+			}
+		}
+	}
+}

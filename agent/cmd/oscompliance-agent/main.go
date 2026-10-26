@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc1"
@@ -61,6 +63,19 @@ func run() error {
 		}
 		*host = h
 	}
+
+	// One pass at a time: a pass that hangs must not pile up root processes
+	// under cron, and it ends itself after maxPass.
+	unlock, err := lockPass(filepath.Join(filepath.Dir(*statePath), "agent.lock"))
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	watchdog := time.AfterFunc(maxPass, func() {
+		fmt.Fprintln(os.Stderr, "oscompliance-agent: pass longer than", maxPass, "- stopped")
+		os.Exit(2)
+	})
+	defer watchdog.Stop()
 
 	runID, err := fact.NewRunID()
 	if err != nil {
@@ -166,6 +181,30 @@ func flush(f io.Writer, state *emit.State, collector string, lines []byte, full 
 
 	commit()
 	return nil
+}
+
+// maxPass bounds one pass, the daily sweep (15 minutes at most) included.
+const maxPass = 50 * time.Minute
+
+// lockPass takes an exclusive lock, failing at once when another pass holds
+// it.
+func lockPass(path string) (func(), error) {
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		return nil, fmt.Errorf("another pass is running (%s): %w", path, err)
+	}
+
+	return func() { f.Close() }, nil
 }
 
 // allCollectors in the order they run. The facts each one emits are in

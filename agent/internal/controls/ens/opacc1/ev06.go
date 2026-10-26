@@ -3,7 +3,7 @@ package opacc1
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
@@ -79,7 +79,7 @@ func CollectEV06(e *emit.Emitter, cfg EV06Config) error {
 // that are not name:password:gid:members are skipped, as in readPasswd.
 func readGroup(path string) ([]groupEntry, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if err != nil {
 		return nil, err

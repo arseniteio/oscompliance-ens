@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io"
 	"io/fs"
 	"os"
@@ -102,7 +103,7 @@ func readConfigFile(path string) fact.ConfigFile {
 
 	src := fact.ConfigFile{Source: path, Kind: fact.ConfigKindFile, Status: fact.SourceRead, Entries: []fact.ConfigEntry{}}
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		src.Status = fact.SourceAbsent

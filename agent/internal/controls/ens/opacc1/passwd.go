@@ -4,7 +4,7 @@ package opacc1
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"strconv"
 	"strings"
 )
@@ -23,7 +23,7 @@ type passwdEntry struct {
 // a well-formed passwd entry are skipped, as v1 did.
 func readPasswd(path string) ([]passwdEntry, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if err != nil {
 		return nil, err

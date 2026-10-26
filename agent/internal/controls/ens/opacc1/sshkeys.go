@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -169,7 +170,7 @@ func keyFilePath(pattern string, entry passwdEntry) string {
 // keys; any other error means the count is unknown.
 func countKeyLines(path string) (int, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		return 0, nil

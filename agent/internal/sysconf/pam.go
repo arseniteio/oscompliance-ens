@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -186,7 +187,7 @@ type pamLine struct {
 // continuations joined; n is the line the rule starts on.
 func pamLines(path string) ([]pamLine, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 	if err != nil {
 		return nil, err
 	}

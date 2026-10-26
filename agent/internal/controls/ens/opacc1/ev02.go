@@ -3,7 +3,7 @@ package opacc1
 import (
 	"bufio"
 	"fmt"
-	"os"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"strings"
 	"time"
 
@@ -153,7 +153,7 @@ func emitWithoutShadow(e *emit.Emitter, snapshot fact.IdentitySnapshot) error {
 // open or read error is returned. When a name appears twice, the first wins.
 func readShadow(path string) (map[string]shadowEntry, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if err != nil {
 		return nil, err

@@ -3,8 +3,8 @@ package opacc2
 import (
 	"bufio"
 	"errors"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -58,7 +58,7 @@ func readUmask(path string) fact.UmaskSource {
 
 	src := fact.UmaskSource{Path: path, Status: fact.SourceRead, Umasks: []string{}}
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		return fact.UmaskSource{Path: path, Status: fact.SourceAbsent}

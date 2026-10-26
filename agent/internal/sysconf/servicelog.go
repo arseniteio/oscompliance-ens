@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io"
 	"io/fs"
 	"os"
@@ -42,7 +43,7 @@ func CollectServiceLogs(e *emit.Emitter, cfg ServiceLogConfig) error {
 	snapshot := fact.ServiceLogSnapshot{Envelope: e.Envelope(fact.ServiceLogSnapshotFact), Config: cfg.SharedConf, Status: fact.SourceRead}
 	snapshot.AgentName = agentName(cfg.ClientKeys)
 
-	data, err := os.ReadFile(cfg.SharedConf)
+	data, err := fsread.ReadFile(cfg.SharedConf)
 
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -77,7 +78,7 @@ func CollectServiceLogs(e *emit.Emitter, cfg ServiceLogConfig) error {
 // client.keys ("001 lab-agent-01 any <key>").
 func agentName(clientKeys string) string {
 
-	data, err := os.ReadFile(clientKeys)
+	data, err := fsread.ReadFile(clientKeys)
 	if err != nil {
 		return ""
 	}
@@ -267,7 +268,7 @@ func statLog(path string) (fact.LogFile, error) {
 // compressed or not.
 func firstEventTime(path string) (time.Time, bool) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 	if err != nil {
 		return time.Time{}, false
 	}

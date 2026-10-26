@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
 	"net"
 	"os"
@@ -128,7 +129,7 @@ func CollectListening(e *emit.Emitter, cfg ListenConfig) error {
 // state, loopback left out.
 func readSocketTable(path, protocol, state string) ([]socketLine, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +234,7 @@ func socketOwners(proc string) (map[string]int, bool) {
 // ("0::/system.slice/ssh.service"); "" outside systemd.
 func unitOf(cgroup string) string {
 
-	data, err := os.ReadFile(cgroup)
+	data, err := fsread.ReadFile(cgroup)
 	if err != nil {
 		return ""
 	}
@@ -370,6 +371,6 @@ func (u *units) enabled(unit string) string {
 }
 
 func readTrimmed(path string) string {
-	data, _ := os.ReadFile(path)
+	data, _ := fsread.ReadFile(path)
 	return strings.TrimSpace(string(data))
 }

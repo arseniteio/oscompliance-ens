@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -107,7 +108,7 @@ func (p *sudoParser) readFile(path string, depth int) string {
 	}
 	p.seen[path] = true
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		p.files = append(p.files, fact.SudoersFile{Path: path, Status: fact.SourceAbsent})

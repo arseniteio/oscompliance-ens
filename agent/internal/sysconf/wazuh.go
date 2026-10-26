@@ -3,8 +3,8 @@ package sysconf
 import (
 	"encoding/json"
 	"errors"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
-	"os"
 	"strconv"
 	"strings"
 
@@ -35,7 +35,7 @@ func CollectWazuhConfig(e *emit.Emitter, cfg WazuhConfig) error {
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
 		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}}
 
-	local, err := os.ReadFile(cfg.OssecConf)
+	local, err := fsread.ReadFile(cfg.OssecConf)
 
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
@@ -56,7 +56,7 @@ func CollectWazuhConfig(e *emit.Emitter, cfg WazuhConfig) error {
 	add(&out, blocks, cfg.OssecConf)
 
 	// No shared configuration is fine: the agent is in no group.
-	if shared, err := os.ReadFile(cfg.SharedConf); err == nil {
+	if shared, err := fsread.ReadFile(cfg.SharedConf); err == nil {
 		blocks, err := applicableBlocks(shared, "agent_config", name)
 		if err != nil {
 			out.Status, out.Error = fact.SourceUnreadable, cfg.SharedConf+": "+err.Error()
@@ -124,7 +124,7 @@ const DefaultSharedPaths = "/var/ossec/etc/shared/oscompliance.json"
 // readSharedPaths reads the file; absent is not an error (ok is false).
 func readSharedPaths(path string) (paths SharedPaths, ok bool, err error) {
 
-	data, err := os.ReadFile(path)
+	data, err := fsread.ReadFile(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		return SharedPaths{}, false, nil

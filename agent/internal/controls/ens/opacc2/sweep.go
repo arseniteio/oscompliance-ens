@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -245,7 +246,7 @@ func isMountOf(path string, rootDev uint64) bool {
 // under a pruned directory, sorted.
 func localMounts(path string, prune []string) ([]string, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +319,7 @@ func underAny(path string, dirs []string) bool {
 // passwd or group file.
 func idsOf(path string) (map[int]bool, error) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 	if err != nil {
 		return nil, err
 	}

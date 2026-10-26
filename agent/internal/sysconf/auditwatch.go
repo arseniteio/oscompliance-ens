@@ -4,6 +4,8 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -31,20 +33,36 @@ const permKey = "oscompliance_perm"
 
 // permRules record, independently of any parameter, every change of mode,
 // owner or extended attributes made by a person (login uid 1000 and
-// above), on both syscall tables, and every write to the account and sudo
-// files. v1 wrote them for 64-bit calls only and left loading them to the
-// administrator.
-var permRules = [][]string{
-	{"-a", "always,exit", "-F", "arch=b64", "-S", "chmod,fchmod,fchmodat", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
-	{"-a", "always,exit", "-F", "arch=b32", "-S", "chmod,fchmod,fchmodat", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
-	{"-a", "always,exit", "-F", "arch=b64", "-S", "chown,fchown,fchownat,lchown", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
-	{"-a", "always,exit", "-F", "arch=b32", "-S", "chown,fchown,fchownat,lchown", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
-	{"-a", "always,exit", "-F", "arch=b64", "-S", "setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
-	{"-a", "always,exit", "-F", "arch=b32", "-S", "setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr", "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey},
-	{"-w", "/etc/group", "-p", "wa", "-k", permKey},
-	{"-w", "/etc/gshadow", "-p", "wa", "-k", permKey},
-	{"-w", "/etc/sudoers", "-p", "wa", "-k", permKey},
-	{"-w", "/etc/sudoers.d", "-p", "wa", "-k", permKey},
+// above), and every write to the account and sudo files. The syscalls
+// differ by architecture: arm64 has no chmod, chown or lchown, and 32-bit
+// calls exist on amd64 only. v1 covered 64-bit amd64 only and left loading
+// the rules to the administrator.
+func permRules(arch string) [][]string {
+
+	syscalls := [][]string{
+		{"fchmod,fchmodat"},
+		{"fchown,fchownat"},
+		{"setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr"},
+	}
+	tables := []string{"b64"}
+
+	if arch == "amd64" {
+		syscalls[0] = []string{"chmod,fchmod,fchmodat"}
+		syscalls[1] = []string{"chown,fchown,fchownat,lchown"}
+		tables = append(tables, "b32")
+	}
+
+	var rules [][]string
+	for _, table := range tables {
+		for _, s := range syscalls {
+			rules = append(rules, []string{"-a", "always,exit", "-F", "arch=" + table, "-S", s[0], "-F", "auid>=1000", "-F", "auid!=-1", "-k", permKey})
+		}
+	}
+	for _, f := range []string{"/etc/group", "/etc/gshadow", "/etc/sudoers", "/etc/sudoers.d"} {
+		rules = append(rules, []string{"-w", f, "-p", "wa", "-k", permKey})
+	}
+
+	return rules
 }
 
 // AuditConfig says where auditctl and the shared path list are.
@@ -98,18 +116,31 @@ func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 		snapshot.Auditd, snapshot.Error = fact.AuditdError, err.Error()
 		return e.Emit(snapshot)
 	}
-	if perm == 0 {
-		for _, rule := range permRules {
-			if _, err := runCommand(cfg.Auditctl, rule...); err != nil {
+	// The fixed permission rules: loaded as a set when any is missing. A
+	// rule already present makes auditctl fail with "exists": it counts.
+	rules := permRules(runtime.GOARCH)
+	if perm < len(rules) {
+		perm = 0
+		for _, rule := range rules {
+			if _, err := runCommand(cfg.Auditctl, rule...); err != nil && !strings.Contains(err.Error(), "exist") {
 				snapshot.Failed = append(snapshot.Failed, strings.Join(rule, " ")+": "+err.Error())
 				continue
 			}
 			perm++
 		}
 	}
-	snapshot.PermRules = perm
+
+	// Only the whole set proves silence: a missing rule hides its changes.
+	if perm >= len(rules) {
+		snapshot.PermRules = perm
+	}
 
 	for _, p := range paths.AuditWatches {
+
+		if why := unsafeWatch(p); why != "" {
+			snapshot.Failed = append(snapshot.Failed, p+": "+why)
+			continue
+		}
 
 		ok := true
 		for _, w := range AuditKeys {
@@ -129,6 +160,11 @@ func CollectAuditWatches(e *emit.Emitter, cfg AuditConfig) error {
 
 	// Binaries: their executions only.
 	for _, b := range paths.ExecWatches {
+
+		if why := unsafeWatch(b); why != "" {
+			snapshot.Failed = append(snapshot.Failed, b+": "+why)
+			continue
+		}
 
 		if !slices.Contains(loaded, b+" "+execKey) {
 			if _, err := runCommand(cfg.Auditctl, "-w", b, "-p", "x", "-k", execKey); err != nil {
@@ -221,4 +257,21 @@ func loadedPermRules(auditctl string) (int, error) {
 	}
 
 	return n, nil
+}
+
+// broadPaths would flood the audit log: P-06 forbids them as resources.
+var broadPaths = map[string]bool{"/": true, "/etc": true, "/usr": true, "/var": true, "/var/log": true, "/proc": true, "/sys": true, "/dev": true, "/bin": true, "/sbin": true, "/lib": true, "/boot": true, "/home": true, "/tmp": true}
+
+// unsafeWatch says why a path from the manager is not watched, "" when it
+// can be: absolute, clean, no blanks, and not a whole system tree.
+func unsafeWatch(p string) string {
+	switch {
+	case !filepath.IsAbs(p) || filepath.Clean(p) != p:
+		return "not an absolute, clean path"
+	case strings.ContainsAny(p, " \t\n\r"):
+		return "contains blanks"
+	case broadPaths[p]:
+		return "a whole system tree: watching it would flood the audit log"
+	}
+	return ""
 }

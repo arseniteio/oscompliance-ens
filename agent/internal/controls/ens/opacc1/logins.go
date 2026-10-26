@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
 	"io"
 	"io/fs"
-	"os"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
@@ -89,7 +89,7 @@ func readWtmp(path string, newer func(string, time.Time)) fact.LoginRecordFile {
 // file indexed by UID.
 func readLastlog(path string, entries []passwdEntry, newer func(string, time.Time)) fact.LoginRecordFile {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		return fact.LoginRecordFile{Path: path, Status: fact.SourceAbsent}
@@ -127,7 +127,7 @@ func readLastlog(path string, entries []passwdEntry, newer func(string, time.Tim
 // login, a bigger one is cut to its newest records.
 func readRecordFile(path string) ([]byte, fact.LoginRecordFile) {
 
-	file, err := os.Open(path)
+	file, err := fsread.Open(path)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, fact.LoginRecordFile{Path: path, Status: fact.SourceAbsent}
