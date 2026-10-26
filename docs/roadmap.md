@@ -32,6 +32,17 @@ Work agreed but not started. Each item says what done means.
 - **auditd on the machines.** op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04
   and EV-07 need it running; the agent loads the watches and rules itself.
 
+## Scale
+
+- The engine judges agent by agent, with a few queries per control and
+  agent. Before a fleet of hundreds of thousands: batch those queries per
+  pass, run controls in parallel, and size the pass interval to the fleet
+  (the lab runs every 5 minutes; hourly facts need no more than hourly
+  passes).
+- Group configuration written by the engine (see Installation) must stay
+  per group and system type: a block per machine does not scale and every
+  change restarts the agents of the group.
+
 ## Plugin
 
 - Read verdicts from `oscompliance-verdicts` instead of evaluating.

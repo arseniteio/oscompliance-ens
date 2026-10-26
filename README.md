@@ -66,6 +66,20 @@ On the manager: the rules of `catalog/wazuh/oscompliance_facts_rules.xml`
 (119000-119004) and the facts `<localfile>` of
 `catalog/wazuh/agent.conf.fragment.xml` in each group.
 
+## Volume
+
+Built for fleets of hundreds of thousands of agents:
+
+- The agent sends a collector's records only when they change, and once a
+  day anyway. An unchanged pass sends the snapshot alone, with
+  `records_run_id` pointing to the pass that carried the records. On the lab
+  machine an hourly pass went from 126 facts to 13.
+- Activity (logins, sudo, audited accesses, service logins) comes from the
+  alerts Wazuh raises anyway; the agent adds no event per action. v1 emitted
+  one per sudo line, which flooded Wazuh on busy servers.
+- The engine reads per-agent data with paged composite aggregations: no
+  limit on the number of agents.
+
 ## Development
 
 Requires Go 1.27. Each module has its own `go.mod`; agent and engine import
