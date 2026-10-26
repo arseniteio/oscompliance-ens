@@ -3,9 +3,11 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
@@ -39,6 +41,8 @@ func run() error {
 	pamDir := flag.String("pam-dir", "/etc/pam.d", "PAM configuration directory")
 	collect := flag.String("collect", defaultCollectors, "comma-separated collectors to run: "+strings.Join(allCollectors, ", ")+"; the sweep is heavy and meant for a daily run")
 	sweepTimeout := flag.Duration("sweep-timeout", 15*time.Minute, "time limit of the filesystem sweep")
+	statePath := flag.String("state", "/var/lib/oscompliance/state.json", "what was last emitted in full, per collector")
+	full := flag.Bool("full", false, "emit every record even when nothing changed")
 	flag.Parse()
 
 	selected := map[string]bool{}
@@ -69,7 +73,11 @@ func run() error {
 	}
 	defer f.Close()
 
-	e := emit.New(f, *host, version, runID)
+	// Each collector writes to a buffer first: unchanged records are left
+	// out before anything reaches the file (emit.State).
+	var buf bytes.Buffer
+	e := emit.New(&buf, *host, version, runID)
+	state := emit.LoadState(*statePath)
 
 	collectors := map[string]func() error{
 		"identity": func() error {
@@ -121,13 +129,43 @@ func run() error {
 				errs = append(errs, fmt.Errorf("%s: no collector", name))
 				continue
 			}
+			buf.Reset()
 			if err := collect(); err != nil {
+				errs = append(errs, fmt.Errorf("%s: %w", name, err))
+			}
+			if err := flush(f, state, name, buf.Bytes(), *full); err != nil {
 				errs = append(errs, fmt.Errorf("%s: %w", name, err))
 			}
 		}
 	}
 
+	if err := state.Save(); err != nil {
+		errs = append(errs, fmt.Errorf("state: %w", err))
+	}
+
 	return errors.Join(errs...)
+}
+
+// flush writes what one collector emitted, its records left out when they
+// are those already sent, in a single write.
+func flush(f io.Writer, state *emit.State, collector string, lines []byte, full bool) error {
+
+	if len(lines) == 0 {
+		return nil
+	}
+
+	out, commit, err := state.Reduce(collector, lines, time.Now(), full)
+	if err != nil {
+		// Something unexpected in the lines: send them all.
+		out, commit = lines, func() {}
+	}
+
+	if _, err := f.Write(out); err != nil {
+		return err
+	}
+
+	commit()
+	return nil
 }
 
 // allCollectors in the order they run. The facts each one emits are in

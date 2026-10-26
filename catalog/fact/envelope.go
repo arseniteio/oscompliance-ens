@@ -19,6 +19,17 @@ type Envelope struct {
 	Host         string `json:"host"`
 	AgentVersion string `json:"agent_version"`
 	RunID        string `json:"run_id"`
+	// RecordsRunID: on a snapshot, the earlier pass whose records still hold.
+	RecordsRunID string `json:"records_run_id,omitempty"`
+}
+
+// RecordsRun is the pass whose records belong to this snapshot: its own,
+// or the earlier one it points to when nothing changed.
+func (e Envelope) RecordsRun() string {
+	if e.RecordsRunID != "" {
+		return e.RecordsRunID
+	}
+	return e.RunID
 }
 
 // NewRunID returns a random UUID v4 identifying one collection pass.

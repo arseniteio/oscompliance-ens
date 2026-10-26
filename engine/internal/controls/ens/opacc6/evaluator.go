@@ -291,7 +291,7 @@ func (e *Evaluator) settings(ctx context.Context, agentID string, since time.Tim
 	if !ok {
 		return Settings{}, nil
 	}
-	files, err := e.facts.ConfigFiles(ctx, agentID, s.RunID, since)
+	files, err := e.facts.ConfigFiles(ctx, agentID, s.RecordsRun(), since)
 	return Settings{Snapshot: &s, Files: files}, err
 }
 
@@ -300,7 +300,7 @@ func (e *Evaluator) pam(ctx context.Context, agentID string, since time.Time) (P
 	if !ok {
 		return PAM{}, nil
 	}
-	rules, err := e.facts.PAMRules(ctx, agentID, s.RunID, since)
+	rules, err := e.facts.PAMRules(ctx, agentID, s.RecordsRun(), since)
 	return PAM{Snapshot: &s, Rules: rules}, err
 }
 
@@ -309,7 +309,7 @@ func (e *Evaluator) accounts(ctx context.Context, agentID string, since time.Tim
 	if !ok || len(list) == 0 {
 		return Accounts{}, nil
 	}
-	records, err := e.facts.IdentityRecords(ctx, agentID, list[0].RunID, since)
+	records, err := e.facts.IdentityRecords(ctx, agentID, list[0].RecordsRun(), since)
 	return Accounts{Snapshot: &list[0], Records: records}, err
 }
 
@@ -318,7 +318,7 @@ func (e *Evaluator) listeningOf(ctx context.Context, agentID string, since time.
 	if !ok {
 		return Listening{}, nil
 	}
-	sockets, err := e.facts.ListeningSockets(ctx, agentID, s.RunID, since)
+	sockets, err := e.facts.ListeningSockets(ctx, agentID, s.RecordsRun(), since)
 	return Listening{Snapshot: &s, Sockets: sockets}, err
 }
 
@@ -334,7 +334,7 @@ func (e *Evaluator) sudoersOf(ctx context.Context, agentID string, since time.Ti
 	if !ok {
 		return Sudoers{}, nil
 	}
-	grants, err := e.facts.SudoGrants(ctx, agentID, s.RunID, since)
+	grants, err := e.facts.SudoGrants(ctx, agentID, s.RecordsRun(), since)
 	return Sudoers{Snapshot: &s, Grants: grants}, err
 }
 

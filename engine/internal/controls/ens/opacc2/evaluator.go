@@ -118,7 +118,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	// The sweep feeds EV-01 and EV-07.
 	var sw Sweep
 	if s, ok := e.sweeps[agent.ID]; ok {
-		files, err := e.facts.SpecialFiles(ctx, agent.ID, s.RunID, since)
+		files, err := e.facts.SpecialFiles(ctx, agent.ID, s.RecordsRun(), since)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("special files: %w", err))
 		} else {
@@ -150,15 +150,15 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	if list, ok := e.identities[agent.ID]; ok && len(list) > 0 {
 		ev05.Accounts.Identity = &list[0]
-		ev05.Accounts.IdentityRecords, readErr = e.facts.IdentityRecords(ctx, agent.ID, list[0].RunID, since)
+		ev05.Accounts.IdentityRecords, readErr = e.facts.IdentityRecords(ctx, agent.ID, list[0].RecordsRun(), since)
 	}
 	if g, ok := e.groups[agent.ID]; ok && readErr == nil {
 		ev05.Accounts.Groups = &g
-		ev05.Accounts.GroupRecords, readErr = e.facts.GroupRecords(ctx, agent.ID, g.RunID, since)
+		ev05.Accounts.GroupRecords, readErr = e.facts.GroupRecords(ctx, agent.ID, g.RecordsRun(), since)
 	}
 	if s, ok := e.sudoers[agent.ID]; ok && readErr == nil {
 		ev05.Sudoers.Snapshot = &s
-		ev05.Sudoers.Grants, readErr = e.facts.SudoGrants(ctx, agent.ID, s.RunID, since)
+		ev05.Sudoers.Grants, readErr = e.facts.SudoGrants(ctx, agent.ID, s.RecordsRun(), since)
 	}
 
 	if readErr != nil {
@@ -215,7 +215,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	var aclErr error
 	if s, ok := e.acls[agent.ID]; ok {
 		acls.Snapshot = &s
-		acls.Records, aclErr = e.facts.ACLRecords(ctx, agent.ID, s.RunID, since)
+		acls.Records, aclErr = e.facts.ACLRecords(ctx, agent.ID, s.RecordsRun(), since)
 	}
 	if aclErr != nil {
 		errs = append(errs, fmt.Errorf("acl records: %w", aclErr))

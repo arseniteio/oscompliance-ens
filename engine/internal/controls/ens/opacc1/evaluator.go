@@ -171,7 +171,7 @@ func inputEV02(ctx context.Context, facts Facts, agentID string, current, earlie
 	in.Current = &current[0]
 
 	if readBoth(*in.Current) {
-		records, err := facts.IdentityRecords(ctx, agentID, in.Current.RunID, since)
+		records, err := facts.IdentityRecords(ctx, agentID, in.Current.RecordsRun(), since)
 		if err != nil {
 			return in, err
 		}
@@ -186,7 +186,7 @@ func inputEV02(ctx context.Context, facts Facts, agentID string, current, earlie
 			continue
 		}
 
-		records, err := facts.IdentityRecords(ctx, agentID, candidate.RunID, since)
+		records, err := facts.IdentityRecords(ctx, agentID, candidate.RecordsRun(), since)
 		if err != nil {
 			return in, err
 		}
@@ -262,7 +262,7 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 		return in, nil
 	}
 
-	records, err := facts.GroupRecords(ctx, agentID, snapshot.RunID, since)
+	records, err := facts.GroupRecords(ctx, agentID, snapshot.RecordsRun(), since)
 	in.GroupRecords = records
 
 	return in, err

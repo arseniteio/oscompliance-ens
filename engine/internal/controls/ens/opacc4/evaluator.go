@@ -119,26 +119,26 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	// Facts.
 	settings := opacc6.Settings{}
 	if s, ok := e.configs[agent.ID]; ok {
-		files, err := e.facts.ConfigFiles(ctx, agent.ID, s.RunID, since)
+		files, err := e.facts.ConfigFiles(ctx, agent.ID, s.RecordsRun(), since)
 		read("config", err)
 		settings = opacc6.Settings{Snapshot: &s, Files: files}
 	}
 
 	sudoers := Sudoers{}
 	if s, ok := e.sudoers[agent.ID]; ok {
-		grants, err := e.facts.SudoGrants(ctx, agent.ID, s.RunID, since)
+		grants, err := e.facts.SudoGrants(ctx, agent.ID, s.RecordsRun(), since)
 		read("sudoers", err)
 		sudoers = Sudoers{Snapshot: &s, Grants: grants}
 	}
 
 	accounts := Accounts{}
 	if list, ok := e.identities[agent.ID]; ok && len(list) > 0 {
-		records, err := e.facts.IdentityRecords(ctx, agent.ID, list[0].RunID, since)
+		records, err := e.facts.IdentityRecords(ctx, agent.ID, list[0].RecordsRun(), since)
 		read("accounts", err)
 		accounts.Identity, accounts.IdentityRecords = &list[0], records
 	}
 	if g, ok := e.groups[agent.ID]; ok {
-		records, err := e.facts.GroupRecords(ctx, agent.ID, g.RunID, since)
+		records, err := e.facts.GroupRecords(ctx, agent.ID, g.RecordsRun(), since)
 		read("accounts", err)
 		accounts.Groups, accounts.GroupRecords = &g, records
 	}

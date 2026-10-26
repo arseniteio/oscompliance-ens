@@ -4,7 +4,14 @@
   "title": "Fact envelope v1",
   "description": "Fields every fact line carries. Payload fields sit next to them at the top level, so Wazuh decodes them without nesting. A fact never carries a compliance state, an evidence id or a requirement id: mapping facts to evidences and judging them is the engine's job. Payload fields must not use a Wazuh static field name (user, srcuser, dstuser, srcip, dstip, srcport, dstport, protocol, action, id, url, data, extra_data, status, system_name): the Wazuh JSON decoder renames them.",
   "type": "object",
-  "required": ["oscompliance", "fact", "ts", "host", "agent_version", "run_id"],
+  "required": [
+    "oscompliance",
+    "fact",
+    "ts",
+    "host",
+    "agent_version",
+    "run_id"
+  ],
   "properties": {
     "oscompliance": {
       "description": "Envelope version. Also the marker the Wazuh decoder keys on.",
@@ -33,6 +40,11 @@
     },
     "run_id": {
       "description": "Identifier of one collection pass. All facts of a pass share it; snapshot facts use it to prove completeness.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "records_run_id": {
+      "description": "Set on a snapshot whose records did not change since an earlier pass: its records are those of that run, which the agent does not emit again. The agent emits every record at least once a day.",
       "type": "string",
       "format": "uuid"
     }

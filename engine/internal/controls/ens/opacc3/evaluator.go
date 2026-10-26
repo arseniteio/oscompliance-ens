@@ -178,7 +178,7 @@ func (e *Evaluator) build(ctx context.Context, days int) error {
 		if len(list) == 0 {
 			continue
 		}
-		records, err := e.facts.IdentityRecords(ctx, agentID, list[0].RunID, e.pass.LookbackStart)
+		records, err := e.facts.IdentityRecords(ctx, agentID, list[0].RecordsRun(), e.pass.LookbackStart)
 		if err != nil {
 			errs = append(errs, err)
 			continue

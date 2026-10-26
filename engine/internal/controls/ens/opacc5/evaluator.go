@@ -289,7 +289,7 @@ func (e *Evaluator) logPasses(ctx context.Context, agentID string) ([]LogPass, e
 			continue
 		}
 
-		logs, err := e.facts.ServiceLogs(ctx, agentID, s.RunID, e.pass.LookbackStart)
+		logs, err := e.facts.ServiceLogs(ctx, agentID, s.RecordsRun(), e.pass.LookbackStart)
 		if err != nil {
 			return nil, err
 		}
