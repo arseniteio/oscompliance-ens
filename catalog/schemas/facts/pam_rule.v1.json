@@ -67,6 +67,10 @@
       "items": {
         "type": "string"
       }
+    },
+    "module_missing": {
+      "description": "The module file is not installed: PAM skips a \"-\" rule and fails a plain one, so the rule enforces nothing.",
+      "type": "boolean"
     }
   },
   "allOf": [

@@ -128,6 +128,8 @@ type PAMRule struct {
 	File     string   `json:"file"`
 	Line     int      `json:"line"`
 	Via      []string `json:"via,omitempty"`
+	// ModuleMissing: the module is not installed; the rule does nothing.
+	ModuleMissing bool `json:"module_missing,omitempty"`
 }
 
 // PAMSnapshot mirrors pam_snapshot.v1.json.

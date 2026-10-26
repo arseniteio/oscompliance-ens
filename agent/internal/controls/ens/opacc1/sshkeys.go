@@ -23,6 +23,35 @@ type sshdKeys struct {
 	err    string   // set when status is fact.SSHDError
 	files  []string // global AuthorizedKeysFile patterns, when status is fact.SSHDRead
 	path   string   // the sshd binary, asked again per account for Match blocks
+	// global: no Match block in the sshd configuration, so the global
+	// files apply to every account and sshd is not asked per account
+	// (thousands of accounts would take hours).
+	global bool
+}
+
+// sshdConfigs are the files a Match block can be in.
+var sshdConfigs = []string{"/etc/ssh/sshd_config", "/etc/ssh/sshd_config.d/*.conf"}
+
+// hasMatch: a Match line in any sshd configuration file, or one that cannot
+// be read (then every account is asked, as before).
+func hasMatch(patterns []string) bool {
+
+	for _, pattern := range patterns {
+		paths, _ := filepath.Glob(pattern)
+		for _, p := range paths {
+			data, err := fsread.ReadFile(p)
+			if err != nil {
+				return true
+			}
+			for _, line := range strings.Split(string(data), "\n") {
+				if f := strings.Fields(line); len(f) > 0 && strings.EqualFold(f[0], "match") {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
 }
 
 // sshdTimeout bounds sshd -T: it only parses its configuration.
@@ -45,7 +74,7 @@ func readSSHD(path string) sshdKeys {
 		return sshdKeys{status: fact.SSHDCommand}
 	}
 
-	return sshdKeys{status: fact.SSHDRead, files: files, path: path}
+	return sshdKeys{status: fact.SSHDRead, files: files, path: path, global: !hasMatch(sshdConfigs)}
 }
 
 // sshdT runs sshd -T with extra arguments and returns the AuthorizedKeysFile
@@ -121,7 +150,10 @@ func (k sshdKeys) inspect(entry passwdEntry) keyInfo {
 	}
 
 	// Match blocks can give one account other key files, or a command.
-	files, command, err := sshdT(k.path, "-C", matchSpec(entry.user))
+	files, command, err := k.files, false, error(nil)
+	if !k.global {
+		files, command, err = sshdT(k.path, "-C", matchSpec(entry.user))
+	}
 
 	if err != nil || command {
 		return keyInfo{}

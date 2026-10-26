@@ -106,7 +106,8 @@ func (s *State) Reduce(collector string, lines []byte, now time.Time, full bool)
 
 	last, known := s.Collectors[collector]
 
-	if !full && known && last.Hash == hash && last.RunID != "" && now.Sub(last.At) < FullEvery {
+	// A clock that went backwards proves nothing about the age: send in full.
+	if !full && known && last.Hash == hash && last.RunID != "" && !now.Before(last.At) && now.Sub(last.At) < FullEvery {
 		pointed, err := withRecordsRun(snapshot, last.RunID)
 		if err != nil {
 			return nil, nil, err

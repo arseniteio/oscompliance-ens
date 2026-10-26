@@ -157,15 +157,16 @@ func (s *stack) read(path, only string, via []string) {
 		}
 
 		s.rules = append(s.rules, fact.PAMRule{
-			Service:  s.service,
-			Position: len(s.rules),
-			Type:     kind,
-			Control:  fields[1],
-			Module:   filepath.Base(fields[2]),
-			Args:     append([]string{}, fields[3:]...),
-			File:     path,
-			Line:     l.n,
-			Via:      via,
+			ModuleMissing: !moduleInstalled(fields[2]),
+			Service:       s.service,
+			Position:      len(s.rules),
+			Type:          kind,
+			Control:       fields[1],
+			Module:        filepath.Base(fields[2]),
+			Args:          append([]string{}, fields[3:]...),
+			File:          path,
+			Line:          l.n,
+			Via:           via,
 		})
 	}
 }
@@ -275,4 +276,34 @@ func pamFields(line string) []string {
 	}
 
 	return fields
+}
+
+// moduleDirs are where distributions install PAM modules.
+var moduleDirs = []string{"/lib/security", "/lib64/security", "/usr/lib/security", "/usr/lib64/security", "/lib/*/security", "/usr/lib/*/security"}
+
+var installed = map[string]bool{}
+
+// moduleInstalled: the module file exists, by its path or in a module
+// directory.
+func moduleInstalled(module string) bool {
+
+	if found, seen := installed[module]; seen {
+		return found
+	}
+
+	found := false
+	if filepath.IsAbs(module) {
+		_, err := os.Stat(module)
+		found = err == nil
+	} else {
+		for _, d := range moduleDirs {
+			if matches, _ := filepath.Glob(filepath.Join(d, module)); len(matches) > 0 {
+				found = true
+				break
+			}
+		}
+	}
+
+	installed[module] = found
+	return found
 }

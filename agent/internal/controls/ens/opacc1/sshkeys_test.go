@@ -111,6 +111,13 @@ func TestKeyFilePath(t *testing.T) {
 // command; the agent must follow it, not the global setting.
 func TestCountKeysFollowsMatch(t *testing.T) {
 	home := t.TempDir()
+
+	// A configuration with Match blocks: sshd is asked per account.
+	config := filepath.Join(t.TempDir(), "sshd_config")
+	writeFile(t, config, "Match User git\n", 0o600)
+	saved := sshdConfigs
+	sshdConfigs = []string{config}
+	defer func() { sshdConfigs = saved }()
 	writeFile(t, filepath.Join(home, ".ssh/authorized_keys"), "ssh-ed25519 AAAA\n", 0o600)
 	writeFile(t, filepath.Join(home, "git-keys"), "ssh-ed25519 B\nssh-ed25519 C\n", 0o600)
 
@@ -144,4 +151,21 @@ func deref(p *int) any {
 		return "unknown"
 	}
 	return *p
+}
+
+func TestHasMatch(t *testing.T) {
+
+	dir := t.TempDir()
+	plain := filepath.Join(dir, "plain")
+	match := filepath.Join(dir, "match")
+	if err := os.WriteFile(plain, []byte("PasswordAuthentication no\n# Match User x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(match, []byte("Port 22\n  match Group sftp\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if hasMatch([]string{plain}) || !hasMatch([]string{plain, match}) {
+		t.Error("Match detection")
+	}
 }
