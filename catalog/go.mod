@@ -1,4 +1,4 @@
-module github.com/OpenSourceCompliance/oscompliance-core/catalog
+module github.com/OpenSourceCompliance/oscompliance-ens/catalog
 
 go 1.27.2
 

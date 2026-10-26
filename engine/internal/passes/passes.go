@@ -6,8 +6,8 @@ package passes
 import (
 	"fmt"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // NotEvaluable builds a NOT_EVALUABLE judgement.

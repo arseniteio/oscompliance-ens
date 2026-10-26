@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // EV08Input is what the engine knows about one agent when judging EV-08.

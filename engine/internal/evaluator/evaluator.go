@@ -7,8 +7,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // Pass is the time frame of one evaluation pass.

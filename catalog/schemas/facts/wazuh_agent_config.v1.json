@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/wazuh_agent_config.v1.json",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/wazuh_agent_config.v1.json",
   "title": "wazuh_agent_config v1",
   "description": "What the Wazuh agent of the machine is configured to watch, from its ossec.conf and the shared agent.conf blocks that apply to it: the FIM directories and the log files it reads. The engine checks with it that a silence of Wazuh is a real silence.",
   "type": "object",

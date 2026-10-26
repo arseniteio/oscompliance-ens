@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
 )
 
 const groupFixture = `root:x:0:

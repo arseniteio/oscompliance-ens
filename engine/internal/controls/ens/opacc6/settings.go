@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // Settings is one configuration read of an agent: every config_file of the

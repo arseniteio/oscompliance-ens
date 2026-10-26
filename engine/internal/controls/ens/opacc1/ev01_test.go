@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 var evalDay = time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)

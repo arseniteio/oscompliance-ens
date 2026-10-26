@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // attemptInterval is the span in which failed attempts are counted

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // RegisterParam is the register of compromised credentials and people who

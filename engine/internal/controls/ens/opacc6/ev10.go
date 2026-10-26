@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc1"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // EV10Input is what EV-10 (suspension after a period without use) needs.

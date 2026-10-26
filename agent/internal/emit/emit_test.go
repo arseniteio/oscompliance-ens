@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 func TestEmitWritesFlatEnvelopeAndPayload(t *testing.T) {

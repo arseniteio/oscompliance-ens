@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // EV01Input is what EV-01 (retention of the access log) needs.

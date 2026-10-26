@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 func login(account string) source.Login {

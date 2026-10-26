@@ -1,8 +1,8 @@
-module github.com/OpenSourceCompliance/oscompliance-core/agent
+module github.com/OpenSourceCompliance/oscompliance-ens/agent
 
 go 1.27.2
 
-require github.com/OpenSourceCompliance/oscompliance-core/catalog v0.0.0
+require github.com/OpenSourceCompliance/oscompliance-ens/catalog v0.0.0
 
 // The catalog (fact types, controls, templates) lives in this repository.
-replace github.com/OpenSourceCompliance/oscompliance-core/catalog => ../catalog
+replace github.com/OpenSourceCompliance/oscompliance-ens/catalog => ../catalog

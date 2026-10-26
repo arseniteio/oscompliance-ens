@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/sudo_grant.v1.json",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/sudo_grant.v1.json",
   "title": "sudo_grant v1",
   "description": "One subject of a sudoers user specification, with aliases expanded but groups not resolved: the engine resolves groups and UIDs against the identity and group facts. Emitted before the sudoers_snapshot of the same run_id. Negated subjects grant nothing and are not emitted.",
   "type": "object",

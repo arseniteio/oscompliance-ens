@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // sshdKeys is what sshd -T says about where public keys live.

@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"io"
 	"io/fs"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // Default login record files on Linux: wtmp and its rotated copy (Debian and

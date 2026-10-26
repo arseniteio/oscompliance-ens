@@ -3,8 +3,8 @@ package sysconf
 import (
 	"log/syslog"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // ProbeTag is the syslog tag of the probe line; Wazuh rule 119002 matches it.

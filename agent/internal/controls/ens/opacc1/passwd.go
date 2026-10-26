@@ -4,7 +4,7 @@ package opacc1
 import (
 	"bufio"
 	"fmt"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"strconv"
 	"strings"
 )

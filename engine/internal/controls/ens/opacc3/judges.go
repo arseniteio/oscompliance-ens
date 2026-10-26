@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // Input is what every op.acc.3 judge of one agent needs.

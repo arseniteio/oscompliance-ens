@@ -8,7 +8,7 @@ package history
 import (
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // Account is one document of the history index.

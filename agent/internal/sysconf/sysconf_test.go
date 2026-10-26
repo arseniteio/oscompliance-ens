@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 func run(t *testing.T, collect func(*emit.Emitter) error) []map[string]any {

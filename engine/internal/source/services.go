@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // External-user service events: lines of a service's authentication log in

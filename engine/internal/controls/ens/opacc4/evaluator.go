@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/controls/ens/opacc6"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // Facts is what op.acc.4 reads (source.Source in production).

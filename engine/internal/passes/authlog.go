@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // probeDelivery is how long a probe may take to come back as an alert: the

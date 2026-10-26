@@ -3,7 +3,7 @@ package opacc2
 import (
 	"bufio"
 	"errors"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"io/fs"
 	"path/filepath"
 	"regexp"
@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // UmaskConfig lists where the system-wide umask is declared.

@@ -4,15 +4,15 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // PAMConfig says which PAM services are resolved and emitted.

@@ -3,7 +3,7 @@ package source
 import (
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // Copied from alerts indexed in the lab (wazuh-alerts-*, rule 119001).

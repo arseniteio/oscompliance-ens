@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/acl_snapshot.v1.json",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/acl_snapshot.v1.json",
   "title": "acl_snapshot v1",
   "description": "Summary of one read of the paths of the shared oscompliance.json, emitted after their acl_record facts.",
   "type": "object",

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
 )
 
 func main() {

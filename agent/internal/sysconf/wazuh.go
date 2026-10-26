@@ -3,13 +3,13 @@ package sysconf
 import (
 	"encoding/json"
 	"errors"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"io/fs"
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // WazuhConfig says where the Wazuh agent keeps its configuration.

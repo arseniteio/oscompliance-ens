@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/fsread"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 	"io"
 	"io/fs"
 	"os"
@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // ServiceLabel is the localfile label that names an external-user service.

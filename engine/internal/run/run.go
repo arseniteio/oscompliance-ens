@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/aggregate"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/aggregate"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/batch"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // Agents lists the agents to judge (source.Source in production).

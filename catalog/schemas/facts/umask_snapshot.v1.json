@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/umask_snapshot.v1.json",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/umask_snapshot.v1.json",
   "title": "umask_snapshot v1",
   "description": "The umask declared by every system-wide shell and login source, read in one pass. The engine takes the least restrictive declaration and compares it bit by bit with P-07.",
   "type": "object",

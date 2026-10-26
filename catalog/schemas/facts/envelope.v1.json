@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/envelope.v1.json",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/envelope.v1.json",
   "title": "Fact envelope v1",
   "description": "Fields every fact line carries. Payload fields sit next to them at the top level, so Wazuh decodes them without nesting. A fact never carries a compliance state, an evidence id or a requirement id: mapping facts to evidences and judging them is the engine's job. Payload fields must not use a Wazuh static field name (user, srcuser, dstuser, srcip, dstip, srcport, dstport, protocol, action, id, url, data, extra_data, status, system_name): the Wazuh JSON decoder renames them.",
   "type": "object",

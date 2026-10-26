@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 )
 
 // Person is what one account did across the machines in the window.

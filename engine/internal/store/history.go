@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/batch"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 var historyMapping = map[string]any{

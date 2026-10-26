@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 var (

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/batch"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 // FactRule is the Wazuh rule every indexed fact matches (catalog/wazuh).

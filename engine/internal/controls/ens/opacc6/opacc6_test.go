@@ -1,15 +1,15 @@
 package opacc6
 
 import (
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/passes"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 var today = time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC)

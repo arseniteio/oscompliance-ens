@@ -15,11 +15,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc1"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/controls/ens/opacc2"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-core/agent/internal/sysconf"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/controls/ens/opacc1"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/controls/ens/opacc2"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/sysconf"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".

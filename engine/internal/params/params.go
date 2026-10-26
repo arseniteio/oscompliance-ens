@@ -7,12 +7,12 @@ import (
 
 	"errors"
 	"fmt"
-	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
 )
 
 // ErrNotSet: the parameter is missing or empty. Judging against a default the
