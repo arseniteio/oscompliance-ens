@@ -31,7 +31,10 @@ Levels and evidence lists are in `controls/ens/op.acc.6.json`.
 
 Agent facts are shared by every control that needs them; none is specific to
 op.acc.6. Each pass emits its records first and a snapshot last with
-`records_emitted`; the engine uses the newest complete pass in the window.
+`records_emitted`. A collector whose records and snapshot did not change
+sends nothing, and everything every 3 days; the pass ends with `agent_pass`,
+which names the snapshot that still holds. The engine uses the newest
+complete pass in the window, or the older one the newest `agent_pass` holds.
 
 | Fact | Collector | Used by |
 |---|---|---|

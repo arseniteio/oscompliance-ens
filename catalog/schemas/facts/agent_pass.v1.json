@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-core/catalog/schemas/facts/agent_pass.v1.json",
+  "title": "agent_pass v1",
+  "description": "Last fact of every collection pass. A collector whose records and snapshot did not change since it last sent them sends nothing; in_force names, for every such collector that ran in the pass and for those that sent their facts, the snapshot that holds now. The engine takes a snapshot older than its window as current when the newest agent_pass in the window names it. The agent sends every collector in full at least every 3 days.",
+  "type": "object",
+  "required": [
+    "in_force"
+  ],
+  "properties": {
+    "fact": {
+      "const": "agent_pass"
+    },
+    "in_force": {
+      "description": "One \"fact:run_id\" per collector: the snapshot fact and the pass that sent it.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*:[0-9a-f-]{36}$"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "unevaluatedProperties": false
+}

@@ -137,6 +137,7 @@ func run() error {
 	// Every collector runs even when an earlier one fails: one broken
 	// evidence must not silence the others.
 	var errs []error
+	var inForce []string
 	for _, name := range allCollectors {
 		if selected[name] {
 			collect, ok := collectors[name]
@@ -148,9 +149,24 @@ func run() error {
 			if err := collect(); err != nil {
 				errs = append(errs, fmt.Errorf("%s: %w", name, err))
 			}
-			if err := flush(f, state, name, buf.Bytes(), *full); err != nil {
+			quiet := !loud(name, buf.Bytes())
+			if err := flush(f, state, name, buf.Bytes(), *full, quiet); err != nil {
 				errs = append(errs, fmt.Errorf("%s: %w", name, err))
+				continue
 			}
+			if s := state.InForce(name); quiet && s != "" {
+				inForce = append(inForce, s)
+			}
+		}
+	}
+
+	// The pass ends with what holds of every quiet collector that ran.
+	if len(inForce) > 0 {
+		buf.Reset()
+		if err := e.Emit(fact.AgentPass{Envelope: e.Envelope(fact.AgentPassFact), InForce: inForce}); err != nil {
+			errs = append(errs, err)
+		} else if _, err := f.Write(buf.Bytes()); err != nil {
+			errs = append(errs, fmt.Errorf("agent_pass: %w", err))
 		}
 	}
 
@@ -161,20 +177,37 @@ func run() error {
 	return errors.Join(errs...)
 }
 
-// flush writes what one collector emitted, its records left out when they
-// are those already sent, in a single write.
-func flush(f io.Writer, state *emit.State, collector string, lines []byte, full bool) error {
+// loud collectors send their snapshot every time they run: the probe, whose
+// line must come back as an alert each pass; the daily sweep, which no
+// hourly agent_pass names; and the services with logs, whose consecutive
+// reads op.acc.5 EV-09 judges.
+func loud(collector string, lines []byte) bool {
+	switch collector {
+	case "authprobe", "sweep":
+		return true
+	case "services":
+		return bytes.Count(lines, []byte("\n")) > 1
+	}
+	return false
+}
+
+// flush writes what one collector emitted, leaving out what was already
+// sent (emit.State.Reduce), in a single write.
+func flush(f io.Writer, state *emit.State, collector string, lines []byte, full, quiet bool) error {
 
 	if len(lines) == 0 {
 		return nil
 	}
 
-	out, commit, err := state.Reduce(collector, lines, time.Now(), full)
+	out, commit, err := state.Reduce(collector, lines, time.Now(), full, quiet)
 	if err != nil {
 		// Something unexpected in the lines: send them all.
 		out, commit = lines, func() {}
 	}
 
+	if len(out) == 0 {
+		return nil
+	}
 	if _, err := f.Write(out); err != nil {
 		return err
 	}

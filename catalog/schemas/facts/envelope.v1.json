@@ -44,7 +44,7 @@
       "format": "uuid"
     },
     "records_run_id": {
-      "description": "Set on a snapshot whose records did not change since an earlier pass: its records are those of that run, which the agent does not emit again. The agent emits every record at least once a day.",
+      "description": "Set on a snapshot whose records did not change since an earlier pass: its records are those of that run, which the agent does not emit again. The agent emits every record at least every 3 days.",
       "type": "string",
       "format": "uuid"
     }

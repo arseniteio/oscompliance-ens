@@ -32,6 +32,12 @@ func (e Envelope) RecordsRun() string {
 	return e.RunID
 }
 
+// Seen moves the observation time of a snapshot to a later pass that found
+// it unchanged (AgentPass).
+func (e *Envelope) Seen(ts string) {
+	e.TS = ts
+}
+
 // NewRunID returns a random UUID v4 identifying one collection pass.
 func NewRunID() (string, error) {
 	var b [16]byte
@@ -49,3 +55,14 @@ const (
 	SourceUnreadable  = "unreadable"
 	SourceImplausible = "implausible"
 )
+
+// AgentPassFact closes every pass of the agent.
+const AgentPassFact = "agent_pass"
+
+// AgentPass names, for every quiet collector of the pass, the snapshot that
+// holds now as "fact:run_id": the one sent in this pass, or an earlier one
+// the collector did not send again because nothing changed.
+type AgentPass struct {
+	Envelope
+	InForce []string `json:"in_force"`
+}

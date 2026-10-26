@@ -36,7 +36,7 @@ func TestReduce(t *testing.T) {
 
 	// First pass: everything goes out.
 	s := LoadState(path)
-	out, commit, err := s.Reduce("groups", pass(t, run1, now, "root", "sudo"), now, false)
+	out, commit, err := s.Reduce("groups", pass(t, run1, now, "root", "sudo"), now, false, false)
 	if err != nil || strings.Count(string(out), "\n") != 3 {
 		t.Fatalf("first pass: %v %q", err, out)
 	}
@@ -47,26 +47,26 @@ func TestReduce(t *testing.T) {
 
 	// An hour later, same groups: the snapshot alone, pointing to run1.
 	s = LoadState(path)
-	out, _, _ = s.Reduce("groups", pass(t, run2, now.Add(time.Hour), "root", "sudo"), now.Add(time.Hour), false)
+	out, _, _ = s.Reduce("groups", pass(t, run2, now.Add(time.Hour), "root", "sudo"), now.Add(time.Hour), false, false)
 	var snap map[string]any
 	if err := json.Unmarshal(bytes.TrimSpace(out), &snap); err != nil || snap["records_run_id"] != run1 || snap["run_id"] != run2 || snap["fact"] != "group_snapshot" {
 		t.Fatalf("unchanged pass: %v %s", err, out)
 	}
 
 	// A change: everything again.
-	out, _, _ = s.Reduce("groups", pass(t, run3, now.Add(2*time.Hour), "root", "sudo", "ops"), now.Add(2*time.Hour), false)
+	out, _, _ = s.Reduce("groups", pass(t, run3, now.Add(2*time.Hour), "root", "sudo", "ops"), now.Add(2*time.Hour), false, false)
 	if strings.Count(string(out), "\n") != 4 {
 		t.Errorf("changed pass: %q", out)
 	}
 
-	// Unchanged but a day later: everything again.
-	out, _, _ = s.Reduce("groups", pass(t, run3, now.Add(FullEvery), "root", "sudo"), now.Add(FullEvery), false)
+	// Unchanged but FullEvery later: everything again.
+	out, _, _ = s.Reduce("groups", pass(t, run3, now.Add(FullEvery), "root", "sudo"), now.Add(FullEvery), false, false)
 	if strings.Count(string(out), "\n") != 3 {
 		t.Errorf("daily pass: %q", out)
 	}
 
 	// Forced full.
-	out, _, _ = s.Reduce("groups", pass(t, run3, now.Add(time.Hour), "root", "sudo"), now.Add(time.Hour), true)
+	out, _, _ = s.Reduce("groups", pass(t, run3, now.Add(time.Hour), "root", "sudo"), now.Add(time.Hour), true, false)
 	if strings.Count(string(out), "\n") != 3 {
 		t.Errorf("forced pass: %q", out)
 	}
@@ -74,5 +74,87 @@ func TestReduce(t *testing.T) {
 	// A damaged state file is an empty state.
 	if s := LoadState(filepath.Join(t.TempDir(), "missing.json")); len(s.Collectors) != 0 {
 		t.Error("missing state")
+	}
+}
+
+func TestReduceQuiet(t *testing.T) {
+
+	s := LoadState(filepath.Join(t.TempDir(), "state.json"))
+	now := time.Date(2026, 10, 26, 10, 0, 0, 0, time.UTC)
+	const run1, run2, run3 = "11111111-1111-4111-8111-111111111111", "22222222-2222-4222-8222-222222222222", "33333333-3333-4333-8333-333333333333"
+
+	out, commit, err := s.Reduce("groups", pass(t, run1, now, "root"), now, false, true)
+	if err != nil || strings.Count(string(out), "\n") != 2 {
+		t.Fatalf("first pass: %v %q", err, out)
+	}
+	commit()
+	if got := s.InForce("groups"); got != "group_snapshot:"+run1 {
+		t.Fatalf("in force: %q", got)
+	}
+
+	// Nothing changed: nothing is sent and run1 still holds.
+	out, commit, _ = s.Reduce("groups", pass(t, run2, now.Add(time.Hour), "root"), now.Add(time.Hour), false, true)
+	if len(out) != 0 {
+		t.Fatalf("unchanged pass: %q", out)
+	}
+	commit()
+	if got := s.InForce("groups"); got != "group_snapshot:"+run1 {
+		t.Fatalf("in force after a quiet pass: %q", got)
+	}
+
+	// Same records, another snapshot (the file became unreadable, say):
+	// the snapshot alone, pointing to run1, and it holds from now on.
+	var buf bytes.Buffer
+	e := New(&buf, "h", "1.0", run3)
+	n := 1
+	if err := e.Emit(fact.GroupRecord{Envelope: e.Envelope(fact.GroupRecordFact), GroupName: "root", Members: []string{}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Emit(fact.GroupSnapshot{Envelope: e.Envelope(fact.GroupSnapshotFact), GroupPath: "/etc/group", GroupStatus: "read", RecordsEmitted: &n, GroupError: "slow"}); err != nil {
+		t.Fatal(err)
+	}
+	out, commit, _ = s.Reduce("groups", buf.Bytes(), now.Add(2*time.Hour), false, true)
+	var snap map[string]any
+	if err := json.Unmarshal(bytes.TrimSpace(out), &snap); err != nil || snap["records_run_id"] != run1 || snap["run_id"] != run3 {
+		t.Fatalf("new snapshot: %v %s", err, out)
+	}
+	commit()
+	if got := s.InForce("groups"); got != "group_snapshot:"+run3 {
+		t.Fatalf("in force after a new snapshot: %q", got)
+	}
+
+	// FullEvery later, unchanged: everything again.
+	out, _, _ = s.Reduce("groups", pass(t, run2, now.Add(FullEvery), "root"), now.Add(FullEvery), false, true)
+	if strings.Count(string(out), "\n") != 2 {
+		t.Fatalf("full pass: %q", out)
+	}
+}
+
+func TestReduceQuietSingleFact(t *testing.T) {
+
+	s := LoadState(filepath.Join(t.TempDir(), "state.json"))
+	now := time.Date(2026, 10, 26, 10, 0, 0, 0, time.UTC)
+	line := func(run string) []byte {
+		var buf bytes.Buffer
+		e := New(&buf, "h", "1.0", run)
+		e.now = func() time.Time { return now }
+		if err := e.Emit(fact.UmaskSnapshot{Envelope: e.Envelope(fact.UmaskSnapshotFact), Sources: []fact.UmaskSource{}}); err != nil {
+			t.Fatal(err)
+		}
+		return buf.Bytes()
+	}
+
+	// A loud collector of one fact always sends it.
+	if out, _, _ := s.Reduce("probe", line("11111111-1111-4111-8111-111111111111"), now, false, false); len(out) == 0 {
+		t.Fatal("loud collector sent nothing")
+	}
+
+	out, commit, _ := s.Reduce("umask", line("11111111-1111-4111-8111-111111111111"), now, false, true)
+	commit()
+	if strings.Count(string(out), "\n") != 1 {
+		t.Fatalf("first pass: %q", out)
+	}
+	if out, _, _ := s.Reduce("umask", line("22222222-2222-4222-8222-222222222222"), now.Add(time.Hour), false, true); len(out) != 0 {
+		t.Fatalf("unchanged pass: %q", out)
 	}
 }

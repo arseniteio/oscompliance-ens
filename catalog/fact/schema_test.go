@@ -162,6 +162,8 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &PAMSnapshot{}
 		case AuthLogProbeFact:
 			v = &AuthLogProbe{}
+		case AgentPassFact:
+			v = &AgentPass{}
 		case ListeningSocketFact:
 			v = &ListeningSocket{}
 		case ListeningSnapshotFact:
