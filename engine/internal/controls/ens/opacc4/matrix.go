@@ -110,6 +110,15 @@ func (s Sudoers) gap() (verdict.Judgement, bool) {
 	return verdict.Judgement{}, false
 }
 
+// blindSpots: sudoers grants the agent could not attribute (ALL users,
+// netgroups, unknown aliases) leave silence unproven.
+func (s Sudoers) blindSpots() (verdict.Judgement, bool) {
+	if s.Snapshot == nil || s.Snapshot.BlindSpots == 0 {
+		return verdict.Judgement{}, false
+	}
+	return passes.NotEvaluable(verdict.CauseCollection, fmt.Sprintf("sudoers has %d grants to unnamed subjects: %s", s.Snapshot.BlindSpots, strings.Join(s.Snapshot.BlindSpotReasons, "; "))), true
+}
+
 // JudgeEV02 judges EV-02 (effective privileges against the matrix) as
 // described in catalog/docs/contracts/op.acc.4.md:
 //
@@ -170,6 +179,9 @@ func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 	}
 	if len(gaps) > 0 {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01: "+strings.Join(gaps, "; "))
+	}
+	if gap, blind := sudoers.blindSpots(); blind {
+		return gap
 	}
 
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d sudo grants, all as P-01 authorises", checked)}
@@ -339,6 +351,10 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	if len(excessive) > 0 {
 		sort.Strings(excessive)
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "privileges above the minimum not authorised in P-01: " + strings.Join(excessive, "; ")}
+	}
+
+	if gap, blind := in.Sudoers.blindSpots(); blind {
+		return gap
 	}
 
 	if len(declared) > 0 {

@@ -189,6 +189,7 @@ func TestJudgeEV09(t *testing.T) {
 		{"su trusts wheel", EV09Input{Sudoers: sudoers(nil), PAM: wheel, Points: []string{"su"}}, verdict.NonCompliant, "", "pam_wheel trust"},
 		{"undefined alias", EV09Input{Sudoers: sudoers(nil, alias), PAM: pam(), Points: []string{"sudo"}}, verdict.NotEvaluable, verdict.CauseCollection, "UNDEFINED"},
 		{"no sudo installed", EV09Input{Sudoers: Sudoers{Snapshot: &fact.SudoersSnapshot{Status: fact.SourceAbsent}}, PAM: pam(), Points: []string{"sudo"}}, verdict.Compliant, "", ""},
+		{"blind spots", EV09Input{Sudoers: Sudoers{Snapshot: &fact.SudoersSnapshot{Status: fact.SourceRead, BlindSpots: 1, BlindSpotReasons: []string{"/etc/sudoers:3: ALL users granted"}}}, PAM: pam(), Points: []string{"sudo"}}, verdict.NotEvaluable, verdict.CauseCollection, "ALL users granted"},
 		{"no sudoers read", EV09Input{PAM: pam(), Points: []string{"sudo"}}, verdict.NotEvaluable, verdict.CauseCollection, "sudoers_snapshot"},
 	}
 

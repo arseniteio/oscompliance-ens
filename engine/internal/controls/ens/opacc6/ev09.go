@@ -86,6 +86,11 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 	default:
 		f, u := sudoFindings(in.Sudoers)
 		findings, unknown = append(findings, f...), append(unknown, u...)
+		// Grants the agent could not attribute (ALL users, netgroups,
+		// unknown aliases) may run anything without a password.
+		if b := in.Sudoers.Snapshot.BlindSpots; b > 0 {
+			unknown = append(unknown, fmt.Sprintf("sudoers has %d grants to unnamed subjects: %s", b, strings.Join(in.Sudoers.Snapshot.BlindSpotReasons, "; ")))
+		}
 	}
 
 	// su.
