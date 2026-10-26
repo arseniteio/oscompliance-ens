@@ -241,4 +241,4 @@ Changed on purpose:
 - P-12, the register of compromised and departed accounts, must be added to
   the plugin as an organisation table.
 - The manager (agent 000) needs the agent installed and the localfile in its
-  own ossec.conf to be judged like any machine (roadmap).
+  own ossec.conf to be judged like any machine.
