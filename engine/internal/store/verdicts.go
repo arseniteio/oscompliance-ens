@@ -2,7 +2,9 @@
 package store
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
@@ -48,9 +50,14 @@ func date() map[string]any { return map[string]any{"type": "date"} }
 
 // Verdicts writes to one index.
 type Verdicts struct {
-	client *indexer.Client
-	index  string
+	client  *indexer.Client
+	index   string
+	pending []verdict.Verdict
 }
+
+// bulkSize is how many verdicts go in one bulk request: a pass writes
+// about 120 per agent, one request each would not scale to a large fleet.
+const bulkSize = 500
 
 // NewVerdicts creates index if needed and returns a writer for it.
 func NewVerdicts(ctx context.Context, client *indexer.Client, index string) (*Verdicts, error) {
@@ -69,8 +76,40 @@ func NewVerdicts(ctx context.Context, client *indexer.Client, index string) (*Ve
 //   - requirement: agent/control/requirement/day, and control:
 //     agent/control/day: the last verdict of each day, one point per day of
 //     the evolution series.
+//
+// Verdicts are sent in bulk: Flush sends what is left at the end of a pass.
 func (s *Verdicts) Write(ctx context.Context, v verdict.Verdict) error {
-	return s.client.Put(ctx, s.index, DocumentID(v), v)
+
+	s.pending = append(s.pending, v)
+	if len(s.pending) < bulkSize {
+		return nil
+	}
+
+	return s.Flush(ctx)
+}
+
+// Flush sends the pending verdicts.
+func (s *Verdicts) Flush(ctx context.Context) error {
+
+	if len(s.pending) == 0 {
+		return nil
+	}
+
+	var body bytes.Buffer
+	for _, v := range s.pending {
+		action, _ := json.Marshal(map[string]any{"index": map[string]any{"_index": s.index, "_id": DocumentID(v)}})
+		doc, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		body.Write(action)
+		body.WriteByte('\n')
+		body.Write(doc)
+		body.WriteByte('\n')
+	}
+
+	s.pending = s.pending[:0]
+	return s.client.Bulk(ctx, body.Bytes())
 }
 
 // DocumentID is the document ID Write uses for v.

@@ -136,6 +136,13 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		}
 	}
 
+	// A sink that batches (store.Verdicts) sends the rest now.
+	if f, ok := sink.(interface{ Flush(context.Context) error }); ok {
+		if err := f.Flush(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("write: %w", err))
+		}
+	}
+
 	return written, errors.Join(errs...)
 }
 

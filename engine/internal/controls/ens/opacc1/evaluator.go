@@ -104,7 +104,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	} else {
 		runID := ""
 		if ev02.Current != nil {
-			runID = ev02.Current.RunID
+			runID = ev02.Current.RecordsRun()
 		}
 
 		inventory := Inventory{Current: ev02.Current, Records: ev02.Records, Today: now.UTC().Truncate(24 * time.Hour)}
@@ -148,7 +148,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			ev06.AuthSeen, ev06.Logins = authSeen, logins
 			runID := ""
 			if ev06.Groups != nil {
-				runID = ev06.Groups.RunID
+				runID = ev06.Groups.RecordsRun()
 			}
 			write("EV-06", JudgeEV06(ev06), runID)
 		}
@@ -182,7 +182,7 @@ func inputEV02(ctx context.Context, facts Facts, agentID string, current, earlie
 
 		candidate := earlier[i]
 
-		if candidate.RunID == in.Current.RunID || !readBoth(candidate) || candidate.RecordsEmitted == nil {
+		if candidate.RecordsRun() == in.Current.RecordsRun() || !readBoth(candidate) || candidate.RecordsEmitted == nil {
 			continue
 		}
 

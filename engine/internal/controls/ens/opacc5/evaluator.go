@@ -102,7 +102,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	var newestLogs []fact.ServiceLog
 	runID := ""
 	if n := len(logPasses); n > 0 {
-		newestLogs, runID = logPasses[n-1].Logs, logPasses[n-1].Snapshot.RunID
+		newestLogs, runID = logPasses[n-1].Logs, logPasses[n-1].Snapshot.RecordsRun()
 	}
 	services := Services(declared, newestLogs, spans)
 

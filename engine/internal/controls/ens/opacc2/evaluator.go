@@ -167,7 +167,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		ev05.Groups, ev05.Declared, ev05.ConfigProblem = ev05Params(policy, agent.ID)
 		runID := ""
 		if ev05.Sudoers.Snapshot != nil {
-			runID = ev05.Sudoers.Snapshot.RunID
+			runID = ev05.Sudoers.Snapshot.RecordsRun()
 		}
 		results["EV-05"] = evaluator.Result{Judgement: JudgeEV05(ev05), RunID: runID}
 	}
@@ -227,7 +227,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		runID := ""
 		if acls.Snapshot != nil {
-			runID = acls.Snapshot.RunID
+			runID = acls.Snapshot.RecordsRun()
 		}
 		results["EV-04"] = evaluator.Result{Judgement: JudgeEV04(in), RunID: runID}
 	}
@@ -258,7 +258,7 @@ func runOf(s *fact.FileSweepSnapshot) string {
 	if s == nil {
 		return ""
 	}
-	return s.RunID
+	return s.RecordsRun()
 }
 
 // ev01Params reads P-02, P-11, P-03 and P-07. Every missing required one is

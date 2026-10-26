@@ -104,6 +104,58 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) err
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
+// Bulk sends NDJSON bulk actions and fails when any item failed, naming
+// the first failure.
+func (c *Client) Bulk(ctx context.Context, body []byte) error {
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/_bulk", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.SetBasicAuth(c.user, c.password)
+	req.Header.Set("Content-Type", "application/x-ndjson")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("indexer: bulk: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return &Error{Status: resp.StatusCode, Body: string(msg)}
+	}
+
+	var out struct {
+		Errors bool `json:"errors"`
+		Items  []map[string]struct {
+			ID     string          `json:"_id"`
+			Status int             `json:"status"`
+			Error  json.RawMessage `json:"error"`
+		} `json:"items"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return fmt.Errorf("indexer: bulk answer: %w", err)
+	}
+
+	if !out.Errors {
+		return nil
+	}
+
+	failed, first := 0, ""
+	for _, item := range out.Items {
+		for _, r := range item {
+			if r.Status > 299 {
+				failed++
+				if first == "" {
+					first = fmt.Sprintf("%s: %s", r.ID, r.Error)
+				}
+			}
+		}
+	}
+	return fmt.Errorf("indexer: bulk: %d of %d items failed, first %s", failed, len(out.Items), first)
+}
+
 // Search runs a search on index (a name or pattern) and decodes the answer.
 func (c *Client) Search(ctx context.Context, index string, query, out any) error {
 	return c.Do(ctx, http.MethodPost, "/"+url.PathEscape(index)+"/_search", query, out)

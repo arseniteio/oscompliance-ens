@@ -157,8 +157,9 @@ func (p PAM) Stack(service, kind string) []fact.PAMRule {
 
 	var out []fact.PAMRule
 
+	// A rule whose module is not installed enforces nothing.
 	for _, r := range p.Rules {
-		if r.Service == service && r.Type == kind {
+		if r.Service == service && r.Type == kind && !r.ModuleMissing {
 			out = append(out, r)
 		}
 	}

@@ -326,7 +326,7 @@ func runOfListening(s *fact.ListeningSnapshot) string {
 	if s == nil {
 		return ""
 	}
-	return s.RunID
+	return s.RecordsRun()
 }
 
 func (e *Evaluator) sudoersOf(ctx context.Context, agentID string, since time.Time) (Sudoers, error) {
@@ -342,28 +342,28 @@ func runOf(s *fact.ConfigSnapshot) string {
 	if s == nil {
 		return ""
 	}
-	return s.RunID
+	return s.RecordsRun()
 }
 
 func runOfPAM(s *fact.PAMSnapshot) string {
 	if s == nil {
 		return ""
 	}
-	return s.RunID
+	return s.RecordsRun()
 }
 
 func runOfSudoers(s *fact.SudoersSnapshot) string {
 	if s == nil {
 		return ""
 	}
-	return s.RunID
+	return s.RecordsRun()
 }
 
 func identityRun(a Accounts) string {
 	if a.Snapshot == nil {
 		return ""
 	}
-	return a.Snapshot.RunID
+	return a.Snapshot.RecordsRun()
 }
 
 func listParam(policy params.Lister, agentID, id string) ([]string, string) {
