@@ -73,11 +73,12 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 
 	for _, e := range in.Elevations {
 
+		times := max(e.Count, 1)
 		if e.Denied {
-			denied++
+			denied += times
 			continue
 		}
-		used++
+		used += times
 
 		_, toPrivileged := privileged[e.To]
 		_, fromPrivileged := privileged[e.From]

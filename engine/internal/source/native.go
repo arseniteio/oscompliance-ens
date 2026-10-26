@@ -95,10 +95,13 @@ type Elevation struct {
 	Method  string // sudo, su
 	Command string
 	Denied  bool
+	Count   int // how many times; 0 counts as one
 }
 
 // Elevations returns the sudo runs and refusals of one agent since the
-// given time. su comes from Logins (PAM sessions of su).
+// given time, one per user, target, command and outcome with how many times
+// and the last time: a busy server (Zimbra runs sudo all day) gives few
+// rows. su comes from Logins (PAM sessions of su).
 func (s *Source) Elevations(ctx context.Context, agentID string, since time.Time) ([]Elevation, error) {
 
 	filter := []any{
@@ -112,36 +115,23 @@ func (s *Source) Elevations(ctx context.Context, agentID string, since time.Time
 		denied[id.(string)] = true
 	}
 
+	sources := []any{terms("f", "data.srcuser"), terms("t", "data.dstuser"), terms("c", "data.command"), terms("r", "rule.id")}
+
 	var out []Elevation
 
-	err := s.page(ctx, filter, func(h hit) error {
+	err := s.composite(ctx, filter, sources, lastSeen, func(key map[string]any, b json.RawMessage) error {
 
-		var a struct {
-			Timestamp string `json:"timestamp"`
-			Rule      struct {
-				ID string `json:"id"`
-			} `json:"rule"`
-			Data struct {
-				SrcUser string `json:"srcuser"`
-				DstUser string `json:"dstuser"`
-				Command string `json:"command"`
-			} `json:"data"`
-		}
-		if err := json.Unmarshal(h.Source, &a); err != nil {
-			return fmt.Errorf("alert %s: %w", h.ID, err)
-		}
-
-		ts, err := alertTime(a.Timestamp)
+		n, last, err := countAndLast(b)
 		if err != nil {
-			return fmt.Errorf("alert %s: %w", h.ID, err)
+			return err
 		}
 
-		to := a.Data.DstUser
+		to := keyString(key, "t")
 		if to == "" {
 			to = "root"
 		}
 
-		out = append(out, Elevation{Time: ts, From: a.Data.SrcUser, To: to, Method: "sudo", Command: a.Data.Command, Denied: denied[a.Rule.ID]})
+		out = append(out, Elevation{Time: last, From: keyString(key, "f"), To: to, Method: "sudo", Command: keyString(key, "c"), Denied: denied[keyString(key, "r")], Count: n})
 		return nil
 	})
 
