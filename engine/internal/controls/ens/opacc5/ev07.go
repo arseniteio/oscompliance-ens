@@ -10,9 +10,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Reinforcement classifies a set of factors as the ENS mechanisms: R4 a
-// card with PIN or biometrics, R3 a certificate with PIN or biometrics, R2 a
-// password with an OTP, R1 a password alone; "" for anything else.
 func Reinforcement(factors []string) string {
 
 	has := map[string]bool{}
@@ -35,22 +32,13 @@ func Reinforcement(factors []string) string {
 	return ""
 }
 
-// EV07Input is what EV-07 (the mechanism actually used) needs.
 type EV07Input struct {
 	Services []Service
-	Methods  []source.MethodCount // successful logins of the window
-	// Mechanism is P-01 (R1 to R4); "" leaves the evidence unjudged.
+	Methods  []source.MethodCount
+
 	Mechanism string
 }
 
-// JudgeEV07 judges EV-07 as described in catalog/docs/contracts/op.acc.5.md:
-//
-//  1. No service: NOT_EVALUABLE, CONFIGURATION. P-01 unusable:
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. Each successful login is classified by its factors. One that is not
-//     the P-01 mechanism, weaker or another: NON_COMPLIANT.
-//  3. Logins without factors: NOT_EVALUABLE, EVIDENCE. No login in the
-//     window: NOT_EVALUABLE, COLLECTION. Otherwise COMPLIANT.
 func JudgeEV07(in EV07Input) verdict.Judgement {
 
 	if len(in.Services) == 0 {

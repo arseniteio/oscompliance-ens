@@ -11,32 +11,19 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// deliveryLag is how long a written line may take to become an event.
 const deliveryLag = 10 * time.Minute
 
-// LogPass is one read of the service logs by the agent.
 type LogPass struct {
 	Snapshot fact.ServiceLogSnapshot
 	Logs     []fact.ServiceLog
 }
 
-// EV09Input is what EV-09 (continuity of the access log) needs.
 type EV09Input struct {
 	Services []Service
-	// Passes of the window, oldest first, complete ones only.
+
 	Passes []LogPass
 }
 
-// JudgeEV09 judges EV-09 as described in catalog/docs/contracts/op.acc.5.md,
-// for each declared service, comparing each pass with the one before:
-//
-//  1. No service: NOT_EVALUABLE, CONFIGURATION.
-//  2. Gaps: the log disappeared; it was replaced (another inode) and no
-//     rotated copy keeps the old one; it shrank without rotating; it was
-//     written after the newest event Wazuh has of it (lines that never
-//     arrived); or a declared service the agent does not read.
-//  3. A gap: NON_COMPLIANT. Fewer than two passes: NOT_EVALUABLE,
-//     COLLECTION. Otherwise COMPLIANT.
 func JudgeEV09(in EV09Input) verdict.Judgement {
 
 	if len(in.Services) == 0 {
@@ -47,13 +34,11 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 
 	for _, s := range in.Services {
 
-		// 2. Declared but not read: nothing of it reaches Wazuh.
 		if s.Declared && s.Log == nil {
 			gaps = append(gaps, s.Name+": declared in P-02 but no labelled localfile reaches the agent")
 			continue
 		}
 
-		// Written but not indexed.
 		if s.Log != nil && s.Log.Status == fact.SourceRead && s.Log.Size > 0 {
 			if modified, err := time.Parse(time.RFC3339, s.Log.Modified); err == nil {
 				if s.Span.Count == 0 || modified.Sub(s.Span.Newest) > deliveryLag {
@@ -86,7 +71,6 @@ func newest(t time.Time, count int) string {
 	return t.UTC().Format(time.RFC3339)
 }
 
-// compare finds the gaps between two reads of the same logs.
 func compare(before, after LogPass) []string {
 
 	now := map[string]fact.ServiceLog{}
@@ -107,7 +91,7 @@ func compare(before, after LogPass) []string {
 
 		switch {
 		case !ok:
-			// No longer declared: not a gap of the log.
+
 		case cur.Status == fact.SourceAbsent:
 			gaps = append(gaps, fmt.Sprintf("%s: %s disappeared by %s", prev.Service, prev.Path, when))
 		case cur.Status != fact.SourceRead:
@@ -121,8 +105,6 @@ func compare(before, after LogPass) []string {
 	return gaps
 }
 
-// keptAside: a rotated copy holds the old inode, or a compressed copy was
-// written since the previous read (compressing writes a new inode).
 func keptAside(cur fact.ServiceLog, inode uint64, since string) bool {
 	for _, r := range cur.Rotated {
 		if r.Inode == inode || (strings.HasSuffix(r.Path, ".gz") && r.Modified >= since) {

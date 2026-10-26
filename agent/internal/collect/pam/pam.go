@@ -16,35 +16,23 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Config says which PAM services are resolved and emitted.
 type Config struct {
 	Dir      string
 	Services []string
-	// Types keeps only rules of these types; empty keeps all four.
+
 	Types []string
 }
 
-// DefaultServices are the entry points of authentication on Linux: remote
-// and console login, the graphical greeters, su, sudo and password change.
-// common-* (Debian) and system-auth, password-auth (RHEL) are reached
-// through their includes, as PAM reaches them.
 var DefaultServices = []string{"sshd", "login", "gdm-password", "lightdm", "sddm", "su", "su-l", "sudo", "passwd"}
 
-// DefaultTypes are the stacks the controls judge: how users authenticate
-// (lockout, second factor, su restrictions) and how passwords are set
-// (quality, history). account and session would double the facts unused.
 var DefaultTypes = []string{"auth", "password"}
 
-// maxIncludeDepth stops include loops PAM itself would reject.
 const maxIncludeDepth = 10
 
-// maxProblems keeps the snapshot small; the count is what matters.
 const maxProblems = 20
 
 var pamTypes = map[string]bool{"auth": true, "account": true, "password": true, "session": true}
 
-// Collect emits the resolved stack of every service that exists, rule by
-// rule, then the pam_snapshot.
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot := fact.PAMSnapshot{Envelope: e.Envelope(fact.PAMSnapshotFact), Services: []string{}, Status: fact.SourceRead}
@@ -96,7 +84,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(snapshot)
 }
 
-// stack accumulates the resolved rules of one service.
 type stack struct {
 	dir      string
 	service  string
@@ -105,8 +92,6 @@ type stack struct {
 	problems []string
 }
 
-// read appends the rules of one file. only limits them to one type, for
-// "type include file" and "type substack file"; via is the include chain.
 func (s *stack) read(path, only string, via []string) {
 
 	if len(via) >= maxIncludeDepth || slices.Contains(via, path) {
@@ -172,7 +157,6 @@ func (s *stack) read(path, only string, via []string) {
 	}
 }
 
-// target is the file an include names: relative to the PAM directory.
 func (s *stack) target(name string) string {
 	if filepath.IsAbs(name) {
 		return name
@@ -185,8 +169,6 @@ type pamLine struct {
 	text string
 }
 
-// pamLines returns the rules of a file with comments dropped and backslash
-// continuations joined; n is the line the rule starts on.
 func pamLines(path string) ([]pamLine, error) {
 
 	file, err := fsread.Open(path)
@@ -227,7 +209,6 @@ func pamLines(path string) ([]pamLine, error) {
 	return lines, scanner.Err()
 }
 
-// stripPAMComment drops a "#" comment outside [...] brackets.
 func stripPAMComment(line string) string {
 
 	depth := 0
@@ -246,8 +227,6 @@ func stripPAMComment(line string) string {
 	return line
 }
 
-// pamFields splits a rule on blanks, keeping a [...] group as one field:
-// "[success=1 default=ignore]" is one control, "[a b]" one argument.
 func pamFields(line string) []string {
 
 	var fields []string
@@ -279,13 +258,10 @@ func pamFields(line string) []string {
 	return fields
 }
 
-// moduleDirs are where distributions install PAM modules.
 var moduleDirs = []string{"/lib/security", "/lib64/security", "/usr/lib/security", "/usr/lib64/security", "/lib/*/security", "/usr/lib/*/security"}
 
 var installed = map[string]bool{}
 
-// moduleInstalled: the module file exists, by its path or in a module
-// directory.
 func moduleInstalled(module string) bool {
 
 	if found, seen := installed[module]; seen {
@@ -309,8 +285,6 @@ func moduleInstalled(module string) bool {
 	return found
 }
 
-// pamArgs are the module arguments the controls judge; others (pam_exec
-// commands, LDAP binds, keys) never leave the machine.
 var pamArgs = map[string]bool{
 	"deny": true, "unlock_time": true, "minlen": true, "minclass": true, "dcredit": true, "ucredit": true,
 	"lcredit": true, "ocredit": true, "dictcheck": true, "remember": true, "obscure": true, "trust": true,

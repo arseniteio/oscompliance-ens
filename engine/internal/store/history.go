@@ -35,19 +35,15 @@ var historyMapping = map[string]any{
 	},
 }
 
-// History reads and writes the per-account history (one document per agent
-// and account). Reads are served by chunks of agents (package batch) and
-// writes are sent in bulk.
 type History struct {
 	client  *indexer.Client
 	index   string
 	plan    batch.Plan
 	mu      sync.Mutex
 	pending []history.Account
-	written bool // sent and not refreshed yet
+	written bool
 }
 
-// NewHistory creates index if needed and returns a store for it.
 func NewHistory(ctx context.Context, client *indexer.Client, index string) (*History, error) {
 
 	if err := client.EnsureIndex(ctx, index, historyMapping); err != nil {
@@ -57,7 +53,6 @@ func NewHistory(ctx context.Context, client *indexer.Client, index string) (*His
 	return &History{client: client, index: index}, nil
 }
 
-// Plan starts a pass: the agents in the order they will be judged.
 func (h *History) Plan(agents []verdict.Agent) {
 	ids := make([]string, len(agents))
 	for i, a := range agents {
@@ -68,14 +63,11 @@ func (h *History) Plan(agents []verdict.Agent) {
 
 const historyKey = "history"
 
-// Load returns the history of one agent by account name.
 func (h *History) Load(ctx context.Context, agentID string) (map[string]history.Account, error) {
 	accounts, err := batch.Get(ctx, &h.plan, historyKey, agentID, h.load)
 	return maps.Clone(accounts), err
 }
 
-// load reads the history of the given agents. What was saved before is
-// sent and refreshed first, so that it is read back.
 func (h *History) load(ctx context.Context, ids []string) (map[string]map[string]history.Account, error) {
 
 	if err := h.Flush(ctx); err != nil {
@@ -130,13 +122,8 @@ func (h *History) load(ctx context.Context, ids []string) (map[string]map[string
 	}
 }
 
-// pageSize is how many accounts one history read returns.
 const pageSize = 1000
 
-// Save writes each account under agent/account, replacing the earlier
-// version. Later reads of the same pass see it (op.acc.6 EV-06 reads what
-// op.acc.1 saved): the chunk in memory is updated, and Flush sends and
-// refreshes before the next chunk is read.
 func (h *History) Save(ctx context.Context, accounts []history.Account) error {
 
 	for _, a := range accounts {
@@ -160,7 +147,6 @@ func (h *History) Save(ctx context.Context, accounts []history.Account) error {
 	return nil
 }
 
-// send writes the pending accounts in one bulk request.
 func (h *History) send(ctx context.Context) error {
 
 	h.mu.Lock()
@@ -191,7 +177,6 @@ func (h *History) send(ctx context.Context) error {
 	return h.client.Bulk(ctx, body.Bytes())
 }
 
-// Flush sends the pending accounts and makes everything written searchable.
 func (h *History) Flush(ctx context.Context) error {
 
 	if err := h.send(ctx); err != nil {

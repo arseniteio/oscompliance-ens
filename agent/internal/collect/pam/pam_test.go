@@ -12,7 +12,6 @@ func TestCollectPAM(t *testing.T) {
 
 	dir := t.TempDir()
 
-	// Debian style: @include.
 	collecttest.Write(t, filepath.Join(dir, "sshd"), "# sshd\n@include common-auth\naccount required pam_nologin.so\n")
 	collecttest.Write(t, filepath.Join(dir, "common-auth"), `auth	[success=1 default=ignore]	pam_unix.so nullok
 auth requisite pam_deny.so # no fallback
@@ -20,11 +19,9 @@ auth required /lib/security/pam_faillock.so authfail \
 	deny=3 unlock_time=0
 `)
 
-	// RHEL style: type include and substack, only that type is taken.
 	collecttest.Write(t, filepath.Join(dir, "login"), "auth substack system-auth\npassword include system-auth\n")
 	collecttest.Write(t, filepath.Join(dir, "system-auth"), "auth required pam_env.so\naccount required pam_unix.so\npassword requisite pam_pwquality.so minlen=12\n-session optional pam_systemd.so\n")
 
-	// A loop and a missing include are problems, not failures.
 	collecttest.Write(t, filepath.Join(dir, "su"), "@include su\n@include missing\n")
 
 	facts := collecttest.Facts(t, func(e *emit.Emitter) error {
@@ -58,7 +55,6 @@ auth required /lib/security/pam_faillock.so authfail \
 		}
 	}
 
-	// The continuation is joined and the include chain recorded.
 	faillock := rules[2]
 	if args := faillock["args"].([]any); len(args) != 2 || args[0] != "deny=3" {
 		t.Errorf("faillock args: %v", faillock["args"])
@@ -78,7 +74,6 @@ auth required /lib/security/pam_faillock.so authfail \
 		t.Errorf("problems: %v", problems)
 	}
 
-	// Types keeps the stacks asked for, includes still followed.
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error {
 		return Collect(e, Config{Dir: dir, Services: []string{"sshd"}, Types: []string{"account"}})
 	})

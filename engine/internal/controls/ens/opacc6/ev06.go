@@ -11,20 +11,14 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// RegisterParam is the register of compromised credentials and people who
-// left, "usuario | fecha | motivo" (motivo: compromiso or baja). The plugin
-// does not offer it yet; v1 read a file on every machine instead.
 const RegisterParam = "P-12"
 
-// Notice is one register row.
 type Notice struct {
 	Account string
 	At      time.Time
 	Reason  string
 }
 
-// ParseRegister reads the register rows. The date is RFC 3339, or a day
-// (YYYY-MM-DD, taken as 00:00 UTC: the earliest it can mean).
 func ParseRegister(rows []string) ([]Notice, string) {
 
 	var out []Notice
@@ -56,35 +50,19 @@ func ParseRegister(rows []string) ([]Notice, string) {
 	return out, ""
 }
 
-// EV06Input is what EV-06 (disablement after compromise or leaving) needs.
 type EV06Input struct {
-	// History is the account history op.acc.1 keeps for the agent.
 	History map[string]history.Account
 	Now     time.Time
 
 	Notices        []Notice
 	NoticesProblem string
 
-	// MaxHours is P-06; MaxHoursProblem says why it cannot be used.
 	MaxHours        int
 	MaxHoursProblem string
 }
 
-// JudgeEV06 judges EV-06 as described in catalog/docs/contracts/op.acc.6.md,
-// for each notice of an account this machine has:
-//
-//  1. Register or P-06 unusable: NOT_EVALUABLE, CONFIGURATION.
-//  2. Disabled or deleted: the hours from the notice to the first pass that
-//     saw it so (an account already disabled before the notice took 0).
-//     Still enabled: the hours since the notice.
-//  3. More than P-06: NON_COMPLIANT.
-//  4. Disabled when the engine first saw the account, after the notice:
-//     only an upper bound is known; within P-06 it counts as on time, beyond
-//     it NOT_EVALUABLE, EVIDENCE (v1 blocked on every such case).
-//  5. Otherwise COMPLIANT, also with no notice for this machine.
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
-	// 1. Parameters.
 	if in.NoticesProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, RegisterParam+" (register of compromised and departed accounts): "+in.NoticesProblem)
 	}
@@ -102,7 +80,6 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 			continue
 		}
 
-		// 2. When it stopped being usable.
 		var end *time.Time
 		switch {
 		case a.DeletedAt != nil:
@@ -123,14 +100,14 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		case !end.After(n.At):
 			onTime = append(onTime, where+": already disabled")
 		case a.DeletedAt == nil && !a.DisabledObserved:
-			// 4. Disabled when first seen: it took at most this long.
+
 			if took := end.Sub(n.At); took > limit {
 				unknown = append(unknown, fmt.Sprintf("%s: disabled within %d hours, when it took is unknown", where, int(took.Hours())))
 			} else {
 				onTime = append(onTime, where)
 			}
 		default:
-			// 3. Measured.
+
 			if took := end.Sub(n.At); took > limit {
 				late = append(late, fmt.Sprintf("%s: disabled after %d hours", where, int(took.Hours())))
 			} else {
@@ -148,7 +125,6 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
 	}
 
-	// 5. On time.
 	if len(onTime) == 0 {
 		return verdict.Judgement{Status: verdict.Compliant, Reason: "no notice in the register for an account of this machine"}
 	}

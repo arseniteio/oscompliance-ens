@@ -9,19 +9,14 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Config says where the packet filter tools are.
 type Config struct {
-	Nft       string // /usr/sbin/nft
-	Iptables  string // /usr/sbin/iptables
-	Ip6tables string // /usr/sbin/ip6tables
+	Nft       string
+	Iptables  string
+	Ip6tables string
 }
 
-// Default is where Debian and RHEL install them.
 var Default = Config{Nft: "/usr/sbin/nft", Iptables: "/usr/sbin/iptables", Ip6tables: "/usr/sbin/ip6tables"}
 
-// Collect emits the firewall_snapshot: the base chains of the input
-// and forward hooks and their policy. nft is asked first: it also shows
-// what iptables-nft and ufw load.
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	s := fact.FirewallSnapshot{Envelope: e.Envelope(fact.FirewallSnapshotFact), Status: fact.SourceRead, Chains: []fact.FirewallChain{}}
@@ -56,8 +51,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// nftChains reads "nft -j list chains": the base chains of the input and
-// forward hooks.
 func nftChains(out string) ([]fact.FirewallChain, error) {
 
 	var doc struct {
@@ -85,7 +78,7 @@ func nftChains(out string) ([]fact.FirewallChain, error) {
 		}
 		policy := c.Policy
 		if policy == "" {
-			policy = "accept" // nft's default policy
+			policy = "accept"
 		}
 		chains = append(chains, fact.FirewallChain{Family: c.Family, Table: c.Table, Name: c.Name, Hook: c.Hook, Policy: policy})
 	}
@@ -93,7 +86,6 @@ func nftChains(out string) ([]fact.FirewallChain, error) {
 	return chains, nil
 }
 
-// iptablesChains reads the "-P INPUT DROP" lines of "iptables -S".
 func iptablesChains(out, family string) []fact.FirewallChain {
 
 	var chains []fact.FirewallChain

@@ -58,7 +58,6 @@ ALL ALL = /usr/bin/who
 		t.Errorf("reasons: %s", reasons)
 	}
 
-	// No sudoers: sudo is not installed, nobody has it.
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error {
 		return Collect(e, Config{Path: filepath.Join(dir, "nothing")})
 	})

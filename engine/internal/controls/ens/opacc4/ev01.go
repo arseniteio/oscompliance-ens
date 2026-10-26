@@ -1,7 +1,3 @@
-// Package opacc4 judges op.acc.4 (management of access rights): what is
-// open to anyone, who holds which privileges against the matrix of P-01,
-// who changes rights, who reaches need-to-know resources, and whether
-// rights are reviewed.
 package opacc4
 
 import (
@@ -15,36 +11,21 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV01Input is what EV-01 (deny by default) needs.
 type EV01Input struct {
 	Firewall *fact.FirewallSnapshot
 	Settings opacc6.Settings
 
-	// Resources is the recurso column of P-01: the openings authorised.
 	Resources        []string
 	ResourcesProblem string
 }
 
-// Opening is something that admits anyone unless told otherwise.
 type Opening struct {
 	Resource string
 	Detail   string
 }
 
-// JudgeEV01 judges EV-01 as described in catalog/docs/contracts/op.acc.4.md:
-//
-//  1. Firewall or configuration facts unusable: NOT_EVALUABLE, COLLECTION.
-//  2. Openings: the packet filter accepts by default on input or forward,
-//     or there is none (no base input chain accepts everything; v1 passed a
-//     machine with an empty ruleset); a Samba share open to guests; vsftpd
-//     with anonymous access.
-//  3. An opening whose resource is not in the recurso column of P-01:
-//     NON_COMPLIANT. Openings with P-01 unusable: NOT_EVALUABLE,
-//     CONFIGURATION.
-//  4. Otherwise COMPLIANT.
 func JudgeEV01(in EV01Input) verdict.Judgement {
 
-	// 1. Facts.
 	switch {
 	case in.Firewall == nil:
 		return passes.NotEvaluable(verdict.CauseCollection, "no firewall_snapshot in the window")
@@ -55,7 +36,6 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		return gap
 	}
 
-	// 2. What is open.
 	openings, unreadable := Openings(*in.Firewall, in.Settings)
 	if len(unreadable) > 0 {
 		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unreadable, "; "))
@@ -64,7 +44,6 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.Compliant, Reason: "the packet filter denies by default and nothing admits anonymous access"}
 	}
 
-	// 3. Against P-01.
 	if in.ResourcesProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01: "+in.ResourcesProblem)
 	}
@@ -91,11 +70,8 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: "every opening is authorised in P-01: " + strings.Join(allowed, "; ")}
 }
 
-// Openings lists what admits anyone; unreadable lists the sources that
-// could not be read.
 func Openings(fw fact.FirewallSnapshot, settings opacc6.Settings) (openings []Opening, unreadable []string) {
 
-	// The packet filter.
 	switch fw.Tool {
 	case "none":
 		openings = append(openings, Opening{"cortafuegos", "no packet filter installed: everything is accepted"})
@@ -114,7 +90,6 @@ func Openings(fw fact.FirewallSnapshot, settings opacc6.Settings) (openings []Op
 		}
 	}
 
-	// Samba shares open to guests.
 	for _, f := range settings.Files {
 
 		switch {
@@ -147,7 +122,6 @@ func Openings(fw fact.FirewallSnapshot, settings opacc6.Settings) (openings []Op
 	return openings, unreadable
 }
 
-// truthy: Samba and vsftpd booleans (yes, true, 1).
 func truthy(v string) bool {
 	switch strings.ToLower(strings.TrimSpace(v)) {
 	case "yes", "true", "1":

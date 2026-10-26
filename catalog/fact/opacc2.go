@@ -1,7 +1,5 @@
 package fact
 
-// Fact names read by op.acc.2 (and by later controls that need the same
-// observations).
 const (
 	SpecialFileFact       = "special_file"
 	FileSweepSnapshotFact = "file_sweep_snapshot"
@@ -10,7 +8,6 @@ const (
 	SudoersSnapshotFact   = "sudoers_snapshot"
 )
 
-// Values of FileSweepSnapshot.Status.
 const (
 	SweepComplete  = "complete"
 	SweepTimeout   = "timeout"
@@ -18,15 +15,13 @@ const (
 	SweepError     = "error"
 )
 
-// SourceAbsent: the file does not exist (umask and sudoers sources).
 const SourceAbsent = "absent"
 
-// SpecialFile mirrors special_file.v1.json.
 type SpecialFile struct {
 	Envelope
 	Path          string `json:"path"`
-	Kind          string `json:"kind"` // file or directory
-	Mode          string `json:"mode"` // 4 octal digits
+	Kind          string `json:"kind"`
+	Mode          string `json:"mode"`
 	UID           int    `json:"uid"`
 	GID           int    `json:"gid"`
 	SUID          bool   `json:"suid"`
@@ -37,7 +32,6 @@ type SpecialFile struct {
 	NoGroup       bool   `json:"no_group"`
 }
 
-// FileSweepSnapshot mirrors file_sweep_snapshot.v1.json.
 type FileSweepSnapshot struct {
 	Envelope
 	Roots          []string `json:"roots"`
@@ -48,43 +42,38 @@ type FileSweepSnapshot struct {
 	RecordsEmitted int      `json:"records_emitted"`
 }
 
-// UmaskSource is one source of umask_snapshot.v1.json.
 type UmaskSource struct {
 	Path            string   `json:"path"`
-	Status          string   `json:"status"` // read, absent, unreadable
+	Status          string   `json:"status"`
 	Error           string   `json:"error,omitempty"`
 	Umasks          []string `json:"umasks,omitzero"`
 	Uninterpretable []string `json:"uninterpretable,omitempty"`
 }
 
-// UmaskSnapshot mirrors umask_snapshot.v1.json.
 type UmaskSnapshot struct {
 	Envelope
 	Sources []UmaskSource `json:"sources"`
 }
 
-// SudoGrant mirrors sudo_grant.v1.json.
 type SudoGrant struct {
 	Envelope
-	SubjectKind string `json:"subject_kind"` // user, group, uid, gid
+	SubjectKind string `json:"subject_kind"`
 	Subject     string `json:"subject"`
 	File        string `json:"file"`
 	Line        int    `json:"line"`
 	NoPasswd    bool   `json:"nopasswd,omitempty"`
-	// NoPasswdCommands are the commands run without a password.
+
 	NoPasswdCommands []string `json:"nopasswd_commands,omitempty"`
-	// Spec is what the specification grants, as written.
+
 	Spec string `json:"spec,omitempty"`
 }
 
-// SudoersFile is one file of sudoers_snapshot.v1.json.
 type SudoersFile struct {
 	Path   string `json:"path"`
-	Status string `json:"status"` // read, absent, unreadable
+	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
 
-// SudoDefault is one Defaults setting of sudoers_snapshot.v1.json.
 type SudoDefault struct {
 	Binding string `json:"binding"`
 	Setting string `json:"setting"`
@@ -92,7 +81,6 @@ type SudoDefault struct {
 	Line    int    `json:"line"`
 }
 
-// SudoersSnapshot mirrors sudoers_snapshot.v1.json.
 type SudoersSnapshot struct {
 	Envelope
 	Files            []SudoersFile `json:"files"`
@@ -103,7 +91,6 @@ type SudoersSnapshot struct {
 	RecordsEmitted   int           `json:"records_emitted"`
 }
 
-// Fact names of the manager-driven observations of op.acc.2.
 const (
 	WazuhAgentConfigFact   = "wazuh_agent_config"
 	ACLRecordFact          = "acl_record"
@@ -111,7 +98,6 @@ const (
 	AuditWatchSnapshotFact = "audit_watch_snapshot"
 )
 
-// FIMDirectory is one FIM <directories> path of WazuhAgentConfig.
 type FIMDirectory struct {
 	Path     string `json:"path"`
 	Realtime bool   `json:"realtime,omitempty"`
@@ -119,14 +105,12 @@ type FIMDirectory struct {
 	Source   string `json:"source,omitempty"`
 }
 
-// AgentLocalfile is one <localfile> of WazuhAgentConfig.
 type AgentLocalfile struct {
 	Location string `json:"location"`
 	Format   string `json:"format"`
 	Source   string `json:"source,omitempty"`
 }
 
-// WazuhAgentConfig mirrors wazuh_agent_config.v1.json.
 type WazuhAgentConfig struct {
 	Envelope
 	Status            string           `json:"status"`
@@ -138,7 +122,6 @@ type WazuhAgentConfig struct {
 	Localfiles        []AgentLocalfile `json:"localfiles"`
 }
 
-// ACLRecord mirrors acl_record.v1.json.
 type ACLRecord struct {
 	Envelope
 	Path   string   `json:"path"`
@@ -149,7 +132,6 @@ type ACLRecord struct {
 	ACL    []string `json:"acl,omitzero"`
 }
 
-// ACLSnapshot mirrors acl_snapshot.v1.json.
 type ACLSnapshot struct {
 	Envelope
 	Config         string `json:"config"`
@@ -158,7 +140,6 @@ type ACLSnapshot struct {
 	RecordsEmitted int    `json:"records_emitted"`
 }
 
-// Values of AuditWatchSnapshot.Auditd.
 const (
 	AuditdRunning = "running"
 	AuditdStopped = "stopped"
@@ -166,7 +147,6 @@ const (
 	AuditdError   = "error"
 )
 
-// AuditWatchSnapshot mirrors audit_watch_snapshot.v1.json.
 type AuditWatchSnapshot struct {
 	Envelope
 	Auditd string   `json:"auditd"`
@@ -180,10 +160,8 @@ type AuditWatchSnapshot struct {
 	PermRules  int      `json:"perm_rules,omitempty"`
 }
 
-// FirewallSnapshotFact is the fact name of the packet filter.
 const FirewallSnapshotFact = "firewall_snapshot"
 
-// FirewallChain is one base chain of FirewallSnapshot.
 type FirewallChain struct {
 	Family string `json:"family"`
 	Table  string `json:"table,omitempty"`
@@ -192,7 +170,6 @@ type FirewallChain struct {
 	Policy string `json:"policy"`
 }
 
-// FirewallSnapshot mirrors firewall_snapshot.v1.json.
 type FirewallSnapshot struct {
 	Envelope
 	Tool   string          `json:"tool"`

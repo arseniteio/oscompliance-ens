@@ -7,21 +7,18 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 )
 
-// Policy is the newest "politica" line of a service: its lockout and
-// password policy as it declares them.
 type Policy struct {
 	Service string
 	Found   bool
 
-	Lockout      string // activado, desactivado, "" not declared
-	MaxAttempts  int    // 0: not a number or not declared
-	Reactivation string // intervencion, automatica, ""
+	Lockout      string
+	MaxAttempts  int
+	Reactivation string
 
-	MinLength  int    // 0: not declared
-	Complexity string // activada, desactivada, ""
+	MinLength  int
+	Complexity string
 }
 
-// Policies takes the newest politica event of each service.
 func Policies(events []source.ServiceEvent) map[string]Policy {
 
 	out := map[string]Policy{}
@@ -42,12 +39,10 @@ func Policies(events []source.ServiceEvent) map[string]Policy {
 			p.MinLength = n
 		}
 
-		// A max of 0 is no limit: lockout off.
 		if p.Lockout == "activado" && e.MaxIntentos == "0" {
 			p.Lockout = "desactivado"
 		}
 
-		// Events come oldest first: the last one wins.
 		out[e.Service] = p
 	}
 

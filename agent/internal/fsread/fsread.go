@@ -1,6 +1,3 @@
-// Package fsread opens the files the agent reads. The agent runs as root and
-// reads paths users control (authorized_keys) or the manager names (service
-// logs): a FIFO or a device there must not block or feed it forever.
 package fsread
 
 import (
@@ -10,15 +7,11 @@ import (
 	"syscall"
 )
 
-// MaxFile bounds what ReadFile loads: configuration and account files are
-// far smaller.
 const MaxFile = 16 << 20
 
-// Open opens a regular file for reading. It opens without blocking, so a
-// FIFO cannot hold the agent, and refuses anything that is not a regular
-// file.
 func Open(path string) (*os.File, error) {
 
+	// Non-blocking, so a FIFO planted in a read path cannot hang the agent.
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK|syscall.O_NOCTTY, 0)
 	if err != nil {
 		return nil, err
@@ -38,7 +31,6 @@ func Open(path string) (*os.File, error) {
 	return f, nil
 }
 
-// ReadFile reads a regular file of at most MaxFile bytes.
 func ReadFile(path string) ([]byte, error) {
 
 	f, err := Open(path)

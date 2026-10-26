@@ -14,7 +14,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Facts is what op.acc.2 reads (source.Source in production).
 type Facts interface {
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
@@ -37,12 +36,10 @@ type Facts interface {
 	ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error)
 }
 
-// maxProbes is how many probes of the window are compared.
 const maxProbes = 48
 
 const control = "op.acc.2"
 
-// Evaluator judges op.acc.2.
 type Evaluator struct {
 	facts Facts
 
@@ -59,15 +56,12 @@ type Evaluator struct {
 	seen       map[string]map[string]bool
 }
 
-// NewEvaluator returns the op.acc.2 evaluator.
 func NewEvaluator(facts Facts) *Evaluator {
 	return &Evaluator{facts: facts}
 }
 
-// Control is the catalog id.
 func (e *Evaluator) Control() string { return control }
 
-// Begin reads the newest snapshot of every fact type, for every agent.
 func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	e.pass = pass
@@ -107,15 +101,12 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// Agent judges the seven evidences of op.acc.2. A read that fails leaves
-// out the evidences that need it: they count as COLLECTION gaps.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	results := map[string]evaluator.Result{}
 	var errs []error
 	since := e.pass.LookbackStart
 
-	// The sweep feeds EV-01 and EV-07.
 	var sw Sweep
 	if s, ok := e.sweeps[agent.ID]; ok {
 		files, err := e.facts.SpecialFiles(ctx, agent.ID, s.RecordsRun(), since)
@@ -144,7 +135,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results["EV-07"] = evaluator.Result{Judgement: JudgeEV07(ev07), RunID: runOf(sw.Snapshot)}
 	}
 
-	// EV-05: accounts, groups and sudoers.
 	ev05 := EV05Input{}
 	var readErr error
 
@@ -178,7 +168,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		config = &c
 	}
 
-	// EV-02: Wazuh FIM on the P-02 paths.
 	if changes, err := e.facts.FIMChanges(ctx, agent.ID, window); err != nil {
 		errs = append(errs, fmt.Errorf("fim changes: %w", err))
 	} else {
@@ -189,7 +178,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results["EV-02"] = evaluator.Result{Judgement: JudgeEV02(in)}
 	}
 
-	// EV-03: sudo and su, against the privileged accounts of EV-05.
 	elevations, err := e.facts.Elevations(ctx, agent.ID, window)
 	if err == nil {
 		var logins []source.Login
@@ -210,7 +198,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results["EV-03"] = evaluator.Result{Judgement: JudgeEV03(in)}
 	}
 
-	// EV-04: rights of the P-08 paths.
 	acls := ACLs{}
 	var aclErr error
 	if s, ok := e.acls[agent.ID]; ok {
@@ -232,7 +219,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results["EV-04"] = evaluator.Result{Judgement: JudgeEV04(in), RunID: runID}
 	}
 
-	// EV-06: audited accesses against P-06 and P-09.
 	if accesses, err := e.facts.AuditAccesses(ctx, agent.ID, window); err != nil {
 		errs = append(errs, fmt.Errorf("audit accesses: %w", err))
 	} else {
@@ -261,8 +247,6 @@ func runOf(s *fact.FileSweepSnapshot) string {
 	return s.RecordsRun()
 }
 
-// ev01Params reads P-02, P-11, P-03 and P-07. Every missing required one is
-// named; P-11 is optional.
 func ev01Params(policy params.Lister, agentID string) (scope, exceptions []string, sticky bool, umask, problem string) {
 
 	var problems []string
@@ -292,8 +276,6 @@ func ev01Params(policy params.Lister, agentID string) (scope, exceptions []strin
 	return scope, exceptions, sticky, umask, joinProblems(problems)
 }
 
-// ev05Params reads P-05 (only its presence: the model is declarative),
-// P-09 (usuario column) and P-12.
 func ev05Params(policy params.Lister, agentID string) (groups, declared []string, problem string) {
 
 	var problems []string

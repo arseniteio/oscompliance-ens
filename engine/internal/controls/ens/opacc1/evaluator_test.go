@@ -17,7 +17,7 @@ import (
 type fakeFacts struct {
 	currentIdentity map[string][]fact.IdentitySnapshot
 	earlierIdentity map[string][]fact.IdentitySnapshot
-	identityRecords map[string][]fact.IdentityRecord // by run_id
+	identityRecords map[string][]fact.IdentityRecord
 	identityAsked   []string
 	failIdentityRun string
 }
@@ -107,11 +107,11 @@ func TestEvaluatorPicksPreviousCompleteIdentityPass(t *testing.T) {
 	facts := &fakeFacts{
 		currentIdentity: map[string][]fact.IdentitySnapshot{"001": {cur}},
 		earlierIdentity: map[string][]fact.IdentitySnapshot{"001": {
-			cur,                                 // the current pass itself: skipped
-			identityPass("unread", 0, false),    // shadow not read: skipped
-			identityPass("incomplete", 2, true), // 1 of 2 records: skipped
-			identityPass("good", 1, true),       // previous
-			identityPass("older", 1, true),      // never reached
+			cur,
+			identityPass("unread", 0, false),
+			identityPass("incomplete", 2, true),
+			identityPass("good", 1, true),
+			identityPass("older", 1, true),
 		}},
 		identityRecords: map[string][]fact.IdentityRecord{
 			"cur": {{AccountName: "root"}}, "incomplete": {{}}, "good": {{AccountName: "root"}}, "older": {{}},
@@ -141,7 +141,6 @@ func TestEvaluatorPicksPreviousCompleteIdentityPass(t *testing.T) {
 	}
 }
 
-// A failing identity read loses the evidences that need it, not the others.
 func TestEvaluatorKeepsOtherEvidencesOnReadError(t *testing.T) {
 	facts := &fakeFacts{
 		currentIdentity: map[string][]fact.IdentitySnapshot{"001": {identityPass("cur", 1, true)}},
@@ -164,7 +163,6 @@ func TestEvaluatorKeepsOtherEvidencesOnReadError(t *testing.T) {
 	}
 }
 
-// The current complete pass moves the EV-08 history forward.
 func TestEvaluatorSavesHistory(t *testing.T) {
 	facts := &fakeFacts{
 		currentIdentity: map[string][]fact.IdentitySnapshot{"001": {identityPass("cur", 1, true)}},

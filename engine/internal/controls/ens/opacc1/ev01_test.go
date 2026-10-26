@@ -11,7 +11,6 @@ import (
 
 var evalDay = time.Date(2026, 10, 22, 0, 0, 0, 0, time.UTC)
 
-// account is an identity record; keys < 0 means "SSH keys unknown".
 func account(name string, uid int, state string, keys int) fact.IdentityRecord {
 	r := fact.IdentityRecord{AccountName: name, UID: uid, GID: uid, Shell: "/bin/bash", PasswordState: state}
 	if keys >= 0 {
@@ -20,7 +19,6 @@ func account(name string, uid int, state string, keys int) fact.IdentityRecord {
 	return r
 }
 
-// inventory is a complete pass of the given records, with P-10 = 1000.
 func inventory(records ...fact.IdentityRecord) Inventory {
 	return Inventory{Current: identitySnapshot("cur", len(records)), Records: records, UIDMin: DefaultUIDMin, Today: evalDay}
 }

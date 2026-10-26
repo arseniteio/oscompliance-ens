@@ -1,6 +1,3 @@
-// Package passes checks that a pass of facts can be used: present in the
-// window, its sources read, and every announced record received. Every
-// control that reads the same facts gives the same reasons.
 package passes
 
 import (
@@ -10,13 +7,10 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// NotEvaluable builds a NOT_EVALUABLE judgement.
 func NotEvaluable(cause verdict.Cause, reason string) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: cause, Reason: reason}
 }
 
-// IdentityGap: the identity pass (passwd + shadow) cannot be used. found is
-// true when it cannot; the judgement says why.
 func IdentityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (gap verdict.Judgement, found bool) {
 
 	if current == nil {
@@ -33,13 +27,10 @@ func IdentityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) 
 			fmt.Sprintf("%s %s: %s", current.ShadowPath, current.ShadowStatus, current.ShadowError)), true
 	}
 
-	// A complete read always carries the counter (schema). Without it the
-	// fact is broken, not missing, hence EVIDENCE and not COLLECTION.
 	if current.RecordsEmitted == nil {
 		return NotEvaluable(verdict.CauseEvidence, "read snapshot without records_emitted"), true
 	}
 
-	// More than announced is fine: Wazuh can deliver a line twice.
 	if len(records) < *current.RecordsEmitted {
 		return NotEvaluable(verdict.CauseCollection,
 			fmt.Sprintf("pass %s incomplete: %d of %d identity_record received", current.RunID, len(records), *current.RecordsEmitted)), true
@@ -48,7 +39,6 @@ func IdentityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) 
 	return verdict.Judgement{}, false
 }
 
-// GroupGap: the group pass cannot be used.
 func GroupGap(groups *fact.GroupSnapshot, records []fact.GroupRecord) (gap verdict.Judgement, found bool) {
 
 	if groups == nil {
@@ -72,9 +62,6 @@ func GroupGap(groups *fact.GroupSnapshot, records []fact.GroupRecord) (gap verdi
 	return verdict.Judgement{}, false
 }
 
-// SweepGap: the filesystem sweep cannot be used at all (missing, or it
-// could not start). A timed-out, cut or partly unreadable sweep is still
-// usable for what it found; Partial says whether silence can be trusted.
 func SweepGap(sweep *fact.FileSweepSnapshot, records []fact.SpecialFile) (gap verdict.Judgement, found bool) {
 
 	if sweep == nil {
@@ -93,8 +80,6 @@ func SweepGap(sweep *fact.FileSweepSnapshot, records []fact.SpecialFile) (gap ve
 	return verdict.Judgement{}, false
 }
 
-// Partial says why a usable sweep does not cover everything ("" when it does):
-// findings stand, but "nothing found" cannot be asserted.
 func Partial(sweep fact.FileSweepSnapshot) string {
 
 	switch {
@@ -109,8 +94,6 @@ func Partial(sweep fact.FileSweepSnapshot) string {
 	return ""
 }
 
-// ConfigGap: the configuration read cannot be used. One unreadable source is
-// not a gap of the whole read: each judge asks for the sources it needs.
 func ConfigGap(snapshot *fact.ConfigSnapshot, records []fact.ConfigFile) (gap verdict.Judgement, found bool) {
 
 	if snapshot == nil {
@@ -125,8 +108,6 @@ func ConfigGap(snapshot *fact.ConfigSnapshot, records []fact.ConfigFile) (gap ve
 	return verdict.Judgement{}, false
 }
 
-// PAMGap: the PAM read cannot be used. A missing /etc/pam.d is not a gap:
-// nothing authenticates through PAM, and the judge decides what that means.
 func PAMGap(snapshot *fact.PAMSnapshot, records []fact.PAMRule) (gap verdict.Judgement, found bool) {
 
 	if snapshot == nil {

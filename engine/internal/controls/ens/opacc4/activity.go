@@ -14,9 +14,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// AuditChain says why audited silence on the machine proves nothing, ""
-// when it does: auditd runs, the needed rules are loaded and Wazuh reads
-// the audit log.
 func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool, paths []string) string {
 
 	switch {
@@ -51,7 +48,6 @@ func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool,
 	return "Wazuh does not read the audit log (no localfile with log_format audit)"
 }
 
-// person names the account behind an audited access.
 func person(a source.AuditAccess, accounts Accounts) string {
 
 	for _, id := range []string{a.AUID, a.UID} {
@@ -71,10 +67,6 @@ func person(a source.AuditAccess, accounts Accounts) string {
 	return ""
 }
 
-// JudgeEV04 judges EV-04 (rights changed by someone not competent): every
-// change of mode, owner or attributes made by a person, and every write to
-// the account and sudo files (key oscompliance_perm), must be by an account
-// of P-02. Silence needs the audit chain with the permission rules.
 func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []string, problem, chain string) verdict.Judgement {
 
 	if problem != "" {
@@ -118,14 +110,8 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d rights changes, all by accounts of P-02", changes)}
 }
 
-// ReviewParam is the register of access rights reviews, "fecha | alcance
-// | responsable". The plugin does not offer it yet; v1 read a file on every
-// machine.
 const ReviewParam = "P-08"
 
-// JudgeEV05 judges EV-05 (periodic review): the newest review date of the
-// register, not in the future, must be within P-03 days. A future date is
-// left out instead of hiding the real ones (v1 kept only the newest line).
 func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem string, now time.Time) verdict.Judgement {
 
 	if daysProblem != "" {
@@ -173,10 +159,6 @@ func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem strin
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("last review %d days ago (P-03 %d): %s", age, maxDays, who)}
 }
 
-// JudgeEV06 judges EV-06 (remote access): every remote login of the window
-// must be by an account of P-05. P-05 lines are read up to the first "|",
-// so an annotation does not turn an authorised account into an offender
-// (v1 compared the whole line). Silence needs the auth log probe.
 func JudgeEV06(logins []source.Login, authorised []string, problem string, log passes.AuthLog) verdict.Judgement {
 
 	if problem != "" {
@@ -215,13 +197,11 @@ func JudgeEV06(logins []source.Login, authorised []string, problem string, log p
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d remote logins, all by accounts of P-05", remote)}
 }
 
-// Sensitive is one P-07 row: a resource and the profiles with need to know.
 type Sensitive struct {
 	Path     string
 	Profiles map[string]bool
 }
 
-// ParseSensitive reads P-07, "recurso | perfiles".
 func ParseSensitive(rows []string) []Sensitive {
 	var out []Sensitive
 	for _, r := range rows {
@@ -238,11 +218,6 @@ func ParseSensitive(rows []string) []Sensitive {
 	return out
 }
 
-// JudgeEV07 judges EV-07 (need to know): each audited access under a P-07
-// resource (the longest that contains it: a directory covers its files,
-// v1 compared the exact path) must be by an account with one of its
-// profiles among its groups (primary and secondary; v1 used the primary
-// group only). Silence needs auditd watching every P-07 resource.
 func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sensitive, problem, chain string) verdict.Judgement {
 
 	if problem != "" {

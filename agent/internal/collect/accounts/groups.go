@@ -11,23 +11,16 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// GroupsConfig holds the agent-side parameters of EV-06 (contract section 6).
-// Which groups grant privilege (P-11) and the admin suffix (P-12) are engine
-// parameters: the agent reports every group.
 type GroupsConfig struct {
 	GroupPath string
 }
 
-// groupEntry is one well-formed line of the group file.
 type groupEntry struct {
 	name    string
 	gid     int
 	members []string
 }
 
-// CollectGroups emits one group_record per group, then one group_snapshot. As
-// in EV-01, a file that cannot be read is reported in the snapshot, not
-// returned as an error.
 func CollectGroups(e *emit.Emitter, cfg GroupsConfig) error {
 
 	snapshot := fact.GroupSnapshot{
@@ -43,8 +36,6 @@ func CollectGroups(e *emit.Emitter, cfg GroupsConfig) error {
 		return e.Emit(snapshot)
 	}
 
-	// Same guard as passwd: an empty or truncated file would look like a
-	// system where nobody holds privilege.
 	if !hasRootGroup(groups) {
 		snapshot.GroupStatus = fact.SourceImplausible
 		snapshot.GroupError = fmt.Sprintf("%s has no entry with GID 0", cfg.GroupPath)
@@ -72,12 +63,9 @@ func CollectGroups(e *emit.Emitter, cfg GroupsConfig) error {
 	snapshot.GroupStatus = fact.SourceRead
 	snapshot.RecordsEmitted = &recordsEmitted
 
-	// Emitted last: it tells the engine the pass is complete.
 	return e.Emit(snapshot)
 }
 
-// readGroup parses the whole group file before anything is emitted. Lines
-// that are not name:password:gid:members are skipped, as in readPasswd.
 func readGroup(path string) ([]groupEntry, error) {
 
 	file, err := fsread.Open(path)
@@ -106,7 +94,6 @@ func readGroup(path string) ([]groupEntry, error) {
 			continue
 		}
 
-		// Never nil, so an empty group is written as [] (schema).
 		members := []string{}
 
 		for _, member := range strings.Split(fields[3], ",") {

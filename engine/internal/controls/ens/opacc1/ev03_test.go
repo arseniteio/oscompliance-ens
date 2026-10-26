@@ -27,7 +27,7 @@ func TestJudgeEV03(t *testing.T) {
 		in      LoginInput
 		status  verdict.Status
 		cause   verdict.Cause
-		reasons []string // each must appear in the reason
+		reasons []string
 	}{
 		{"P-04 not set", LoginInput{ForbiddenProblem: "not set", AuthSeen: true}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-04", "not set"}},
 		{"P-04 problem wins over a silent source", LoginInput{ForbiddenProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, nil},
@@ -62,7 +62,6 @@ func TestJudgeEV03(t *testing.T) {
 	}
 }
 
-// EV-05 is the same judgement against P-03: only the list and the words change.
 func TestJudgeEV05(t *testing.T) {
 	service := params.ListMatcher("daemon", "www-data", "sshd")
 

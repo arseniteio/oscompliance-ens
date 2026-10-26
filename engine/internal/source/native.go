@@ -9,39 +9,30 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// FIM, sudo and audit alerts Wazuh raises by itself, and the facts that say
-// what it watches.
-
-// WazuhAgentConfigs returns, per agent, the newest wazuh_agent_config.
 func (s *Source) WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error) {
 	return newest[fact.WazuhAgentConfig](ctx, s, fact.WazuhAgentConfigFact, since)
 }
 
-// ACLSnapshots returns, per agent, the newest acl_snapshot.
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }
 
-// ACLRecords returns every acl_record of one read of one agent.
 func (s *Source) ACLRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ACLRecord, error) {
 	return passRecords[fact.ACLRecord](ctx, s, fact.ACLRecordFact, agentID, runID, since)
 }
 
-// AuditWatchSnapshots returns, per agent, the newest audit_watch_snapshot.
 func (s *Source) AuditWatchSnapshots(ctx context.Context, since time.Time) (map[string]fact.AuditWatchSnapshot, error) {
 	return newest[fact.AuditWatchSnapshot](ctx, s, fact.AuditWatchSnapshotFact, since)
 }
 
-// FIMChange is one file integrity alert.
 type FIMChange struct {
 	Time    time.Time
 	Path    string
-	Event   string // added, modified, deleted
+	Event   string
 	Changed []string
 	AlertID string
 }
 
-// FIMChanges returns the FIM alerts of one agent since the given time.
 func (s *Source) FIMChanges(ctx context.Context, agentID string, since time.Time) ([]FIMChange, error) {
 	return batched(ctx, s, "fim|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]FIMChange, error) {
 		return s.fimChanges(ctx, ids, since)
@@ -89,28 +80,20 @@ func (s *Source) fimChanges(ctx context.Context, ids []string, since time.Time) 
 	return out, err
 }
 
-// sudoSuccess are the Wazuh rules of a command run through sudo: to root,
-// to another user, and the first time a user does it.
 var sudoSuccess = []any{"5402", "5403", "5407"}
 
-// sudoDenied are the rules of a refused sudo.
 var sudoDenied = []any{"5401", "5404", "5405", "5406"}
 
-// Elevation is one change of identity: sudo or su.
 type Elevation struct {
 	Time    time.Time
-	From    string // data.srcuser
-	To      string // data.dstuser
-	Method  string // sudo, su
+	From    string
+	To      string
+	Method  string
 	Command string
 	Denied  bool
-	Count   int // how many times; 0 counts as one
+	Count   int
 }
 
-// Elevations returns the sudo runs and refusals of one agent since the
-// given time, one per user, target, command and outcome with how many times
-// and the last time: a busy server (Zimbra runs sudo all day) gives few
-// rows. su comes from Logins (PAM sessions of su).
 func (s *Source) Elevations(ctx context.Context, agentID string, since time.Time) ([]Elevation, error) {
 	return batched(ctx, s, "elevations|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]Elevation, error) {
 		return s.elevations(ctx, ids, since)
@@ -153,13 +136,11 @@ func (s *Source) elevations(ctx context.Context, ids []string, since time.Time) 
 	return out, err
 }
 
-// AuditRule is the Wazuh rule of the audited accesses (catalog/wazuh).
 const AuditRule = "119004"
 
-// AuditAccess is one audited access to a watched path.
 type AuditAccess struct {
 	Time    time.Time
-	Key     string // oscompliance_read, _write, _exec, _attr
+	Key     string
 	Success string
 	AUID    string
 	UID     string
@@ -167,8 +148,6 @@ type AuditAccess struct {
 	Exe     string
 }
 
-// AuditAccesses returns the audited accesses of one agent since the given
-// time.
 func (s *Source) AuditAccesses(ctx context.Context, agentID string, since time.Time) ([]AuditAccess, error) {
 	return batched(ctx, s, "audit|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]AuditAccess, error) {
 		return s.auditAccesses(ctx, ids, since)
@@ -222,7 +201,6 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 	return out, err
 }
 
-// FirewallSnapshots returns, per agent, the newest firewall_snapshot.
 func (s *Source) FirewallSnapshots(ctx context.Context, since time.Time) (map[string]fact.FirewallSnapshot, error) {
 	return newest[fact.FirewallSnapshot](ctx, s, fact.FirewallSnapshotFact, since)
 }

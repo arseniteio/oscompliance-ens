@@ -42,7 +42,6 @@ func TestCollectListening(t *testing.T) {
 		"   0: 00000000:04AA 00000000:0000 07 00000000:00000000 00:00000000 00000000     0        0 2001 2 0\n"+
 		"   1: 050AA8C0:A1B2 08080808:0035 01 00000000:00000000 00:00000000 00000000     0        0 2002 2 0\n")
 
-	// pid 812 is sshd and holds socket 1001.
 	collecttest.Write(t, filepath.Join(proc, "812/comm"), "sshd\n")
 	collecttest.Write(t, filepath.Join(proc, "812/cgroup"), "0::/system.slice/ssh.service\n")
 	if err := os.MkdirAll(filepath.Join(proc, "812/fd"), 0o755); err != nil {

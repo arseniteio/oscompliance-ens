@@ -8,8 +8,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// mechanismRequirements are the requirements of the four reinforcements,
-// with the mechanisms (P-01) under which each one applies.
 var mechanismRequirements = map[string][]string{
 	"op.acc.6.r1.1": {"R1"},
 	"op.acc.6.r1.2": {"R1", "R2"},
@@ -22,8 +20,6 @@ var mechanismRequirements = map[string][]string{
 
 var mechanismValue = regexp.MustCompile(`^R([1-4])\b`)
 
-// Mechanism reads P-01: "R1" to "R4", "" with the problem when it cannot be
-// used.
 func Mechanism(values []string, err error) (mechanism, problem string) {
 
 	if err != nil {
@@ -42,12 +38,6 @@ func Mechanism(values []string, err error) (mechanism, problem string) {
 	return "R" + m[1], ""
 }
 
-// MechanismDecisions are the decisions P-01 takes on the seven reinforcement
-// requirements: a requirement of a mechanism not chosen is NOT_APPLICABLE;
-// without a usable P-01 every one of them counts against, and no P-ATT
-// attestation can prove a reinforcement nobody chose (v1 accepted one). The
-// requirements of the chosen mechanism get no decision: their evidences, or
-// P-ATT for the certificate ones, prove them.
 func MechanismDecisions(mechanism, problem string) map[string]verdict.Judgement {
 
 	decisions := map[string]verdict.Judgement{}

@@ -10,31 +10,17 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV04Input is what EV-04 (periodic credential change) needs.
 type EV04Input struct {
 	Services []Service
 	Accounts []source.ServiceAccount
 	Now      time.Time
 
-	// MaxAge is P-05 in days; MaxAgeProblem says why it cannot be used.
 	MaxAge        int
 	MaxAgeProblem string
 }
 
-// JudgeEV04 judges EV-04 as described in catalog/docs/contracts/op.acc.5.md.
-// Accounts are those that logged in or changed their credential and were not
-// disabled afterwards, as far back as the index goes:
-//
-//  1. P-05 unusable or no service: NOT_EVALUABLE, CONFIGURATION.
-//  2. The last credential change older than P-05: NON_COMPLIANT.
-//  3. No change recorded: the credential is at least as old as the oldest
-//     event the index keeps of the service; when that is beyond P-05,
-//     NON_COMPLIANT (v1 left such accounts unknown forever), otherwise
-//     NOT_EVALUABLE, EVIDENCE.
-//  4. No account: NOT_EVALUABLE, EVIDENCE. Otherwise COMPLIANT.
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
-	// 1. Parameter and subject.
 	if in.MaxAgeProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-05: "+in.MaxAgeProblem)
 	}
@@ -67,12 +53,12 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		who := a.Service + " " + a.User
 
 		switch {
-		// 2. Measured.
+
 		case !a.LastChange.IsZero():
 			if age := in.Now.Sub(a.LastChange); age > limit {
 				old = append(old, fmt.Sprintf("%s (changed %d days ago)", who, int(age.Hours()/24)))
 			}
-		// 3. At least as old as the index.
+
 		case !oldest[a.Service].IsZero() && in.Now.Sub(oldest[a.Service]) > limit:
 			old = append(old, fmt.Sprintf("%s (no change in the %d days the index keeps)", who, int(in.Now.Sub(oldest[a.Service]).Hours()/24)))
 		default:
@@ -84,7 +70,6 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("credentials older than %d days: %s", in.MaxAge, strings.Join(old, ", "))}
 	}
 
-	// 4. What could not be dated.
 	if len(unknown) > 0 {
 		return passes.NotEvaluable(verdict.CauseEvidence, "no credential change recorded yet for: "+strings.Join(unknown, ", "))
 	}

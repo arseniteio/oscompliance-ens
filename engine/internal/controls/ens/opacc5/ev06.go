@@ -11,9 +11,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// revealing are the rejection messages that tell an attacker something:
-// that the account does not exist, that only the password was wrong, the
-// state of the account, or technical detail. Spanish and English.
 var revealing = []struct {
 	pattern string
 	re      *regexp.Regexp
@@ -24,11 +21,8 @@ var revealing = []struct {
 	{"traza_tecnica", regexp.MustCompile(`(?i)exception|traceback|stack\s*trace|SQLSTATE|ORA-\d+|nginx/\d|apache/\d|version\s+\d+\.\d+`)},
 }
 
-// RevealingPattern names what a message reveals, "" when nothing.
 func RevealingPattern(message string) string {
 
-	// "Usuario o contraseña incorrectos" is the right answer: it says
-	// nothing about which one failed.
 	for _, r := range revealing {
 		if r.re.MatchString(message) {
 			return r.pattern
@@ -37,22 +31,13 @@ func RevealingPattern(message string) string {
 	return ""
 }
 
-// EV06Input is what EV-06 (rejection messages) needs.
 type EV06Input struct {
 	Services []Service
-	// Messages of the window, and whether each service ever logged one.
+
 	Messages   []source.MessageCount
 	EverLogged map[string]bool
 }
 
-// JudgeEV06 judges EV-06 as described in catalog/docs/contracts/op.acc.5.md:
-//
-//  1. No service: NOT_EVALUABLE, CONFIGURATION.
-//  2. A rejection message of the window that reveals why it failed:
-//     NON_COMPLIANT.
-//  3. A service that never logged a rejection message: NOT_EVALUABLE,
-//     EVIDENCE: what it shows cannot be known.
-//  4. Otherwise COMPLIANT.
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
 	if len(in.Services) == 0 {

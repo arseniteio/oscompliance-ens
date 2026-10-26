@@ -8,10 +8,7 @@ import (
 	"strings"
 )
 
-// Decode fills v, a pointer to a fact struct, from the data object of a Wazuh
-// alert. Wazuh indexes top-level scalars as strings ("1000", "true"), so each
-// one is converted back to the type of the struct field with the same JSON
-// name. Arrays and objects keep their JSON types and are left as they are.
+// Wazuh indexes top-level scalars of a fact as strings; Decode converts them back to the field types.
 func Decode(data map[string]any, v any) error {
 
 	kinds := fieldKinds(reflect.TypeOf(v).Elem())
@@ -59,8 +56,6 @@ func Decode(data map[string]any, v any) error {
 	return json.Unmarshal(raw, v)
 }
 
-// fieldKinds maps each JSON field name of struct type t to its kind, following
-// embedded structs (the fact envelope) and pointers (optional fields).
 func fieldKinds(t reflect.Type) map[string]reflect.Kind {
 
 	kinds := map[string]reflect.Kind{}

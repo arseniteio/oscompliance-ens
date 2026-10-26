@@ -1,5 +1,3 @@
-// Command oscompliance-engine reads facts from the Wazuh indexer, judges them
-// and writes verdicts to their own index. With -interval it keeps running.
 package main
 
 import (
@@ -27,10 +25,8 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
 
-// passwordEnv holds the indexer password; never a flag, so it stays out of ps.
 const passwordEnv = "OSC_INDEXER_PASSWORD"
 
 func main() {
@@ -84,7 +80,6 @@ func runMain() error {
 
 	facts := source.New(client, *alerts, *monitoring)
 
-	// One evaluator per migrated control.
 	controls := []evaluator.Evaluator{
 		opacc1.NewEvaluator(facts, hist),
 		opacc2.NewEvaluator(facts),
@@ -103,8 +98,7 @@ func runMain() error {
 	}
 
 	for {
-		// Reloaded every pass: a change in the Configuration screen applies
-		// on the next pass without restarting the engine.
+
 		var policy params.Lister
 		if loaded, err := params.Load(ctx, client, *configIndex); err != nil {
 			slog.Warn("parameters", "error", err)

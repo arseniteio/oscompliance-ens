@@ -11,50 +11,31 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV03Input is what EV-03 (attempt limit with effective lockout) needs.
 type EV03Input struct {
 	Settings Settings
 	PAM      PAM
 
-	// MaxAttempts is P-05; MaxAttemptsProblem says why it cannot be used.
 	MaxAttempts        int
 	MaxAttemptsProblem string
 }
 
-// passwordServices are the PAM services through which a person types a
-// password: remote login, console login and the graphical greeters.
 var passwordServices = []string{"sshd", "login", "gdm-password", "lightdm", "sddm"}
 
-// faillockDefaults are pam_faillock's own defaults (faillock.conf(5)).
 const (
 	faillockDeny   = 3
 	faillockUnlock = 600
 )
 
-// Lockout is how one login path limits failed attempts.
 type Lockout struct {
 	Service    string
-	Module     string // pam_faillock.so, pam_tally2.so, "" for none
-	Deny       int    // 0: no limit
-	UnlockSecs int    // 0: only an administrator unlocks
-	Problem    string // why the settings cannot be read
+	Module     string
+	Deny       int
+	UnlockSecs int
+	Problem    string
 }
 
-// JudgeEV03 judges EV-03 as described in catalog/docs/contracts/op.acc.6.md:
-//
-//  1. PAM or the configuration read unusable: NOT_EVALUABLE, COLLECTION.
-//     P-05 unusable: NOT_EVALUABLE, CONFIGURATION.
-//  2. Every password path in use is examined: sshd when it accepts
-//     passwords (PasswordAuthentication or KbdInteractiveAuthentication),
-//     login and the graphical greeters when they have a PAM file.
-//  3. A path without a lockout module, with more attempts than P-05, or that
-//     unlocks by itself after a time: NON_COMPLIANT. The ENS asks for a
-//     specific intervention to reactivate the account.
-//  4. A path whose settings cannot be read: NOT_EVALUABLE, COLLECTION.
-//  5. Otherwise COMPLIANT, also when no path accepts passwords.
 func JudgeEV03(in EV03Input) verdict.Judgement {
 
-	// 1. Facts and parameter.
 	if gap, found := in.PAM.Gap(); found {
 		return gap
 	}
@@ -65,7 +46,6 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-05: "+in.MaxAttemptsProblem)
 	}
 
-	// 2. The paths in use.
 	paths, unknown := passwordPaths(in.Settings, in.PAM)
 
 	var failing, judged []string
@@ -89,17 +69,14 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		}
 	}
 
-	// 3. A path that lets attempts through.
 	if len(failing) > 0 {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(failing, "; ")}
 	}
 
-	// 4. A path we could not read.
 	if len(unknown) > 0 {
 		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unknown, "; "))
 	}
 
-	// 5. Every path locks after at most P-05 attempts until an administrator acts.
 	if len(judged) == 0 {
 		return verdict.Judgement{Status: verdict.Compliant, Reason: "no login path accepts passwords"}
 	}
@@ -110,8 +87,6 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 	}
 }
 
-// passwordPaths are the services of passwordServices in use; unknown says
-// why sshd could not be decided.
 func passwordPaths(settings Settings, pam PAM) (paths, unknown []string) {
 
 	for _, service := range passwordServices {
@@ -129,7 +104,7 @@ func passwordPaths(settings Settings, pam PAM) (paths, unknown []string) {
 
 		switch sshd.Status {
 		case fact.SourceAbsent:
-			// A PAM file without sshd: nothing listens.
+
 			continue
 		case fact.SourceRead:
 		default:
@@ -145,9 +120,6 @@ func passwordPaths(settings Settings, pam PAM) (paths, unknown []string) {
 	return paths, unknown
 }
 
-// lockoutOf reads the lockout of one service from its auth stack: the first
-// pam_faillock or pam_tally2 rule that is not optional. pam_faillock takes
-// its settings from the rule, then faillock.conf, then its defaults.
 func lockoutOf(service string, pam PAM, settings Settings) Lockout {
 
 	l := Lockout{Service: service}
@@ -168,7 +140,6 @@ func lockoutOf(service string, pam PAM, settings Settings) Lockout {
 			return l
 		}
 
-		// pam_faillock: the conf file first, the rule overrides.
 		deny, unlock := faillockDeny, faillockUnlock
 
 		if v, unreadable, _ := settings.Lookup("/etc/security/faillock.conf", "", "deny"); len(unreadable) > 0 {
@@ -232,7 +203,6 @@ func unlockArg(r fact.PAMRule, def int) (int, string) {
 	return n, ""
 }
 
-// unlockValue: seconds, or "never" (only an administrator unlocks), as 0.
 func unlockValue(v string) (int, bool) {
 
 	if v == "never" {
@@ -243,7 +213,6 @@ func unlockValue(v string) (int, bool) {
 	return n, err == nil && n >= 0
 }
 
-// sortedKeys returns the keys of a set in order.
 func sortedKeys(set map[string]bool) []string {
 	out := make([]string, 0, len(set))
 	for k := range set {

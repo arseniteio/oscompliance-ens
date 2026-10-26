@@ -6,21 +6,17 @@ import (
 	"time"
 )
 
-// ActionCount is how many times one account ran one binary or touched one
-// path on one agent: audited accesses (rule 119004) and sudo runs.
 type ActionCount struct {
 	AgentID string
-	// AUID and UID come from auditd (numbers); User from sudo (a name).
+
 	AUID, UID, User string
-	Exe             string // the binary, or the sudo command line
-	Path            string // the file touched, auditd only
-	Key             string // the audit key; "sudo" for sudo runs
+	Exe             string
+	Path            string
+	Key             string
 	Count           int
 	Last            time.Time
 }
 
-// AuditActions counts the audited accesses of every agent since the given
-// time by agent, account, binary, path and key.
 func (s *Source) AuditActions(ctx context.Context, since time.Time) ([]ActionCount, error) {
 
 	filter := []any{
@@ -51,8 +47,6 @@ func (s *Source) AuditActions(ctx context.Context, since time.Time) ([]ActionCou
 	return out, err
 }
 
-// SudoActions counts the commands run through sudo on every agent since the
-// given time by agent, user and command line.
 func (s *Source) SudoActions(ctx context.Context, since time.Time) ([]ActionCount, error) {
 
 	filter := []any{

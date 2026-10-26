@@ -24,14 +24,13 @@ func TestReadLogins(t *testing.T) {
 
 	var wtmp []byte
 	wtmp = append(wtmp, utmpRecord(userProcess, "ana", 1_700_000_000)...)
-	wtmp = append(wtmp, utmpRecord(8, "ana", 1_800_000_000)...) // DEAD_PROCESS: a logout, not a login
+	wtmp = append(wtmp, utmpRecord(8, "ana", 1_800_000_000)...)
 	wtmp = append(wtmp, utmpRecord(userProcess, "ana", 1_750_000_000)...)
 	wtmp = append(wtmp, utmpRecord(userProcess, "bob", 1_600_000_000)...)
 	if err := os.WriteFile(filepath.Join(dir, "wtmp"), wtmp, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	// lastlog: bob (uid 1001) logged in later than wtmp remembers.
 	lastlog := make([]byte, 1002*lastlogSize)
 	binary.LittleEndian.PutUint32(lastlog[1001*lastlogSize:], 1_650_000_000)
 	if err := os.WriteFile(filepath.Join(dir, "lastlog"), lastlog, 0o644); err != nil {

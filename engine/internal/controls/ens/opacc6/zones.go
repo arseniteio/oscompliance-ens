@@ -6,16 +6,11 @@ import (
 	"strings"
 )
 
-// Zones is P-02: the controlled zones, as networks, single addresses and
-// "local" (the physical console).
 type Zones struct {
 	prefixes []netip.Prefix
 	local    bool
 }
 
-// ParseZones reads P-02, one zone per line; text after the first blank is a
-// comment. A line that is none of the three makes the whole list unusable:
-// a mistyped range would turn a controlled zone into an uncontrolled one.
 func ParseZones(lines []string) (Zones, string) {
 
 	var z Zones
@@ -49,9 +44,6 @@ func ParseZones(lines []string) (Zones, string) {
 	return z, ""
 }
 
-// Controlled says whether an origin is in a controlled zone; known is false
-// when the origin is not an address ("" for an sshd login Wazuh could not
-// decode).
 func (z Zones) Controlled(origin string) (controlled, known bool) {
 
 	if origin == "local" {

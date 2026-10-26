@@ -24,18 +24,14 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Config says where the sockets are read from.
 type Config struct {
-	// Proc is the proc filesystem: net/tcp, net/tcp6, net/udp, net/udp6 and
-	// the file descriptors of every process.
 	Proc string
-	// Systemctl is the systemctl binary; empty or missing skips the units.
+
 	Systemctl string
-	// Addresses returns the interface addresses; nil uses the machine's.
+
 	Addresses func() ([]net.Addr, error)
 }
 
-// socket states in /proc/net: TCP LISTEN, and UDP "closed" (bound, no peer).
 const (
 	tcpListen = "0A"
 	udpBound  = "07"
@@ -48,8 +44,6 @@ type socketLine struct {
 	inode    string
 }
 
-// Collect emits one listening_socket per socket reachable from
-// outside the machine, then the listening_snapshot.
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot := fact.ListeningSnapshot{Envelope: e.Envelope(fact.ListeningSnapshotFact), Status: fact.SourceRead, Addresses: []string{}}
@@ -62,7 +56,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	} {
 		lines, err := readSocketTable(filepath.Join(cfg.Proc, table.file), table.protocol, table.state)
 
-		// No IPv6 in the kernel: no tcp6 file, nothing listens there.
 		if errors.Is(err, fs.ErrNotExist) && strings.HasSuffix(table.file, "6") {
 			continue
 		}
@@ -87,8 +80,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 
 	for _, s := range sockets {
 
-		// One record per address and port, not per socket: SO_REUSEPORT and
-		// forked servers open several.
 		key := fmt.Sprintf("%s %s %d", s.protocol, s.address, s.port)
 		if seen[key] {
 			continue
@@ -104,7 +95,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 			record.Unit = unitOf(filepath.Join(cfg.Proc, strconv.Itoa(pid), "cgroup"))
 		}
 
-		// Socket activation: systemd itself holds the socket.
 		if socketUnit, service, ok := units.socketFor(s.address, s.port); ok {
 			record.SocketUnit, record.SocketEnabled = socketUnit, units.enabled(socketUnit)
 			if record.Unit == "" || record.Unit == "init.scope" {
@@ -128,8 +118,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(snapshot)
 }
 
-// readSocketTable reads the sockets of one /proc/net table in the given
-// state, loopback left out.
 func readSocketTable(path, protocol, state string) ([]socketLine, error) {
 
 	file, err := fsread.Open(path)
@@ -140,7 +128,7 @@ func readSocketTable(path, protocol, state string) ([]socketLine, error) {
 
 	var out []socketLine
 	scanner := bufio.NewScanner(file)
-	scanner.Scan() // header
+	scanner.Scan()
 
 	for scanner.Scan() {
 
@@ -149,7 +137,6 @@ func readSocketTable(path, protocol, state string) ([]socketLine, error) {
 			continue
 		}
 
-		// UDP: a socket with a peer is a client, not a service.
 		if protocol == "udp" && !strings.HasSuffix(f[2], ":0000") {
 			continue
 		}
@@ -169,8 +156,6 @@ func readSocketTable(path, protocol, state string) ([]socketLine, error) {
 	return out, scanner.Err()
 }
 
-// parseHexAddress reads "0100007F:0016": the address in host-order 32-bit
-// words (little-endian on Linux' usual architectures), the port big-endian.
 func parseHexAddress(s string) (net.IP, int, error) {
 
 	addr, portHex, ok := strings.Cut(s, ":")
@@ -196,8 +181,6 @@ func parseHexAddress(s string) (net.IP, int, error) {
 	return ip, int(port), nil
 }
 
-// socketOwners maps socket inodes to the first process holding them;
-// matched is false when no process descriptor could be read (not root).
 func socketOwners(proc string) (map[string]int, bool) {
 
 	owners := map[string]int{}
@@ -233,8 +216,6 @@ func socketOwners(proc string) (map[string]int, bool) {
 	return owners, matched
 }
 
-// unitOf reads the systemd unit from a cgroup v2 or v1 path
-// ("0::/system.slice/ssh.service"); "" outside systemd.
 func unitOf(cgroup string) string {
 
 	data, err := fsread.ReadFile(cgroup)
@@ -261,8 +242,6 @@ func unitOf(cgroup string) string {
 	return ""
 }
 
-// interfaceAddresses lists the addresses of the interfaces, loopback left
-// out, sorted.
 func interfaceAddresses(list func() ([]net.Addr, error)) []string {
 
 	if list == nil {
@@ -286,7 +265,6 @@ func interfaceAddresses(list func() ([]net.Addr, error)) []string {
 	return out
 }
 
-// units asks systemctl about units, once per unit.
 type units struct {
 	systemctl string
 	status    string
@@ -326,8 +304,6 @@ func newUnits(systemctl string) *units {
 	return u
 }
 
-// socketFor finds the socket unit listening on an address and port:
-// "[::]:22", "0.0.0.0:22" or just "22" in list-sockets.
 func (u *units) socketFor(address string, port int) (unit, activates string, ok bool) {
 
 	p := strconv.Itoa(port)
@@ -351,7 +327,6 @@ func (u *units) socketFor(address string, port int) (unit, activates string, ok 
 	return "", "", false
 }
 
-// enabled is systemctl is-enabled, as printed; "" when it cannot be asked.
 func (u *units) enabled(unit string) string {
 
 	if u.status != fact.SourceRead {
@@ -362,7 +337,6 @@ func (u *units) enabled(unit string) string {
 		return state
 	}
 
-	// is-enabled exits 1 for disabled units but still prints the state.
 	ctx, cancel := context.WithTimeout(context.Background(), host.CommandTimeout)
 	defer cancel()
 

@@ -1,8 +1,3 @@
-// Command oscompliance-fleetsim fills an indexer with a simulated fleet for
-// load tests of the engine: it copies one real agent's facts and Wazuh
-// alerts of the last day into N agents, with the hourly passes the agent
-// sends: one full pass, then snapshots pointing to it, or with -quiet only
-// the agent_pass that names them. Test indexers only.
 package main
 
 import (
@@ -57,8 +52,6 @@ func run() error {
 	}
 	fmt.Printf("template: %d facts in a full pass, %d native alerts\n", len(pass), len(natives))
 
-	// The services with logs are loud, as the agent's: their snapshot goes
-	// out every pass.
 	loud := map[string]bool{"auth_log_probe": true, "file_sweep_snapshot": true}
 	for _, d := range pass {
 		if d["data"].(map[string]any)["fact"] == "service_log" {
@@ -66,7 +59,6 @@ func run() error {
 		}
 	}
 
-	// The quiet snapshots of the pass, for agent_pass.
 	var quietFacts []string
 	for _, d := range pass {
 		fact, _ := d["data"].(map[string]any)["fact"].(string)
@@ -112,7 +104,6 @@ func run() error {
 			return err
 		}
 
-		// The oldest pass is full; the others repeat the snapshots only.
 		full := uuid()
 		for h := *hours - 1; h >= 0; h-- {
 			at := now.Add(-time.Duration(h)*time.Hour - time.Duration(i%3600)*time.Second)
@@ -140,7 +131,7 @@ func run() error {
 				if err := add(*alerts, doc); err != nil {
 					return err
 				}
-				// The probe line comes back as an alert of its own.
+
 				if fact == "auth_log_probe" {
 					if err := add(*alerts, probe(id, name, run, at)); err != nil {
 						return err
@@ -212,8 +203,6 @@ func templateDocs(ctx context.Context, client *indexer.Client, index, agent stri
 	return out, nil
 }
 
-// split takes the newest full pass (an identity_snapshot without
-// records_run_id and all facts of its run) and the native alerts.
 func split(docs []map[string]any) (pass, natives []map[string]any) {
 
 	full := ""
@@ -254,7 +243,6 @@ func hasRecords(fact string) bool {
 	return false
 }
 
-// retarget copies an alert to another agent and time.
 func retarget(d map[string]any, id, name string, at time.Time) map[string]any {
 
 	raw, _ := json.Marshal(d)

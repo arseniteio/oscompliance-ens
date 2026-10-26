@@ -1,6 +1,3 @@
-// Package opacc2 collects the facts of ENS control op.acc.2 that no Wazuh
-// module provides: a sweep of special files, the declared umask and the
-// sudoers grants. Which values comply is the engine's decision.
 package sweep
 
 import (
@@ -23,33 +20,24 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Config holds the agent-side parameters of the filesystem sweep.
 type Config struct {
-	// MountsPath lists the mounted filesystems (/proc/self/mounts).
 	MountsPath string
-	// Roots, when set, replaces the local filesystems found in MountsPath.
+
 	Roots []string
-	// Prune are directories never entered.
+
 	Prune []string
-	// PasswdPath and GroupPath tell which uid and gid exist.
+
 	PasswdPath string
 	GroupPath  string
-	// Timeout bounds the whole sweep; MaxRecords bounds what is emitted.
+
 	Timeout    time.Duration
 	MaxRecords int
 }
 
-// DefaultPrune are pseudo, runtime and container filesystems: nothing there
-// is an installed file of the host.
 var DefaultPrune = []string{"/proc", "/sys", "/run", "/dev", "/snap", "/var/lib/docker", "/var/lib/containers"}
 
-// localTypes are the filesystem types swept when Roots is not given.
 var localTypes = map[string]bool{"ext2": true, "ext3": true, "ext4": true, "xfs": true, "btrfs": true, "jfs": true, "f2fs": true, "reiserfs": true}
 
-// Collect walks every local filesystem and emits one special_file per
-// file or directory with SUID, SGID, world-write or no owner or group, then
-// the file_sweep_snapshot. A sweep that could not start, timed out or was
-// cut is reported in the snapshot, not returned as an error.
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot := fact.FileSweepSnapshot{
@@ -113,7 +101,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot.RecordsEmitted = len(sw.found)
 
-	// Emitted last: it tells the engine the sweep is complete.
 	return e.Emit(snapshot)
 }
 
@@ -130,7 +117,6 @@ type sweeper struct {
 
 var errStop = errors.New("stop")
 
-// walk sweeps one root without leaving its filesystem, as find -xdev.
 func (sw *sweeper) walk(root string) error {
 
 	rootInfo, err := os.Lstat(root)
@@ -147,7 +133,7 @@ func (sw *sweeper) walk(root string) error {
 		}
 
 		if err != nil {
-			// The directory could not be listed: what is inside was not seen.
+
 			sw.unreadable++
 			if d != nil && d.IsDir() {
 				return fs.SkipDir
@@ -159,7 +145,7 @@ func (sw *sweeper) walk(root string) error {
 			return fs.SkipDir
 		}
 
-		// Symlinks always show 0777 and point elsewhere: never judged.
+		// Symlinks always show 0777 and point elsewhere.
 		if d.Type()&fs.ModeSymlink != 0 || !(d.Type().IsRegular() || d.IsDir()) {
 			return nil
 		}
@@ -182,8 +168,6 @@ func (sw *sweeper) walk(root string) error {
 	})
 }
 
-// classify fills a special_file when the entry has any property op.acc.2
-// looks at.
 func (sw *sweeper) classify(path string, info fs.FileInfo) (fact.SpecialFile, bool) {
 
 	mode := info.Mode()
@@ -212,7 +196,6 @@ func (sw *sweeper) classify(path string, info fs.FileInfo) (fact.SpecialFile, bo
 	return f, f.SUID || f.SGID || f.WorldWritable || f.NoOwner || f.NoGroup
 }
 
-// octalMode turns Go's mode bits back into the classic 4-digit octal form.
 func octalMode(mode fs.FileMode) uint32 {
 
 	m := uint32(mode.Perm())
@@ -237,14 +220,11 @@ func deviceOf(info fs.FileInfo) uint64 {
 	return 0
 }
 
-// isMountOf: a directory on another device is another filesystem.
 func isMountOf(path string, rootDev uint64) bool {
 	info, err := os.Lstat(path)
 	return err == nil && deviceOf(info) != rootDev
 }
 
-// localMounts reads the mount table and keeps local filesystems that are not
-// under a pruned directory, sorted.
 func localMounts(path string, prune []string) ([]string, error) {
 
 	file, err := fsread.Open(path)
@@ -265,11 +245,8 @@ func localMounts(path string, prune []string) ([]string, error) {
 			continue
 		}
 
-		// The mount table escapes spaces and tabs as \040 and \011.
 		mount := unescapeMount(fields[1])
 
-		// "/" is the system itself whatever its type (overlay in a
-		// container); other mounts only when they are local disks.
 		if mount != "/" && !localTypes[fields[2]] {
 			continue
 		}
@@ -294,8 +271,6 @@ func localMounts(path string, prune []string) ([]string, error) {
 	return roots, nil
 }
 
-// isDir: bind mounts of single files (a container's /etc/hosts) are not
-// filesystems to sweep.
 func isDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir()
@@ -316,8 +291,6 @@ func underAny(path string, dirs []string) bool {
 	return false
 }
 
-// idsOf reads the third field (uid or gid) of every well-formed line of a
-// passwd or group file.
 func idsOf(path string) (map[int]bool, error) {
 
 	file, err := fsread.Open(path)
@@ -344,7 +317,6 @@ func idsOf(path string) (map[int]bool, error) {
 		return nil, err
 	}
 
-	// An empty file would make every file "without owner".
 	if !ids[0] {
 		return nil, fmt.Errorf("%s has no entry with id 0", path)
 	}

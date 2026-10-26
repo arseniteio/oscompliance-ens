@@ -11,7 +11,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Input is what every op.acc.3 judge of one agent needs.
 type Input struct {
 	AgentID string
 	Fleet   Fleet
@@ -19,26 +18,16 @@ type Input struct {
 	Functions []Function
 	Pairs     []Pair
 	Tasks     []Task
-	// TaskProblems: P-04 rows that cannot be used.
+
 	TaskProblems []string
-	// Auditors is the account column of P-05 (ALTO).
+
 	Auditors []string
 
-	// Chain says why silence on this agent proves nothing, "" when it does.
 	Chain string
-	// Problem names an unusable P-02, P-03 or P-06.
+
 	Problem string
 }
 
-// JudgePair judges EV-01, EV-02 and EV-04 as described in
-// catalog/docs/contracts/op.acc.3.md:
-//
-//  1. P-02, P-03 or P-06 unusable, or the evidence's pair not in P-02:
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. A person who acted on this machine and holds both functions of the
-//     pair, here or on another machine: NON_COMPLIANT.
-//  3. Otherwise, when this machine's audit chain is incomplete:
-//     NOT_EVALUABLE, COLLECTION. Otherwise COMPLIANT.
 func JudgePair(id string, in Input) verdict.Judgement {
 
 	if in.Problem != "" {
@@ -58,15 +47,6 @@ func JudgePair(id string, in Input) verdict.Judgement {
 	return silence(in, fmt.Sprintf("no account holds %s and %s", pair.Left, pair.Right))
 }
 
-// JudgeTasks judges EV-03 (critical tasks need several people):
-//
-//  1. P-04 unusable (a row without its number of people or its command):
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. A task run on this machine in the window by fewer different people
-//     than P-04 asks: NON_COMPLIANT. As v1, people are counted over the
-//     window, not per run: two people each deploying alone on different
-//     days count as two.
-//  3. A task not run is not a failure. Silence needs the audit chain.
 func JudgeTasks(in Input) verdict.Judgement {
 
 	if in.Problem != "" {
@@ -109,11 +89,6 @@ func JudgeTasks(in Input) verdict.Judgement {
 	return silence(in, "no critical task run on this machine in the window")
 }
 
-// JudgeAuditors judges EV-05 (audit accounts hold no other function):
-// offenders are people holding auditoria and anything else when P-02 has
-// the "auditoria | *" pair, and P-05 accounts with any function but
-// auditoria or supervision. Neither declared: NOT_EVALUABLE,
-// CONFIGURATION (v1 passed it by vacuity).
 func JudgeAuditors(in Input) verdict.Judgement {
 
 	if in.Problem != "" {
@@ -156,8 +131,6 @@ func JudgeAuditors(in Input) verdict.Judgement {
 	return silence(in, "audit accounts hold no other function")
 }
 
-// JudgeInventory judges EV-06 (actions per account): what each account
-// did here, classified; the audit chain decides whether it can be trusted.
 func JudgeInventory(in Input) verdict.Judgement {
 
 	if in.Problem != "" {
@@ -187,9 +160,6 @@ func JudgeInventory(in Input) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d accounts acted: %s", len(accounts), strings.Join(accounts, "; "))}
 }
 
-// JudgeSecurity judges EV-07 (access to security information, r3.1): who
-// read or changed Wazuh's configuration and the audit trail. It is
-// reported, not judged: r3.1 applies at no level.
 func JudgeSecurity(in Input) verdict.Judgement {
 
 	if accesses := in.Fleet.Security[in.AgentID]; len(accesses) > 0 {
@@ -200,7 +170,6 @@ func JudgeSecurity(in Input) verdict.Judgement {
 	return silence(in, "no access to security information in the window")
 }
 
-// offenders: people who acted on this machine and hold both sides.
 func offenders(in Input, pair Pair) []string {
 
 	var out []string
@@ -222,7 +191,6 @@ func offenders(in Input, pair Pair) []string {
 	return out
 }
 
-// silence: COMPLIANT when the audit chain of the machine is complete.
 func silence(in Input, reason string) verdict.Judgement {
 	if in.Chain != "" {
 		return passes.NotEvaluable(verdict.CauseCollection, reason+", but "+in.Chain)
@@ -230,9 +198,6 @@ func silence(in Input, reason string) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
 }
 
-// Chain says why actions on a machine cannot all be seen: auditd not
-// running, a P-03 binary or path not watched, or Wazuh not reading the
-// audit log. "" when every indicator that is a path is watched.
 func Chain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, functions []Function) string {
 
 	switch {

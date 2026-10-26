@@ -9,18 +9,10 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// External-user service events: lines of a service's authentication log in
-// the op.acc.5 contract, read by a Wazuh localfile labelled
-// oscompliance_service and indexed by rule 119003. Times are the alert's:
-// when Wazuh received the line, which the agent sends as it is written.
-
-// ServiceRule is the Wazuh rule of the service events (catalog/wazuh).
 const ServiceRule = "119003"
 
-// compositePage is the number of buckets per composite aggregation page.
 const compositePage = 1000
 
-// ServiceEvent is one decoded contract line.
 type ServiceEvent struct {
 	Time           time.Time
 	Service        string
@@ -62,18 +54,12 @@ func termFilter(field string, values ...string) any {
 	return map[string]any{"terms": map[string]any{field: values}}
 }
 
-// ServiceEvents returns the events of one agent of the given types since
-// the given time (zero: as far back as the index goes), oldest first. match
-// keeps only events whose data field has one of the values ("usuario":
-// accounts). Meant for the rare types (notices, disablements, policy) and
-// for the few accounts or origins whose failures need an exact count.
 func (s *Source) ServiceEvents(ctx context.Context, agentID string, since time.Time, tipos []string, match map[string][]string) ([]ServiceEvent, error) {
 
 	fetch := func(ctx context.Context, ids []string) (map[string][]ServiceEvent, error) {
 		return s.serviceEvents(ctx, ids, since, tipos, match)
 	}
 
-	// The values to match are this agent's own: no batch.
 	if len(match) > 0 {
 		m, err := fetch(ctx, []string{agentID})
 		return m[agentID], err
@@ -145,7 +131,6 @@ func (s *Source) serviceEvents(ctx context.Context, ids []string, since time.Tim
 	return out, err
 }
 
-// stringList reads a JSON array of strings, or a single string.
 func stringList(v any) []string {
 	switch x := v.(type) {
 	case []any:
@@ -173,9 +158,6 @@ func scalar(v any) string {
 	}
 }
 
-// composite walks every bucket of a composite aggregation over the alerts.
-// Paging through after_key, it has no limit on the number of agents or
-// accounts: a terms aggregation would cut silently at its size.
 func (s *Source) composite(ctx context.Context, filter, sources []any, sub map[string]any, fn func(key map[string]any, bucket json.RawMessage) error) error {
 	return s.compositeIn(ctx, s.index, filter, sources, sub, fn)
 }
@@ -244,16 +226,12 @@ func keyString(key map[string]any, name string) string {
 	return ""
 }
 
-// MethodCount is how many successful logins of a service used one set of
-// factors ("otp+password": sorted, joined by +; "" when none was written).
 type MethodCount struct {
 	Service string
 	Factors string
 	Count   int
 }
 
-// ServiceMethods counts the successful logins of one agent since the given
-// time by service and factor set.
 func (s *Source) ServiceMethods(ctx context.Context, agentID string, since time.Time) ([]MethodCount, error) {
 	return batched(ctx, s, "methods|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]MethodCount, error) {
 		return s.serviceMethods(ctx, ids, since)
@@ -287,15 +265,11 @@ func (s *Source) serviceMethods(ctx context.Context, ids []string, since time.Ti
 	return out, err
 }
 
-// CertificateCount is how many certificate logins of a service had one
-// issuer and one revocation check ("" when not written).
 type CertificateCount struct {
 	Service, Issuer, Revocation string
 	Count                       int
 }
 
-// ServiceCertificates counts the certificate and card logins of one agent
-// since the given time by service, issuer and revocation check.
 func (s *Source) ServiceCertificates(ctx context.Context, agentID string, since time.Time) ([]CertificateCount, error) {
 	return batched(ctx, s, "certificates|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]CertificateCount, error) {
 		return s.serviceCertificates(ctx, ids, since)
@@ -325,19 +299,13 @@ func (s *Source) serviceCertificates(ctx context.Context, ids []string, since ti
 	return out, err
 }
 
-// Burst bounds the failed logins of one key (an origin, an account) of a
-// service within any span.
 type Burst struct {
 	Service, Key string
-	// AtMost is an upper bound of the failures within any span: the sum of
-	// two neighbouring span-long buckets, which cover every stretch of that
-	// length. The judge counts exactly only where the bound is too high.
+
 	AtMost int
 	Total  int
 }
 
-// ServiceFailureBursts returns, per service and value of field (data.origen,
-// data.usuario), an upper bound of the failed logins within any span.
 func (s *Source) ServiceFailureBursts(ctx context.Context, agentID string, since time.Time, field string, span time.Duration) ([]Burst, error) {
 	return batched(ctx, s, fmt.Sprint("bursts|", sinceKey(since), field, span), agentID, func(ctx context.Context, ids []string) (map[string][]Burst, error) {
 		return s.serviceFailureBursts(ctx, ids, since, field, span)
@@ -368,7 +336,7 @@ func (s *Source) serviceFailureBursts(ctx context.Context, ids []string, since t
 		}
 		burst := Burst{Service: keyString(key, "s"), Key: keyString(key, "k"), Total: c.DocCount}
 		for i, bucket := range c.T.Buckets {
-			// Two neighbouring buckets cover any span-long stretch.
+
 			n := bucket.DocCount
 			if i+1 < len(c.T.Buckets) {
 				n += c.T.Buckets[i+1].DocCount
@@ -382,14 +350,11 @@ func (s *Source) serviceFailureBursts(ctx context.Context, ids []string, since t
 	return out, err
 }
 
-// MessageCount is how many rejections of a service showed one message.
 type MessageCount struct {
 	Service, Message string
 	Count            int
 }
 
-// ServiceMessages counts the rejection messages of one agent since the
-// given time by service.
 func (s *Source) ServiceMessages(ctx context.Context, agentID string, since time.Time) ([]MessageCount, error) {
 	return batched(ctx, s, "messages|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]MessageCount, error) {
 		return s.serviceMessages(ctx, ids, since)
@@ -417,17 +382,13 @@ func (s *Source) serviceMessages(ctx context.Context, ids []string, since time.T
 	return out, err
 }
 
-// ServiceAccount is what the index holds about one account of a service.
 type ServiceAccount struct {
 	Service, User string
-	LastSuccess   time.Time // zero: never
-	LastChange    time.Time // zero: no credential change recorded
-	LastDisabled  time.Time // zero: never disabled
+	LastSuccess   time.Time
+	LastChange    time.Time
+	LastDisabled  time.Time
 }
 
-// ServiceAccounts returns every account of one agent's services that ever
-// logged in, changed its credential or was disabled, as far back as the
-// index goes.
 func (s *Source) ServiceAccounts(ctx context.Context, agentID string) ([]ServiceAccount, error) {
 	return batched(ctx, s, "accounts", agentID, s.serviceAccounts)
 }
@@ -483,14 +444,11 @@ func (s *Source) serviceAccounts(ctx context.Context, ids []string) (map[string]
 	return out, err
 }
 
-// ServiceSpan is the oldest and newest event of one service in the index.
 type ServiceSpan struct {
 	Oldest, Newest time.Time
 	Count          int
 }
 
-// ServiceSpans returns, per service of one agent, the oldest and newest
-// event the index keeps.
 func (s *Source) ServiceSpans(ctx context.Context, agentID string) (map[string]ServiceSpan, error) {
 	return batched(ctx, s, "spans", agentID, s.serviceSpans)
 }
@@ -527,12 +485,10 @@ func (s *Source) serviceSpans(ctx context.Context, ids []string) (map[string]map
 	return out, err
 }
 
-// ServiceLogSnapshots returns, per agent, the newest service_log_snapshot.
 func (s *Source) ServiceLogSnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.ServiceLogSnapshot, error) {
 	return latestFacts[fact.ServiceLogSnapshot](ctx, s, fact.ServiceLogSnapshotFact, since, n)
 }
 
-// ServiceLogs returns every service_log of one read of one agent.
 func (s *Source) ServiceLogs(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ServiceLog, error) {
 	return passRecords[fact.ServiceLog](ctx, s, fact.ServiceLogFact, agentID, runID, since)
 }

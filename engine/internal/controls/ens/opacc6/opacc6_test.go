@@ -16,7 +16,6 @@ var today = time.Date(2026, 10, 25, 12, 0, 0, 0, time.UTC)
 
 func intp(n int) *int { return &n }
 
-// config builds a usable configuration read from sources.
 func config(files ...fact.ConfigFile) Settings {
 	return Settings{Snapshot: &fact.ConfigSnapshot{RecordsEmitted: len(files)}, Files: files}
 }
@@ -41,7 +40,6 @@ func sshV(version string) fact.ConfigFile {
 	return f
 }
 
-// pam builds a PAM read from "service type control module args..." lines.
 func pam(lines ...string) PAM {
 	p := PAM{Snapshot: &fact.PAMSnapshot{Status: fact.SourceRead}}
 	seen := map[string]bool{}
@@ -340,8 +338,8 @@ func TestJudgeEV04(t *testing.T) {
 		return out
 	}
 
-	burst := fail("ana", 0, 1, 2, 3, 4, 5)        // 6 within 15 minutes
-	spread := fail("bob", 0, 20, 40, 60, 80, 100) // 6, never 2 within 15 minutes
+	burst := fail("ana", 0, 1, 2, 3, 4, 5)
+	spread := fail("bob", 0, 20, 40, 60, 80, 100)
 
 	check(t, "burst without lockout", JudgeEV04(EV04Input{Failures: burst, Log: reaches, MaxAttempts: 5}), verdict.NonCompliant, "", "ana (6 failures within 15m0s)")
 	check(t, "burst stopped", JudgeEV04(EV04Input{Failures: burst, Lockouts: []source.Lockout{{Account: "ana"}}, Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "stopped by a lockout")
@@ -366,7 +364,6 @@ func TestJudgeEV10(t *testing.T) {
 	neverUsed := fact.IdentityRecord{AccountName: "new", Shell: "/bin/bash", PasswordState: fact.PasswordSet, AuthorizedKeys: intp(0), PasswordChanged: "2026-10-01"}
 	undated := fact.IdentityRecord{AccountName: "odd", Shell: "/bin/bash", PasswordState: fact.PasswordSet, AuthorizedKeys: intp(0)}
 
-	// deploy logs in by key without a terminal: only the alert sees it.
 	alerts := map[string]time.Time{"deploy": today.Add(-2 * time.Hour)}
 
 	check(t, "all used", JudgeEV10(EV10Input{Accounts: accounts(active, automation, neverUsed), Today: today, LastAlert: alerts, MaxIdle: 45}), verdict.Compliant, "", "3 accounts")
@@ -461,24 +458,19 @@ func TestJudgeEV02(t *testing.T) {
 	officeLogin := source.Login{Account: "ana", SourceIP: "192.168.10.20", Method: source.MethodSSHD, Auth: "publickey", KeyType: "ED25519"}
 	mfaLogin := source.Login{Account: "ana", SourceIP: "203.0.113.9", Method: source.MethodSSHD, Auth: "keyboard-interactive/pam"}
 
-	// Exposed on a public address with keys only: r8.1 fails, r1.1 passes
-	// (no password anywhere), r2.1 fails.
 	got := JudgeEV02(EV02Input{Logins: []source.Login{keyLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(keys), PAM: plain, Log: reaches, Zones: office})
 	check(t, "r8.1 public keys", got[ReqR81], verdict.NonCompliant, "", "one factor")
 	check(t, "r1.1 public keys", got[ReqR11], verdict.Compliant, "", "")
 	check(t, "r2.1 public keys", got[ReqR21], verdict.NonCompliant, "", "")
 
-	// Only inside the office: r8.1 holds.
 	got = JudgeEV02(EV02Input{Logins: []source.Login{officeLogin}, Listening: listening([]string{"192.168.10.5"}, ssh), Settings: config(keys), PAM: plain, Log: reaches, Zones: office})
 	check(t, "r8.1 office", got[ReqR81], verdict.Compliant, "", "")
 
-	// Key plus TOTP everywhere: all three hold.
 	got = JudgeEV02(EV02Input{Logins: []source.Login{mfaLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(mfa), PAM: totp, Log: reaches, Zones: office})
 	for _, req := range []string{ReqR81, ReqR11, ReqR21} {
 		check(t, req+" mfa", got[req], verdict.Compliant, "", "")
 	}
 
-	// A Match block hides per-user settings.
 	match := file("/etc/ssh/sshd_config", "Match", "User backup")
 	got = JudgeEV02(EV02Input{Logins: []source.Login{keyLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(keys, match), PAM: plain, Log: reaches, Zones: office})
 	check(t, "r8.1 match", got[ReqR81], verdict.NotEvaluable, verdict.CauseEvidence, "Match block")

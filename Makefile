@@ -1,6 +1,4 @@
-# Checks for every Go module in the repository: format, vet, tests. The
-# catalog/fact tests also validate the schemas and their examples. -count=1
-# because the Go test cache does not see changes to the schema files.
+# -count=1: the Go test cache does not see changes to the schema files.
 
 MODULES := catalog agent engine
 

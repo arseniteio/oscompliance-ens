@@ -13,24 +13,18 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// AgentConfigPaths says where the Wazuh agent keeps its configuration.
 type AgentConfigPaths struct {
-	OssecConf  string // /var/ossec/etc/ossec.conf
-	SharedConf string // /var/ossec/etc/shared/agent.conf
-	ClientKeys string // /var/ossec/etc/client.keys
+	OssecConf  string
+	SharedConf string
+	ClientKeys string
 }
 
-// DefaultAgentConfig is the layout of a Wazuh agent on Linux.
 var DefaultAgentConfig = AgentConfigPaths{
 	OssecConf:  "/var/ossec/etc/ossec.conf",
 	SharedConf: "/var/ossec/etc/shared/agent.conf",
 	ClientKeys: "/var/ossec/etc/client.keys",
 }
 
-// CollectAgentConfig emits one wazuh_agent_config: the FIM directories and
-// the log files the Wazuh agent watches, ossec.conf first, then the shared
-// blocks that apply to it, which the manager sends and which take
-// precedence.
 func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
@@ -56,7 +50,6 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 	}
 	add(&out, blocks, cfg.OssecConf)
 
-	// No shared configuration is fine: the agent is in no group.
 	if shared, err := fsread.ReadFile(cfg.SharedConf); err == nil {
 		blocks, err := applicableBlocks(shared, "agent_config", name)
 		if err != nil {
@@ -72,7 +65,6 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 	return e.Emit(out)
 }
 
-// add merges the sections of the blocks of one file into out.
 func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {
 
 	for _, b := range blocks {
@@ -109,20 +101,15 @@ func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {
 	}
 }
 
-// SharedPaths is the oscompliance.json the manager puts in the group's
-// shared files: the paths a control watches that come from a parameter.
-// Wazuh copies every shared file to its agents; the agent only reads it.
 type SharedPaths struct {
 	ACLPaths     []string `json:"acl_paths"`
 	AuditWatches []string `json:"audit_watches"`
-	// ExecWatches are binaries whose executions are audited (op.acc.3).
+
 	ExecWatches []string `json:"exec_watches"`
 }
 
-// DefaultSharedPaths is where the Wazuh agent keeps that file.
 const DefaultSharedPaths = "/var/ossec/etc/shared/oscompliance.json"
 
-// readSharedPaths reads the file; absent is not an error (ok is false).
 func ReadSharedPaths(path string) (paths SharedPaths, ok bool, err error) {
 
 	data, err := fsread.ReadFile(path)

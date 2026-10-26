@@ -72,7 +72,6 @@ func TestCollectConfig(t *testing.T) {
 		t.Errorf("missing faillock.conf: got %v", facts[1]["status"])
 	}
 
-	// Drop-ins in the order programs read them: a.conf before b.conf.
 	if !strings.HasSuffix(facts[2]["source"].(string), "a.conf") || !strings.HasSuffix(facts[3]["source"].(string), "b.conf") {
 		t.Errorf("drop-in order: %v, %v", facts[2]["source"], facts[3]["source"])
 	}

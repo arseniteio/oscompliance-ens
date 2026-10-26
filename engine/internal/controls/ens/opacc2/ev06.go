@@ -12,7 +12,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// accessKinds names each audit key as P-06 names access types.
 var accessKinds = map[string]string{
 	"oscompliance_read":  "lectura",
 	"oscompliance_write": "escritura",
@@ -20,37 +19,19 @@ var accessKinds = map[string]string{
 	"oscompliance_attr":  "modificacion",
 }
 
-// EV06Input is what EV-06 (access beyond the permitted type) needs.
 type EV06Input struct {
 	Watches  *fact.AuditWatchSnapshot
 	Config   *fact.WazuhAgentConfig
-	Accesses []source.AuditAccess // audited accesses of the window
+	Accesses []source.AuditAccess
 	Accounts Accounts
 
-	// Rules is P-06 ("perfil | recurso | tipos_permitidos") and Profiles
-	// P-09 ("usuario | perfil | privilegios"); Problem names an unusable
-	// one.
 	Rules    []string
 	Profiles []string
 	Problem  string
 }
 
-// JudgeEV06 judges EV-06 as described in catalog/docs/contracts/op.acc.2.md:
-//
-//  1. P-06 or P-09 unusable: NOT_EVALUABLE, CONFIGURATION.
-//  2. Each successful audited access: the person (audit uid, the login
-//     identity, or the uid) gives a profile through P-09, the profile and
-//     the path give a P-06 row (the longest declared path that contains it)
-//     and its permitted types. A type not permitted: NON_COMPLIANT. An
-//     account without a profile is counted, not judged, as v1.
-//  3. Accesses that cannot be judged (no person, no row for that profile
-//     and path): NOT_EVALUABLE, EVIDENCE, when nothing failed.
-//  4. Silence only counts when auditd runs, every P-06 path is watched and
-//     Wazuh reads the audit log: otherwise NOT_EVALUABLE, COLLECTION.
-//  5. Otherwise COMPLIANT.
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
-	// 1. Parameters.
 	if in.Problem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, in.Problem)
 	}
@@ -86,14 +67,13 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		}
 	}
 
-	// 2. Every access.
 	var violations, blind []string
 	noProfile, judged := 0, 0
 
 	for _, a := range in.Accesses {
 
 		if a.Success != "yes" {
-			continue // a refusal is EV-03's
+			continue
 		}
 
 		kind, ok := accessKinds[a.Key]
@@ -134,17 +114,14 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "accesses beyond the permitted type: " + strings.Join(dedupe(violations), "; ")}
 	}
 
-	// 3. Not judgeable.
 	if len(blind) > 0 {
 		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(dedupe(blind), "; "))
 	}
 
-	// 4. Silence needs the whole chain.
 	if gap := auditChain(in.Watches, in.Config, paths); gap != "" {
 		return passes.NotEvaluable(verdict.CauseCollection, gap)
 	}
 
-	// 5. Within the permitted types.
 	reason := fmt.Sprintf("%d accesses within the types P-06 permits", judged)
 	if noProfile > 0 {
 		reason += fmt.Sprintf("; %d by accounts without a P-09 profile, not judged", noProfile)
@@ -152,7 +129,6 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
 }
 
-// person is the account behind an access: the login identity, else the uid.
 func person(a source.AuditAccess, byUID map[int]string) string {
 	for _, id := range []string{a.AUID, a.UID} {
 		if id == "" || id == "unset" || id == "-1" || id == "4294967295" {
@@ -169,7 +145,6 @@ func person(a source.AuditAccess, byUID map[int]string) string {
 	return ""
 }
 
-// auditChain says why audited silence proves nothing, "" when it does.
 func auditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, paths []string) string {
 
 	switch {
@@ -179,7 +154,6 @@ func auditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, paths []st
 		return "auditd " + w.Auditd + " " + w.Error
 	}
 
-	// A watch on a directory covers everything under it.
 	for _, p := range paths {
 		watched := false
 		for _, l := range w.Loaded {

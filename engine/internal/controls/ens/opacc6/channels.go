@@ -10,13 +10,11 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Listening is one read of the listening sockets of an agent.
 type Listening struct {
 	Snapshot *fact.ListeningSnapshot
 	Sockets  []fact.ListeningSocket
 }
 
-// Gap says why the read cannot be used.
 func (l Listening) Gap() (verdict.Judgement, bool) {
 
 	switch {
@@ -33,29 +31,23 @@ func (l Listening) Gap() (verdict.Judgement, bool) {
 	return verdict.Judgement{}, false
 }
 
-// Kinds of channel, as v1: an authentication channel lets a person log in,
-// a transport channel carries other channels (a VPN).
 const (
 	KindAuthentication = "autenticacion"
 	KindTransport      = "transporte"
 )
 
-// Channel is a remote access channel the machine offers.
 type Channel struct {
-	Name      string // as P-07 names it: ssh, rdp, vnc...
+	Name      string
 	Kind      string
 	Encrypted bool
 	Ports     []int
-	Addresses []string // as bound; 0.0.0.0 and :: are every address
+	Addresses []string
 	Processes []string
-	// Units and their is-enabled states, service and socket alike.
+
 	Units   []string
 	Enabled []string
 }
 
-// channelOf names the channel of a process or unit, and whether it
-// encrypts. ldap on 389 is counted as not encrypted: StartTLS cannot be
-// seen from the configuration of every directory.
 func channelOf(s fact.ListeningSocket) (name, kind string, encrypted, known bool) {
 
 	process := strings.ToLower(s.Process)
@@ -89,8 +81,6 @@ func channelOf(s fact.ListeningSocket) (name, kind string, encrypted, known bool
 	return "", "", false, false
 }
 
-// Channels groups the listening sockets by channel; other lists the
-// listeners that are not remote access channels (web servers, databases).
 func (l Listening) Channels() (channels []Channel, other []string) {
 
 	byName := map[string]*Channel{}
@@ -132,8 +122,6 @@ func (l Listening) Channels() (channels []Channel, other []string) {
 	return channels, other
 }
 
-// Exposed lists the concrete addresses a channel answers on: a wildcard
-// is every address of the machine.
 func (l Listening) Exposed(c Channel) []string {
 
 	var out []string

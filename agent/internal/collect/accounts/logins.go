@@ -13,29 +13,21 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Default login record files on Linux: wtmp and its rotated copy (Debian and
-// RHEL rotate it monthly), and lastlog, which keeps the last login per UID
-// even after wtmp rotated away.
 var (
 	DefaultLoginRecords = []string{"/var/log/wtmp", "/var/log/wtmp.1"}
 	DefaultLastlog      = "/var/log/lastlog"
 )
 
-// glibc utmp record on Linux (64 and 32 bit alike): 384 bytes; ut_type at 0,
-// ut_user at 44 (32 bytes), ut_tv.tv_sec at 340 (int32).
 const (
 	utmpSize     = 384
 	utmpUser     = 44
 	utmpUserLen  = 32
 	utmpTime     = 340
 	userProcess  = 7
-	lastlogSize  = 292 // int32 ll_time, char ll_line[32], char ll_host[256]
+	lastlogSize  = 292
 	maxLoginRead = 64 << 20
 )
 
-// readLogins returns the newest login time per account name, and which
-// files were read. A file that is missing records nothing; a file that
-// cannot be read is reported and skipped.
 func readLogins(wtmp []string, lastlog string, entries []passwdEntry) (map[string]time.Time, []fact.LoginRecordFile) {
 
 	last := map[string]time.Time{}
@@ -58,7 +50,6 @@ func readLogins(wtmp []string, lastlog string, entries []passwdEntry) (map[strin
 	return last, sources
 }
 
-// readWtmp reads every USER_PROCESS record: one per interactive login.
 func readWtmp(path string, newer func(string, time.Time)) fact.LoginRecordFile {
 
 	data, status := readRecordFile(path)
@@ -86,8 +77,6 @@ func readWtmp(path string, newer func(string, time.Time)) fact.LoginRecordFile {
 	return status
 }
 
-// readLastlog reads the record of each account's UID; lastlog is a sparse
-// file indexed by UID.
 func readLastlog(path string, entries []passwdEntry, newer func(string, time.Time)) fact.LoginRecordFile {
 
 	file, err := fsread.Open(path)
@@ -124,8 +113,6 @@ func readLastlog(path string, entries []passwdEntry, newer func(string, time.Tim
 	return fact.LoginRecordFile{Path: path, Status: fact.SourceRead}
 }
 
-// readRecordFile reads a whole wtmp file, bounded: wtmp grows with every
-// login, a bigger one is cut to its newest records.
 func readRecordFile(path string) ([]byte, fact.LoginRecordFile) {
 
 	file, err := fsread.Open(path)
@@ -158,7 +145,6 @@ func readRecordFile(path string) ([]byte, fact.LoginRecordFile) {
 	return data, fact.LoginRecordFile{Path: path, Status: fact.SourceRead}
 }
 
-// cString is a NUL-terminated fixed-size C string.
 func cString(b []byte) string {
 	if i := bytes.IndexByte(b, 0); i >= 0 {
 		b = b[:i]

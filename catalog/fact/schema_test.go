@@ -13,8 +13,6 @@ import (
 
 const schemaDir = "../schemas/facts"
 
-// compileSchemas loads every fact schema under its $id, so the relative $ref
-// to the envelope resolves, and returns the payload schemas by fact name.
 func compileSchemas(t *testing.T) map[string]*jsonschema.Schema {
 	t.Helper()
 
@@ -61,7 +59,6 @@ func compileSchemas(t *testing.T) map[string]*jsonschema.Schema {
 	return schemas
 }
 
-// validate checks one fact against the schema named by its "fact" field.
 func validate(schemas map[string]*jsonschema.Schema, line []byte) error {
 
 	v, err := jsonschema.UnmarshalJSON(strings.NewReader(string(line)))
@@ -84,7 +81,6 @@ type unknownFact struct{ name string }
 
 func (e *unknownFact) Error() string { return "no schema for fact " + e.name }
 
-// examples returns every line of every file in examples/.
 func examples(t *testing.T) [][]byte {
 	t.Helper()
 
@@ -121,7 +117,6 @@ func TestExamplesAreValid(t *testing.T) {
 	}
 }
 
-// The Go types must write exactly what the schemas accept.
 func TestGoTypesRoundTrip(t *testing.T) {
 	schemas := compileSchemas(t)
 
@@ -277,7 +272,6 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 		}
 	}
 
-	// The bases themselves are valid, so each rejection above is the edit's.
 	for _, base := range []string{identityRead, shadowUnread, identityRecord, groupRead, groupUnread, groupRecord, specialFile, sweepSnapshot, umaskSnapshot, sudoGrant, sudoersSnapshot, configFile, pamRule} {
 		if err := validate(schemas, []byte(base)); err != nil {
 			t.Errorf("base rejected: %v", err)
@@ -285,9 +279,6 @@ func TestSchemasRejectBadFacts(t *testing.T) {
 	}
 }
 
-// wazuhReserved are names a fact field must not take: objects of the Wazuh
-// alerts template under data (a scalar there makes the indexer reject the
-// whole alert) and fields Wazuh's JSON decoder renames (user -> dstuser).
 var wazuhReserved = []string{
 	"YARA", "audit", "aws", "azureSignInStatus", "cis", "docker", "gcp", "github",
 	"hardware", "ms-graph", "netinfo", "office365", "os", "oscap", "osquery",

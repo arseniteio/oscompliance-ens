@@ -1,4 +1,3 @@
-// Package opacc1 collects the facts of ENS control op.acc.1.
 package accounts
 
 import (
@@ -10,7 +9,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 )
 
-// passwdEntry is one well-formed line of the account database.
 type passwdEntry struct {
 	user  string
 	uid   int
@@ -19,9 +17,6 @@ type passwdEntry struct {
 	shell string
 }
 
-// readPasswd parses the whole file before anything is emitted, so that a read
-// error halfway never leaves records without their snapshot. Lines that are not
-// a well-formed passwd entry are skipped, as v1 did.
 func readPasswd(path string) ([]passwdEntry, error) {
 
 	file, err := fsread.Open(path)
@@ -65,7 +60,6 @@ func readPasswd(path string) ([]passwdEntry, error) {
 		})
 	}
 
-	// Covers I/O errors and paths that are not regular files, like a directory.
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
@@ -73,7 +67,6 @@ func readPasswd(path string) ([]passwdEntry, error) {
 	return entries, nil
 }
 
-// parseID accepts only unsigned decimal IDs: Atoi would also take "-1" and "+5".
 func parseID(s string) (int, error) {
 
 	id, err := strconv.ParseUint(s, 10, 32)

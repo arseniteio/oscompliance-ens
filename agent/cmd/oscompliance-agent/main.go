@@ -1,5 +1,3 @@
-// Command oscompliance-agent runs one collection pass and appends the facts to
-// an NDJSON file read by the Wazuh agent.
 package main
 
 import (
@@ -31,7 +29,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
 
 func main() {
@@ -73,8 +70,6 @@ func run() error {
 		*host = h
 	}
 
-	// One pass at a time: a pass that hangs must not pile up root processes
-	// under cron, and it ends itself after maxPass.
 	unlock, err := lockPass(filepath.Join(filepath.Dir(*statePath), "agent.lock"))
 	if err != nil {
 		return err
@@ -97,8 +92,6 @@ func run() error {
 	}
 	defer f.Close()
 
-	// Each collector writes to a buffer first: unchanged records are left
-	// out before anything reaches the file (emit.State).
 	var buf bytes.Buffer
 	e := emit.New(&buf, *host, version, runID)
 	state := emit.LoadState(*statePath)
@@ -143,8 +136,6 @@ func run() error {
 		},
 	}
 
-	// Every collector runs even when an earlier one fails: one broken
-	// evidence must not silence the others.
 	var errs []error
 	var inForce []string
 	for _, name := range allCollectors {
@@ -169,7 +160,6 @@ func run() error {
 		}
 	}
 
-	// The pass ends with what holds of every quiet collector that ran.
 	if len(inForce) > 0 {
 		buf.Reset()
 		if err := e.Emit(fact.AgentPass{Envelope: e.Envelope(fact.AgentPassFact), InForce: inForce}); err != nil {
@@ -186,10 +176,6 @@ func run() error {
 	return errors.Join(errs...)
 }
 
-// loud collectors send their snapshot every time they run: the probe, whose
-// line must come back as an alert each pass; the daily sweep, which no
-// hourly agent_pass names; and the services with logs, whose consecutive
-// reads op.acc.5 EV-09 judges.
 func loud(collector string, lines []byte) bool {
 	switch collector {
 	case "authprobe", "sweep":
@@ -200,8 +186,6 @@ func loud(collector string, lines []byte) bool {
 	return false
 }
 
-// flush writes what one collector emitted, leaving out what was already
-// sent (emit.State.Reduce), in a single write.
 func flush(f io.Writer, state *emit.State, collector string, lines []byte, full, quiet bool) error {
 
 	if len(lines) == 0 {
@@ -210,7 +194,7 @@ func flush(f io.Writer, state *emit.State, collector string, lines []byte, full,
 
 	out, commit, err := state.Reduce(collector, lines, time.Now(), full, quiet)
 	if err != nil {
-		// Something unexpected in the lines: send them all.
+
 		out, commit = lines, func() {}
 	}
 
@@ -225,11 +209,8 @@ func flush(f io.Writer, state *emit.State, collector string, lines []byte, full,
 	return nil
 }
 
-// maxPass bounds one pass, the daily sweep (15 minutes at most) included.
 const maxPass = 50 * time.Minute
 
-// lockPass takes an exclusive lock, failing at once when another pass holds
-// it.
 func lockPass(path string) (func(), error) {
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
@@ -249,9 +230,6 @@ func lockPass(path string) (func(), error) {
 	return func() { f.Close() }, nil
 }
 
-// allCollectors in the order they run. The facts each one emits are in
-// catalog/docs/contracts.
 var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "sweep"}
 
-// defaultCollectors is the hourly run; the sweep has its own daily run.
 const defaultCollectors = "identity,groups,umask,sudoers,config,pam,authprobe,listening,services,wazuh,acl,audit,firewall"

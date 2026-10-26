@@ -12,19 +12,12 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Per-agent reads are served from reads of a chunk of agents (package
-// batch); wanted holds, per record fact and agent, the record runs the
-// snapshots read this pass point to, so that a chunk reads only those.
-
-// passState is what the Source keeps during one pass.
 type passState struct {
 	plan   batch.Plan
 	mu     sync.Mutex
 	wanted map[string]map[string]map[string]bool
 }
 
-// Plan starts a pass: the agents in the order they will be judged. Without
-// a plan every read queries one agent.
 func (s *Source) Plan(agents []verdict.Agent) {
 
 	ids := make([]string, len(agents))
@@ -46,12 +39,10 @@ func agentFilter(ids []string) any {
 	return termFilter("agent.id", ids...)
 }
 
-// sinceKey is the part of a batch key that a time gives.
 func sinceKey(t time.Time) string {
 	return fmt.Sprint(t.UnixMilli())
 }
 
-// recordsOf names the records each snapshot points to.
 var recordsOf = map[string]string{
 	fact.IdentitySnapshotFact:   fact.IdentityRecordFact,
 	fact.GroupSnapshotFact:      fact.GroupRecordFact,
@@ -64,8 +55,6 @@ var recordsOf = map[string]string{
 	fact.ACLSnapshotFact:        fact.ACLRecordFact,
 }
 
-// want records that a snapshot read this pass points to its records run, so
-// that the batch of its agent's chunk reads them.
 func (s *Source) want(snapshot, agentID string, v any) {
 
 	name, ok := recordsOf[snapshot]
@@ -92,19 +81,13 @@ func (s *Source) want(snapshot, agentID string, v any) {
 	s.pass.wanted[name][agentID][r.RecordsRun()] = true
 }
 
-// recordRuns is the batch of records of one chunk: the records of every
-// wanted run, and which runs were read.
 type recordRuns[T any] struct {
 	read    map[string]bool
 	records map[string][]T
 }
 
-// passRecords reads every fact of type name with the given run_id from one
-// agent, decoded into T. A Go method cannot have type parameters, so this is
-// a function that takes the Source.
 func passRecords[T any](ctx context.Context, s *Source, name, agentID, runID string, since time.Time) ([]T, error) {
 
-	// The records of a snapshot that still holds may be older than since.
 	since = since.Add(-reach)
 
 	runs, err := batched(ctx, s, "records|"+name+"|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string]recordRuns[T], error) {
@@ -118,7 +101,6 @@ func passRecords[T any](ctx context.Context, s *Source, name, agentID, runID str
 		return runs.records[runID], nil
 	}
 
-	// A run no snapshot of the pass pointed to when the chunk was read.
 	filter := append(factFilter(name, since),
 		map[string]any{"term": map[string]any{"agent.id": agentID}},
 		map[string]any{"term": map[string]any{"data.run_id": runID}},
@@ -138,7 +120,6 @@ func passRecords[T any](ctx context.Context, s *Source, name, agentID, runID str
 	return records, err
 }
 
-// chunkRecords reads the records of every run wanted for the given agents.
 func chunkRecords[T any](ctx context.Context, s *Source, name string, ids []string, since time.Time) (map[string]recordRuns[T], error) {
 
 	out := map[string]recordRuns[T]{}
@@ -177,7 +158,6 @@ func chunkRecords[T any](ctx context.Context, s *Source, name string, ids []stri
 	return out, err
 }
 
-// decodeAlert decodes the data of a fact alert into v and returns the alert.
 func decodeAlert(h hit, v any) (alert, error) {
 
 	var a alert

@@ -32,7 +32,7 @@ func TestDiffIdentities(t *testing.T) {
 	keyed := identity("kim", 1004, "locked")
 	keyed.AuthorizedKeys = &one
 	keyedSame := keyed
-	keyedSame.AuthorizedKeys = &otherOne // same count, different pointer
+	keyedSame.AuthorizedKeys = &otherOne
 	keyedMore := keyed
 	keyedMore.AuthorizedKeys = &two
 	keyedUnknown := keyed
@@ -64,7 +64,7 @@ func TestDiffIdentities(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			got := DiffIdentities(c.previous, c.current)
-			// nil and empty lists mean the same here.
+
 			if !sameList(got.Created, c.want.Created) || !sameList(got.Deleted, c.want.Deleted) || !sameList(got.Modified, c.want.Modified) {
 				t.Errorf("got %+v, want %+v", got, c.want)
 			}
@@ -109,7 +109,7 @@ func TestJudgeEV02(t *testing.T) {
 		in      EV02Input
 		status  verdict.Status
 		cause   verdict.Cause
-		reasons []string // each must appear in the reason
+		reasons []string
 	}{
 		{"no snapshot", EV02Input{}, verdict.NotEvaluable, verdict.CauseCollection, nil},
 		{"shadow unreadable", EV02Input{Current: shadowDenied}, verdict.NotEvaluable, verdict.CauseCollection, []string{"permission denied"}},

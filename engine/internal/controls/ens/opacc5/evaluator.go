@@ -14,7 +14,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Facts is what op.acc.5 reads (source.Source in production).
 type Facts interface {
 	ServiceLogSnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.ServiceLogSnapshot, error)
 	ServiceLogs(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ServiceLog, error)
@@ -29,11 +28,8 @@ type Facts interface {
 
 const control = "op.acc.5"
 
-// maxLogPasses is how many reads of the service logs of the window are
-// compared for continuity: an hourly agent makes 26 in the default window.
 const maxLogPasses = 30
 
-// Evaluator judges op.acc.5.
 type Evaluator struct {
 	facts Facts
 
@@ -42,15 +38,12 @@ type Evaluator struct {
 	decisions map[string]map[string]verdict.Judgement
 }
 
-// NewEvaluator returns the op.acc.5 evaluator.
 func NewEvaluator(facts Facts) *Evaluator {
 	return &Evaluator{facts: facts}
 }
 
-// Control is the catalog id.
 func (e *Evaluator) Control() string { return control }
 
-// Begin reads the service log snapshots of the window, for every agent.
 func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	e.pass = pass
@@ -64,13 +57,10 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// Decisions are the requirement decisions taken in Agent.
 func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// Agent judges the nine evidences of op.acc.5 and takes the requirement
-// decisions. A read that fails leaves out the evidences that need it.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	results := map[string]evaluator.Result{}
@@ -85,7 +75,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	window, now := e.pass.WindowStart, e.pass.Now
 
-	// Parameters.
 	maxAttempts, attemptsProblem := intParam(policy, agent.ID, "P-03")
 	rows, err := policy.List(agent.ID, control, "P-02")
 	if err != nil && !errors.Is(err, params.ErrNotSet) {
@@ -93,7 +82,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 	declared := declaredNames(rows)
 
-	// What the agent reads, and what the index keeps.
 	logPasses, err := e.logPasses(ctx, agent.ID)
 	read("logs", err)
 	spans, err := e.facts.ServiceSpans(ctx, agent.ID)
@@ -119,15 +107,12 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results[id] = j()
 	}
 
-	// EV-01: retention.
 	judge("EV-01", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV01Input{Services: services, Now: now}
 		in.MinDays, in.MinDaysProblem = intParam(policy, agent.ID, "P-08")
 		return evaluator.Result{Judgement: JudgeEV01(in), RunID: runID}
 	})
 
-	// EV-02: lockout, from the declared policy and the runs of failures of
-	// the accounts that failed more than P-03 times in the window.
 	judge("EV-02", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV02Input{Services: services, Policies: policies, MaxAttempts: maxAttempts, MaxAttemptsProblem: attemptsProblem}
 		if attemptsProblem == "" {
@@ -141,7 +126,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV02(in)}
 	})
 
-	// EV-03: failures by origin.
 	judge("EV-03", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV03Input{Services: services, Reaching: reaching(services), MaxAttempts: maxAttempts, MaxAttemptsProblem: attemptsProblem}
 		if attemptsProblem == "" {
@@ -169,7 +153,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV03(in)}
 	})
 
-	// EV-04: credential age.
 	judge("EV-04", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV04Input{Services: services, Now: now}
 		in.MaxAge, in.MaxAgeProblem = intParam(policy, agent.ID, "P-05")
@@ -182,7 +165,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV04(in)}
 	})
 
-	// EV-05: disablement after a notice.
 	judge("EV-05", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV05Input{Services: services, Now: now}
 		in.MaxHours, in.MaxHoursProblem = intParam(policy, agent.ID, "P-06")
@@ -195,7 +177,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV05(in)}
 	})
 
-	// EV-06: rejection messages.
 	judge("EV-06", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV06Input{Services: services, EverLogged: map[string]bool{}}
 		messages, err := e.facts.ServiceMessages(ctx, agent.ID, window)
@@ -214,7 +195,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV06(in)}
 	})
 
-	// EV-07: mechanism used.
 	mechanism, mechanismProblem := Mechanism(policy.List(agent.ID, control, "P-01"))
 	judge("EV-07", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV07Input{Services: services, Mechanism: mechanism}
@@ -227,7 +207,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV07(in)}
 	})
 
-	// EV-08: certificate validation, only under a certificate mechanism.
 	judge("EV-08", []string{"logs", "events"}, func() evaluator.Result {
 		if mechanism != "" && mechanism != "R3" && mechanism != "R4" {
 			return evaluator.Result{Judgement: verdict.Judgement{Status: verdict.NotApplicable, Reason: "certificates are judged with R3 or R4; P-01 is " + mechanism}}
@@ -243,12 +222,10 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV08(in)}
 	})
 
-	// EV-09: continuity.
 	judge("EV-09", []string{"logs", "events"}, func() evaluator.Result {
 		return evaluator.Result{Judgement: JudgeEV09(EV09Input{Services: services, Passes: logPasses}), RunID: runID}
 	})
 
-	// The requirement decisions, with the evidence verdicts known.
 	in := DecisionInput{Level: policy.Level(), Mechanism: mechanism, MechanismProblem: mechanismProblem, Policies: policies, Services: services, Evidence: map[string]verdict.Judgement{}}
 	for id, r := range results {
 		in.Evidence[id] = r.Judgement
@@ -274,14 +251,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, errors.Join(errs...)
 }
 
-// logPasses reads the complete service log reads of the window, oldest
-// first.
 func (e *Evaluator) logPasses(ctx context.Context, agentID string) ([]LogPass, error) {
 
 	snapshots := e.snapshots[agentID]
 	var out []LogPass
 
-	// Snapshots come newest first.
 	for i := len(snapshots) - 1; i >= 0; i-- {
 
 		s := snapshots[i]
@@ -302,8 +276,6 @@ func (e *Evaluator) logPasses(ctx context.Context, agentID string) ([]LogPass, e
 	return out, nil
 }
 
-// suspects returns the events of the window of the accounts (or origins)
-// whose failures in it exceed limit.
 func (e *Evaluator) suspects(ctx context.Context, agentID string, since time.Time, field string, limit int, tipos []string) ([]source.ServiceEvent, error) {
 
 	bursts, err := e.facts.ServiceFailureBursts(ctx, agentID, since, "data."+field, 24*time.Hour)
@@ -325,7 +297,6 @@ func (e *Evaluator) suspects(ctx context.Context, agentID string, since time.Tim
 	return e.facts.ServiceEvents(ctx, agentID, since, tipos, map[string][]string{field: keys})
 }
 
-// reaching: the services whose newest line is in Wazuh.
 func reaching(services []Service) map[string]bool {
 
 	out := map[string]bool{}

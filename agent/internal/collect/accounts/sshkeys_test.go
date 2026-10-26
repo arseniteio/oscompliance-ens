@@ -8,7 +8,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// fakeSSHD writes an executable that prints output as sshd -T would.
 func fakeSSHD(t *testing.T, output string, exit int) string {
 	t.Helper()
 
@@ -74,12 +73,10 @@ func TestCountKeys(t *testing.T) {
 		}
 	}
 
-	// sshd itself fails for this account: unknown.
 	if got := (sshdKeys{status: fact.SSHDRead, path: fakeSSHD(t, "", 1)}).count(entry); got != nil {
 		t.Errorf("sshd -T -C failed: want unknown, got %d", *got)
 	}
 
-	// A key file that exists but cannot be read: unknown, never 0.
 	if os.Geteuid() != 0 {
 		locked := filepath.Join(home, ".ssh/authorized_keys2")
 		writeFile(t, locked, "ssh-ed25519 DDDD\n", 0o000)
@@ -107,12 +104,9 @@ func TestKeyFilePath(t *testing.T) {
 	}
 }
 
-// Match blocks: sshd -T -C user=... gives one account its own files or a
-// command; the agent must follow it, not the global setting.
 func TestCountKeysFollowsMatch(t *testing.T) {
 	home := t.TempDir()
 
-	// A configuration with Match blocks: sshd is asked per account.
 	config := filepath.Join(t.TempDir(), "sshd_config")
 	writeFile(t, config, "Match User git\n", 0o600)
 	saved := sshdConfigs

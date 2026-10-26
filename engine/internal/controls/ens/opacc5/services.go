@@ -1,7 +1,3 @@
-// Package opacc5 judges op.acc.5 (authentication mechanism, external
-// users) from the authentication log of each external-user service: lines in
-// the op.acc.5 contract that Wazuh reads with a labelled localfile (rule
-// 119003), and the agent's view of the log files.
 package opacc5
 
 import (
@@ -12,19 +8,16 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 )
 
-// Service is one external-user service of the machine.
 type Service struct {
 	Name string
-	// Declared: the service is a row of P-02 for this machine.
+
 	Declared bool
-	// Log is the agent's newest view of the log file; nil when the agent
-	// does not read it (no labelled localfile reached it).
+
 	Log *fact.ServiceLog
-	// Span is what the index keeps of the service's events.
+
 	Span source.ServiceSpan
 }
 
-// Services joins P-02 with what the agent reads and what Wazuh indexed.
 func Services(declared []string, logs []fact.ServiceLog, spans map[string]source.ServiceSpan) []Service {
 
 	byName := map[string]*Service{}
@@ -56,7 +49,6 @@ func Services(declared []string, logs []fact.ServiceLog, spans map[string]source
 	return out
 }
 
-// declaredNames reads the servicio column of P-02 rows.
 func declaredNames(rows []string) []string {
 
 	var out []string

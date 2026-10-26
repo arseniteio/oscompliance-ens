@@ -10,13 +10,9 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV05Input is what EV-05 (disablement after compromise or end of
-// relationship) needs.
 type EV05Input struct {
 	Services []Service
-	// Events: notices (notificacion_compromiso, fin_relacion) and
-	// disablements (inhabilitacion), as far back as the index goes, oldest
-	// first.
+
 	Events []source.ServiceEvent
 	Now    time.Time
 
@@ -24,18 +20,8 @@ type EV05Input struct {
 	MaxHoursProblem string
 }
 
-// JudgeEV05 judges EV-05 as described in catalog/docs/contracts/op.acc.5.md:
-//
-//  1. P-06 unusable or no service: NOT_EVALUABLE, CONFIGURATION.
-//  2. Each notice is closed by the first disablement of the same account of
-//     the same service after it; one still open counts the hours so far.
-//  3. More hours than P-06: NON_COMPLIANT.
-//  4. No notice ever: NOT_EVALUABLE, EVIDENCE, as v1: a service that does
-//     not log its notices would otherwise pass.
-//  5. Otherwise COMPLIANT.
 func JudgeEV05(in EV05Input) verdict.Judgement {
 
-	// 1. Parameter and subject.
 	if in.MaxHoursProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-06: "+in.MaxHoursProblem)
 	}
@@ -67,7 +53,6 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		}
 	}
 
-	// 2. Notices and what closes them.
 	for _, e := range in.Events {
 
 		who := e.Service + " " + e.Usuario
@@ -95,17 +80,14 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		}
 	}
 
-	// 3. Late.
 	if len(late) > 0 {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("not disabled within %d hours: %s", in.MaxHours, strings.Join(late, "; "))}
 	}
 
-	// 4. Nothing to measure.
 	if len(onTime) == 0 && pending == 0 {
 		return passes.NotEvaluable(verdict.CauseEvidence, "the services logged no compromise or end-of-relationship notice")
 	}
 
-	// 5. On time.
 	reason := fmt.Sprintf("disabled within %d hours: %s", in.MaxHours, strings.Join(onTime, "; "))
 	if pending > 0 {
 		reason += fmt.Sprintf("; %d notices still within the deadline", pending)

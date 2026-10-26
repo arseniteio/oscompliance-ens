@@ -11,34 +11,22 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// originSpan is the span in which failures from one origin are counted.
 const originSpan = 15 * time.Minute
 
-// EV03Input is what EV-03 (failures by origin) needs.
 type EV03Input struct {
 	Services []Service
-	// Bursts per origin in the window (an upper bound per span), and the
-	// exact failures of the origins whose bound is above P-03.
+
 	Bursts   []source.Burst
 	Failures []source.ServiceEvent
-	// Reaching: the services whose log is known to reach Wazuh.
+
 	Reaching map[string]bool
 
 	MaxAttempts        int
 	MaxAttemptsProblem string
 }
 
-// JudgeEV03 judges EV-03 as described in catalog/docs/contracts/op.acc.5.md:
-//
-//  1. P-03 unusable or no service: NOT_EVALUABLE, CONFIGURATION.
-//  2. Per service and origin, the most failures within any 15 minutes
-//     (v1 counted per hourly run, which a slow attack escaped). More than
-//     P-03: NON_COMPLIANT: one origin tries many times and nothing stops it.
-//  3. No failure from a service whose log is not known to reach Wazuh:
-//     NOT_EVALUABLE, COLLECTION. Otherwise COMPLIANT.
 func JudgeEV03(in EV03Input) verdict.Judgement {
 
-	// 1. Parameter and subject.
 	if in.MaxAttemptsProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-03: "+in.MaxAttemptsProblem)
 	}
@@ -46,7 +34,6 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return noService()
 	}
 
-	// 2. Exact counts where the bound is too high.
 	times := map[string][]time.Time{}
 	for _, f := range in.Failures {
 		key := f.Service + " " + origin(f.Origen)
@@ -74,7 +61,6 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("origins with more than %d failures: %s", in.MaxAttempts, strings.Join(failing, "; "))}
 	}
 
-	// 3. Silence.
 	var blind []string
 	for _, s := range in.Services {
 		if failed[s.Name] == 0 && !in.Reaching[s.Name] {
@@ -95,7 +81,6 @@ func origin(o string) string {
 	return o
 }
 
-// maxWithin is the largest number of times within any span.
 func maxWithin(times []time.Time, span time.Duration) int {
 
 	sorted := append([]time.Time(nil), times...)

@@ -11,56 +11,36 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Requirements judged from EV-02.
 const (
-	ReqR11 = "op.acc.6.r1.1" // R1: password only from a controlled zone
-	ReqR21 = "op.acc.6.r2.1" // R2: a second factor with the password
-	ReqR81 = "op.acc.6.r8.1" // R8: two factors from an uncontrolled zone
+	ReqR11 = "op.acc.6.r1.1"
+	ReqR21 = "op.acc.6.r2.1"
+	ReqR81 = "op.acc.6.r8.1"
 )
 
-// secondFactorModules are PAM modules that verify a second factor.
 var secondFactorModules = map[string]bool{
 	"pam_google_authenticator.so": true, "pam_oath.so": true, "pam_u2f.so": true,
 	"pam_duo.so": true, "pam_radius_auth.so": true, "pam_yubico.so": true, "pam_totp.so": true,
 }
 
-// EV02Input is what EV-02 (factors by zone) needs.
 type EV02Input struct {
-	Logins    []source.Login // in the window
+	Logins    []source.Login
 	Listening Listening
 	Settings  Settings
 	PAM       PAM
 	Log       passes.AuthLog
 
-	// Zones is P-02; ZonesProblem says why it cannot be used.
 	Zones        Zones
 	ZonesProblem string
 }
 
-// access is one login with the factors it proved and its zone.
 type access struct {
 	what       string
 	controlled bool
 	zoneKnown  bool
-	factors    int // 0: unknown
+	factors    int
 	password   bool
 }
 
-// JudgeEV02 judges the three requirements EV-02 serves, as described in
-// catalog/docs/contracts/op.acc.6.md. Each one looks at the logins of the
-// window and at the authentication channels listening:
-//
-//   - r8.1: a login from an uncontrolled zone with one factor, or a channel
-//     answering on an uncontrolled address that accepts one factor.
-//   - r1.1: the same, for logins and channels that use a password.
-//   - r2.1: any login or channel with one factor.
-//
-// Factors: publickey is one, two with a FIDO key (-SK) and
-// PubkeyAuthOptions verify-required; password one; keyboard-interactive two
-// when the sshd PAM stack requires a second-factor module; the console
-// likewise from the login stack. sshd AuthenticationMethods raises the
-// count to its weakest list. A Match block in sshd_config can change all of
-// this per user: what would fail becomes NOT_EVALUABLE.
 func JudgeEV02(in EV02Input) map[string]verdict.Judgement {
 
 	out := map[string]verdict.Judgement{}
@@ -78,7 +58,6 @@ func JudgeEV02(in EV02Input) map[string]verdict.Judgement {
 	return out
 }
 
-// ev02Gap: what stops all three.
 func ev02Gap(in EV02Input) (verdict.Judgement, bool) {
 
 	if in.ZonesProblem != "" {
@@ -114,7 +93,6 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 
 	var failing, unknown []string
 
-	// Logins.
 	for _, a := range accesses(in.Logins, in.Zones, sshd, in.PAM) {
 
 		if !a.zoneKnown && req != ReqR21 {
@@ -135,7 +113,6 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 		}
 	}
 
-	// Channels.
 	channels, _ := in.Listening.Channels()
 
 	for _, c := range channels {
@@ -179,7 +156,6 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
 	}
 
-	// Silence about logins needs the log to reach Wazuh.
 	if len(in.Logins) == 0 && !in.Log.Reaches {
 		return passes.NotEvaluable(verdict.CauseCollection, "logins cannot be seen: "+in.Log.Detail)
 	}
@@ -187,8 +163,6 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d logins and %d channels examined, two factors wherever %s requires them", len(in.Logins), len(channels), req)}
 }
 
-// accesses classifies the logins of the window, one entry per account,
-// origin and method.
 func accesses(logins []source.Login, zones Zones, sshd SSHD, pam PAM) []access {
 
 	seen := map[string]bool{}
@@ -214,7 +188,7 @@ func accesses(logins []source.Login, zones Zones, sshd SSHD, pam PAM) []access {
 		case source.MethodSSHD:
 			a.factors, a.password = sshdLoginFactors(l, sshd, pam)
 		case source.MethodSU:
-			// su is not a login into the machine: the person is already in.
+
 			continue
 		default:
 			a.factors, a.password = 1, true
@@ -229,7 +203,6 @@ func accesses(logins []source.Login, zones Zones, sshd SSHD, pam PAM) []access {
 	return out
 }
 
-// sshdLoginFactors counts the factors of one sshd login.
 func sshdLoginFactors(l source.Login, sshd SSHD, pam PAM) (factors int, password bool) {
 
 	switch {
@@ -248,7 +221,7 @@ func sshdLoginFactors(l source.Login, sshd SSHD, pam PAM) (factors int, password
 	case l.Auth == "":
 		return 0, false
 	default:
-		factors = 1 // hostbased, gssapi-with-mic: one proof
+		factors = 1
 	}
 
 	if required := authenticationMethods(sshd, pam); required > factors {
@@ -258,8 +231,6 @@ func sshdLoginFactors(l source.Login, sshd SSHD, pam PAM) (factors int, password
 	return factors, password
 }
 
-// channelFactors is the fewest factors a channel accepts; password says
-// whether it takes a password at all.
 func channelFactors(c Channel, sshd SSHD, pam PAM) (minimum int, password, known bool) {
 
 	switch c.Name {
@@ -280,17 +251,13 @@ func channelFactors(c Channel, sshd SSHD, pam PAM) (minimum int, password, known
 		return 1, true, true
 	}
 
-	// rdp, cockpit, webmin: depends on their own configuration.
 	return 0, true, false
 }
 
-// enabledMethods is the factor count of each sshd method enabled.
 func enabledMethods(sshd SSHD, pam PAM) []int {
 
 	var out []int
 
-	// A key is one factor: verify-required only adds one for FIDO keys,
-	// and the configuration does not say that every key is one.
 	if sshd.Get("pubkeyauthentication") == "yes" {
 		out = append(out, 1)
 	}
@@ -308,8 +275,6 @@ func enabledMethods(sshd SSHD, pam PAM) []int {
 	return out
 }
 
-// authenticationMethods is the fewest factors of the AuthenticationMethods
-// lists ("publickey,keyboard-interactive publickey,password"), 0 for "any".
 func authenticationMethods(sshd SSHD, pam PAM) int {
 
 	value := sshd.Get("authenticationmethods")
@@ -339,8 +304,6 @@ func authenticationMethods(sshd SSHD, pam PAM) int {
 	return fewest
 }
 
-// hasSecondFactor: the auth stack of the service requires a second-factor
-// module (not optional, not sufficient: those can be skipped).
 func hasSecondFactor(pam PAM, service string) bool {
 
 	for _, r := range pam.Stack(service, "auth") {
@@ -352,8 +315,6 @@ func hasSecondFactor(pam PAM, service string) bool {
 	return false
 }
 
-// worst is the EV-02 evidence verdict from the decisions that apply:
-// NON_COMPLIANT over NOT_EVALUABLE over COMPLIANT.
 func worst(decisions ...verdict.Judgement) verdict.Judgement {
 
 	rank := map[verdict.Status]int{verdict.NonCompliant: 3, verdict.NotEvaluable: 2, verdict.Compliant: 1}

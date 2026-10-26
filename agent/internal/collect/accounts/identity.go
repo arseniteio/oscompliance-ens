@@ -12,32 +12,25 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// IdentityConfig holds the agent-side parameters of EV-02 (contract section 6).
 type IdentityConfig struct {
 	PasswdPath string
 	ShadowPath string
-	// SSHDPath is the sshd binary asked for its effective configuration
-	// (sshd -T). Missing binary: no key logins are possible.
+
 	SSHDPath string
-	// LoginRecords are wtmp files (any number, rotated ones too) and
-	// LastlogPath the lastlog file, read for each account's last login.
+
 	LoginRecords []string
 	LastlogPath  string
 }
 
-// shadowEntry is what EV-02 reports from one shadow line. Never the hash.
 type shadowEntry struct {
-	passwordState  string // one of the fact.Password* values
-	accountExpires string // YYYY-MM-DD, or "" when the field is empty
-	changed        string // YYYY-MM-DD of the last change, "" when unknown
-	changeForced   bool   // field 3 is 0: change at next login
-	maxDays        *int   // nil: the password never expires
+	passwordState  string
+	accountExpires string
+	changed        string
+	changeForced   bool
+	maxDays        *int
 	inactiveDays   *int
 }
 
-// CollectIdentity emits one identity_record per passwd entry, at any UID, joined
-// with its shadow entry, then one identity_snapshot. As in EV-01, a file that
-// cannot be read is reported in the snapshot, not returned as an error.
 func CollectIdentity(e *emit.Emitter, cfg IdentityConfig) error {
 
 	snapshot := fact.IdentitySnapshot{
@@ -74,7 +67,6 @@ func CollectIdentity(e *emit.Emitter, cfg IdentityConfig) error {
 
 	snapshot.ShadowStatus = fact.SourceRead
 
-	// Where sshd looks for keys. Asked once per pass, not per account.
 	keys := readSSHD(cfg.SSHDPath)
 
 	snapshot.SSHDStatus = keys.status
@@ -88,8 +80,6 @@ func CollectIdentity(e *emit.Emitter, cfg IdentityConfig) error {
 
 	for _, entry := range entries {
 
-		// An account with no shadow line is reported, not skipped: a missing
-		// entry is itself something an auditor wants to see.
 		state := shadowEntry{passwordState: fact.PasswordMissing}
 
 		if s, ok := shadow[entry.user]; ok {
@@ -130,28 +120,20 @@ func CollectIdentity(e *emit.Emitter, cfg IdentityConfig) error {
 
 	snapshot.RecordsEmitted = &recordsEmitted
 
-	// Emitted last: it tells the engine the pass is complete.
 	return e.Emit(snapshot)
 }
 
-// emitWithoutShadow emits a snapshot whose passwd was not read. Shadow is not
-// attempted: without passwd there is nothing to join it to.
 func emitWithoutShadow(e *emit.Emitter, snapshot fact.IdentitySnapshot) error {
 
 	snapshot.ShadowStatus = fact.SourceUnreadable
 	snapshot.ShadowError = "not read: " + snapshot.PasswdPath + " was not read"
 
-	// No accounts, so no keys to count: sshd is not asked.
 	snapshot.SSHDStatus = fact.SSHDError
 	snapshot.SSHDError = "not asked: " + snapshot.PasswdPath + " was not read"
 
 	return e.Emit(snapshot)
 }
 
-// readShadow parses the shadow file into one shadowEntry per account name.
-// Same rules as readPasswd: the whole file is read before anything is
-// emitted, malformed lines (not 9 fields, empty name) are skipped, and only an
-// open or read error is returned. When a name appears twice, the first wins.
 func readShadow(path string) (map[string]shadowEntry, error) {
 
 	file, err := fsread.Open(path)
@@ -182,12 +164,12 @@ func readShadow(path string) (map[string]shadowEntry, error) {
 			passwordState:  passwordState(fields[1]),
 			accountExpires: shadowDate(fields[7]),
 			changed:        shadowDate(fields[2]),
-			changeForced:   fields[2] == "0",
-			maxDays:        optionalDays(fields[4]),
-			inactiveDays:   optionalDays(fields[6]),
+			// Day 0 in shadow is not a date: it forces a password change at the next login.
+			changeForced: fields[2] == "0",
+			maxDays:      optionalDays(fields[4]),
+			inactiveDays: optionalDays(fields[6]),
 		}
 
-		// Day 0 is not a date: it forces a change at the next login.
 		if entry.changeForced {
 			entry.changed = ""
 		}
@@ -202,13 +184,6 @@ func readShadow(path string) (map[string]shadowEntry, error) {
 	return entries, nil
 }
 
-// passwordState classifies the shadow password field (field 2) without ever
-// keeping it:
-//
-//	""             -> fact.PasswordEmpty
-//	"!..." "*..."  -> fact.PasswordLocked
-//	"$..."         -> fact.PasswordSet
-//	anything else  -> fact.PasswordOther
 func passwordState(field string) string {
 
 	switch {
@@ -223,7 +198,6 @@ func passwordState(field string) string {
 	}
 }
 
-// optionalDays reads a shadow day count; empty or invalid is nil.
 func optionalDays(field string) *int {
 
 	days, err := parseID(field)
@@ -235,19 +209,13 @@ func optionalDays(field string) *int {
 	return &days
 }
 
-// shadowDate converts a shadow date field (days since 1970-01-01: field 3,
-// last change, and field 8, expiry) to a YYYY-MM-DD date in UTC. An empty or
-// non-numeric field returns "".
 func shadowDate(field string) string {
 
-	// parseID (ev01.go) already accepts only unsigned decimals: "-1" and
-	// "abc" fail here and mean "no date".
 	days, err := parseID(field)
 
 	if err != nil {
 		return ""
 	}
 
-	// Go writes date layouts with its reference date, 2006-01-02.
 	return time.Unix(int64(days)*24*60*60, 0).UTC().Format("2006-01-02")
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Facts is what op.acc.3 reads (source.Source in production).
 type Facts interface {
 	AuditActions(ctx context.Context, since time.Time) ([]source.ActionCount, error)
 	SudoActions(ctx context.Context, since time.Time) ([]source.ActionCount, error)
@@ -27,9 +26,6 @@ type Facts interface {
 
 const control = "op.acc.3"
 
-// Evaluator judges op.acc.3. The actions of every machine are read once
-// per pass, on the first agent: segregation is about people, who act on
-// several machines.
 type Evaluator struct {
 	facts Facts
 
@@ -38,7 +34,6 @@ type Evaluator struct {
 	configs    map[string]fact.WazuhAgentConfig
 	identities map[string][]fact.IdentitySnapshot
 
-	// The fleet of the pass, built on the first agent with its P-06.
 	built   bool
 	days    int
 	actions []source.ActionCount
@@ -47,16 +42,12 @@ type Evaluator struct {
 	names   map[string]map[string]string
 }
 
-// NewEvaluator returns the op.acc.3 evaluator.
 func NewEvaluator(facts Facts) *Evaluator {
 	return &Evaluator{facts: facts}
 }
 
-// Control is the catalog id.
 func (e *Evaluator) Control() string { return control }
 
-// Begin reads the newest audit watch, Wazuh configuration and identity of
-// every agent.
 func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	e.pass, e.built, e.actions, e.readErr, e.nameErr = pass, false, nil, nil, nil
@@ -76,7 +67,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// Agent judges the seven evidences of op.acc.3 for one agent.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	in := Input{AgentID: agent.ID}
@@ -114,7 +104,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 	}
 
-	// The actions of the whole fleet, once per pass.
 	if in.Problem == "" {
 		if err := e.build(ctx, int(days)); err != nil {
 			return nil, err
@@ -142,13 +131,9 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		"EV-07": {Judgement: JudgeSecurity(in)},
 	}
 
-	// An agent whose accounts could not be read leaves its uids unnamed:
-	// EV-06 says so; the error is reported once per agent.
 	return results, e.nameErr
 }
 
-// build reads the audited and sudo actions of every agent in the last P-06
-// days, once per pass.
 func (e *Evaluator) build(ctx context.Context, days int) error {
 
 	if e.built && e.days == days {
@@ -171,8 +156,6 @@ func (e *Evaluator) build(ctx context.Context, days int) error {
 
 	e.actions = append(audited, sudo...)
 
-	// The uids of each agent, for the audit records. One agent whose
-	// accounts cannot be read does not stop the others.
 	var errs []error
 	for agentID, list := range e.identities {
 		if len(list) == 0 {

@@ -6,7 +6,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Copied from alerts indexed in the lab (wazuh-alerts-*, rule 119001).
 func TestDecodeIndexedFacts(t *testing.T) {
 	record := map[string]any{
 		"oscompliance": "1", "fact": "identity_record", "ts": "2026-10-22T12:14:44Z",
@@ -42,7 +41,6 @@ func TestDecodeIndexedFacts(t *testing.T) {
 		t.Errorf("group: %+v %v", g, err)
 	}
 
-	// No counter and keys unknown: the pointers stay nil.
 	unread := map[string]any{"fact": "identity_record", "account_name": "kim", "uid": "1004"}
 	var u fact.IdentityRecord
 	if err := Decode(unread, &u); err != nil || u.AuthorizedKeys != nil {

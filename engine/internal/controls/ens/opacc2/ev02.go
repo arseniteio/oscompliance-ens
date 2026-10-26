@@ -13,38 +13,21 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV02Input is what EV-02 (integrity of the critical OS files) needs.
 type EV02Input struct {
-	// Config is what the Wazuh agent watches; nil when not reported.
 	Config  *fact.WazuhAgentConfig
-	Changes []source.FIMChange // FIM alerts of the window
+	Changes []source.FIMChange
 	Window  time.Duration
 
-	// Critical is P-02; CriticalProblem says why it cannot be used.
 	Critical        []string
 	CriticalProblem string
 }
 
-// JudgeEV02 judges EV-02 as described in catalog/docs/contracts/op.acc.2.md,
-// from Wazuh's own file integrity monitoring:
-//
-//  1. P-02 unusable: NOT_EVALUABLE, CONFIGURATION.
-//  2. A FIM alert of the window on a P-02 path, or under a P-02 directory:
-//     NON_COMPLIANT, as v1: every change of a critical file is reported,
-//     there is no list of expected changes.
-//  3. A P-02 path FIM does not watch (no <directories> covers it, it is
-//     ignored, FIM is off, or scans are further apart than the window and
-//     not in real time): NOT_EVALUABLE, COLLECTION. The Wazuh configuration
-//     not reported: the same.
-//  4. Otherwise COMPLIANT.
 func JudgeEV02(in EV02Input) verdict.Judgement {
 
-	// 1. Parameter.
 	if in.CriticalProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-02: "+in.CriticalProblem)
 	}
 
-	// 2. Changes on critical paths.
 	var changed []string
 	for _, c := range in.Changes {
 		for _, p := range in.Critical {
@@ -64,7 +47,6 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "critical files changed: " + strings.Join(changed, "; ")}
 	}
 
-	// 3. Silence is only proof where FIM looks.
 	switch {
 	case in.Config == nil:
 		return passes.NotEvaluable(verdict.CauseCollection, "no wazuh_agent_config in the window: what FIM watches is unknown")
@@ -85,12 +67,9 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseCollection, "critical paths FIM does not watch in time: "+strings.Join(unwatched, ", "))
 	}
 
-	// 4. Watched and unchanged.
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d critical paths watched by Wazuh FIM, no change in the window", len(in.Critical))}
 }
 
-// notWatched says why FIM does not cover a path within the window, "" when
-// it does.
 func notWatched(c fact.WazuhAgentConfig, path string, window time.Duration) string {
 
 	for _, i := range c.Ignored {
@@ -115,7 +94,6 @@ func notWatched(c fact.WazuhAgentConfig, path string, window time.Duration) stri
 	return "no FIM directory covers it"
 }
 
-// under: path is dir itself or inside it.
 func under(path, dir string) bool {
 	path, dir = filepath.Clean(path), filepath.Clean(dir)
 	return path == dir || strings.HasPrefix(path, strings.TrimSuffix(dir, "/")+"/")

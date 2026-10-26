@@ -12,14 +12,11 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Row is one P-01 row: a role (a sudoers subject or an account), a
-// resource and the accesses it may have.
 type Row struct {
 	Role, Resource string
 	Access         []string
 }
 
-// ParseMatrix reads P-01, "rol | recurso | acceso,acceso".
 func ParseMatrix(rows []string) []Row {
 
 	var out []Row
@@ -39,10 +36,6 @@ func ParseMatrix(rows []string) []Row {
 	return out
 }
 
-// splitAccess splits an access list on commas outside parentheses, blanks
-// squeezed: "ALL=(root) /usr/bin/a, /usr/bin/b" is two parts, and the same
-// text in P-01 gives the same two parts (v1 compared the whole grant with
-// each comma-split option, so a grant with a comma never matched).
 func splitAccess(s string) []string {
 
 	var out []string
@@ -70,7 +63,6 @@ func splitAccess(s string) []string {
 	return out
 }
 
-// Roles is the rol column of P-01.
 func Roles(rows []Row) map[string]bool {
 	out := map[string]bool{}
 	for _, r := range rows {
@@ -79,7 +71,6 @@ func Roles(rows []Row) map[string]bool {
 	return out
 }
 
-// subject writes a sudoers subject as P-01 names it.
 func subject(g fact.SudoGrant) string {
 	switch g.SubjectKind {
 	case "group":
@@ -92,7 +83,6 @@ func subject(g fact.SudoGrant) string {
 	return g.Subject
 }
 
-// Sudoers is one sudoers read of an agent.
 type Sudoers struct {
 	Snapshot *fact.SudoersSnapshot
 	Grants   []fact.SudoGrant
@@ -110,8 +100,6 @@ func (s Sudoers) gap() (verdict.Judgement, bool) {
 	return verdict.Judgement{}, false
 }
 
-// blindSpots: sudoers grants the agent could not attribute (ALL users,
-// netgroups, unknown aliases) leave silence unproven.
 func (s Sudoers) blindSpots() (verdict.Judgement, bool) {
 	if s.Snapshot == nil || s.Snapshot.BlindSpots == 0 {
 		return verdict.Judgement{}, false
@@ -119,17 +107,6 @@ func (s Sudoers) blindSpots() (verdict.Judgement, bool) {
 	return passes.NotEvaluable(verdict.CauseCollection, fmt.Sprintf("sudoers has %d grants to unnamed subjects: %s", s.Snapshot.BlindSpots, strings.Join(s.Snapshot.BlindSpotReasons, "; "))), true
 }
 
-// JudgeEV02 judges EV-02 (effective privileges against the matrix) as
-// described in catalog/docs/contracts/op.acc.4.md:
-//
-//  1. Sudoers unusable: NOT_EVALUABLE, COLLECTION. P-01 unusable:
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. Each sudo grant is looked up as (subject, sudo) in P-01: %group,
-//     #uid and %#gid as sudoers writes them. Every part of what it grants
-//     must be among the row's accesses. A grant without a row is a
-//     privilege nobody authorised: NON_COMPLIANT (v1 left it
-//     NOT_EVALUABLE). A row without accesses: NOT_EVALUABLE, CONFIGURATION.
-//  3. Otherwise COMPLIANT; no sudo on the machine grants nothing.
 func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 
 	if gap, found := sudoers.gap(); found {
@@ -187,7 +164,6 @@ func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d sudo grants, all as P-01 authorises", checked)}
 }
 
-// Accounts is the identity and group passes of an agent.
 type Accounts struct {
 	Identity        *fact.IdentitySnapshot
 	IdentityRecords []fact.IdentityRecord
@@ -195,7 +171,6 @@ type Accounts struct {
 	GroupRecords    []fact.GroupRecord
 }
 
-// members lists the accounts of a group, primary group included.
 func (a Accounts) members(group string) []string {
 
 	gid, found := -1, false
@@ -221,7 +196,6 @@ func (a Accounts) members(group string) []string {
 	return out
 }
 
-// groupsOf lists the groups of an account, primary included.
 func (a Accounts) groupsOf(account string) []string {
 
 	var primary = -1
@@ -248,8 +222,6 @@ func (a Accounts) gap() (verdict.Judgement, bool) {
 	return passes.GroupGap(a.Groups, a.GroupRecords)
 }
 
-// JudgeEV03 judges EV-03 (members of privileged groups): every member of a
-// P-06 group, primary group included, must be a role of P-01.
 func JudgeEV03(accounts Accounts, groups []string, rows []Row, problem string) verdict.Judgement {
 
 	if gap, found := accounts.gap(); found {
@@ -282,7 +254,6 @@ func JudgeEV03(accounts Accounts, groups []string, rows []Row, problem string) v
 
 var runasOrTag = regexp.MustCompile(`\([^)]*\)|\b[A-Z_]+:`)
 
-// unrestricted: what a grant allows includes every command (ALL).
 func unrestricted(spec string) bool {
 
 	_, rhs, ok := strings.Cut(spec, "=")
@@ -298,20 +269,15 @@ func unrestricted(spec string) bool {
 	return false
 }
 
-// EV08Input is what EV-08 (privileges above the minimum) needs.
 type EV08Input struct {
 	Sudoers  Sudoers
 	Accounts Accounts
-	// UIDMin is login.defs UID_MIN, 1000 when not declared.
+
 	UIDMin  int
 	Rows    []Row
 	Problem string
 }
 
-// JudgeEV08 judges EV-08: findings are sudo grants of every command and
-// system accounts (UID below UID_MIN, not root) with a login shell. A
-// finding whose subject is not a P-01 role: NON_COMPLIANT. None: COMPLIANT
-// (v1 required at least one finding, so a hardened machine never passed).
 func JudgeEV08(in EV08Input) verdict.Judgement {
 
 	if gap, found := in.Sudoers.gap(); found {

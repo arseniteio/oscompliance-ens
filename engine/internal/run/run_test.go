@@ -25,11 +25,10 @@ func (f fakeAgents) RegisteredAgents(context.Context, time.Time) ([]verdict.Agen
 	return f.registered, nil
 }
 
-// fakeControl judges op.acc.1 with fixed results per agent.
 type fakeControl struct {
 	beginErr error
-	results  map[string]map[string]evaluator.Result // by agent ID
-	failing  map[string]bool                        // agents whose read fails
+	results  map[string]map[string]evaluator.Result
+	failing  map[string]bool
 }
 
 func (f *fakeControl) Control() string { return "op.acc.1" }
@@ -47,7 +46,6 @@ func compliant() evaluator.Result {
 	return evaluator.Result{Judgement: verdict.Judgement{Status: verdict.Compliant}}
 }
 
-// allCompliant is every op.acc.1 evidence COMPLIANT.
 func allCompliant() map[string]evaluator.Result {
 	out := map[string]evaluator.Result{}
 	for _, id := range []string{"EV-01", "EV-02", "EV-03", "EV-04", "EV-05", "EV-06", "EV-07", "EV-08"} {
@@ -63,7 +61,6 @@ func (s *fakeSink) Write(_ context.Context, v verdict.Verdict) error {
 	return nil
 }
 
-// noParams: no parameter set, level as given, every control enabled.
 type noParams struct {
 	level    string
 	disabled bool
@@ -111,8 +108,6 @@ func TestOnceWritesEveryScope(t *testing.T) {
 		t.Errorf("want the read error of 002, got %v", err)
 	}
 
-	// 001: 8 evidences, 8 requirements, 1 control. 002: only EV-03 judged,
-	// plus its 8 requirements and the control.
 	if n != 17+10 {
 		t.Fatalf("want 27 verdicts, got %d", n)
 	}
@@ -123,12 +118,10 @@ func TestOnceWritesEveryScope(t *testing.T) {
 		t.Errorf("001 EV-01: %+v", v)
 	}
 
-	// Every evidence compliant, no attestation: op.acc.1.5 and r1.1 fail.
 	if v := got["001 control "]; v.Status != verdict.Partial || v.Score == nil || *v.Score != 75 {
 		t.Errorf("001 control: %+v", v)
 	}
 
-	// 002: unread evidences are COLLECTION gaps, never compliant by absence.
 	if v := got["002 requirement op.acc.1.4"]; v.Status != verdict.NonCompliant || v.Evidenced == nil || *v.Evidenced || !strings.Contains(v.Reason, "EV-01 (COLLECTION)") {
 		t.Errorf("002 op.acc.1.4: %+v", v)
 	}
@@ -137,8 +130,6 @@ func TestOnceWritesEveryScope(t *testing.T) {
 	}
 }
 
-// A control whose facts cannot be read at all still gives every agent its
-// requirement and control verdicts.
 func TestOnceControlBeginFails(t *testing.T) {
 	control := &fakeControl{beginErr: errors.New("indexer down")}
 	sink := &fakeSink{}
@@ -154,8 +145,6 @@ func TestOnceControlBeginFails(t *testing.T) {
 	}
 }
 
-// A registered agent that sends nothing still gets every verdict, and the
-// name of an agent known both ways is kept.
 func TestOnceJudgesRegisteredSilentAgents(t *testing.T) {
 	agents := fakeAgents{
 		senders:    []verdict.Agent{{ID: "001"}},
@@ -217,7 +206,6 @@ func TestOnceNotApplicable(t *testing.T) {
 	}
 }
 
-// orderControl notes when it is judged, for TestOnceFollowerWaits.
 type orderControl struct {
 	id, after string
 	log       *[]string
@@ -235,7 +223,7 @@ func (c *orderControl) After() []string {
 
 func (c *orderControl) Begin(context.Context, evaluator.Pass) error {
 	if c.after == "" {
-		// Give the follower every chance to start first.
+
 		time.Sleep(20 * time.Millisecond)
 	}
 	return nil

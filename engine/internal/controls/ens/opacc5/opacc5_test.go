@@ -60,8 +60,6 @@ func TestJudgeEV02(t *testing.T) {
 	good := map[string]Policy{"sede": {Service: "sede", Found: true, Lockout: "activado", MaxAttempts: 5, Reactivation: "intervencion"}}
 	services := []Service{sede(day)}
 
-	// c1 fails 6 times in a row; c2 fails 3, succeeds, fails 3; c3 is
-	// locked after 5 and keeps being hammered.
 	var events []source.ServiceEvent
 	for i := 0; i < 6; i++ {
 		events = append(events, event("autenticacion", "c1", "fallo", ago(time.Hour-time.Duration(i)*time.Minute)))

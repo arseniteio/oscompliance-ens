@@ -1,5 +1,3 @@
-// Package indexer is a minimal client for the Wazuh indexer (OpenSearch) REST
-// API: the few calls the engine needs, with no external dependency.
 package indexer
 
 import (
@@ -18,7 +16,6 @@ import (
 	"time"
 )
 
-// Client talks to one indexer with basic auth.
 type Client struct {
 	baseURL  string
 	user     string
@@ -28,16 +25,10 @@ type Client struct {
 	slots    chan struct{}
 }
 
-// inFlight bounds the requests sent at once: the controls of a pass read
-// side by side, and an indexer short of memory answers 429.
 const inFlight = 4
 
-// retries are the waits before sending again a request the indexer turned
-// away for load (429, 503).
 var retries = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second}
 
-// New returns a Client. caFile, when set, is the only CA trusted for the
-// indexer certificate.
 func New(baseURL, user, password, caFile string) (*Client, error) {
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -63,7 +54,6 @@ func New(baseURL, user, password, caFile string) (*Client, error) {
 	}, nil
 }
 
-// Error is a non-2xx answer from the indexer.
 type Error struct {
 	Status int
 	Body   string
@@ -73,11 +63,8 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("indexer: HTTP %d: %s", e.Status, e.Body)
 }
 
-// Requests is how many requests the client sent: the cost of a pass.
 func (c *Client) Requests() uint64 { return c.requests.Load() }
 
-// send sends one request, waiting for a free slot, and sends it again when
-// the indexer turns it away for load. The caller closes the body.
 func (c *Client) send(ctx context.Context, method, path, contentType string, body []byte) (*http.Response, error) {
 
 	for attempt := 0; ; attempt++ {
@@ -130,7 +117,6 @@ func (c *Client) send(ctx context.Context, method, path, contentType string, bod
 	}
 }
 
-// Do sends body as JSON and decodes the answer into out when out is not nil.
 func (c *Client) Do(ctx context.Context, method, path string, body, out any) error {
 
 	var raw []byte
@@ -157,8 +143,6 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) err
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-// Bulk sends NDJSON bulk actions and fails when any item failed, naming
-// the first failure.
 func (c *Client) Bulk(ctx context.Context, body []byte) error {
 
 	resp, err := c.send(ctx, http.MethodPost, "/_bulk", "application/x-ndjson", body)
@@ -197,25 +181,18 @@ func (c *Client) Bulk(ctx context.Context, body []byte) error {
 	return fmt.Errorf("indexer: bulk: %d of %d items failed, first %s", failed, len(out.Items), first)
 }
 
-// Search runs a search on index (a name or pattern) and decodes the answer.
 func (c *Client) Search(ctx context.Context, index string, query, out any) error {
 	return c.Do(ctx, http.MethodPost, "/"+url.PathEscape(index)+"/_search", query, out)
 }
 
-// Refresh makes what was written to index searchable now, instead of at the
-// indexer's next periodic refresh.
 func (c *Client) Refresh(ctx context.Context, index string) error {
 	return c.Do(ctx, http.MethodPost, "/"+url.PathEscape(index)+"/_refresh", nil, nil)
 }
 
-// Put writes doc under id, replacing any earlier version.
 func (c *Client) Put(ctx context.Context, index, id string, doc any) error {
 	return c.Do(ctx, http.MethodPut, "/"+url.PathEscape(index)+"/_doc/"+url.PathEscape(id), doc, nil)
 }
 
-// EnsureIndex creates index with the given body (settings and mappings) when
-// it does not exist yet. When it exists, the mappings are put again: new
-// fields are added, existing ones must not change (the indexer refuses that).
 func (c *Client) EnsureIndex(ctx context.Context, index string, body map[string]any) error {
 
 	err := c.Do(ctx, http.MethodHead, "/"+url.PathEscape(index), nil, nil)
@@ -234,7 +211,6 @@ func (c *Client) EnsureIndex(ctx context.Context, index string, body map[string]
 
 	err = c.Do(ctx, http.MethodPut, "/"+url.PathEscape(index), body, nil)
 
-	// Another engine may have created it in between.
 	if e, ok := err.(*Error); ok && e.Status == http.StatusBadRequest && strings.Contains(e.Body, "resource_already_exists_exception") {
 		return nil
 	}

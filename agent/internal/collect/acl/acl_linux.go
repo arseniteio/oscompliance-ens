@@ -5,8 +5,6 @@ import (
 	"syscall"
 )
 
-// getACL reads one ACL attribute; nil when the path has none or the file
-// system has no ACLs.
 func getACL(path, name string) ([]byte, error) {
 
 	size, err := syscall.Getxattr(path, name, nil)

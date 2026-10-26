@@ -16,14 +16,10 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// Config says where the shared path list is.
 type Config struct {
 	SharedPaths string
 }
 
-// Collect emits one acl_record per acl_paths entry of the shared
-// oscompliance.json, then the acl_snapshot. Without the file the manager
-// asked for nothing: the snapshot says so.
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot := fact.ACLSnapshot{Envelope: e.Envelope(fact.ACLSnapshotFact), Config: cfg.SharedPaths, Status: fact.SourceRead}
@@ -53,12 +49,11 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(snapshot)
 }
 
-// readACL reads mode, owner and extended ACL of one path. A symlink is
-// followed: rights are checked on what the path gives access to.
 func readACL(path string) fact.ACLRecord {
 
 	r := fact.ACLRecord{Path: path, Status: fact.SourceRead}
 
+	// Stat, not Lstat: rights are judged on what a symlink gives access to.
 	info, err := os.Stat(path)
 
 	switch {
@@ -114,8 +109,6 @@ func groupName(gid uint32) string {
 	return strconv.Itoa(int(gid))
 }
 
-// POSIX ACL extended attribute layout (linux/posix_acl_xattr.h): a 4-byte
-// version (2), then 8-byte entries of tag, permissions and id.
 const (
 	aclVersion  = 2
 	aclUserObj  = 0x01
@@ -126,9 +119,6 @@ const (
 	aclOther    = 0x20
 )
 
-// parseACL turns an ACL attribute into setfacl short entries. The base
-// entries of the access ACL repeat the mode and are left out; a default ACL
-// keeps all of them, since they are not in the mode.
 func parseACL(data []byte, prefix string, base bool) ([]string, error) {
 
 	if len(data) < 4 || binary.LittleEndian.Uint32(data) != aclVersion || (len(data)-4)%8 != 0 {
@@ -185,7 +175,6 @@ func permString(p uint16) string {
 	return string(b)
 }
 
-// extendedACL reads the access ACL, and the default ACL of a directory.
 func extendedACL(path string, dir bool) ([]string, error) {
 
 	out := []string{}

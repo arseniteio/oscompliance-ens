@@ -1,7 +1,5 @@
 package fact
 
-// Fact names of configuration observations, shared by every control that
-// judges how the system is configured.
 const (
 	ConfigFileFact         = "config_file"
 	ConfigSnapshotFact     = "config_snapshot"
@@ -14,7 +12,6 @@ const (
 	ServiceLogSnapshotFact = "service_log_snapshot"
 )
 
-// LogFile is one copy of a service log.
 type LogFile struct {
 	Path     string `json:"path"`
 	Inode    uint64 `json:"inode"`
@@ -22,7 +19,6 @@ type LogFile struct {
 	Modified string `json:"modified"`
 }
 
-// ServiceLog mirrors service_log.v1.json. Rotated is never nil.
 type ServiceLog struct {
 	Envelope
 	Service       string    `json:"service"`
@@ -36,7 +32,6 @@ type ServiceLog struct {
 	EarliestEvent string    `json:"earliest_event,omitempty"`
 }
 
-// ServiceLogSnapshot mirrors service_log_snapshot.v1.json.
 type ServiceLogSnapshot struct {
 	Envelope
 	Config         string `json:"config"`
@@ -46,7 +41,6 @@ type ServiceLogSnapshot struct {
 	RecordsEmitted int    `json:"records_emitted"`
 }
 
-// ListeningSocket mirrors listening_socket.v1.json.
 type ListeningSocket struct {
 	Envelope
 	Protocol      string `json:"protocol"`
@@ -61,7 +55,6 @@ type ListeningSocket struct {
 	SocketEnabled string `json:"socket_enabled,omitempty"`
 }
 
-// ListeningSnapshot mirrors listening_snapshot.v1.json.
 type ListeningSnapshot struct {
 	Envelope
 	Status           string   `json:"status"`
@@ -72,27 +65,23 @@ type ListeningSnapshot struct {
 	RecordsEmitted   int      `json:"records_emitted"`
 }
 
-// Values of AuthLogProbe.Status.
 const (
 	ProbeWritten = "written"
 	ProbeError   = "error"
 )
 
-// AuthLogProbe mirrors auth_log_probe.v1.json.
 type AuthLogProbe struct {
 	Envelope
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
 
-// Values of ConfigFile.Kind and the extra ConfigFile.Status.
 const (
 	ConfigKindFile    = "file"
 	ConfigKindCommand = "command"
 	SourceError       = "error"
 )
 
-// ConfigEntry is one key/value setting of a ConfigFile.
 type ConfigEntry struct {
 	Key     string `json:"key"`
 	Value   string `json:"value"`
@@ -100,7 +89,6 @@ type ConfigEntry struct {
 	Section string `json:"section,omitempty"`
 }
 
-// ConfigFile mirrors config_file.v1.json. Entries is never nil.
 type ConfigFile struct {
 	Envelope
 	Source  string        `json:"source"`
@@ -110,13 +98,11 @@ type ConfigFile struct {
 	Entries []ConfigEntry `json:"entries"`
 }
 
-// ConfigSnapshot mirrors config_snapshot.v1.json.
 type ConfigSnapshot struct {
 	Envelope
 	RecordsEmitted int `json:"records_emitted"`
 }
 
-// PAMRule mirrors pam_rule.v1.json. Args is never nil.
 type PAMRule struct {
 	Envelope
 	Service  string   `json:"service"`
@@ -128,11 +114,10 @@ type PAMRule struct {
 	File     string   `json:"file"`
 	Line     int      `json:"line"`
 	Via      []string `json:"via,omitempty"`
-	// ModuleMissing: the module is not installed; the rule does nothing.
+
 	ModuleMissing bool `json:"module_missing,omitempty"`
 }
 
-// PAMSnapshot mirrors pam_snapshot.v1.json.
 type PAMSnapshot struct {
 	Envelope
 	Services       []string `json:"services"`

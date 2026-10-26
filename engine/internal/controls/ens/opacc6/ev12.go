@@ -8,7 +8,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Exposures named as P-11 names them.
 const (
 	ExposureVersion      = "sshd:version_software"
 	ExposureDistribution = "sshd:version_distribucion"
@@ -16,30 +15,15 @@ const (
 	ExposureBanner       = "sshd:banner_previo"
 )
 
-// EV12Input is what EV-12 (information shown before authenticating) needs.
 type EV12Input struct {
 	Settings Settings
 
-	// Allowed is P-11 ("ninguna" for none); AllowedProblem says why it
-	// cannot be used.
 	Allowed        []string
 	AllowedProblem string
 }
 
-// JudgeEV12 judges EV-12 as described in catalog/docs/contracts/op.acc.6.md,
-// from the configuration only: no connection is opened.
-//
-//  1. Configuration unusable: NOT_EVALUABLE, COLLECTION. P-11 unusable:
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. sshd not installed: COMPLIANT, nothing is shown. sshd -T not read:
-//     NOT_EVALUABLE, COLLECTION.
-//  3. Exposures: the software version (always, the protocol sends it), the
-//     distribution in it (DebianBanner, on by default in Debian builds), a
-//     VersionAddendum, a Banner shown before login.
-//  4. An exposure not in P-11: NON_COMPLIANT. Otherwise COMPLIANT.
 func JudgeEV12(in EV12Input) verdict.Judgement {
 
-	// 1. Facts and parameter.
 	if gap, found := in.Settings.Gap(); found {
 		return gap
 	}
@@ -47,7 +31,6 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-11: "+in.AllowedProblem)
 	}
 
-	// 2. Is there a server at all.
 	sshd := in.Settings.SSHD()
 
 	switch sshd.Status {
@@ -60,7 +43,6 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 		return passes.NotEvaluable(verdict.CauseCollection, "sshd -T: "+sshd.Error)
 	}
 
-	// 3. What sshd shows.
 	exposures := []string{ExposureVersion}
 
 	version := ""
@@ -68,8 +50,6 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 		version = v.Entries[0].Value
 	}
 
-	// Debian and Ubuntu patch the version string with the distribution
-	// unless DebianBanner is off; sshd -T only prints the option there.
 	if banner := sshd.Get("debianbanner"); banner == "yes" || (banner == "" && (strings.Contains(version, "Ubuntu") || strings.Contains(version, "Debian"))) {
 		exposures = append(exposures, ExposureDistribution)
 	}
@@ -80,7 +60,6 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 		exposures = append(exposures, ExposureBanner)
 	}
 
-	// 4. Against P-11.
 	allowed := map[string]bool{}
 	for _, a := range in.Allowed {
 		allowed[strings.TrimSpace(a)] = true

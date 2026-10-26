@@ -7,14 +7,8 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// ProbeTag is the syslog tag of the probe line; Wazuh rule 119002 matches it.
 const ProbeTag = "oscompliance-agent"
 
-// Collect writes "auth log probe <run_id>" to the authpriv facility,
-// where sshd, PAM and sudo write, and emits an auth_log_probe saying whether
-// it could. The engine looks for the line among the alerts: when it comes
-// back, the authentication log reaches Wazuh even on a machine nobody logs
-// in to.
 func Collect(e *emit.Emitter) error {
 
 	probe := fact.AuthLogProbe{Envelope: e.Envelope(fact.AuthLogProbeFact), Status: fact.ProbeWritten}

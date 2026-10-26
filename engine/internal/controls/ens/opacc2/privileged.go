@@ -7,11 +7,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// privilegedAccounts lists who has administration privilege, and through
-// what: members of a P-12 group (primary group included) and accounts a
-// sudoers grant names, directly or through a group or a uid. root by
-// sudoers is left out: it needs no grant. unresolved lists the grants that
-// name a group or uid that does not exist.
 func privilegedAccounts(idx accountIndex, groups []string, grants []fact.SudoGrant) (privileged map[string][]string, unresolved []string) {
 
 	privileged = map[string][]string{}

@@ -16,7 +16,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Facts is what op.acc.4 reads (source.Source in production).
 type Facts interface {
 	FirewallSnapshots(ctx context.Context, since time.Time) (map[string]fact.FirewallSnapshot, error)
 	ConfigSnapshots(ctx context.Context, since time.Time) (map[string]fact.ConfigSnapshot, error)
@@ -37,7 +36,6 @@ type Facts interface {
 
 const control = "op.acc.4"
 
-// Evaluator judges op.acc.4.
 type Evaluator struct {
 	facts Facts
 
@@ -53,15 +51,12 @@ type Evaluator struct {
 	seen       map[string]map[string]bool
 }
 
-// NewEvaluator returns the op.acc.4 evaluator.
 func NewEvaluator(facts Facts) *Evaluator {
 	return &Evaluator{facts: facts}
 }
 
-// Control is the catalog id.
 func (e *Evaluator) Control() string { return control }
 
-// Begin reads the newest snapshot of every fact type, for every agent.
 func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	e.pass = pass
@@ -92,8 +87,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// Agent judges the eight evidences of op.acc.4. A read that fails leaves
-// out the evidences that need it.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	results := map[string]evaluator.Result{}
@@ -116,7 +109,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	since, window := e.pass.LookbackStart, e.pass.WindowStart
 
-	// Facts.
 	settings := opacc6.Settings{}
 	if s, ok := e.configs[agent.ID]; ok {
 		files, err := e.facts.ConfigFiles(ctx, agent.ID, s.RecordsRun(), since)
@@ -161,12 +153,10 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		wazuh = &c
 	}
 
-	// Parameters.
 	matrixRows, err := policy.List(agent.ID, control, "P-01")
 	matrixProblem := problemOf(err)
 	matrix := ParseMatrix(matrixRows)
 
-	// EV-01: deny by default.
 	judge("EV-01", []string{"config"}, func() verdict.Judgement {
 		in := EV01Input{Firewall: firewall, Settings: settings, ResourcesProblem: matrixProblem}
 		for _, r := range matrix {
@@ -175,10 +165,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV01(in)
 	})
 
-	// EV-02: sudo grants against the matrix.
 	judge("EV-02", []string{"sudoers"}, func() verdict.Judgement { return JudgeEV02(sudoers, matrix, matrixProblem) })
 
-	// EV-03: members of the privileged groups.
 	judge("EV-03", []string{"accounts"}, func() verdict.Judgement {
 		groups, err := policy.List(agent.ID, control, "P-06")
 		problem := ""
@@ -191,13 +179,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV03(accounts, groups, matrix, problem)
 	})
 
-	// EV-04: who changes rights.
 	judge("EV-04", []string{"audit", "accounts"}, func() verdict.Judgement {
 		competent, err := policy.ListColumn(agent.ID, control, "P-02", 0)
 		return JudgeEV04(accesses, accounts, competent, problemOf(err), AuditChain(watches, wazuh, true, nil))
 	})
 
-	// EV-05: periodic review.
 	judge("EV-05", nil, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, control, ReviewParam)
 		days, daysErr := policy.Number(agent.ID, control, "P-03")
@@ -208,13 +194,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV05(rows, problemOf(err), int(days), daysProblem, e.pass.Now)
 	})
 
-	// EV-06: remote access.
 	judge("EV-06", []string{"logins"}, func() verdict.Judgement {
 		authorised, err := policy.List(agent.ID, control, "P-05")
 		return JudgeEV06(logins, authorised, problemOf(err), passes.ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now))
 	})
 
-	// EV-07: need to know.
 	judge("EV-07", []string{"audit", "accounts"}, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, control, "P-07")
 		resources := ParseSensitive(rows)
@@ -225,7 +209,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV07(accesses, accounts, resources, problemOf(err), AuditChain(watches, wazuh, false, paths))
 	})
 
-	// EV-08: privileges above the minimum.
 	judge("EV-08", []string{"sudoers", "accounts", "config"}, func() verdict.Judgement {
 		in := EV08Input{Sudoers: sudoers, Accounts: accounts, UIDMin: 1000, Rows: matrix, Problem: matrixProblem}
 		if v, _, _ := settings.Lookup("/etc/login.defs", "", "UID_MIN"); v.Found {

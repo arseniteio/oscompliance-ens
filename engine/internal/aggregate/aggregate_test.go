@@ -75,7 +75,7 @@ func TestEvaluateControl(t *testing.T) {
 		name       string
 		reqs       []Requirement
 		status     verdict.Status
-		score      int // -1 = no score
+		score      int
 		coverage   int
 		unmeasured string
 	}{
@@ -120,8 +120,6 @@ func TestParseAttestations(t *testing.T) {
 	}
 }
 
-// With the real catalog: op.acc.1 at MEDIO with every evidence compliant and
-// no attestation is PARTIAL, because op.acc.1.5 and r1.1 need documents.
 func TestOpAcc1EndToEnd(t *testing.T) {
 	control, _ := catalog.LookupControl("op.acc.1")
 
@@ -140,7 +138,6 @@ func TestOpAcc1EndToEnd(t *testing.T) {
 		t.Errorf("MEDIO without attestations: %+v score %d", got, *got.Score)
 	}
 
-	// At BAJO the three R1 reinforcements leave the denominator.
 	reqs = nil
 	for _, r := range control.Requirements {
 		reqs = append(reqs, EvaluateRequirement(r, "BAJO", true, all, nil))

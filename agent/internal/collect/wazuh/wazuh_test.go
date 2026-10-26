@@ -18,7 +18,6 @@ func TestCollectServiceLogs(t *testing.T) {
 	sede := filepath.Join(dir, "sede", "auth.json")
 	collecttest.Write(t, sede, `{"ts":"2026-10-25T08:00:00Z","tipo":"autenticacion","usuario":"c1"}`+"\n")
 
-	// The rotated copy, compressed, holds older lines.
 	var gz bytes.Buffer
 	zw := gzip.NewWriter(&gz)
 	zw.Write([]byte("not json\n" + `{"ts":"2026-09-01T07:30:00+02:00","tipo":"autenticacion","usuario":"c0"}` + "\n"))
@@ -71,7 +70,6 @@ func TestCollectServiceLogs(t *testing.T) {
 		t.Errorf("snapshot: %v", snap)
 	}
 
-	// Not enrolled in a group: no shared configuration.
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error {
 		return CollectServiceLogs(e, ServiceLogConfig{SharedConf: filepath.Join(dir, "none.conf")})
 	})

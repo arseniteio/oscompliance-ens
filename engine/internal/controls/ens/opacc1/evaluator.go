@@ -15,7 +15,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Facts is what op.acc.1 reads (source.Source in production).
 type Facts interface {
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
@@ -25,18 +24,13 @@ type Facts interface {
 	GroupRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.GroupRecord, error)
 }
 
-// History is the per-account history EV-08 needs (store.History in
-// production).
 type History interface {
 	Load(ctx context.Context, agentID string) (map[string]history.Account, error)
 	Save(ctx context.Context, accounts []history.Account) error
 }
 
-// identityDepth bounds how many earlier passes are tried when looking for the
-// previous complete identity pass.
 const identityDepth = 10
 
-// Evaluator judges op.acc.1.
 type Evaluator struct {
 	facts Facts
 	hist  History
@@ -48,15 +42,12 @@ type Evaluator struct {
 	groupSnapshots    map[string]fact.GroupSnapshot
 }
 
-// NewEvaluator returns the op.acc.1 evaluator.
 func NewEvaluator(facts Facts, hist History) *Evaluator {
 	return &Evaluator{facts: facts, hist: hist}
 }
 
-// Control is the catalog id.
 func (e *Evaluator) Control() string { return "op.acc.1" }
 
-// Begin reads the facts every agent's judgement needs.
 func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	e.pass = pass
@@ -82,7 +73,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// Agent judges the eight evidences of one agent.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	facts, hist := e.facts, e.hist
@@ -96,8 +86,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		results[evidence] = evaluator.Result{Judgement: j, RunID: runID}
 	}
 
-	// EV-01, EV-02 and EV-07 judge the same identity passes; EV-04,
-	// EV-06 and EV-08 use them too.
 	ev02, err := inputEV02(ctx, facts, agent.ID, currentIdentities[agent.ID], earlierIdentities[agent.ID], lookbackStart)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("agent %s identity passes: %w", agent.ID, err))
@@ -113,7 +101,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		write("EV-01", JudgeEV01(inventory), runID)
 		write("EV-02", JudgeEV02(ev02), runID)
 
-		// EV-07: the same inventory against P-07 (column usuario).
 		ev07 := EV07Input{Inventory: inventory}
 		authorized, err := policy.ListColumn(agent.ID, "op.acc.1", "P-07", 0)
 		if err != nil {
@@ -132,7 +119,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 	}
 
-	// EV-03, EV-05 and EV-06 read the same logins.
 	logins, err := facts.Logins(ctx, agent.ID, windowStart)
 	if err != nil {
 		errs = append(errs, fmt.Errorf("agent %s logins: %w", agent.ID, err))
@@ -157,9 +143,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, errors.Join(errs...)
 }
 
-// inputEV02 takes the newest pass in the window as current and the newest
-// complete pass before it as previous. A pass counts as complete when both
-// files were read and every announced record arrived.
 func inputEV02(ctx context.Context, facts Facts, agentID string, current, earlier []fact.IdentitySnapshot, since time.Time) (EV02Input, error) {
 
 	in := EV02Input{}
@@ -218,9 +201,6 @@ func loginInput(policy params.Lister, agentID, paramID string, authSeen bool, lo
 	return in
 }
 
-// inputEV06 gathers the group pass, the account list of the EV-02 input
-// (current pass when complete, otherwise the previous complete one) and P-11
-// and P-12.
 func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID string, snapshots map[string]fact.GroupSnapshot, ev02 EV02Input, since time.Time) (EV06Input, error) {
 
 	in := EV06Input{}
@@ -238,7 +218,7 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 	suffix, err := policy.List(agentID, "op.acc.1", "P-12")
 	switch {
 	case errors.Is(err, params.ErrNotSet):
-		// No suffix: nobody is excluded.
+
 	case err != nil:
 		in.ConfigProblem = "P-12: " + err.Error()
 	default:
@@ -268,8 +248,6 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 	return in, err
 }
 
-// completeIdentity returns the identity table of the EV-02 input: the current
-// pass when complete, otherwise the previous complete one.
 func completeIdentity(ev02 EV02Input) ([]fact.IdentityRecord, string) {
 
 	current := ev02.Current
@@ -285,7 +263,6 @@ func completeIdentity(ev02 EV02Input) ([]fact.IdentityRecord, string) {
 	return nil, "no complete identity pass (EV-02) in the lookback"
 }
 
-// inputEV04 gathers the identity table and P-05, P-09 and P-10.
 func inputEV04(policy params.Lister, agentID string, ev02 EV02Input, now time.Time) EV04Input {
 
 	in := EV04Input{Now: now}
@@ -308,9 +285,6 @@ func inputEV04(policy params.Lister, agentID string, ev02 EV02Input, now time.Ti
 	return in
 }
 
-// inputEV08 brings the agent's history up to date with its current complete
-// identity pass, saves the changes, and returns the accounts deleted in the
-// window with P-06, P-09 and P-10.
 func inputEV08(ctx context.Context, hist History, policy params.Lister, agent verdict.Agent, ev02 EV02Input, windowStart time.Time) (EV08Input, error) {
 
 	off := offboardingParams(policy, agent.ID)
@@ -330,8 +304,6 @@ func inputEV08(ctx context.Context, hist History, policy params.Lister, agent ve
 		return in, fmt.Errorf("history: %w", err)
 	}
 
-	// Only the current pass moves the history forward: the previous one was
-	// applied when it was current.
 	current := ev02.Current
 	complete := current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted
 
@@ -370,7 +342,6 @@ type offboarding struct {
 	problems    []string
 }
 
-// offboardingParams reads P-09 and P-10, shared by EV-04 and EV-08.
 func offboardingParams(policy params.Lister, agentID string) offboarding {
 
 	off := offboarding{declared: map[string]time.Time{}}
@@ -380,8 +351,6 @@ func offboardingParams(policy params.Lister, agentID string) offboarding {
 		off.problems = append(off.problems, problem)
 	}
 
-	// P-09 rows are "usuario | fecha_baja"; a date that cannot be read is a
-	// configuration error, not a row to skip.
 	rows, err := policy.List(agentID, "op.acc.1", "P-09")
 	switch {
 	case errors.Is(err, params.ErrNotSet):
@@ -419,8 +388,6 @@ func identityNames(records []fact.IdentityRecord) []string {
 	return names
 }
 
-// uidMinParam reads P-10, with the product default when it is not set (as
-// the plugin says in the report). The second value names an unusable P-10.
 func uidMinParam(policy params.Lister, agentID string) (int, string) {
 
 	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")

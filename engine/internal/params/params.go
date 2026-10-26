@@ -1,5 +1,3 @@
-// Package params reads policy parameters from the plugin's configuration
-// index, so each parameter lives in one place: the Configuration screen.
 package params
 
 import (
@@ -15,12 +13,8 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
 )
 
-// ErrNotSet: the parameter is missing or empty. Judging against a default the
-// auditor never set would be a lie, so callers turn this into NOT_EVALUABLE
-// with cause CONFIGURATION.
 var ErrNotSet = errors.New("not set")
 
-// Config is the plugin's active configuration, reduced to what the engine reads.
 type Config struct {
 	Global struct {
 		EnsLevel string `json:"ensLevel"`
@@ -51,18 +45,14 @@ type Config struct {
 	} `json:"agents"`
 }
 
-// NoTemplate is the plugin's explicit "no template" assignment.
 const NoTemplate = "none"
 
-// systemTypes are the system types the plugin knows; any other value is ignored.
 var systemTypes = map[string]bool{"linux": true, "zimbra-ldap": true, "windows": true, "manager": true}
 
-// Level is the active ENS level (BAJO, MEDIO, ALTO); "" when not set.
 func (c *Config) Level() string {
 	return c.Global.EnsLevel
 }
 
-// ControlEnabled: false only when the configuration disables the control.
 func (c *Config) ControlEnabled(controlID string) bool {
 	for _, control := range c.Controls {
 		if control.ControlID == controlID {
@@ -72,8 +62,6 @@ func (c *Config) ControlEnabled(controlID string) bool {
 	return true
 }
 
-// Load reads the ACTIVE_CONFIGURATION document of index (usually
-// "wazuh-ens-configuration").
 func Load(ctx context.Context, client *indexer.Client, index string) (*Config, error) {
 
 	query := map[string]any{
@@ -102,8 +90,6 @@ func Load(ctx context.Context, client *indexer.Client, index string) (*Config, e
 	return &resp.Hits.Hits[0].Source.Configuration, nil
 }
 
-// List returns a list parameter for one agent, resolved as valueAndMode. A
-// parameter written as a regular expression is an error here: use Matcher.
 func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 
 	value, mode, ok := c.valueAndMode(agentID, controlID, paramID)
@@ -119,15 +105,11 @@ func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 	return listValue(value)
 }
 
-// Number returns a numeric parameter for one agent (agent value first, then
-// the control's). The plugin stores numbers as JSON numbers or as strings.
 func (c *Config) Number(agentID, controlID, paramID string) (float64, error) {
 	value, _, ok := c.valueAndMode(agentID, controlID, paramID)
 	return number(value, ok)
 }
 
-// Bool returns a yes/no parameter: a JSON boolean, or the words the plugin
-// screens use (sí/si/yes/true, no/false).
 func (c *Config) Bool(agentID, controlID, paramID string) (bool, error) {
 
 	value, _, ok := c.valueAndMode(agentID, controlID, paramID)
@@ -178,9 +160,6 @@ func number(value any, ok bool) (float64, error) {
 	}
 }
 
-// ListColumn returns one column of a table parameter, whose rows are written
-// "a | b | c" (P-07 is "usuario | sistema | rol"). col counts from 0. Rows
-// with an empty cell in that column are skipped; ErrNotSet when none is left.
 func (c *Config) ListColumn(agentID, controlID, paramID string, col int) ([]string, error) {
 	return column(c, agentID, controlID, paramID, col)
 }
@@ -215,25 +194,18 @@ func column(l Lister, agentID, controlID, paramID string, col int) ([]string, er
 	return values, nil
 }
 
-// MaxPatternLength is the plugin's limit for a regular expression parameter.
 const MaxPatternLength = 512
 
-// Matcher answers "is this name in the parameter?" for a list parameter that
-// the plugin lets the auditor write either as a list or as one regular
-// expression (matchMode "regex").
 type Matcher struct {
 	list    []string
 	pattern *regexp.Regexp
 	source  string
 }
 
-// ListMatcher builds a Matcher from a plain list.
 func ListMatcher(values ...string) Matcher {
 	return Matcher{list: values}
 }
 
-// PatternMatcher builds a Matcher from a regular expression, with the same
-// checks as a configured one.
 func PatternMatcher(source string) (Matcher, error) {
 
 	if source != strings.TrimSpace(source) {
@@ -243,7 +215,6 @@ func PatternMatcher(source string) (Matcher, error) {
 		return Matcher{}, fmt.Errorf("regular expression longer than %d characters", MaxPatternLength)
 	}
 
-	// Anchored here: the plugin requires a full match.
 	pattern, err := regexp.Compile(`^(?:` + source + `)$`)
 	if err != nil {
 		return Matcher{}, fmt.Errorf("regular expression %q: %w", source, err)
@@ -252,8 +223,6 @@ func PatternMatcher(source string) (Matcher, error) {
 	return Matcher{pattern: pattern, source: source}, nil
 }
 
-// Match: a list compares ignoring case, as the plugin does for forbidden
-// lists; a pattern must match the whole name (RE2, as the plugin).
 func (m Matcher) Match(name string) bool {
 
 	if m.pattern != nil {
@@ -269,7 +238,6 @@ func (m Matcher) Match(name string) bool {
 	return false
 }
 
-// String describes the parameter for a verdict reason.
 func (m Matcher) String() string {
 	if m.pattern != nil {
 		return "pattern " + m.source
@@ -277,8 +245,6 @@ func (m Matcher) String() string {
 	return strings.Join(m.list, ", ")
 }
 
-// Matcher returns a list-or-pattern parameter for one agent, resolved as
-// valueAndMode.
 func (c *Config) Matcher(agentID, controlID, paramID string) (Matcher, error) {
 
 	value, mode, ok := c.valueAndMode(agentID, controlID, paramID)
@@ -300,19 +266,6 @@ func (c *Config) Matcher(agentID, controlID, paramID string) (Matcher, error) {
 	return PatternMatcher(source)
 }
 
-// valueAndMode resolves a parameter for one agent as the plugin does
-// (configuration-resolver.ts), with the match mode stored at the level the
-// value comes from:
-//
-//  1. Organisation parameters (and those the catalog does not know): the
-//     control's common value only; an agent value is ignored.
-//  2. System and platform parameters: the agent's own value; else its
-//     template (the assigned one, built-in or custom; NoTemplate disables;
-//     with none assigned or found, the built-in default of its system type);
-//     else the common value.
-//
-// Union parameters (read whole across agents) do not occur in op.acc.1 and
-// are not resolved here.
 func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, bool) {
 
 	if catalog.IsAgentLevel(controlID, paramID) {
@@ -347,7 +300,6 @@ func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, 
 	return nil, "", false
 }
 
-// template finds the values of the agent's effective template for a control.
 func (c *Config) template(typeOverride, detectedType, assigned, controlID string) (map[string]any, map[string]string, bool) {
 
 	if assigned == NoTemplate {
@@ -380,8 +332,6 @@ func (c *Config) template(typeOverride, detectedType, assigned, controlID string
 	return nil, nil, false
 }
 
-// listValue accepts a JSON list of strings or one string with one entry per
-// line, drops empty entries, and fails with ErrNotSet when nothing is left.
 func listValue(value any) ([]string, error) {
 
 	var raw []string
@@ -418,8 +368,6 @@ func listValue(value any) ([]string, error) {
 	return values, nil
 }
 
-// Lister is anything that answers List and ListColumn: a loaded *Config, or
-// Unavailable.
 type Lister interface {
 	List(agentID, controlID, paramID string) ([]string, error)
 	ListColumn(agentID, controlID, paramID string, col int) ([]string, error)
@@ -430,8 +378,6 @@ type Lister interface {
 	ControlEnabled(controlID string) bool
 }
 
-// Unavailable answers every List with err: used when the configuration could
-// not be loaded, so every parameter-based evidence says why.
 func Unavailable(err error) Lister {
 	return unavailable{err}
 }
@@ -458,7 +404,6 @@ func (u unavailable) Matcher(string, string, string) (Matcher, error) {
 	return Matcher{}, fmt.Errorf("configuration not loaded: %w", u.err)
 }
 
-// Without a configuration the level is not known: nothing is ruled out.
 func (u unavailable) Level() string { return "" }
 
 func (u unavailable) ControlEnabled(string) bool { return true }

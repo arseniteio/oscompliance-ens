@@ -1,10 +1,5 @@
-# Recommended role of the engine's indexer user (OpenSearch security
-# plugin, roles.yml format). The engine runs with any user the indexer
-# accepts; this is the least it needs: read the alerts, the agent inventory
-# and the plugin configuration, and manage its own two indices.
-#
-# Map it to a dedicated user and pass that user with -user; the password goes
-# in OSC_INDEXER_PASSWORD. Checked against Wazuh indexer 4.14.7.
+# Least-privilege role for the engine's indexer user (roles.yml format), checked
+# against Wazuh indexer 4.14.7. Recommended, not required.
 
 oscompliance_engine:
   reserved: false

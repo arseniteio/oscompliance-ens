@@ -53,7 +53,6 @@ func TestJudgePair(t *testing.T) {
 
 	pairs := ParsePairs([]string{"desarrollo | operacion", "configuracion | mantenimiento"})
 
-	// ana develops on 001 and operates on 002: one person, two machines.
 	fleet := BuildFleet([]source.ActionCount{
 		exec("001", "1000", "/usr/bin/git"),
 		exec("002", "1000", "/usr/bin/systemctl"),

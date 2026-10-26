@@ -1,12 +1,10 @@
 package fact
 
-// Fact names of EV-02.
 const (
 	IdentityRecordFact   = "identity_record"
 	IdentitySnapshotFact = "identity_snapshot"
 )
 
-// Values of IdentityRecord.PasswordState.
 const (
 	PasswordSet     = "set"
 	PasswordLocked  = "locked"
@@ -15,7 +13,6 @@ const (
 	PasswordOther   = "other"
 )
 
-// IdentityRecord mirrors identity_record.v1.json.
 type IdentityRecord struct {
 	Envelope
 	AccountName    string `json:"account_name"`
@@ -24,7 +21,7 @@ type IdentityRecord struct {
 	Shell          string `json:"shell"`
 	PasswordState  string `json:"password_state"`
 	AccountExpires string `json:"account_expires,omitempty"`
-	// AuthorizedKeys is nil when the number of keys cannot be known.
+
 	AuthorizedKeys *int `json:"authorized_keys,omitempty"`
 
 	PasswordChanged       string `json:"password_changed,omitempty"`
@@ -35,14 +32,12 @@ type IdentityRecord struct {
 	LastLogin             string `json:"last_login,omitempty"`
 }
 
-// LoginRecordFile is one entry of IdentitySnapshot.LoginRecords.
 type LoginRecordFile struct {
 	Path   string `json:"path"`
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
 
-// Values of IdentitySnapshot.SSHDStatus.
 const (
 	SSHDRead    = "read"
 	SSHDAbsent  = "absent"
@@ -50,9 +45,6 @@ const (
 	SSHDError   = "error"
 )
 
-// IdentitySnapshot mirrors identity_snapshot.v1.json. PasswdStatus uses the
-// Source* values; ShadowStatus only SourceRead and SourceUnreadable.
-// RecordsEmitted is set only when both files were read.
 type IdentitySnapshot struct {
 	Envelope
 	PasswdPath     string `json:"passwd_path"`

@@ -43,9 +43,6 @@ func TestTemplates(t *testing.T) {
 	}
 }
 
-// Every control: the evidences a requirement names exist, every evidence
-// accredits a requirement that lists it, levels are ENS levels, and every
-// parameter has a known class.
 func TestCatalogConsistency(t *testing.T) {
 	levels := map[string]bool{"BAJO": true, "MEDIO": true, "ALTO": true}
 	classes := map[string]bool{ClassOrganisation: true, ClassSystem: true, ClassPlatform: true}

@@ -7,9 +7,6 @@ import (
 	"testing"
 )
 
-// Shape copied from the lab's wazuh-ens-configuration, trimmed. Classes come
-// from the catalog: in op.acc.1, P-03, P-10 and P-11 are platform, P-07 is
-// system, P-04, P-05 and P-12 are organisation.
 const active = `{
   "global": {"ensLevel": "MEDIO"},
   "controls": [
@@ -62,31 +59,31 @@ func TestResolution(t *testing.T) {
 		want         []string
 		wantErr      error
 	}{
-		// Organisation: the agent's own value is ignored.
+
 		{"001", "P-04", []string{"admin", "guest"}, nil},
-		// System: the agent's own value.
+
 		{"001", "P-07", []string{"jgomez | srv01 | ops", "ana", "| srv02 | x", "pepe |"}, nil},
-		// Platform: own value wins over the template.
+
 		{"002", "P-11", []string{"wheel"}, nil},
-		// Platform: assigned built-in template.
+
 		{"001", "P-11", []string{"sudo", "wheel", "admin"}, nil},
-		// Platform: no assignment, the system type's default (linux).
+
 		{"002", "P-01", []string{"Local"}, nil},
-		// Platform: windows default has P-11, not P-03: common value.
+
 		{"003", "P-11", []string{"Administrators"}, nil},
 		{"003", "P-03", []string{"common-svc"}, nil},
-		// "none" disables templates: common value.
+
 		{"004", "P-11", nil, ErrNotSet},
 		{"004", "P-03", []string{"common-svc"}, nil},
-		// typeOverride wins over detectedType.
+
 		{"006", "P-01", []string{"LDAP"}, nil},
-		// Unknown system type: no template.
+
 		{"007", "P-01", nil, ErrNotSet},
-		// Unknown agent: common value.
+
 		{"999", "P-03", []string{"common-svc"}, nil},
-		// Organisation, one entry per line.
+
 		{"001", "P-12", []string{"root", "admin"}, nil},
-		// Empty values.
+
 		{"999", "P-09", nil, ErrNotSet},
 		{"999", "P-99", nil, ErrNotSet},
 	}
@@ -104,7 +101,6 @@ func TestResolution(t *testing.T) {
 		}
 	}
 
-	// A regex value is refused by List.
 	if _, err := c.List("999", "op.acc.1", "P-06"); err == nil || errors.Is(err, ErrNotSet) {
 		t.Errorf("regex in List: want an error, got %v", err)
 	}
@@ -113,20 +109,17 @@ func TestResolution(t *testing.T) {
 func TestTemplateNumbersAndPatterns(t *testing.T) {
 	c := load(t)
 
-	// P-10 from the linux template (1000) for agent 002; common " 1000 " for 999.
 	for _, agent := range []string{"002", "999"} {
 		if n, err := c.Number(agent, "op.acc.1", "P-10"); err != nil || n != 1000 {
 			t.Errorf("%s P-10: %v %v", agent, n, err)
 		}
 	}
 
-	// A custom template with a regex, and its own mode.
 	m, err := c.Matcher("005", "op.acc.1", "P-03")
 	if err != nil || !m.Match("svc-backup") || m.Match("common-svc") {
 		t.Errorf("custom template pattern: %v %v", m, err)
 	}
 
-	// The linux template's P-03 list for agent 001.
 	m, err = c.Matcher("001", "op.acc.1", "P-03")
 	if err != nil || !m.Match("www-data") || m.Match("common-svc") {
 		t.Errorf("linux template list: %v %v", m, err)
@@ -154,7 +147,6 @@ func TestListColumn(t *testing.T) {
 		t.Errorf("sistema column: %v %v", got, err)
 	}
 
-	// P-07 of an agent without its own value: the common [] is not set.
 	if _, err := c.ListColumn("002", "op.acc.1", "P-07", 0); !errors.Is(err, ErrNotSet) {
 		t.Errorf("empty table: want ErrNotSet, got %v", err)
 	}

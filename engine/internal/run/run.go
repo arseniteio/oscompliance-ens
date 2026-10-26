@@ -1,5 +1,3 @@
-// Package run is one evaluation pass: list the agents, let every control
-// judge its evidences, then write evidence, requirement and control verdicts.
 package run
 
 import (
@@ -18,36 +16,26 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Agents lists the agents to judge (source.Source in production).
 type Agents interface {
 	Agents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
 	RegisteredAgents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
 }
 
-// Sink is where verdicts go (store.Verdicts in production).
 type Sink interface {
 	Write(ctx context.Context, v verdict.Verdict) error
 }
 
-// Config holds the engine-side parameters of a pass.
 type Config struct {
-	// Window: only facts newer than this count for a verdict.
 	Window time.Duration
-	// Lookback: agents with any fact this recent are judged, so an agent
-	// that stopped sending gets NOT_EVALUABLE instead of disappearing.
+
 	Lookback      time.Duration
 	EngineVersion string
-	// Plan, when set, is told the agents of the pass in the order they are
-	// judged, before any control reads (source.Source.Plan reads by chunks).
+
 	Plan func(agents []verdict.Agent)
-	// Flush, when set, is called at the end of the pass to send what the
-	// controls buffered (store.History).
+
 	Flush func(ctx context.Context) error
 }
 
-// Once judges every known agent with every control and writes the evidence,
-// requirement and control verdicts. A failure on one agent, evidence or
-// control does not stop the others; all failures are returned together.
 func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator, policy params.Lister, sink Sink, cfg Config, now time.Time) (int, error) {
 
 	pass := evaluator.Pass{Now: now, WindowStart: now.Add(-cfg.Window), LookbackStart: now.Add(-cfg.Lookback)}
@@ -62,7 +50,7 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		cfg.Plan(agents)
 	}
 
-	var mu sync.Mutex // errs, written and the sink
+	var mu sync.Mutex
 	var errs []error
 	written := 0
 
@@ -90,8 +78,6 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 			return
 		}
 
-		// A control that cannot read its facts at all still writes verdicts:
-		// every evidence becomes a COLLECTION gap.
 		begun := true
 		if err := ev.Begin(ctx, pass); err != nil {
 			fail(fmt.Errorf("%s: %w", control.Control, err))
@@ -125,9 +111,6 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 				}
 			}
 
-			// The final evidence verdicts, in catalog order, for the
-			// requirements. Applicability rules over any judgement; an
-			// evidence without a result is not written.
 			evidences := map[string]verdict.Judgement{}
 
 			for _, e := range control.Evidences {
@@ -149,17 +132,12 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 				store(v)
 			}
 
-			// Requirements and control, from whatever evidence verdicts exist:
-			// an evidence that could not be judged counts as a COLLECTION gap.
 			for _, v := range aggregateVerdicts(policy, control, agent, evidences, decisions, base) {
 				store(v)
 			}
 		}
 	}
 
-	// Controls run side by side, each walking the agents in the same order
-	// with its own chunks of reads; a control that reads what another
-	// writes during the pass waits for it (evaluator.Follower).
 	done := map[string]chan struct{}{}
 	for _, ev := range controls {
 		done[ev.Control()] = make(chan struct{})
@@ -183,7 +161,6 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 	}
 	wg.Wait()
 
-	// A sink that batches (store.Verdicts) sends the rest now.
 	if f, ok := sink.(interface{ Flush(context.Context) error }); ok {
 		if err := f.Flush(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("write: %w", err))
@@ -199,9 +176,6 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 	return written, errors.Join(errs...)
 }
 
-// judgedAgents is every agent with facts in the lookback plus every agent
-// Wazuh has registered (and the manager): a silent agent keeps getting
-// verdicts instead of disappearing.
 func judgedAgents(ctx context.Context, list Agents, since time.Time) ([]verdict.Agent, error) {
 
 	senders, err := list.Agents(ctx, since)
@@ -231,7 +205,6 @@ func judgedAgents(ctx context.Context, list Agents, since time.Time) ([]verdict.
 	return agents, nil
 }
 
-// aggregateVerdicts builds the requirement and control verdicts of one agent.
 func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verdict.Agent, evidences, decisions map[string]verdict.Judgement, base func(verdict.Agent, string) verdict.Verdict) []verdict.Verdict {
 
 	level := policy.Level()
@@ -252,7 +225,6 @@ func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verd
 
 		r := aggregate.EvaluateRequirement(req, level, enabled, evidences, att)
 
-		// The control's own decision, where the requirement applies at all.
 		if d, ok := decisions[req.ID]; ok && r.Status != verdict.NotApplicable {
 			r = aggregate.FromDecision(req.ID, d)
 		}
@@ -297,9 +269,6 @@ func countCompliant(reqs []aggregate.Requirement) int {
 	return n
 }
 
-// notApplicable decides, before any judgement counts, whether the evidence
-// applies at all: the engine decides it, from the configuration's level and
-// the catalog's evidence levels. Without a known level nothing is ruled out.
 func notApplicable(policy params.Lister, control catalog.Control, evidenceID string) (verdict.Judgement, bool) {
 
 	if !policy.ControlEnabled(control.Control) {

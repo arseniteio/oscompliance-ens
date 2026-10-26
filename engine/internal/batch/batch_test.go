@@ -117,7 +117,6 @@ func TestScopesKeepTheirChunks(t *testing.T) {
 		return map[string]int{}, nil
 	}
 
-	// Two readers, one ahead of the other by a chunk.
 	a, b := WithScope(context.Background(), "a"), WithScope(context.Background(), "b")
 	for i := range Size {
 		Get(a, &p, "k", ids[Size+i], fetch)

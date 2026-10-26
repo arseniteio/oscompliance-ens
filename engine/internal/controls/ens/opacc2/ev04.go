@@ -11,35 +11,20 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// ACLs is one read of the paths of the shared oscompliance.json.
 type ACLs struct {
 	Snapshot *fact.ACLSnapshot
 	Records  []fact.ACLRecord
 }
 
-// EV04Input is what EV-04 (rights against the declared policy) needs.
 type EV04Input struct {
 	ACLs ACLs
 
-	// Rows is P-08, "recurso | modo | propietario_grupo | acl_esperada";
-	// RowsProblem says why it cannot be used.
 	Rows        []string
 	RowsProblem string
 }
 
-// JudgeEV04 judges EV-04 as described in catalog/docs/contracts/op.acc.2.md:
-//
-//  1. P-08 unusable: NOT_EVALUABLE, CONFIGURATION. The ACL read missing or
-//     incomplete: NOT_EVALUABLE, COLLECTION.
-//  2. For each P-08 row: the mode differs (as octal numbers: 750 is 0750),
-//     the owner differs when declared, a declared ACL entry is missing, or a
-//     named entry is applied that is not declared: NON_COMPLIANT.
-//  3. A path missing, unreadable or not in the agent's list (the manager did
-//     not send it): NOT_EVALUABLE, COLLECTION, a gap and not a deviation.
-//  4. Otherwise COMPLIANT.
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
-	// 1. Parameter and facts.
 	if in.RowsProblem != "" {
 		return passes.NotEvaluable(verdict.CauseConfiguration, "P-08: "+in.RowsProblem)
 	}
@@ -77,7 +62,6 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 
 		r, ok := byPath[path]
 
-		// 3. Gaps.
 		switch {
 		case !ok:
 			gaps = append(gaps, path+": not in the paths the agent was sent")
@@ -90,7 +74,6 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 			continue
 		}
 
-		// 2. Deviations.
 		var why []string
 
 		if want, err := strconv.ParseUint(mode, 8, 32); err != nil {
@@ -124,11 +107,6 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d resources with the rights P-08 declares", verified)}
 }
 
-// aclDifference compares a declared ACL (setfacl syntax, entries separated
-// by commas or blanks) with the applied one: every declared entry must be
-// there, and every applied named entry (u:name, g:name, and their default
-// forms) must be declared. Base entries are the mode's and are not
-// required.
 func aclDifference(declared string, applied []string) string {
 
 	want := map[string]bool{}
@@ -163,9 +141,6 @@ func aclDifference(declared string, applied []string) string {
 	return strings.Join(out, ", ")
 }
 
-// normalizeACL writes an entry in the short form the agent reports:
-// user:x:rwx is u:x:rwx, default:group:y:r-x is d:g:y:r-x, and a
-// permission written "rx" becomes "r-x".
 func normalizeACL(e string) string {
 
 	parts := strings.Split(strings.TrimSpace(e), ":")
@@ -196,7 +171,6 @@ func normalizeACL(e string) string {
 	return strings.Join(parts, ":")
 }
 
-// named: an entry for a given user or group, not a base one.
 func named(e string) bool {
 	e = strings.TrimPrefix(e, "d:")
 	return (strings.HasPrefix(e, "u:") || strings.HasPrefix(e, "g:")) && !strings.HasPrefix(e, "u::") && !strings.HasPrefix(e, "g::")

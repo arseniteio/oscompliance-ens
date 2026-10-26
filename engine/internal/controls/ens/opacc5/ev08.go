@@ -10,27 +10,14 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV08Input is what EV-08 (certificate validation) needs.
 type EV08Input struct {
 	Services     []Service
-	Certificates []source.CertificateCount // certificate logins of the window
+	Certificates []source.CertificateCount
 
-	// Rows is P-07, "ac | validacion" (validacion: ocsp, crl or both);
-	// RowsProblem says why it cannot be used.
 	Rows        []string
 	RowsProblem string
 }
 
-// JudgeEV08 judges EV-08 as described in catalog/docs/contracts/op.acc.5.md:
-//
-//  1. No service: NOT_EVALUABLE, CONFIGURATION. P-07 unusable:
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. Each certificate login: an issuer that is not a P-07 row is not
-//     admitted, and a revocation check that is not one its row demands:
-//     NON_COMPLIANT. (v1 left an unknown issuer NOT_EVALUABLE: P-07 lists
-//     the authorities admitted, so another one is not.)
-//  3. No certificate login in the window: NOT_EVALUABLE, COLLECTION.
-//     Otherwise COMPLIANT.
 func JudgeEV08(in EV08Input) verdict.Judgement {
 
 	if len(in.Services) == 0 {

@@ -8,44 +8,35 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 )
 
-// Person is what one account did across the machines in the window.
 type Person struct {
 	Name      string
 	Functions map[string]bool
-	// Examples: one action per function, for the reason.
+
 	Examples map[string]string
 	Agents   map[string]bool
 }
 
-// Task is a P-04 row: a critical task, how many different people it needs,
-// and the indicators of its command.
 type Task struct {
 	Name       string
 	Required   int
 	Indicators []string
 }
 
-// Fleet is every person's actions, classified.
 type Fleet struct {
 	People map[string]*Person
-	// TaskPeople: who ran each task; TaskAgents: where it ran.
+
 	TaskPeople map[string]map[string]bool
 	TaskAgents map[string]map[string]bool
-	// Security: accesses to security information, by agent.
+
 	Security map[string][]string
-	// Unresolved: actions whose account could not be named, by agent.
+
 	Unresolved map[string]int
 }
 
-// securityPaths are the security information of op.acc.3 r3.1: Wazuh's
-// configuration and the audit trail.
 var securityPaths = []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"}
 
-// Names resolves an audit uid of one agent to an account name.
 type Names func(agentID, uid string) (string, bool)
 
-// BuildFleet classifies every action with P-03 and pools them by account
-// name.
 func BuildFleet(actions []source.ActionCount, functions []Function, tasks []Task, names Names) Fleet {
 
 	f := Fleet{People: map[string]*Person{}, TaskPeople: map[string]map[string]bool{}, TaskAgents: map[string]map[string]bool{},
@@ -97,8 +88,6 @@ func BuildFleet(actions []source.ActionCount, functions []Function, tasks []Task
 	return f
 }
 
-// account names the person behind an action: sudo gives the name, auditd
-// the login uid (the person even after su or sudo), else the uid.
 func account(a source.ActionCount, names Names) (string, bool) {
 
 	if a.User != "" {
@@ -130,8 +119,6 @@ func matches(indicators []string, exe, path string) bool {
 	return false
 }
 
-// ParseTasks reads P-04, "tarea | personas | indicador...". The indicators
-// say which command is the task (v1 kept them in a file on every machine).
 func ParseTasks(rows []string) (tasks []Task, problems []string) {
 
 	for _, r := range rows {

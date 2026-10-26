@@ -1,26 +1,6 @@
 <!--
-  OSCompliance facts. Reserved range 119000-119099, clear of every ENSFacil
-  band (in use or reserved, up to 112899).
-
-  Rules are generic: they key on the envelope, never on a control or a fact
-  name, so a new fact type reaches the index without a new rule. Facts carry no
-  verdict, so no rule here raises a level above 3 or adds a compliance group.
-
-    119000  base: a line with the v1 envelope read from the facts file (level
-            0, not indexed). The location (agent events carry
-            "(agent) ip->path") keeps out JSON a local user could write to
-            syslog to forge a fact.
-    119001  any fact (level 3, indexed)
-    119002  the agent's authentication log probe (level 3, indexed): a line
-            the agent writes to the authpriv facility each pass, proving that
-            the authentication log reaches Wazuh even when nobody logs in
-    119003  an event of an external-user service's authentication log
-            (op.acc.5 contract), read by a <localfile> whose label
-            oscompliance_service names the service (level 3, indexed); never
-            from syslog or journald, where anyone can write
-    119004  an auditd record of a rule the agent loaded (audit.key
-            oscompliance_read, _write, _exec, _attr or _perm): Wazuh's own
-            audit rules leave unknown keys at level 0, not indexed
+  Range 119000-119099. The location conditions keep out lines a local user
+  could write to syslog or journald to forge a fact or a service event.
 -->
 <group name="oscompliance,">
 

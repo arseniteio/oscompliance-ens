@@ -133,7 +133,7 @@ func accounts() Accounts {
 		IdentityRecords: []fact.IdentityRecord{
 			{AccountName: "root", UID: 0, GID: 0},
 			{AccountName: "ana", UID: 1000, GID: 1000},
-			{AccountName: "bob", UID: 1001, GID: 27}, // primary group sudo
+			{AccountName: "bob", UID: 1001, GID: 27},
 			{AccountName: "eva", UID: 1002, GID: 1002},
 			{AccountName: "ops1", UID: 1003, GID: 1003},
 		},

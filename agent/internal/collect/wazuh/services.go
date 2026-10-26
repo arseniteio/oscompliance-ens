@@ -21,24 +21,15 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
-// ServiceLabel is the localfile label that names an external-user service.
-// The same label travels with every event, so Wazuh rule 119003 knows the
-// service without the application writing it.
 const ServiceLabel = "oscompliance_service"
 
-// ServiceLogConfig says where the Wazuh agent keeps its shared
-// configuration and its own name.
 type ServiceLogConfig struct {
-	SharedConf string // /var/ossec/etc/shared/agent.conf
-	ClientKeys string // /var/ossec/etc/client.keys
+	SharedConf string
+	ClientKeys string
 }
 
-// earliestLines bounds the search for the first contract line of a copy.
 const earliestLines = 2000
 
-// CollectServiceLogs emits one service_log per labelled localfile of the
-// agent's shared configuration, then the service_log_snapshot. The agent
-// is told nothing: it reads what the manager already gave the Wazuh agent.
 func CollectServiceLogs(e *emit.Emitter, cfg ServiceLogConfig) error {
 
 	snapshot := fact.ServiceLogSnapshot{Envelope: e.Envelope(fact.ServiceLogSnapshotFact), Config: cfg.SharedConf, Status: fact.SourceRead}
@@ -75,8 +66,6 @@ func CollectServiceLogs(e *emit.Emitter, cfg ServiceLogConfig) error {
 	return e.Emit(snapshot)
 }
 
-// agentName is the name the agent enrolled with: the second field of
-// client.keys ("001 lab-agent-01 any <key>").
 func agentName(clientKeys string) string {
 
 	data, err := fsread.ReadFile(clientKeys)
@@ -92,8 +81,6 @@ func agentName(clientKeys string) string {
 	return fields[1]
 }
 
-// agentConfig is one <agent_config> block of the shared configuration, or
-// one <ossec_config> block of ossec.conf: both hold the same sections.
 type agentConfig struct {
 	Name       string      `xml:"name,attr"`
 	OS         string      `xml:"os,attr"`
@@ -126,10 +113,6 @@ type serviceFile struct {
 	service, path string
 }
 
-// labelledLocalfiles reads the agent_config blocks that apply to this agent,
-// as the Wazuh agent does: blocks without attributes, blocks naming the
-// agent, and blocks for its operating system. Profile blocks are left out:
-// the profiles are in the agent's own ossec.conf.
 func labelledLocalfiles(data []byte, name string) ([]serviceFile, error) {
 
 	blocks, err := applicableBlocks(data, "agent_config", name)
@@ -156,8 +139,6 @@ func labelledLocalfiles(data []byte, name string) ([]serviceFile, error) {
 	return out, nil
 }
 
-// applicableBlocks parses the <element> blocks of a Wazuh configuration and
-// keeps those that apply to the agent named name, as the Wazuh agent does.
 func applicableBlocks(data []byte, element, name string) ([]agentConfig, error) {
 
 	decoder := xml.NewDecoder(io.MultiReader(strings.NewReader("<root>"), strings.NewReader(string(data)), strings.NewReader("</root>")))
@@ -199,8 +180,6 @@ func nameMatches(attr, name string) bool {
 	return false
 }
 
-// readServiceLog stats the log and its rotated copies and finds how far
-// back the oldest one reaches.
 func readServiceLog(service, path string) fact.ServiceLog {
 
 	record := fact.ServiceLog{Service: service, Path: path, Status: fact.SourceRead, Rotated: []fact.LogFile{}}
@@ -231,7 +210,6 @@ func readServiceLog(service, path string) fact.ServiceLog {
 
 	sort.Slice(record.Rotated, func(i, j int) bool { return record.Rotated[i].Modified < record.Rotated[j].Modified })
 
-	// The oldest copy holds the oldest lines.
 	candidates := []string{}
 	for _, f := range record.Rotated {
 		candidates = append(candidates, f.Path)
@@ -265,8 +243,6 @@ func statLog(path string) (fact.LogFile, error) {
 	return f, nil
 }
 
-// firstEventTime is the ts of the first contract line of a log copy,
-// compressed or not.
 func firstEventTime(path string) (time.Time, bool) {
 
 	file, err := fsread.Open(path)

@@ -78,7 +78,7 @@ func TestReadShadow(t *testing.T) {
 	type aging struct {
 		state, expires, changed string
 		forced                  bool
-		max, inactive           int // -1: not set
+		max, inactive           int
 	}
 	days := func(p *int) int {
 		if p == nil {
@@ -90,7 +90,7 @@ func TestReadShadow(t *testing.T) {
 	want := map[string]aging{
 		"root":   {"locked", "", "2024-10-04", false, 99999, -1},
 		"daemon": {"locked", "", "2024-10-04", false, 99999, -1},
-		"alice":  {"set", "2026-06-30", "2024-10-04", false, 99999, -1}, // first line wins
+		"alice":  {"set", "2026-06-30", "2024-10-04", false, 99999, -1},
 		"bob":    {"empty", "", "", true, -1, 30},
 	}
 	if len(got) != len(want) {
@@ -109,13 +109,10 @@ func TestReadShadow(t *testing.T) {
 	}
 }
 
-// collectEV02 runs CollectIdentity over passwd and shadow contents. An empty
-// shadow argument means the shadow file does not exist.
 func collectEV02(t *testing.T, passwd, shadow string) []map[string]any {
 	return collectEV02WithSSHD(t, passwd, shadow, "")
 }
 
-// collectEV02WithSSHD also sets the sshd binary; "" means none installed.
 func collectEV02WithSSHD(t *testing.T, passwd, shadow, sshd string) []map[string]any {
 	t.Helper()
 
@@ -164,7 +161,7 @@ func TestCollectEV02(t *testing.T) {
 	want := []struct{ name, state, expires string }{
 		{"root", "locked", ""},
 		{"alice", "set", "2026-06-30"},
-		{"carol", "missing", ""}, // in passwd, not in shadow
+		{"carol", "missing", ""},
 	}
 	for i, w := range want {
 		f := facts[i]
@@ -178,14 +175,12 @@ func TestCollectEV02(t *testing.T) {
 		t.Errorf("snapshot: %v", s)
 	}
 
-	// Shadow missing: only the snapshot, with the error and no counter.
 	facts = collectEV02(t, passwd, "")
 	if len(facts) != 1 || facts[0]["shadow_status"] != "unreadable" || facts[0]["shadow_error"] == nil || facts[0]["records_emitted"] != nil {
 		t.Errorf("shadow missing: %v", facts)
 	}
 }
 
-// Does not depend on the shadow functions: passwd fails before shadow is read.
 func TestCollectEV02PasswdNotRead(t *testing.T) {
 	facts := collectEV02(t, "alice:x:1000:1000::/home/alice:/bin/bash\n", "")
 
@@ -216,7 +211,6 @@ func TestCollectEV02SSHKeys(t *testing.T) {
 		t.Errorf("snapshot: %v", s)
 	}
 
-	// No sshd installed: every account has 0 keys, nothing else is asked.
 	facts = collectEV02(t, passwd, shadowFixture)
 	if facts[1]["authorized_keys"] != float64(0) || facts[2]["sshd_status"] != "absent" {
 		t.Errorf("no sshd: %v", facts)

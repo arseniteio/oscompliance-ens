@@ -12,42 +12,23 @@ import (
 	"time"
 )
 
-// The agent emits a collector's records only when they change: an
-// unchanged pass sends its snapshot alone, pointing with records_run_id to
-// the pass that carried the records. A quiet collector sends nothing at all
-// when its snapshot did not change either: the agent_pass fact that closes
-// every pass names the snapshot still in force (fact.AgentPass). Everything
-// goes out in full every FullEvery anyway. On a large fleet this cuts the
-// facts sent by an order of magnitude.
-
-// FullEvery is how often records and snapshots go out even when nothing
-// changed: what is lost on the way comes back within that time. The engine
-// looks for what is in force further back than that (source.reach).
 const FullEvery = 3 * 24 * time.Hour
 
-// State is the only thing the agent remembers between passes: per
-// collector, a hash of the records last emitted and the pass that carried
-// them. Losing it only costs one full emission.
 type State struct {
 	path       string
 	Collectors map[string]Sent `json:"collectors"`
 }
 
-// Sent is what one collector last emitted.
 type Sent struct {
-	// Hash, RunID and At: the records last sent in full, the pass that
-	// carried them and when.
 	Hash  string    `json:"hash"`
 	RunID string    `json:"run_id"`
 	At    time.Time `json:"at"`
-	// The snapshot last sent: its fact, its pass and a hash of its content.
+
 	Snapshot     string `json:"snapshot,omitempty"`
 	SnapshotRun  string `json:"snapshot_run,omitempty"`
 	SnapshotHash string `json:"snapshot_hash,omitempty"`
 }
 
-// InForce returns the snapshot of collector that still holds, as
-// "fact:run_id" (fact.AgentPass), or "" when none was sent.
 func (s *State) InForce(collector string) string {
 	c := s.Collectors[collector]
 	if c.Snapshot == "" || c.SnapshotRun == "" {
@@ -56,8 +37,6 @@ func (s *State) InForce(collector string) string {
 	return c.Snapshot + ":" + c.SnapshotRun
 }
 
-// LoadState reads the state file. A missing or damaged file is an empty
-// state: everything goes out in full.
 func LoadState(path string) *State {
 
 	s := &State{path: path, Collectors: map[string]Sent{}}
@@ -75,7 +54,6 @@ func LoadState(path string) *State {
 	return s
 }
 
-// Save writes the state atomically, readable by root only.
 func (s *State) Save() error {
 
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
@@ -95,17 +73,10 @@ func (s *State) Save() error {
 	return os.Rename(tmp, s.path)
 }
 
-// Reduce takes the lines one collector emitted in one pass, records first
-// and its snapshot last, and returns what to write: everything; the
-// snapshot alone when the records are those already sent; nothing, for a
-// quiet collector, when the snapshot is also the one already sent. commit
-// records what was sent; call it only after the lines are written.
 func (s *State) Reduce(collector string, lines []byte, now time.Time, full, quiet bool) (out []byte, commit func(), err error) {
 
 	all := bytes.Split(bytes.TrimSuffix(lines, []byte("\n")), []byte("\n"))
 
-	// A collector with no records (one fact) has nothing to spare unless it
-	// is quiet.
 	if len(all) < 2 && !quiet {
 		return lines, func() {}, nil
 	}
@@ -157,8 +128,6 @@ func (s *State) Reduce(collector string, lines []byte, now time.Time, full, quie
 	return lines, commit, nil
 }
 
-// recordsHash hashes the records without what changes every pass: the
-// observation time and the pass id.
 func recordsHash(records [][]byte) (string, error) {
 
 	h := sha256.New()
@@ -171,8 +140,6 @@ func recordsHash(records [][]byte) (string, error) {
 		delete(m, "ts")
 		delete(m, "run_id")
 
-		// encoding/json writes map keys sorted: the same record gives the
-		// same bytes.
 		b, err := json.Marshal(m)
 		if err != nil {
 			return "", err
@@ -184,8 +151,6 @@ func recordsHash(records [][]byte) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// withRecordsRun adds records_run_id to a snapshot line, keeping its order
-// of fields except that one at the end.
 func withRecordsRun(snapshot []byte, runID string) ([]byte, error) {
 
 	if !bytes.HasSuffix(snapshot, []byte("}")) {

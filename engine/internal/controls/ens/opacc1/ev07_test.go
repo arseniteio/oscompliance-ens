@@ -9,10 +9,10 @@ import (
 
 func TestJudgeEV07(t *testing.T) {
 	root := account("root", 0, "locked", 0)
-	jperez := account("jperez", 1001, "locked", 1) // key login: active
-	mgarcia := account("mgarcia", 1002, "set", 0)  // password: active
-	old := account("old", 1003, "locked", 0)       // no password, no keys: disabled
-	unknown := account("kim", 1004, "locked", -1)  // keys unknown
+	jperez := account("jperez", 1001, "locked", 1)
+	mgarcia := account("mgarcia", 1002, "set", 0)
+	old := account("old", 1003, "locked", 0)
+	unknown := account("kim", 1004, "locked", -1)
 
 	nologin := account("svc", 1005, "set", 0)
 	nologin.Shell = "/usr/sbin/nologin"

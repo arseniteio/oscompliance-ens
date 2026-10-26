@@ -10,35 +10,18 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// EV03Input is what EV-03 (denied accesses and privilege escalations) needs.
 type EV03Input struct {
 	Accounts Accounts
 	Sudoers  Sudoers
-	// Elevations of the window: sudo runs and refusals, and su sessions.
+
 	Elevations []source.Elevation
 	Log        passes.AuthLog
 
-	// Groups is P-12 (optional for this evidence).
 	Groups []string
 }
 
-// JudgeEV03 judges EV-03 as described in catalog/docs/contracts/op.acc.2.md,
-// from Wazuh's own sudo and su alerts:
-//
-//  1. Identity, group or sudoers facts unusable: NOT_EVALUABLE,
-//     COLLECTION: who is privileged cannot be told.
-//  2. Privileged: UID 0 accounts, members of a P-12 group and accounts with
-//     a sudo grant. A sudo run or a su session that makes a non-privileged
-//     account a privileged one: NON_COMPLIANT, an escalation the policy does
-//     not grant. To a non-privileged account it is lateral, and fine.
-//  3. An elevation by an account that is not local, or with sudoers blind
-//     spots, cannot be decided: NOT_EVALUABLE, COLLECTION.
-//  4. Nothing seen while the authentication log is not known to reach
-//     Wazuh: NOT_EVALUABLE, COLLECTION. Otherwise COMPLIANT; refusals are
-//     the control working and only reported.
 func JudgeEV03(in EV03Input) verdict.Judgement {
 
-	// 1. Who is privileged.
 	if gap, found := passes.IdentityGap(in.Accounts.Identity, in.Accounts.IdentityRecords); found {
 		return gap
 	}
@@ -67,7 +50,6 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		}
 	}
 
-	// 2. The elevations.
 	var escalations, undecided []string
 	denied, used := 0, 0
 
@@ -85,7 +67,7 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 
 		switch {
 		case !toPrivileged && local[e.To]:
-			// Lateral: becoming an ordinary account.
+
 		case fromPrivileged:
 		case !local[e.From]:
 			undecided = append(undecided, fmt.Sprintf("%s %s to %s (not a local account)", e.Method, e.From, e.To))
@@ -105,13 +87,11 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "privilege escalations by unprivileged accounts: " + strings.Join(escalations, "; ")}
 	}
 
-	// 3. What could not be decided.
 	if len(undecided) > 0 {
 		sort.Strings(undecided)
 		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(undecided, "; "))
 	}
 
-	// 4. Silence.
 	if used == 0 && denied == 0 && !in.Log.Reaches {
 		return passes.NotEvaluable(verdict.CauseCollection, "elevations cannot be seen: "+in.Log.Detail)
 	}

@@ -12,45 +12,26 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Accounts is one identity pass of an agent (op.acc.1 EV-02 facts).
 type Accounts struct {
 	Snapshot *fact.IdentitySnapshot
 	Records  []fact.IdentityRecord
 }
 
-// Gap says why the pass cannot be used.
 func (a Accounts) Gap() (verdict.Judgement, bool) {
 	return passes.IdentityGap(a.Snapshot, a.Records)
 }
 
-// EV05Input is what EV-05 (periodic credential change) needs.
 type EV05Input struct {
 	Accounts Accounts
 	Settings Settings
 	Today    time.Time
 
-	// MaxAge is P-04 in days; MaxAgeProblem says why it cannot be used.
 	MaxAge        int
 	MaxAgeProblem string
 }
 
-// JudgeEV05 judges EV-05 as described in catalog/docs/contracts/op.acc.6.md.
-// Every account that can still authenticate is examined, at any UID:
-//
-//  1. Identity pass unusable: NOT_EVALUABLE, COLLECTION. P-04 unusable:
-//     NOT_EVALUABLE, CONFIGURATION.
-//  2. A password older than P-04, or allowed to live longer (no maximum, or
-//     a maximum above P-04): NON_COMPLIANT. A forced change at next login
-//     is a fresh password.
-//  3. Authorized keys unchanged for longer than P-04: NON_COMPLIANT. The
-//     files' change time is when the newest key was written, so some key is
-//     at least that old.
-//  4. login.defs giving new accounts a maximum above P-04: NON_COMPLIANT.
-//  5. An account whose state or ages cannot be known: NOT_EVALUABLE,
-//     COLLECTION. Otherwise COMPLIANT.
 func JudgeEV05(in EV05Input) verdict.Judgement {
 
-	// 1. Facts and parameter.
 	if gap, found := in.Accounts.Gap(); found {
 		return gap
 	}
@@ -75,13 +56,11 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 
 		examined++
 
-		// 2. The password, when there is one to log in with.
 		if a.PasswordState == fact.PasswordSet || a.PasswordState == fact.PasswordOther || a.PasswordState == fact.PasswordEmpty {
 			f, u := passwordAge(a, in.Today, in.MaxAge)
 			failing, unknown = append(failing, f...), append(unknown, u...)
 		}
 
-		// 3. The keys.
 		switch {
 		case a.AuthorizedKeys == nil:
 			unknown = append(unknown, a.AccountName+": authorized keys unknown")
@@ -97,7 +76,6 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		}
 	}
 
-	// 4. What new accounts get.
 	if f := loginDefsMax(in.Settings, in.MaxAge); f != "" {
 		failing = append(failing, f)
 	}
@@ -106,7 +84,6 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "older than P-04 (" + strconv.Itoa(in.MaxAge) + " days): " + strings.Join(failing, "; ")}
 	}
 
-	// 5. Silence counts only for what could be read.
 	if len(unknown) > 0 {
 		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unknown, "; "))
 	}
@@ -117,7 +94,6 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	}
 }
 
-// passwordAge checks one usable password against P-04.
 func passwordAge(a fact.IdentityRecord, today time.Time, maxAge int) (failing, unknown []string) {
 
 	switch {
@@ -143,9 +119,6 @@ func passwordAge(a fact.IdentityRecord, today time.Time, maxAge int) (failing, u
 	return failing, unknown
 }
 
-// loginDefsMax is the finding of login.defs PASS_MAX_DAYS, "" when it is
-// within P-04 or not known. Without the setting shadow tools write no
-// maximum: passwords of new accounts never expire.
 func loginDefsMax(settings Settings, maxAge int) string {
 
 	if _, found := settings.Gap(); found {
@@ -176,7 +149,6 @@ func loginDefsMax(settings Settings, maxAge int) string {
 	return ""
 }
 
-// days is a duration in whole days.
 func days(d time.Duration) int {
 	return int(d.Hours() / 24)
 }

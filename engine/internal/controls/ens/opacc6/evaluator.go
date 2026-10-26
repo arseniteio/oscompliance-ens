@@ -17,7 +17,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-// Facts is what op.acc.6 reads (source.Source in production).
 type Facts interface {
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
@@ -36,19 +35,14 @@ type Facts interface {
 	ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error)
 }
 
-// maxProbes is how many probes of the window are compared: an hourly agent
-// writes 26 in the default window.
 const maxProbes = 48
 
 const control = "op.acc.6"
 
-// History is the account history op.acc.1 keeps (store.History in
-// production); op.acc.6 only reads it, after op.acc.1 updated it.
 type History interface {
 	Load(ctx context.Context, agentID string) (map[string]history.Account, error)
 }
 
-// Evaluator judges op.acc.6.
 type Evaluator struct {
 	facts Facts
 	hist  History
@@ -65,15 +59,12 @@ type Evaluator struct {
 	decisions map[string]map[string]verdict.Judgement
 }
 
-// NewEvaluator returns the op.acc.6 evaluator.
 func NewEvaluator(facts Facts, hist History) *Evaluator {
 	return &Evaluator{facts: facts, hist: hist}
 }
 
-// Control is the catalog id.
 func (e *Evaluator) Control() string { return control }
 
-// Begin reads the newest snapshot of every fact type, for every agent.
 func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	e.pass = pass
@@ -105,16 +96,12 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// After: EV-06 reads the account history op.acc.1 saves in the same pass.
 func (e *Evaluator) After() []string { return []string{"op.acc.1"} }
 
-// Decisions are the P-01 decisions taken in Agent.
 func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// Agent judges every evidence of op.acc.6. A fact read that fails leaves
-// out the evidences that need it: they count as COLLECTION gaps.
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	results := map[string]evaluator.Result{}
@@ -125,8 +112,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	decisions := MechanismDecisions(Mechanism(policy.List(agent.ID, control, "P-01")))
 	e.decisions[agent.ID] = decisions
 
-	// The facts, each read once. A read that fails leaves out only the
-	// evidences that need it.
 	failed := map[string]bool{}
 	read := func(name string, err error) {
 		if err != nil {
@@ -166,15 +151,12 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	authLog := passes.ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now)
 	configRun := runOf(settings.Snapshot)
 
-	// EV-01: logging of accesses.
 	judge("EV-01", []string{"config"}, func() evaluator.Result {
 		in := EV01Input{Settings: settings, Log: authLog}
 		in.Sources, in.SourcesProblem = listParam(policy, agent.ID, "P-03")
 		return evaluator.Result{Judgement: JudgeEV01(in), RunID: configRun}
 	})
 
-	// EV-02: factors by zone, decided per requirement; the evidence is the
-	// worst of the requirements that apply.
 	judge("EV-02", []string{"config", "pam", "listening", "logins"}, func() evaluator.Result {
 		in := EV02Input{Listening: listening, Settings: settings, PAM: pam, Log: authLog}
 		for _, l := range logins {
@@ -192,7 +174,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		var applied []verdict.Judgement
 		for req, j := range JudgeEV02(in) {
 			if _, ruled := decisions[req]; ruled {
-				continue // P-01 ruled it out, or P-01 is unknown
+				continue
 			}
 			decisions[req] = j
 			applied = append(applied, j)
@@ -201,28 +183,24 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: worst(applied...), RunID: runOfListening(listening.Snapshot)}
 	})
 
-	// EV-03: attempt limit.
 	judge("EV-03", []string{"config", "pam"}, func() evaluator.Result {
 		in := EV03Input{Settings: settings, PAM: pam}
 		in.MaxAttempts, in.MaxAttemptsProblem = intParam(policy, agent.ID, "P-05")
 		return evaluator.Result{Judgement: JudgeEV03(in), RunID: configRun}
 	})
 
-	// EV-04: failed attempts without lockout, in the window.
 	judge("EV-04", []string{"failures"}, func() evaluator.Result {
 		in := EV04Input{Failures: failures, Lockouts: lockouts, Log: authLog}
 		in.MaxAttempts, in.MaxAttemptsProblem = intParam(policy, agent.ID, "P-05")
 		return evaluator.Result{Judgement: JudgeEV04(in)}
 	})
 
-	// EV-05: credential age.
 	judge("EV-05", []string{"identity", "config"}, func() evaluator.Result {
 		in := EV05Input{Accounts: accounts, Settings: settings, Today: today}
 		in.MaxAge, in.MaxAgeProblem = intParam(policy, agent.ID, "P-04")
 		return evaluator.Result{Judgement: JudgeEV05(in), RunID: identityRun(accounts)}
 	})
 
-	// EV-06: disablement after a notice.
 	judge("EV-06", []string{"history"}, func() evaluator.Result {
 		in := EV06Input{History: accountHistory, Now: today}
 		if rows, err := policy.List(agent.ID, control, RegisterParam); err != nil {
@@ -234,7 +212,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV06(in)}
 	})
 
-	// EV-07: remote channels used, in the window.
 	judge("EV-07", []string{"logins"}, func() evaluator.Result {
 		in := EV07Input{Log: authLog}
 		for _, l := range logins {
@@ -246,21 +223,18 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV07(in)}
 	})
 
-	// EV-08: listening channels.
 	judge("EV-08", []string{"listening"}, func() evaluator.Result {
 		in := EV08Input{Listening: listening}
 		in.Rows, in.RowsProblem = listParam(policy, agent.ID, "P-07")
 		return evaluator.Result{Judgement: JudgeEV08(in), RunID: runOfListening(listening.Snapshot)}
 	})
 
-	// EV-09: re-authentication.
 	judge("EV-09", []string{"sudoers", "pam"}, func() evaluator.Result {
 		in := EV09Input{Sudoers: sudoers, PAM: pam}
 		in.Points, in.PointsProblem = listParam(policy, agent.ID, "P-08")
 		return evaluator.Result{Judgement: JudgeEV09(in), RunID: runOfSudoers(sudoers.Snapshot)}
 	})
 
-	// EV-10: accounts without use.
 	judge("EV-10", []string{"identity", "logins"}, func() evaluator.Result {
 		in := EV10Input{Accounts: accounts, Today: today, LastAlert: map[string]time.Time{}}
 		for _, l := range logins {
@@ -272,14 +246,12 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return evaluator.Result{Judgement: JudgeEV10(in), RunID: identityRun(accounts)}
 	})
 
-	// EV-11: password quality.
 	judge("EV-11", []string{"pam", "config"}, func() evaluator.Result {
 		in := EV11Input{PAM: pam, Settings: settings}
 		in.Minimums, in.MinimumsProblem = minimumsParam(policy, agent.ID)
 		return evaluator.Result{Judgement: JudgeEV11(in), RunID: runOfPAM(pam.Snapshot)}
 	})
 
-	// EV-12: what is shown before authenticating.
 	judge("EV-12", []string{"config"}, func() evaluator.Result {
 		in := EV12Input{Settings: settings}
 		in.Allowed, in.AllowedProblem = listParam(policy, agent.ID, "P-11")
@@ -385,7 +357,6 @@ func columnParam(policy params.Lister, agentID, id string, col int) ([]string, s
 	return values, ""
 }
 
-// intParam reads a whole, non-negative number (days, attempts).
 func intParam(policy params.Lister, agentID, id string) (int, string) {
 
 	n, err := policy.Number(agentID, control, id)
@@ -400,8 +371,6 @@ func intParam(policy params.Lister, agentID, id string) (int, string) {
 	return int(n), ""
 }
 
-// minimumsParam reads P-10, "criterio | minimo" rows. An unknown criterion
-// or a minimum that is not a number makes the whole table unusable.
 func minimumsParam(policy params.Lister, agentID string) (map[string]int, string) {
 
 	rows, err := policy.List(agentID, control, "P-10")

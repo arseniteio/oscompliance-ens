@@ -12,8 +12,6 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
 )
 
-// accountFiles writes passwd and group files that know uid and gid 0 and,
-// when known is true, the current user's.
 func accountFiles(t *testing.T, known bool) (string, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -86,7 +84,6 @@ func TestCollectSweepOwnershipAndLimits(t *testing.T) {
 	collecttest.WriteFile(t, filepath.Join(root, "a"), "x", 0o644)
 	collecttest.WriteFile(t, filepath.Join(root, "b"), "x", 0o644)
 
-	// The current user is unknown to these files: everything is unowned.
 	passwd, group := accountFiles(t, false)
 	cfg := Config{Roots: []string{root}, PasswdPath: passwd, GroupPath: group, Timeout: time.Minute, MaxRecords: 100}
 
@@ -95,14 +92,12 @@ func TestCollectSweepOwnershipAndLimits(t *testing.T) {
 		t.Errorf("unowned: %v", facts)
 	}
 
-	// Cut at 2 records: truncated, and the snapshot says so.
 	cfg.MaxRecords = 2
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error { return Collect(e, cfg) })
 	if s := facts[len(facts)-1]; s["status"] != "truncated" || s["records_emitted"] != float64(2) {
 		t.Errorf("truncated: %v", s)
 	}
 
-	// No passwd: nothing can be called unowned, the sweep does not start.
 	cfg.PasswdPath = filepath.Join(t.TempDir(), "missing")
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error { return Collect(e, cfg) })
 	if len(facts) != 1 || facts[0]["status"] != "error" || facts[0]["sweep_error"] == nil {
@@ -121,7 +116,6 @@ tmpfs /run tmpfs rw 0 0
 /dev/sda1 / ext4 rw 0 0
 `, 0o644)
 
-	// Mount points must exist as directories: use a temp tree for them.
 	base := t.TempDir()
 	for _, d := range []string{"srv/my data", "data"} {
 		if err := os.MkdirAll(filepath.Join(base, d), 0o755); err != nil {
