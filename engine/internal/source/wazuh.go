@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"regexp"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
 )
 
 // Facts that Wazuh produces by itself, from its own decoders and rules. The
@@ -60,6 +62,12 @@ var accepted = regexp.MustCompile(`Accepted (\S+) for .* ssh2(?:: (\S+))?`)
 // oldest first: sshd logins (rule 5715 and children) and PAM sessions opened
 // by login, su and graphical login managers (rule 5501).
 func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([]Login, error) {
+	return batched(ctx, s, "logins|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]Login, error) {
+		return s.logins(ctx, ids, since)
+	})
+}
+
+func (s *Source) logins(ctx context.Context, ids []string, since time.Time) (map[string][]Login, error) {
 
 	var programs []any
 	for program := range pamPrograms {
@@ -67,7 +75,7 @@ func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([
 	}
 
 	filter := []any{
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 		map[string]any{"term": map[string]any{"rule.groups": "authentication_success"}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 		map[string]any{"bool": map[string]any{
@@ -82,12 +90,15 @@ func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([
 		}},
 	}
 
-	var logins []Login
+	logins := map[string][]Login{}
 
 	err := s.page(ctx, filter, func(h hit) error {
 
 		var a struct {
-			ID         string `json:"id"`
+			ID    string `json:"id"`
+			Agent struct {
+				ID string `json:"id"`
+			} `json:"agent"`
 			Timestamp  string `json:"timestamp"`
 			Predecoder struct {
 				ProgramName string `json:"program_name"`
@@ -123,7 +134,7 @@ func (s *Source) Logins(ctx context.Context, agentID string, since time.Time) ([
 			login.Auth, login.KeyType = m[1], m[2]
 		}
 
-		logins = append(logins, login)
+		logins[a.Agent.ID] = append(logins[a.Agent.ID], login)
 		return nil
 	})
 
@@ -162,6 +173,13 @@ var probeMarker = regexp.MustCompile(`auth log probe ([0-9a-f-]{36})`)
 // ProbesSeen returns, per agent ID, the run IDs of the authentication log
 // probes that came back as alerts since the given time.
 func (s *Source) ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error) {
+	seen, err := batch.Once(ctx, &s.pass.plan, "probes|"+sinceKey(since), func(ctx context.Context) (map[string]map[string]bool, error) {
+		return s.probesSeen(ctx, since)
+	})
+	return maps.Clone(seen), err
+}
+
+func (s *Source) probesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error) {
 
 	filter := []any{
 		map[string]any{"term": map[string]any{"rule.id": ProbeRule}},
@@ -217,9 +235,15 @@ type Failure struct {
 // Failures returns the failed authentications of one agent since the given
 // time, oldest first.
 func (s *Source) Failures(ctx context.Context, agentID string, since time.Time) ([]Failure, error) {
+	return batched(ctx, s, "failures|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]Failure, error) {
+		return s.failures(ctx, ids, since)
+	})
+}
+
+func (s *Source) failures(ctx context.Context, ids []string, since time.Time) (map[string][]Failure, error) {
 
 	filter := []any{
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 		map[string]any{"term": map[string]any{"rule.groups": "authentication_failed"}},
 		map[string]any{"exists": map[string]any{"field": "data.dstuser"}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
@@ -228,13 +252,16 @@ func (s *Source) Failures(ctx context.Context, agentID string, since time.Time) 
 		}}},
 	}
 
-	var failures []Failure
+	failures := map[string][]Failure{}
 
 	err := s.page(ctx, filter, func(h hit) error {
 
 		var a struct {
 			Timestamp string `json:"timestamp"`
-			Rule      struct {
+			Agent     struct {
+				ID string `json:"id"`
+			} `json:"agent"`
+			Rule struct {
 				ID string `json:"id"`
 			} `json:"rule"`
 			Data struct {
@@ -252,7 +279,7 @@ func (s *Source) Failures(ctx context.Context, agentID string, since time.Time) 
 			return fmt.Errorf("alert %s: %w", h.ID, err)
 		}
 
-		failures = append(failures, Failure{Time: ts, Account: a.Data.DstUser, SourceIP: a.Data.SrcIP, Rule: a.Rule.ID})
+		failures[a.Agent.ID] = append(failures[a.Agent.ID], Failure{Time: ts, Account: a.Data.DstUser, SourceIP: a.Data.SrcIP, Rule: a.Rule.ID})
 		return nil
 	})
 
@@ -271,9 +298,15 @@ var lockoutLine = regexp.MustCompile(`pam_faillock\(\S+\): Consecutive login fai
 
 // Lockouts returns the lockouts of one agent since the given time.
 func (s *Source) Lockouts(ctx context.Context, agentID string, since time.Time) ([]Lockout, error) {
+	return batched(ctx, s, "lockouts|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]Lockout, error) {
+		return s.lockouts(ctx, ids, since)
+	})
+}
+
+func (s *Source) lockouts(ctx context.Context, ids []string, since time.Time) (map[string][]Lockout, error) {
 
 	filter := []any{
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 		map[string]any{"bool": map[string]any{
 			"minimum_should_match": 1,
@@ -284,13 +317,16 @@ func (s *Source) Lockouts(ctx context.Context, agentID string, since time.Time) 
 		}},
 	}
 
-	var lockouts []Lockout
+	lockouts := map[string][]Lockout{}
 
 	err := s.page(ctx, filter, func(h hit) error {
 
 		var a struct {
 			Timestamp string `json:"timestamp"`
-			FullLog   string `json:"full_log"`
+			Agent     struct {
+				ID string `json:"id"`
+			} `json:"agent"`
+			FullLog string `json:"full_log"`
 		}
 
 		if err := json.Unmarshal(h.Source, &a); err != nil {
@@ -312,7 +348,7 @@ func (s *Source) Lockouts(ctx context.Context, agentID string, since time.Time) 
 			account = m[2]
 		}
 
-		lockouts = append(lockouts, Lockout{Time: ts, Account: account})
+		lockouts[a.Agent.ID] = append(lockouts[a.Agent.ID], Lockout{Time: ts, Account: account})
 		return nil
 	})
 

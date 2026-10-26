@@ -43,22 +43,31 @@ type FIMChange struct {
 
 // FIMChanges returns the FIM alerts of one agent since the given time.
 func (s *Source) FIMChanges(ctx context.Context, agentID string, since time.Time) ([]FIMChange, error) {
+	return batched(ctx, s, "fim|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]FIMChange, error) {
+		return s.fimChanges(ctx, ids, since)
+	})
+}
+
+func (s *Source) fimChanges(ctx context.Context, ids []string, since time.Time) (map[string][]FIMChange, error) {
 
 	filter := []any{
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 		map[string]any{"term": map[string]any{"rule.groups": "syscheck"}},
 		map[string]any{"exists": map[string]any{"field": "syscheck.path"}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	}
 
-	var out []FIMChange
+	out := map[string][]FIMChange{}
 
 	err := s.page(ctx, filter, func(h hit) error {
 
 		var a struct {
 			ID        string `json:"id"`
 			Timestamp string `json:"timestamp"`
-			Syscheck  struct {
+			Agent     struct {
+				ID string `json:"id"`
+			} `json:"agent"`
+			Syscheck struct {
 				Path    string   `json:"path"`
 				Event   string   `json:"event"`
 				Changed []string `json:"changed_attributes"`
@@ -73,7 +82,7 @@ func (s *Source) FIMChanges(ctx context.Context, agentID string, since time.Time
 			return fmt.Errorf("alert %s: %w", h.ID, err)
 		}
 
-		out = append(out, FIMChange{Time: ts, Path: a.Syscheck.Path, Event: a.Syscheck.Event, Changed: a.Syscheck.Changed, AlertID: a.ID})
+		out[a.Agent.ID] = append(out[a.Agent.ID], FIMChange{Time: ts, Path: a.Syscheck.Path, Event: a.Syscheck.Event, Changed: a.Syscheck.Changed, AlertID: a.ID})
 		return nil
 	})
 
@@ -103,9 +112,15 @@ type Elevation struct {
 // and the last time: a busy server (Zimbra runs sudo all day) gives few
 // rows. su comes from Logins (PAM sessions of su).
 func (s *Source) Elevations(ctx context.Context, agentID string, since time.Time) ([]Elevation, error) {
+	return batched(ctx, s, "elevations|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]Elevation, error) {
+		return s.elevations(ctx, ids, since)
+	})
+}
+
+func (s *Source) elevations(ctx context.Context, ids []string, since time.Time) (map[string][]Elevation, error) {
 
 	filter := []any{
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 		map[string]any{"terms": map[string]any{"rule.id": append(append([]any{}, sudoSuccess...), sudoDenied...)}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	}
@@ -115,9 +130,9 @@ func (s *Source) Elevations(ctx context.Context, agentID string, since time.Time
 		denied[id.(string)] = true
 	}
 
-	sources := []any{terms("f", "data.srcuser"), terms("t", "data.dstuser"), terms("c", "data.command"), terms("r", "rule.id")}
+	sources := []any{terms("a", "agent.id"), terms("f", "data.srcuser"), terms("t", "data.dstuser"), terms("c", "data.command"), terms("r", "rule.id")}
 
-	var out []Elevation
+	out := map[string][]Elevation{}
 
 	err := s.composite(ctx, filter, sources, lastSeen, func(key map[string]any, b json.RawMessage) error {
 
@@ -131,7 +146,7 @@ func (s *Source) Elevations(ctx context.Context, agentID string, since time.Time
 			to = "root"
 		}
 
-		out = append(out, Elevation{Time: last, From: keyString(key, "f"), To: to, Method: "sudo", Command: keyString(key, "c"), Denied: denied[keyString(key, "r")], Count: n})
+		out[keyString(key, "a")] = append(out[keyString(key, "a")], Elevation{Time: last, From: keyString(key, "f"), To: to, Method: "sudo", Command: keyString(key, "c"), Denied: denied[keyString(key, "r")], Count: n})
 		return nil
 	})
 
@@ -155,20 +170,29 @@ type AuditAccess struct {
 // AuditAccesses returns the audited accesses of one agent since the given
 // time.
 func (s *Source) AuditAccesses(ctx context.Context, agentID string, since time.Time) ([]AuditAccess, error) {
+	return batched(ctx, s, "audit|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]AuditAccess, error) {
+		return s.auditAccesses(ctx, ids, since)
+	})
+}
+
+func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Time) (map[string][]AuditAccess, error) {
 
 	filter := []any{
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 		map[string]any{"term": map[string]any{"rule.id": AuditRule}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	}
 
-	var out []AuditAccess
+	out := map[string][]AuditAccess{}
 
 	err := s.page(ctx, filter, func(h hit) error {
 
 		var a struct {
 			Timestamp string `json:"timestamp"`
-			Data      struct {
+			Agent     struct {
+				ID string `json:"id"`
+			} `json:"agent"`
+			Data struct {
 				Audit struct {
 					Key     string `json:"key"`
 					Success string `json:"success"`
@@ -191,7 +215,7 @@ func (s *Source) AuditAccesses(ctx context.Context, agentID string, since time.T
 		}
 
 		x := a.Data.Audit
-		out = append(out, AuditAccess{Time: ts, Key: x.Key, Success: x.Success, AUID: x.AUID, UID: x.UID, Path: x.File.Name, Exe: x.Exe})
+		out[a.Agent.ID] = append(out[a.Agent.ID], AuditAccess{Time: ts, Key: x.Key, Success: x.Success, AUID: x.AUID, UID: x.UID, Path: x.File.Name, Exe: x.Exe})
 		return nil
 	})
 

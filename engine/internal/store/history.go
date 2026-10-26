@@ -1,12 +1,17 @@
 package store
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"maps"
 	"strings"
+	"sync"
 
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
 var historyMapping = map[string]any{
@@ -30,14 +35,16 @@ var historyMapping = map[string]any{
 	},
 }
 
-// maxAccounts bounds one agent's history read: far above any real host.
-const maxAccounts = 10000
-
 // History reads and writes the per-account history (one document per agent
-// and account).
+// and account). Reads are served by chunks of agents (package batch) and
+// writes are sent in bulk.
 type History struct {
-	client *indexer.Client
-	index  string
+	client  *indexer.Client
+	index   string
+	plan    batch.Plan
+	mu      sync.Mutex
+	pending []history.Account
+	written bool // sent and not refreshed yet
 }
 
 // NewHistory creates index if needed and returns a store for it.
@@ -50,53 +57,154 @@ func NewHistory(ctx context.Context, client *indexer.Client, index string) (*His
 	return &History{client: client, index: index}, nil
 }
 
+// Plan starts a pass: the agents in the order they will be judged.
+func (h *History) Plan(agents []verdict.Agent) {
+	ids := make([]string, len(agents))
+	for i, a := range agents {
+		ids[i] = a.ID
+	}
+	h.plan.Set(ids)
+}
+
+const historyKey = "history"
+
 // Load returns the history of one agent by account name.
 func (h *History) Load(ctx context.Context, agentID string) (map[string]history.Account, error) {
+	accounts, err := batch.Get(ctx, &h.plan, historyKey, agentID, h.load)
+	return maps.Clone(accounts), err
+}
 
-	query := map[string]any{
-		"size":  maxAccounts,
-		"query": map[string]any{"term": map[string]any{"agent_id": agentID}},
-	}
+// load reads the history of the given agents. What was saved before is
+// sent and refreshed first, so that it is read back.
+func (h *History) load(ctx context.Context, ids []string) (map[string]map[string]history.Account, error) {
 
-	var resp struct {
-		Hits struct {
-			Hits []struct {
-				Source json.RawMessage `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-
-	if err := h.client.Search(ctx, h.index, query, &resp); err != nil {
+	if err := h.Flush(ctx); err != nil {
 		return nil, err
 	}
 
-	accounts := map[string]history.Account{}
-
-	for _, hit := range resp.Hits.Hits {
-		var a history.Account
-		if err := json.Unmarshal(hit.Source, &a); err != nil {
-			return nil, err
-		}
-		accounts[a.AccountName] = a
+	out := map[string]map[string]history.Account{}
+	for _, id := range ids {
+		out[id] = map[string]history.Account{}
 	}
 
-	return accounts, nil
+	var after []any
+
+	for {
+		query := map[string]any{
+			"size":  pageSize,
+			"query": map[string]any{"terms": map[string]any{"agent_id": ids}},
+			"sort":  []any{map[string]any{"agent_id": "asc"}, map[string]any{"account_name": "asc"}},
+		}
+		if after != nil {
+			query["search_after"] = after
+		}
+
+		var resp struct {
+			Hits struct {
+				Hits []struct {
+					Sort   []any           `json:"sort"`
+					Source json.RawMessage `json:"_source"`
+				} `json:"hits"`
+			} `json:"hits"`
+		}
+
+		if err := h.client.Search(ctx, h.index, query, &resp); err != nil {
+			return nil, err
+		}
+
+		for _, hit := range resp.Hits.Hits {
+			var a history.Account
+			if err := json.Unmarshal(hit.Source, &a); err != nil {
+				return nil, err
+			}
+			if out[a.AgentID] == nil {
+				out[a.AgentID] = map[string]history.Account{}
+			}
+			out[a.AgentID][a.AccountName] = a
+		}
+
+		if len(resp.Hits.Hits) < pageSize {
+			return out, nil
+		}
+		after = resp.Hits.Hits[len(resp.Hits.Hits)-1].Sort
+	}
 }
 
+// pageSize is how many accounts one history read returns.
+const pageSize = 1000
+
 // Save writes each account under agent/account, replacing the earlier
-// version, and refreshes the index: later controls of the same pass read the
-// history (op.acc.6 EV-06) and must see this pass.
+// version. Later reads of the same pass see it (op.acc.6 EV-06 reads what
+// op.acc.1 saved): the chunk in memory is updated, and Flush sends and
+// refreshes before the next chunk is read.
 func (h *History) Save(ctx context.Context, accounts []history.Account) error {
 
 	for _, a := range accounts {
-		if err := h.client.Put(ctx, h.index, strings.Join([]string{a.AgentID, a.AccountName}, "/"), a); err != nil {
-			return err
-		}
+		batch.Update(ctx, &h.plan, historyKey, a.AgentID, func(m map[string]history.Account) map[string]history.Account {
+			if m == nil {
+				m = map[string]history.Account{}
+			}
+			m[a.AccountName] = a
+			return m
+		})
 	}
 
-	if len(accounts) == 0 {
+	h.mu.Lock()
+	h.pending = append(h.pending, accounts...)
+	full := len(h.pending) >= bulkSize
+	h.mu.Unlock()
+
+	if full {
+		return h.send(ctx)
+	}
+	return nil
+}
+
+// send writes the pending accounts in one bulk request.
+func (h *History) send(ctx context.Context) error {
+
+	h.mu.Lock()
+	pending := h.pending
+	h.pending = nil
+	if len(pending) > 0 {
+		h.written = true
+	}
+	h.mu.Unlock()
+
+	if len(pending) == 0 {
 		return nil
 	}
 
+	var body bytes.Buffer
+	for _, a := range pending {
+		action, _ := json.Marshal(map[string]any{"index": map[string]any{"_index": h.index, "_id": strings.Join([]string{a.AgentID, a.AccountName}, "/")}})
+		doc, err := json.Marshal(a)
+		if err != nil {
+			return err
+		}
+		body.Write(action)
+		body.WriteByte('\n')
+		body.Write(doc)
+		body.WriteByte('\n')
+	}
+
+	return h.client.Bulk(ctx, body.Bytes())
+}
+
+// Flush sends the pending accounts and makes everything written searchable.
+func (h *History) Flush(ctx context.Context) error {
+
+	if err := h.send(ctx); err != nil {
+		return err
+	}
+
+	h.mu.Lock()
+	written := h.written
+	h.written = false
+	h.mu.Unlock()
+
+	if !written {
+		return nil
+	}
 	return h.client.Refresh(ctx, h.index)
 }

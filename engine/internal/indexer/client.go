@@ -25,7 +25,16 @@ type Client struct {
 	password string
 	http     *http.Client
 	requests atomic.Uint64
+	slots    chan struct{}
 }
+
+// inFlight bounds the requests sent at once: the controls of a pass read
+// side by side, and an indexer short of memory answers 429.
+const inFlight = 4
+
+// retries are the waits before sending again a request the indexer turned
+// away for load (429, 503).
+var retries = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second}
 
 // New returns a Client. caFile, when set, is the only CA trusted for the
 // indexer certificate.
@@ -50,6 +59,7 @@ func New(baseURL, user, password, caFile string) (*Client, error) {
 		user:     user,
 		password: password,
 		http:     &http.Client{Transport: transport, Timeout: 60 * time.Second},
+		slots:    make(chan struct{}, inFlight),
 	}, nil
 }
 
@@ -66,42 +76,78 @@ func (e *Error) Error() string {
 // Requests is how many requests the client sent: the cost of a pass.
 func (c *Client) Requests() uint64 { return c.requests.Load() }
 
+// send sends one request, waiting for a free slot, and sends it again when
+// the indexer turns it away for load. The caller closes the body.
+func (c *Client) send(ctx context.Context, method, path, contentType string, body []byte) (*http.Response, error) {
+
+	for attempt := 0; ; attempt++ {
+
+		select {
+		case c.slots <- struct{}{}:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+
+		c.requests.Add(1)
+
+		var reader io.Reader
+		if body != nil {
+			reader = bytes.NewReader(body)
+		}
+
+		req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
+		if err != nil {
+			<-c.slots
+			return nil, err
+		}
+		req.SetBasicAuth(c.user, c.password)
+		req.Header.Set("Content-Type", contentType)
+
+		resp, err := c.http.Do(req)
+		<-c.slots
+		if err != nil {
+			return nil, fmt.Errorf("indexer: %s %s: %w", method, path, err)
+		}
+
+		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+			return resp, nil
+		}
+
+		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		resp.Body.Close()
+		e := &Error{Status: resp.StatusCode, Body: string(msg)}
+
+		busy := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable
+		if !busy || attempt >= len(retries) {
+			return nil, e
+		}
+
+		select {
+		case <-time.After(retries[attempt]):
+		case <-ctx.Done():
+			return nil, e
+		}
+	}
+}
+
 // Do sends body as JSON and decodes the answer into out when out is not nil.
 func (c *Client) Do(ctx context.Context, method, path string, body, out any) error {
 
-	c.requests.Add(1)
-
-	var reader io.Reader
+	var raw []byte
 
 	if body != nil {
-		raw, err := json.Marshal(body)
-		if err != nil {
+		var err error
+		if raw, err = json.Marshal(body); err != nil {
 			return fmt.Errorf("indexer: marshal: %w", err)
 		}
-		reader = bytes.NewReader(raw)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
-
+	resp, err := c.send(ctx, method, path, "application/json", raw)
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(c.user, c.password)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.http.Do(req)
-
-	if err != nil {
-		return fmt.Errorf("indexer: %s %s: %w", method, path, err)
-	}
-
 	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return &Error{Status: resp.StatusCode, Body: string(msg)}
-	}
 
 	if out == nil {
 		_, err := io.Copy(io.Discard, resp.Body)
@@ -115,25 +161,11 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) err
 // the first failure.
 func (c *Client) Bulk(ctx context.Context, body []byte) error {
 
-	c.requests.Add(1)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/_bulk", bytes.NewReader(body))
+	resp, err := c.send(ctx, http.MethodPost, "/_bulk", "application/x-ndjson", body)
 	if err != nil {
 		return err
 	}
-	req.SetBasicAuth(c.user, c.password)
-	req.Header.Set("Content-Type", "application/x-ndjson")
-
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("indexer: bulk: %w", err)
-	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return &Error{Status: resp.StatusCode, Body: string(msg)}
-	}
 
 	var out struct {
 		Errors bool `json:"errors"`

@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/aggregate"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
@@ -35,6 +37,12 @@ type Config struct {
 	// that stopped sending gets NOT_EVALUABLE instead of disappearing.
 	Lookback      time.Duration
 	EngineVersion string
+	// Plan, when set, is told the agents of the pass in the order they are
+	// judged, before any control reads (source.Source.Plan reads by chunks).
+	Plan func(agents []verdict.Agent)
+	// Flush, when set, is called at the end of the pass to send what the
+	// controls buffered (store.History).
+	Flush func(ctx context.Context) error
 }
 
 // Once judges every known agent with every control and writes the evidence,
@@ -50,10 +58,23 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		return 0, err
 	}
 
+	if cfg.Plan != nil {
+		cfg.Plan(agents)
+	}
+
+	var mu sync.Mutex // errs, written and the sink
 	var errs []error
 	written := 0
 
+	fail := func(err error) {
+		mu.Lock()
+		defer mu.Unlock()
+		errs = append(errs, err)
+	}
+
 	store := func(v verdict.Verdict) {
+		mu.Lock()
+		defer mu.Unlock()
 		if err := sink.Write(ctx, v); err != nil {
 			errs = append(errs, fmt.Errorf("agent %s %s %s %s%s: write: %w", v.Agent.ID, v.Control, v.Scope, v.Requirement, v.Evidence, err))
 			return
@@ -61,19 +82,19 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		written++
 	}
 
-	for _, ev := range controls {
+	judge := func(ctx context.Context, ev evaluator.Evaluator) {
 
 		control, ok := catalog.LookupControl(ev.Control())
 		if !ok {
-			errs = append(errs, fmt.Errorf("%s: not in the catalog", ev.Control()))
-			continue
+			fail(fmt.Errorf("%s: not in the catalog", ev.Control()))
+			return
 		}
 
 		// A control that cannot read its facts at all still writes verdicts:
 		// every evidence becomes a COLLECTION gap.
 		begun := true
 		if err := ev.Begin(ctx, pass); err != nil {
-			errs = append(errs, fmt.Errorf("%s: %w", control.Control, err))
+			fail(fmt.Errorf("%s: %w", control.Control, err))
 			begun = false
 		}
 
@@ -97,7 +118,7 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 			if begun {
 				var err error
 				if results, err = ev.Agent(ctx, agent, policy); err != nil {
-					errs = append(errs, fmt.Errorf("%s agent %s: %w", control.Control, agent.ID, err))
+					fail(fmt.Errorf("%s agent %s: %w", control.Control, agent.ID, err))
 				}
 				if d, ok := ev.(evaluator.Decider); ok {
 					decisions = d.Decisions(agent.ID)
@@ -136,10 +157,42 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		}
 	}
 
+	// Controls run side by side, each walking the agents in the same order
+	// with its own chunks of reads; a control that reads what another
+	// writes during the pass waits for it (evaluator.Follower).
+	done := map[string]chan struct{}{}
+	for _, ev := range controls {
+		done[ev.Control()] = make(chan struct{})
+	}
+
+	var wg sync.WaitGroup
+	for _, ev := range controls {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer close(done[ev.Control()])
+			if f, ok := ev.(evaluator.Follower); ok {
+				for _, id := range f.After() {
+					if ch, ok := done[id]; ok && id != ev.Control() {
+						<-ch
+					}
+				}
+			}
+			judge(batch.WithScope(ctx, ev.Control()), ev)
+		}()
+	}
+	wg.Wait()
+
 	// A sink that batches (store.Verdicts) sends the rest now.
 	if f, ok := sink.(interface{ Flush(context.Context) error }); ok {
 		if err := f.Flush(ctx); err != nil {
 			errs = append(errs, fmt.Errorf("write: %w", err))
+		}
+	}
+
+	if cfg.Flush != nil {
+		if err := cfg.Flush(ctx); err != nil {
+			errs = append(errs, fmt.Errorf("flush: %w", err))
 		}
 	}
 

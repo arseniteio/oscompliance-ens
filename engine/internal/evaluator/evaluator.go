@@ -46,3 +46,10 @@ type Evaluator interface {
 type Decider interface {
 	Decisions(agentID string) map[string]verdict.Judgement
 }
+
+// Follower is implemented by a control that reads what other controls write
+// during the pass (op.acc.6 EV-06 reads the account history op.acc.1 saves):
+// it is judged after them. After lists their catalog ids.
+type Follower interface {
+	After() []string
+}

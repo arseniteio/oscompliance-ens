@@ -24,6 +24,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/run"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/store"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -92,7 +93,14 @@ func runMain() error {
 		opacc5.NewEvaluator(facts),
 		opacc6.NewEvaluator(facts, hist),
 	}
-	cfg := run.Config{Window: *window, Lookback: *lookback, EngineVersion: version}
+	cfg := run.Config{
+		Window: *window, Lookback: *lookback, EngineVersion: version,
+		Plan: func(agents []verdict.Agent) {
+			facts.Plan(agents)
+			hist.Plan(agents)
+		},
+		Flush: hist.Flush,
+	}
 
 	for {
 		// Reloaded every pass: a change in the Configuration screen applies

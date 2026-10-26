@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -213,5 +214,55 @@ func TestOnceNotApplicable(t *testing.T) {
 		if v.Status != verdict.NotApplicable || !strings.Contains(v.Reason, "disabled") {
 			t.Errorf("%s with op.acc.1 disabled: %+v", key, v)
 		}
+	}
+}
+
+// orderControl notes when it is judged, for TestOnceFollowerWaits.
+type orderControl struct {
+	id, after string
+	log       *[]string
+	mu        *sync.Mutex
+}
+
+func (c *orderControl) Control() string { return c.id }
+
+func (c *orderControl) After() []string {
+	if c.after == "" {
+		return nil
+	}
+	return []string{c.after}
+}
+
+func (c *orderControl) Begin(context.Context, evaluator.Pass) error {
+	if c.after == "" {
+		// Give the follower every chance to start first.
+		time.Sleep(20 * time.Millisecond)
+	}
+	return nil
+}
+
+func (c *orderControl) Agent(context.Context, verdict.Agent, params.Lister) (map[string]evaluator.Result, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	*c.log = append(*c.log, c.id)
+	return nil, nil
+}
+
+func TestOnceFollowerWaits(t *testing.T) {
+
+	var log []string
+	var mu sync.Mutex
+	controls := []evaluator.Evaluator{
+		&orderControl{id: "op.acc.6", after: "op.acc.1", log: &log, mu: &mu},
+		&orderControl{id: "op.acc.1", log: &log, mu: &mu},
+	}
+	agents := fakeAgents{senders: []verdict.Agent{{ID: "001"}, {ID: "002"}}}
+
+	if _, err := Once(context.Background(), agents, controls, noParams{}, &fakeSink{}, cfg, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Join(log, " ") != "op.acc.1 op.acc.1 op.acc.6 op.acc.6" {
+		t.Fatalf("order: %v", log)
 	}
 }

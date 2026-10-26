@@ -105,6 +105,9 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
+// After: EV-06 reads the account history op.acc.1 saves in the same pass.
+func (e *Evaluator) After() []string { return []string{"op.acc.1"} }
+
 // Decisions are the P-01 decisions taken in Agent.
 func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]

@@ -41,11 +41,11 @@ type ServiceEvent struct {
 	Complejidad    string
 }
 
-func serviceFilter(agentID string, since time.Time, extra ...any) []any {
+func serviceFilter(ids []string, since time.Time, extra ...any) []any {
 
 	filter := []any{
 		map[string]any{"term": map[string]any{"rule.id": ServiceRule}},
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
+		agentFilter(ids),
 	}
 
 	if !since.IsZero() {
@@ -69,6 +69,21 @@ func termFilter(field string, values ...string) any {
 // for the few accounts or origins whose failures need an exact count.
 func (s *Source) ServiceEvents(ctx context.Context, agentID string, since time.Time, tipos []string, match map[string][]string) ([]ServiceEvent, error) {
 
+	fetch := func(ctx context.Context, ids []string) (map[string][]ServiceEvent, error) {
+		return s.serviceEvents(ctx, ids, since, tipos, match)
+	}
+
+	// The values to match are this agent's own: no batch.
+	if len(match) > 0 {
+		m, err := fetch(ctx, []string{agentID})
+		return m[agentID], err
+	}
+
+	return batched(ctx, s, fmt.Sprint("events|", sinceKey(since), tipos), agentID, fetch)
+}
+
+func (s *Source) serviceEvents(ctx context.Context, ids []string, since time.Time, tipos []string, match map[string][]string) (map[string][]ServiceEvent, error) {
+
 	extra := []any{termFilter("data.tipo", tipos...)}
 	for field, values := range match {
 		if len(values) > 0 {
@@ -76,13 +91,16 @@ func (s *Source) ServiceEvents(ctx context.Context, agentID string, since time.T
 		}
 	}
 
-	var out []ServiceEvent
+	out := map[string][]ServiceEvent{}
 
-	err := s.page(ctx, serviceFilter(agentID, since, extra...), func(h hit) error {
+	err := s.page(ctx, serviceFilter(ids, since, extra...), func(h hit) error {
 
 		var a struct {
-			Timestamp string          `json:"timestamp"`
-			Data      json.RawMessage `json:"data"`
+			Timestamp string `json:"timestamp"`
+			Agent     struct {
+				ID string `json:"id"`
+			} `json:"agent"`
+			Data json.RawMessage `json:"data"`
 		}
 		if err := json.Unmarshal(h.Source, &a); err != nil {
 			return fmt.Errorf("alert %s: %w", h.ID, err)
@@ -115,7 +133,7 @@ func (s *Source) ServiceEvents(ctx context.Context, agentID string, since time.T
 			return fmt.Errorf("alert %s: %w", h.ID, err)
 		}
 
-		out = append(out, ServiceEvent{
+		out[a.Agent.ID] = append(out[a.Agent.ID], ServiceEvent{
 			Time: ts, Service: d.Service, Tipo: d.Tipo, Usuario: d.Usuario, Origen: d.Origen, Resultado: d.Resultado,
 			Factores: stringList(d.Factores), Mensaje: d.Mensaje, Emisor: d.Emisor, Revocacion: d.Revocacion,
 			Modo: d.Modo, Referencia: d.Referencia, Bloqueo: d.Bloqueo, MaxIntentos: scalar(d.MaxIntentos),
@@ -237,8 +255,14 @@ type MethodCount struct {
 // ServiceMethods counts the successful logins of one agent since the given
 // time by service and factor set.
 func (s *Source) ServiceMethods(ctx context.Context, agentID string, since time.Time) ([]MethodCount, error) {
+	return batched(ctx, s, "methods|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]MethodCount, error) {
+		return s.serviceMethods(ctx, ids, since)
+	})
+}
 
-	filter := serviceFilter(agentID, since, termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "exito"))
+func (s *Source) serviceMethods(ctx context.Context, ids []string, since time.Time) (map[string][]MethodCount, error) {
+
+	filter := serviceFilter(ids, since, termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "exito"))
 
 	script := map[string]any{"m": map[string]any{"terms": map[string]any{
 		"script": map[string]any{
@@ -247,16 +271,16 @@ func (s *Source) ServiceMethods(ctx context.Context, agentID string, since time.
 		},
 	}}}
 
-	var out []MethodCount
+	out := map[string][]MethodCount{}
 
-	err := s.composite(ctx, filter, []any{terms("s", "data.oscompliance_service"), script}, nil, func(key map[string]any, b json.RawMessage) error {
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("s", "data.oscompliance_service"), script}, nil, func(key map[string]any, b json.RawMessage) error {
 		var c struct {
 			DocCount int `json:"doc_count"`
 		}
 		if err := json.Unmarshal(b, &c); err != nil {
 			return err
 		}
-		out = append(out, MethodCount{Service: keyString(key, "s"), Factors: keyString(key, "m"), Count: c.DocCount})
+		out[keyString(key, "a")] = append(out[keyString(key, "a")], MethodCount{Service: keyString(key, "s"), Factors: keyString(key, "m"), Count: c.DocCount})
 		return nil
 	})
 
@@ -273,14 +297,20 @@ type CertificateCount struct {
 // ServiceCertificates counts the certificate and card logins of one agent
 // since the given time by service, issuer and revocation check.
 func (s *Source) ServiceCertificates(ctx context.Context, agentID string, since time.Time) ([]CertificateCount, error) {
+	return batched(ctx, s, "certificates|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]CertificateCount, error) {
+		return s.serviceCertificates(ctx, ids, since)
+	})
+}
 
-	filter := serviceFilter(agentID, since,
+func (s *Source) serviceCertificates(ctx context.Context, ids []string, since time.Time) (map[string][]CertificateCount, error) {
+
+	filter := serviceFilter(ids, since,
 		termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "exito"),
 		termFilter("data.factores", "certificado", "tarjeta"))
 
-	var out []CertificateCount
+	out := map[string][]CertificateCount{}
 
-	err := s.composite(ctx, filter, []any{terms("s", "data.oscompliance_service"), terms("i", "data.certificado_emisor"), terms("r", "data.revocacion")}, nil,
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("s", "data.oscompliance_service"), terms("i", "data.certificado_emisor"), terms("r", "data.revocacion")}, nil,
 		func(key map[string]any, b json.RawMessage) error {
 			var c struct {
 				DocCount int `json:"doc_count"`
@@ -288,7 +318,7 @@ func (s *Source) ServiceCertificates(ctx context.Context, agentID string, since 
 			if err := json.Unmarshal(b, &c); err != nil {
 				return err
 			}
-			out = append(out, CertificateCount{Service: keyString(key, "s"), Issuer: keyString(key, "i"), Revocation: keyString(key, "r"), Count: c.DocCount})
+			out[keyString(key, "a")] = append(out[keyString(key, "a")], CertificateCount{Service: keyString(key, "s"), Issuer: keyString(key, "i"), Revocation: keyString(key, "r"), Count: c.DocCount})
 			return nil
 		})
 
@@ -309,16 +339,22 @@ type Burst struct {
 // ServiceFailureBursts returns, per service and value of field (data.origen,
 // data.usuario), an upper bound of the failed logins within any span.
 func (s *Source) ServiceFailureBursts(ctx context.Context, agentID string, since time.Time, field string, span time.Duration) ([]Burst, error) {
+	return batched(ctx, s, fmt.Sprint("bursts|", sinceKey(since), field, span), agentID, func(ctx context.Context, ids []string) (map[string][]Burst, error) {
+		return s.serviceFailureBursts(ctx, ids, since, field, span)
+	})
+}
 
-	filter := serviceFilter(agentID, since, termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "fallo"))
+func (s *Source) serviceFailureBursts(ctx context.Context, ids []string, since time.Time, field string, span time.Duration) (map[string][]Burst, error) {
+
+	filter := serviceFilter(ids, since, termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "fallo"))
 
 	sub := map[string]any{"t": map[string]any{"date_histogram": map[string]any{
 		"field": "timestamp", "fixed_interval": fmt.Sprintf("%ds", int(span.Seconds())), "min_doc_count": 1,
 	}}}
 
-	var out []Burst
+	out := map[string][]Burst{}
 
-	err := s.composite(ctx, filter, []any{terms("s", "data.oscompliance_service"), terms("k", field)}, sub, func(key map[string]any, b json.RawMessage) error {
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("s", "data.oscompliance_service"), terms("k", field)}, sub, func(key map[string]any, b json.RawMessage) error {
 		var c struct {
 			DocCount int `json:"doc_count"`
 			T        struct {
@@ -339,7 +375,7 @@ func (s *Source) ServiceFailureBursts(ctx context.Context, agentID string, since
 			}
 			burst.AtMost = max(burst.AtMost, n)
 		}
-		out = append(out, burst)
+		out[keyString(key, "a")] = append(out[keyString(key, "a")], burst)
 		return nil
 	})
 
@@ -355,20 +391,26 @@ type MessageCount struct {
 // ServiceMessages counts the rejection messages of one agent since the
 // given time by service.
 func (s *Source) ServiceMessages(ctx context.Context, agentID string, since time.Time) ([]MessageCount, error) {
+	return batched(ctx, s, "messages|"+sinceKey(since), agentID, func(ctx context.Context, ids []string) (map[string][]MessageCount, error) {
+		return s.serviceMessages(ctx, ids, since)
+	})
+}
 
-	filter := serviceFilter(agentID, since, termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "fallo"),
+func (s *Source) serviceMessages(ctx context.Context, ids []string, since time.Time) (map[string][]MessageCount, error) {
+
+	filter := serviceFilter(ids, since, termFilter("data.tipo", "autenticacion"), termFilter("data.resultado", "fallo"),
 		map[string]any{"exists": map[string]any{"field": "data.mensaje"}})
 
-	var out []MessageCount
+	out := map[string][]MessageCount{}
 
-	err := s.composite(ctx, filter, []any{terms("s", "data.oscompliance_service"), terms("m", "data.mensaje")}, nil, func(key map[string]any, b json.RawMessage) error {
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("s", "data.oscompliance_service"), terms("m", "data.mensaje")}, nil, func(key map[string]any, b json.RawMessage) error {
 		var c struct {
 			DocCount int `json:"doc_count"`
 		}
 		if err := json.Unmarshal(b, &c); err != nil {
 			return err
 		}
-		out = append(out, MessageCount{Service: keyString(key, "s"), Message: keyString(key, "m"), Count: c.DocCount})
+		out[keyString(key, "a")] = append(out[keyString(key, "a")], MessageCount{Service: keyString(key, "s"), Message: keyString(key, "m"), Count: c.DocCount})
 		return nil
 	})
 
@@ -387,8 +429,12 @@ type ServiceAccount struct {
 // logged in, changed its credential or was disabled, as far back as the
 // index goes.
 func (s *Source) ServiceAccounts(ctx context.Context, agentID string) ([]ServiceAccount, error) {
+	return batched(ctx, s, "accounts", agentID, s.serviceAccounts)
+}
 
-	filter := serviceFilter(agentID, time.Time{},
+func (s *Source) serviceAccounts(ctx context.Context, ids []string) (map[string][]ServiceAccount, error) {
+
+	filter := serviceFilter(ids, time.Time{},
 		termFilter("data.tipo", "autenticacion", "cambio_credencial", "inhabilitacion"),
 		map[string]any{"exists": map[string]any{"field": "data.usuario"}})
 
@@ -405,9 +451,9 @@ func (s *Source) ServiceAccounts(ctx context.Context, agentID string) ([]Service
 		"disabled": newest(termFilter("data.tipo", "inhabilitacion")),
 	}
 
-	var out []ServiceAccount
+	out := map[string][]ServiceAccount{}
 
-	err := s.composite(ctx, filter, []any{terms("s", "data.oscompliance_service"), terms("u", "data.usuario")}, sub, func(key map[string]any, b json.RawMessage) error {
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("s", "data.oscompliance_service"), terms("u", "data.usuario")}, sub, func(key map[string]any, b json.RawMessage) error {
 
 		var c struct {
 			Success, Change, Disabled struct {
@@ -427,7 +473,7 @@ func (s *Source) ServiceAccounts(ctx context.Context, agentID string) ([]Service
 			return time.UnixMilli(int64(*v)).UTC()
 		}
 
-		out = append(out, ServiceAccount{
+		out[keyString(key, "a")] = append(out[keyString(key, "a")], ServiceAccount{
 			Service: keyString(key, "s"), User: keyString(key, "u"),
 			LastSuccess: at(c.Success.T.Value), LastChange: at(c.Change.T.Value), LastDisabled: at(c.Disabled.T.Value),
 		})
@@ -446,15 +492,22 @@ type ServiceSpan struct {
 // ServiceSpans returns, per service of one agent, the oldest and newest
 // event the index keeps.
 func (s *Source) ServiceSpans(ctx context.Context, agentID string) (map[string]ServiceSpan, error) {
+	return batched(ctx, s, "spans", agentID, s.serviceSpans)
+}
+
+func (s *Source) serviceSpans(ctx context.Context, ids []string) (map[string]map[string]ServiceSpan, error) {
 
 	sub := map[string]any{
 		"o": map[string]any{"min": map[string]any{"field": "timestamp"}},
 		"n": map[string]any{"max": map[string]any{"field": "timestamp"}},
 	}
 
-	out := map[string]ServiceSpan{}
+	out := map[string]map[string]ServiceSpan{}
+	for _, id := range ids {
+		out[id] = map[string]ServiceSpan{}
+	}
 
-	err := s.composite(ctx, serviceFilter(agentID, time.Time{}), []any{terms("s", "data.oscompliance_service")}, sub, func(key map[string]any, b json.RawMessage) error {
+	err := s.composite(ctx, serviceFilter(ids, time.Time{}), []any{terms("a", "agent.id"), terms("s", "data.oscompliance_service")}, sub, func(key map[string]any, b json.RawMessage) error {
 		var c struct {
 			DocCount int `json:"doc_count"`
 			O, N     struct {
@@ -464,7 +517,10 @@ func (s *Source) ServiceSpans(ctx context.Context, agentID string) (map[string]S
 		if err := json.Unmarshal(b, &c); err != nil {
 			return err
 		}
-		out[keyString(key, "s")] = ServiceSpan{Oldest: time.UnixMilli(int64(c.O.Value)).UTC(), Newest: time.UnixMilli(int64(c.N.Value)).UTC(), Count: c.DocCount}
+		if out[keyString(key, "a")] == nil {
+			out[keyString(key, "a")] = map[string]ServiceSpan{}
+		}
+		out[keyString(key, "a")][keyString(key, "s")] = ServiceSpan{Oldest: time.UnixMilli(int64(c.O.Value)).UTC(), Newest: time.UnixMilli(int64(c.N.Value)).UTC(), Count: c.DocCount}
 		return nil
 	})
 

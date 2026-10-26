@@ -5,9 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-core/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/batch"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/indexer"
 	"github.com/OpenSourceCompliance/oscompliance-core/engine/internal/verdict"
 )
@@ -24,6 +27,7 @@ type Source struct {
 	client     *indexer.Client
 	index      string
 	monitoring string
+	pass       passState
 }
 
 // New returns a Source over index (usually "wazuh-alerts-*") and monitoring
@@ -217,8 +221,27 @@ func (s *Source) IdentitySnapshots(ctx context.Context, since time.Time, n int) 
 }
 
 // latestFacts returns, per agent ID, up to n facts of type name, newest
-// first, for every agent however many there are.
+// first, for every agent however many there are. Several controls read the
+// same snapshots: they are read once per pass.
 func latestFacts[T any](ctx context.Context, s *Source, name string, since time.Time, n int) (map[string][]T, error) {
+	all, err := batch.Once(ctx, &s.pass.plan, fmt.Sprint("latest|", name, "|", sinceKey(since), "|", n), func(ctx context.Context) (map[string][]T, error) {
+		return readLatest[T](ctx, s, name, since, n)
+	})
+	return maps.Clone(all), err
+}
+
+func readLatest[T any](ctx context.Context, s *Source, name string, since time.Time, n int) (map[string][]T, error) {
+
+	// A quiet snapshot may be older than since and still hold.
+	from := since
+	var held map[string]heldPass
+	if quietFacts[name] {
+		from = since.Add(-reach)
+		var err error
+		if held, err = s.inForce(ctx, since); err != nil {
+			return nil, fmt.Errorf("agent passes: %w", err)
+		}
+	}
 
 	sub := map[string]any{"latest": map[string]any{
 		"top_hits": map[string]any{"size": n, "sort": []any{map[string]any{"timestamp": "desc"}}},
@@ -226,7 +249,7 @@ func latestFacts[T any](ctx context.Context, s *Source, name string, since time.
 
 	out := map[string][]T{}
 
-	err := s.composite(ctx, factFilter(name, since), []any{map[string]any{"a": map[string]any{"terms": map[string]any{"field": "agent.id"}}}}, sub,
+	err := s.composite(ctx, factFilter(name, from), []any{map[string]any{"a": map[string]any{"terms": map[string]any{"field": "agent.id"}}}}, sub,
 		func(key map[string]any, b json.RawMessage) error {
 			var c struct {
 				Latest struct {
@@ -238,12 +261,35 @@ func latestFacts[T any](ctx context.Context, s *Source, name string, since time.
 			if err := json.Unmarshal(b, &c); err != nil {
 				return err
 			}
-			for _, h := range c.Latest.Hits.Hits {
+			agentID := keyString(key, "a")
+			for i, h := range c.Latest.Hits.Hits {
 				var v T
-				if err := decodeHit(h, &v); err != nil {
+				a, err := decodeAlert(h, &v)
+				if err != nil {
 					return err
 				}
-				out[keyString(key, "a")] = append(out[keyString(key, "a")], v)
+				if from.Before(since) {
+					at, err := alertTime(a.Timestamp)
+					if err != nil {
+						return fmt.Errorf("alert %s: %w", h.ID, err)
+					}
+					// Older than since: only the newest, while the
+					// newest agent pass names it.
+					run, _ := a.Data["run_id"].(string)
+					p, named := held[agentID]
+					named = named && i == 0 && run != "" && p.runs[name] == run
+					if at.Before(since) && !named {
+						break
+					}
+					// The pass that found it unchanged observed it last.
+					if named {
+						if s, ok := any(&v).(interface{ Seen(string) }); ok {
+							s.Seen(p.ts)
+						}
+					}
+				}
+				s.want(name, agentID, v)
+				out[agentID] = append(out[agentID], v)
 			}
 			return nil
 		})
@@ -251,33 +297,61 @@ func latestFacts[T any](ctx context.Context, s *Source, name string, since time.
 	return out, err
 }
 
+// reach is how far back a snapshot that still holds, and the records a
+// snapshot points to, are looked for: longer than the agent's
+// emit.FullEvery (3 days), after which it sends everything again.
+const reach = 4 * 24 * time.Hour
+
+// quietFacts are the snapshots a quiet collector does not send again while
+// nothing changes (fact.AgentPass).
+var quietFacts = map[string]bool{
+	fact.IdentitySnapshotFact:   true,
+	fact.GroupSnapshotFact:      true,
+	fact.UmaskSnapshotFact:      true,
+	fact.SudoersSnapshotFact:    true,
+	fact.ConfigSnapshotFact:     true,
+	fact.PAMSnapshotFact:        true,
+	fact.ListeningSnapshotFact:  true,
+	fact.ServiceLogSnapshotFact: true,
+	fact.WazuhAgentConfigFact:   true,
+	fact.ACLSnapshotFact:        true,
+	fact.AuditWatchSnapshotFact: true,
+	fact.FirewallSnapshotFact:   true,
+}
+
+// heldPass is the newest agent_pass of an agent: when it ran and the
+// snapshot run of each fact it names.
+type heldPass struct {
+	ts   string
+	runs map[string]string
+}
+
+// inForce returns, per agent, the newest agent_pass since the given time.
+func (s *Source) inForce(ctx context.Context, since time.Time) (map[string]heldPass, error) {
+	return batch.Once(ctx, &s.pass.plan, "inforce|"+sinceKey(since), func(ctx context.Context) (map[string]heldPass, error) {
+
+		passes, err := readLatest[fact.AgentPass](ctx, s, fact.AgentPassFact, since, 1)
+		if err != nil {
+			return nil, err
+		}
+
+		out := map[string]heldPass{}
+		for agentID, list := range passes {
+			p := heldPass{ts: list[0].TS, runs: map[string]string{}}
+			for _, entry := range list[0].InForce {
+				if name, run, ok := strings.Cut(entry, ":"); ok {
+					p.runs[name] = run
+				}
+			}
+			out[agentID] = p
+		}
+		return out, nil
+	})
+}
+
 // IdentityRecords returns every identity_record of one pass of one agent.
 func (s *Source) IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error) {
 	return passRecords[fact.IdentityRecord](ctx, s, fact.IdentityRecordFact, agentID, runID, since)
-}
-
-// passRecords reads every fact of type name with the given run_id from one
-// agent, decoded into T. A Go method cannot have type parameters, so this is
-// a function that takes the Source.
-func passRecords[T any](ctx context.Context, s *Source, name, agentID, runID string, since time.Time) ([]T, error) {
-
-	filter := append(factFilter(name, since),
-		map[string]any{"term": map[string]any{"agent.id": agentID}},
-		map[string]any{"term": map[string]any{"data.run_id": runID}},
-	)
-
-	var records []T
-
-	err := s.page(ctx, filter, func(h hit) error {
-		var record T
-		if err := decodeHit(h, &record); err != nil {
-			return err
-		}
-		records = append(records, record)
-		return nil
-	})
-
-	return records, err
 }
 
 // page walks every hit matching filter in timestamp order, with search_after
@@ -290,7 +364,9 @@ func (s *Source) page(ctx context.Context, filter []any, fn func(hit) error) err
 		query := map[string]any{
 			"size":  pageSize,
 			"query": map[string]any{"bool": map[string]any{"filter": filter}},
-			"sort":  []any{map[string]any{"timestamp": "asc"}, map[string]any{"id": "asc"}},
+			// _id makes the order total: alerts of one timestamp may share
+			// Wazuh's id, and search_after would skip them across pages.
+			"sort": []any{map[string]any{"timestamp": "asc"}, map[string]any{"_id": "asc"}},
 		}
 		if after != nil {
 			query["search_after"] = after
@@ -318,19 +394,4 @@ func (s *Source) page(ctx context.Context, filter []any, fn func(hit) error) err
 
 		after = resp.Hits.Hits[len(resp.Hits.Hits)-1].Sort
 	}
-}
-
-func decodeHit(h hit, v any) error {
-
-	var a alert
-
-	if err := json.Unmarshal(h.Source, &a); err != nil {
-		return fmt.Errorf("alert %s: %w", h.ID, err)
-	}
-
-	if err := Decode(a.Data, v); err != nil {
-		return fmt.Errorf("alert %s: %w", h.ID, err)
-	}
-
-	return nil
 }

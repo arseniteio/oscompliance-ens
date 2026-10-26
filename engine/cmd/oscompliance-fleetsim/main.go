@@ -1,7 +1,8 @@
 // Command oscompliance-fleetsim fills an indexer with a simulated fleet for
 // load tests of the engine: it copies one real agent's facts and Wazuh
 // alerts of the last day into N agents, with the hourly passes the agent
-// sends (one full pass, then snapshots pointing to it). Test indexers only.
+// sends: one full pass, then snapshots pointing to it, or with -quiet only
+// the agent_pass that names them. Test indexers only.
 package main
 
 import (
@@ -36,6 +37,8 @@ func run() error {
 	agents := flag.Int("agents", 1000, "simulated agents")
 	first := flag.Int("first-id", 10000, "first simulated agent ID")
 	hours := flag.Int("hours", 26, "hourly passes per agent")
+	quiet := flag.Bool("quiet", false, "unchanged collectors send nothing; each pass ends with agent_pass")
+	fullAge := flag.Int("full-hours-ago", 0, "with -quiet, age of the full pass in hours (0: the oldest hourly pass)")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -53,6 +56,24 @@ func run() error {
 		return fmt.Errorf("agent %s has no full pass in the last day", *template)
 	}
 	fmt.Printf("template: %d facts in a full pass, %d native alerts\n", len(pass), len(natives))
+
+	// The services with logs are loud, as the agent's: their snapshot goes
+	// out every pass.
+	loud := map[string]bool{"auth_log_probe": true, "file_sweep_snapshot": true}
+	for _, d := range pass {
+		if d["data"].(map[string]any)["fact"] == "service_log" {
+			loud["service_log_snapshot"] = true
+		}
+	}
+
+	// The quiet snapshots of the pass, for agent_pass.
+	var quietFacts []string
+	for _, d := range pass {
+		fact, _ := d["data"].(map[string]any)["fact"].(string)
+		if !isRecord(fact) && !loud[fact] {
+			quietFacts = append(quietFacts, fact)
+		}
+	}
 
 	now := time.Now().UTC()
 	var body bytes.Buffer
@@ -98,11 +119,16 @@ func run() error {
 			run := full
 			if h != *hours-1 {
 				run = uuid()
+			} else if *quiet && *fullAge > 0 {
+				at = now.Add(-time.Duration(*fullAge)*time.Hour - time.Duration(i%3600)*time.Second)
 			}
 			for _, d := range pass {
 				fact, _ := d["data"].(map[string]any)["fact"].(string)
 				record := isRecord(fact)
 				if record && run != full {
+					continue
+				}
+				if *quiet && run != full && !loud[fact] {
 					continue
 				}
 				doc := retarget(d, id, name, at)
@@ -119,6 +145,21 @@ func run() error {
 					if err := add(*alerts, probe(id, name, run, at)); err != nil {
 						return err
 					}
+				}
+			}
+			if *quiet {
+				var inForce []any
+				for _, f := range quietFacts {
+					inForce = append(inForce, f+":"+full)
+				}
+				doc := retarget(pass[0], id, name, at)
+				delete(doc, "full_log")
+				doc["data"] = map[string]any{
+					"oscompliance": "1", "fact": "agent_pass", "ts": at.Format(time.RFC3339), "host": name,
+					"agent_version": pass[0]["data"].(map[string]any)["agent_version"], "run_id": run, "in_force": inForce,
+				}
+				if err := add(*alerts, doc); err != nil {
+					return err
 				}
 			}
 		}
