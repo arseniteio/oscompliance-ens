@@ -15,10 +15,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/controls/ens/opacc1"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/controls/ens/opacc2"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/accounts"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/acl"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/audit"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/authprobe"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/firewall"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/listening"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/pam"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/settings"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sudoers"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sweep"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/umask"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/wazuh"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/sysconf"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
@@ -39,7 +48,7 @@ func run() error {
 	shadow := flag.String("shadow", "/etc/shadow", "shadow file read by EV-02")
 	group := flag.String("group", "/etc/group", "group file read by EV-06")
 	sshd := flag.String("sshd", "/usr/sbin/sshd", "sshd binary asked for its effective configuration")
-	sudoers := flag.String("sudoers", "/etc/sudoers", "main sudoers file; its includes are followed")
+	sudoersPath := flag.String("sudoers", "/etc/sudoers", "main sudoers file; its includes are followed")
 	pamDir := flag.String("pam-dir", "/etc/pam.d", "PAM configuration directory")
 	collect := flag.String("collect", defaultCollectors, "comma-separated collectors to run: "+strings.Join(allCollectors, ", ")+"; the sweep is heavy and meant for a daily run")
 	sweepTimeout := flag.Duration("sweep-timeout", 15*time.Minute, "time limit of the filesystem sweep")
@@ -96,38 +105,38 @@ func run() error {
 
 	collectors := map[string]func() error{
 		"identity": func() error {
-			return opacc1.CollectEV02(e, opacc1.EV02Config{
+			return accounts.CollectIdentity(e, accounts.IdentityConfig{
 				PasswdPath: *passwd, ShadowPath: *shadow, SSHDPath: *sshd,
-				LoginRecords: opacc1.DefaultLoginRecords, LastlogPath: opacc1.DefaultLastlog,
+				LoginRecords: accounts.DefaultLoginRecords, LastlogPath: accounts.DefaultLastlog,
 			})
 		},
-		"groups": func() error { return opacc1.CollectEV06(e, opacc1.EV06Config{GroupPath: *group}) },
+		"groups": func() error { return accounts.CollectGroups(e, accounts.GroupsConfig{GroupPath: *group}) },
 		"umask": func() error {
-			return opacc2.CollectUmask(e, opacc2.UmaskConfig{Files: opacc2.DefaultUmaskFiles, ProfileDir: "/etc/profile.d"})
+			return umask.Collect(e, umask.Config{Files: umask.DefaultFiles, ProfileDir: "/etc/profile.d"})
 		},
-		"sudoers": func() error { return opacc2.CollectSudoers(e, opacc2.SudoersConfig{Path: *sudoers}) },
+		"sudoers": func() error { return sudoers.Collect(e, sudoers.Config{Path: *sudoersPath}) },
 		"config": func() error {
-			return sysconf.CollectConfig(e, sysconf.ConfigConfig{Files: sysconf.DefaultConfigFiles, SSHD: *sshd})
+			return settings.Collect(e, settings.Config{Files: settings.DefaultFiles, SSHD: *sshd})
 		},
-		"authprobe": func() error { return sysconf.CollectAuthProbe(e) },
-		"firewall":  func() error { return sysconf.CollectFirewall(e, sysconf.DefaultFirewall) },
-		"wazuh":     func() error { return sysconf.CollectWazuhConfig(e, sysconf.DefaultWazuhConfig) },
-		"acl":       func() error { return sysconf.CollectACL(e, sysconf.ACLConfig{SharedPaths: sysconf.DefaultSharedPaths}) },
+		"authprobe": func() error { return authprobe.Collect(e) },
+		"firewall":  func() error { return firewall.Collect(e, firewall.Default) },
+		"wazuh":     func() error { return wazuh.CollectAgentConfig(e, wazuh.DefaultAgentConfig) },
+		"acl":       func() error { return acl.Collect(e, acl.Config{SharedPaths: wazuh.DefaultSharedPaths}) },
 		"audit": func() error {
-			return sysconf.CollectAuditWatches(e, sysconf.AuditConfig{Auditctl: "/usr/sbin/auditctl", SharedPaths: sysconf.DefaultSharedPaths})
+			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", SharedPaths: wazuh.DefaultSharedPaths})
 		},
 		"services": func() error {
-			return sysconf.CollectServiceLogs(e, sysconf.ServiceLogConfig{SharedConf: "/var/ossec/etc/shared/agent.conf", ClientKeys: "/var/ossec/etc/client.keys"})
+			return wazuh.CollectServiceLogs(e, wazuh.ServiceLogConfig{SharedConf: "/var/ossec/etc/shared/agent.conf", ClientKeys: "/var/ossec/etc/client.keys"})
 		},
 		"listening": func() error {
-			return sysconf.CollectListening(e, sysconf.ListenConfig{Proc: "/proc", Systemctl: "/usr/bin/systemctl"})
+			return listening.Collect(e, listening.Config{Proc: "/proc", Systemctl: "/usr/bin/systemctl"})
 		},
 		"pam": func() error {
-			return sysconf.CollectPAM(e, sysconf.PAMConfig{Dir: *pamDir, Services: sysconf.DefaultPAMServices, Types: sysconf.DefaultPAMTypes})
+			return pam.Collect(e, pam.Config{Dir: *pamDir, Services: pam.DefaultServices, Types: pam.DefaultTypes})
 		},
 		"sweep": func() error {
-			return opacc2.CollectSweep(e, opacc2.SweepConfig{
-				MountsPath: "/proc/self/mounts", Prune: opacc2.DefaultPrune,
+			return sweep.Collect(e, sweep.Config{
+				MountsPath: "/proc/self/mounts", Prune: sweep.DefaultPrune,
 				PasswdPath: *passwd, GroupPath: *group,
 				Timeout: *sweepTimeout, MaxRecords: 20000,
 			})
