@@ -5,7 +5,9 @@ import (
 	"fmt"
 )
 
-const EnvelopeVersion = "1"
+const (
+	EnvelopeVersion = "1"
+)
 
 type Envelope struct {
 	OSCompliance string `json:"oscompliance"`
@@ -37,17 +39,4 @@ func NewRunID() (string, error) {
 	b[6] = b[6]&0x0f | 0x40
 	b[8] = b[8]&0x3f | 0x80
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
-}
-
-const (
-	SourceRead        = "read"
-	SourceUnreadable  = "unreadable"
-	SourceImplausible = "implausible"
-)
-
-const AgentPassFact = "agent_pass"
-
-type AgentPass struct {
-	Envelope
-	InForce []string `json:"in_force"`
 }

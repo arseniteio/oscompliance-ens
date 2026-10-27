@@ -3,14 +3,15 @@ package fact
 const (
 	IdentityRecordFact   = "identity_record"
 	IdentitySnapshotFact = "identity_snapshot"
-)
-
-const (
-	PasswordSet     = "set"
-	PasswordLocked  = "locked"
-	PasswordEmpty   = "empty"
-	PasswordMissing = "missing"
-	PasswordOther   = "other"
+	PasswordSet          = "set"
+	PasswordLocked       = "locked"
+	PasswordEmpty        = "empty"
+	PasswordMissing      = "missing"
+	PasswordOther        = "other"
+	SSHDRead             = "read"
+	SSHDAbsent           = "absent"
+	SSHDCommand          = "command"
+	SSHDError            = "error"
 )
 
 type IdentityRecord struct {
@@ -37,13 +38,6 @@ type LoginRecordFile struct {
 	Status string `json:"status"`
 	Error  string `json:"error,omitempty"`
 }
-
-const (
-	SSHDRead    = "read"
-	SSHDAbsent  = "absent"
-	SSHDCommand = "command"
-	SSHDError   = "error"
-)
 
 type IdentitySnapshot struct {
 	Envelope

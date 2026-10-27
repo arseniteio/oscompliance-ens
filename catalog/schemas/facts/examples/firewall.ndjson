@@ -1,0 +1,1 @@
+{"oscompliance":"1","fact":"firewall_snapshot","ts":"2026-10-25T21:00:00Z","host":"lab-agent-01","agent_version":"0.1.0","run_id":"9c1e3a5b-7d2f-4b6a-8e0c-2a4b6c8d0e1f","tool":"nft","status":"read","chains":[{"family":"inet","table":"filter","name":"input","hook":"input","policy":"drop"}]}
