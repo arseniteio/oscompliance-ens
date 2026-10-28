@@ -434,6 +434,9 @@
     "P-11": {
       "class": "platform"
     },
+    "P-12": {
+      "class": "organisation"
+    },
     "P-ATT": {
       "class": "organisation"
     }

@@ -183,6 +183,9 @@
     },
     "P-07": {
       "class": "system"
+    },
+    "P-08": {
+      "class": "organisation"
     }
   }
 }
