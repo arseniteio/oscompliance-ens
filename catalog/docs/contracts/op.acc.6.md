@@ -98,7 +98,7 @@ Wazuh alerts used as they are:
 | P-ATT | organisation | table | documentary requirements |
 
 P-12 is not in the plugin yet. v1 read a file maintained on every machine
-(`/etc/ensfacil/opacc6-incidencias.tsv`). Until the plugin offers it, EV-06 is
+(`/etc/power-ens/opacc6-incidencias.tsv`). Until the plugin offers it, EV-06 is
 NOT_EVALUABLE by CONFIGURATION. Dates are RFC 3339 or a day (00:00 UTC).
 
 A parameter that is not set gives NOT_EVALUABLE by CONFIGURATION on the

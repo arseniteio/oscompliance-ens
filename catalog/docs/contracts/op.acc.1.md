@@ -5,10 +5,10 @@
 ## 2. Current facts inventory
 
 Source: runbook `op.acc.1-identification` (v1, bash) and its manager rules
-`ensfacil_op_acc_1_json_rules.xml`. Lab counts: `wazuh-lab-docker`, one Ubuntu
+`power_ens_op_acc_1_json_rules.xml`. Lab counts: `wazuh-lab-docker`, one Ubuntu
 24.04 agent, 2026-10-21.
 
-Every line carries the envelope `ensfacil`, `event`, `ts`, `host`. Lines from
+Every line carries the envelope `power_ens`, `event`, `ts`, `host`. Lines from
 `score.py` and the watchdog also carry `emisor`.
 
 Type: **fact** = observation only; **verdict** = carries a compliance judgement;
@@ -74,7 +74,7 @@ from the v1 runbook envelope.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `oscompliance` | `"1"` | Envelope version and decoder marker. Replaces `ensfacil`. |
+| `oscompliance` | `"1"` | Envelope version and decoder marker. Replaces `power_ens`. |
 | `fact` | string | Fact type. Replaces `event`. |
 | `ts` | RFC 3339, UTC, `Z` | Observation time. |
 | `host` | string | Observed system. |
