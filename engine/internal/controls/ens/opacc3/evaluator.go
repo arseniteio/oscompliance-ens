@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -70,28 +71,31 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy params.Lister) (map[string]evaluator.Result, error) {
 
 	in := Input{AgentID: agent.ID}
-	var problems []string
+	var problems []catalog.Message
 
 	pairs, err := policy.List(agent.ID, control, "P-02")
 	if err != nil {
-		problems = append(problems, "P-02: "+err.Error())
+		problems = append(problems, passes.Param("P-02", err))
 	}
 	in.Pairs = ParsePairs(pairs)
 
 	functions, err := policy.List(agent.ID, control, "P-03")
 	if err != nil {
-		problems = append(problems, "P-03: "+err.Error())
+		problems = append(problems, passes.Param("P-03", err))
 	}
 	in.Functions = ParseFunctions(functions)
 
 	days, err := policy.Number(agent.ID, control, "P-06")
-	if err != nil || days < 1 {
-		problems = append(problems, fmt.Sprintf("P-06: %v", errOr(err, "must be at least one day")))
+	switch {
+	case err != nil:
+		problems = append(problems, passes.Param("P-06", err))
+	case days < 1:
+		problems = append(problems, catalog.Says("opacc3.p06_one_day"))
 	}
-	in.Problem = strings.Join(problems, "; ")
+	in.Problem = passes.Problems(problems)
 
 	if rows, err := policy.List(agent.ID, control, "P-04"); err != nil {
-		in.TaskProblems = []string{err.Error()}
+		in.TaskProblems = []catalog.Message{passes.Param("P-04", err)}
 	} else {
 		in.Tasks, in.TaskProblems = ParseTasks(rows)
 	}
@@ -104,7 +108,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 	}
 
-	if in.Problem == "" {
+	if in.Problem.IsZero() {
 		if err := e.build(ctx, int(days)); err != nil {
 			return nil, err
 		}
@@ -183,11 +187,4 @@ func (e *Evaluator) build(ctx context.Context, days int) error {
 func (e *Evaluator) name(agentID, uid string) (string, bool) {
 	name, ok := e.names[agentID][uid]
 	return name, ok
-}
-
-func errOr(err error, fallback string) string {
-	if err != nil {
-		return err.Error()
-	}
-	return fallback
 }

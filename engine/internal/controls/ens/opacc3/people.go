@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 )
 
@@ -119,24 +120,24 @@ func matches(indicators []string, exe, path string) bool {
 	return false
 }
 
-func ParseTasks(rows []string) (tasks []Task, problems []string) {
+func ParseTasks(rows []string) (tasks []Task, problems []catalog.Message) {
 
 	for _, r := range rows {
 
 		c := cells(r)
 		if len(c) < 2 {
-			problems = append(problems, "row "+r+": want tarea | personas | indicador")
+			problems = append(problems, catalog.Says("opacc3.p04_row_shape", "row", r))
 			continue
 		}
 
 		n, err := strconv.Atoi(c[1])
 		if err != nil || n < 2 {
-			problems = append(problems, "row "+r+": the number of people must be 2 or more")
+			problems = append(problems, catalog.Says("opacc3.p04_row_people", "row", r))
 			continue
 		}
 
 		if len(c) < 3 {
-			problems = append(problems, c[0]+": no indicator says which command it is")
+			problems = append(problems, catalog.Says("opacc3.p04_no_indicator", "task", c[0]))
 			continue
 		}
 

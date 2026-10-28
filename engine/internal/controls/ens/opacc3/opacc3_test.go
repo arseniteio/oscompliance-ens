@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -70,11 +71,11 @@ func TestJudgePair(t *testing.T) {
 	check(t, "maintenance only", JudgePair("EV-04", in), verdict.Compliant, "", "")
 	check(t, "pair not declared", JudgePair("EV-02", in), verdict.NotEvaluable, verdict.CauseConfiguration, "autorizacion | control")
 
-	in.Chain = "auditd absent"
+	in.Chain = catalog.Says("chain.auditd", "state", catalog.Says("auditd.absent"), "error", "")
 	check(t, "blind silence", JudgePair("EV-04", in), verdict.NotEvaluable, verdict.CauseCollection, "auditd absent")
 	check(t, "a breach stands", JudgePair("EV-01", in), verdict.NonCompliant, "", "ana")
 
-	check(t, "params", JudgePair("EV-01", Input{Problem: "P-03: not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-03")
+	check(t, "params", JudgePair("EV-01", Input{Problem: catalog.Says("param.not_set", "param", "P-03")}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-03")
 }
 
 func TestJudgeTasks(t *testing.T) {
@@ -128,18 +129,18 @@ func TestChain(t *testing.T) {
 	running := &fact.AuditWatchSnapshot{Auditd: fact.AuditdRunning,
 		ExecLoaded: []string{"/usr/bin/git", "/usr/bin/systemctl", "/usr/bin/crontab", "/usr/bin/vim", "/usr/bin/apt", "/usr/sbin/ausearch"}}
 
-	if c := Chain(running, config, p03); c != "" {
+	if c := Chain(running, config, p03); !c.IsZero() {
 		t.Errorf("complete chain: %q", c)
 	}
 	partial := *running
 	partial.ExecLoaded = partial.ExecLoaded[:2]
-	if c := Chain(&partial, config, p03); !strings.Contains(c, "/usr/bin/vim") {
+	if c := Chain(&partial, config, p03); !strings.Contains(c.Render("en"), "/usr/bin/vim") {
 		t.Errorf("unwatched: %q", c)
 	}
-	if c := Chain(&fact.AuditWatchSnapshot{Auditd: fact.AuditdAbsent}, config, p03); !strings.Contains(c, "absent") {
+	if c := Chain(&fact.AuditWatchSnapshot{Auditd: fact.AuditdAbsent}, config, p03); !strings.Contains(c.Render("en"), "absent") {
 		t.Errorf("no auditd: %q", c)
 	}
-	if c := Chain(running, &fact.WazuhAgentConfig{Status: fact.SourceRead}, p03); !strings.Contains(c, "log_format audit") {
+	if c := Chain(running, &fact.WazuhAgentConfig{Status: fact.SourceRead}, p03); !strings.Contains(c.Render("en"), "log_format audit") {
 		t.Errorf("no audit localfile: %q", c)
 	}
 }

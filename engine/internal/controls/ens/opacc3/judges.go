@@ -20,19 +20,19 @@ type Input struct {
 	Pairs     []Pair
 	Tasks     []Task
 
-	TaskProblems []string
+	TaskProblems []catalog.Message
 
 	Auditors []string
 
-	Chain string
+	Chain catalog.Message
 
-	Problem string
+	Problem catalog.Message
 }
 
 func JudgePair(id string, in Input) verdict.Judgement {
 
-	if in.Problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
+	if !in.Problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.Problem)
 	}
 
 	want := requirementPair[id]
@@ -45,13 +45,13 @@ func JudgePair(id string, in Input) verdict.Judgement {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc3.incompatible_functions_a", "a", offenders))
 	}
 
-	return silence(in, fmt.Sprintf("no account holds %s and %s", pair.Left, pair.Right))
+	return silence(in, catalog.Says("opacc3.pair_clean", "left", pair.Left, "right", pair.Right))
 }
 
 func JudgeTasks(in Input) verdict.Judgement {
 
-	if in.Problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
+	if !in.Problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.Problem)
 	}
 	if len(in.TaskProblems) > 0 {
 		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.p_04_a", "a", in.TaskProblems))
@@ -60,7 +60,7 @@ func JudgeTasks(in Input) verdict.Judgement {
 		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.p_04_declares_no_critical_task"))
 	}
 
-	var short, fine []string
+	var short, fine []catalog.Message
 
 	for _, t := range in.Tasks {
 
@@ -70,7 +70,7 @@ func JudgeTasks(in Input) verdict.Judgement {
 		}
 
 		people := sortedNames(in.Fleet.TaskPeople[key])
-		item := fmt.Sprintf("%s (%d of %d people: %s)", t.Name, len(people), t.Required, strings.Join(people, ", "))
+		item := catalog.Says("opacc3.task_people", "task", t.Name, "count", len(people), "required", t.Required, "people", people)
 
 		if len(people) < t.Required {
 			short = append(short, item)
@@ -83,17 +83,17 @@ func JudgeTasks(in Input) verdict.Judgement {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc3.critical_tasks_without_enough_people_a", "a", short))
 	}
 
-	if len(fine) > 0 && in.Chain == "" {
+	if len(fine) > 0 && in.Chain.IsZero() {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.critical_tasks_run_by_enough_people_a", "a", fine))
 	}
 
-	return silence(in, "no critical task run on this machine in the window")
+	return silence(in, catalog.Says("opacc3.no_task_run"))
 }
 
 func JudgeAuditors(in Input) verdict.Judgement {
 
-	if in.Problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
+	if !in.Problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.Problem)
 	}
 
 	pair, wildcard := declared(in.Pairs, requirementPair["EV-05"])
@@ -101,7 +101,7 @@ func JudgeAuditors(in Input) verdict.Judgement {
 		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.neither_p_02_declares_auditoria_nor_p_05"))
 	}
 
-	var found []string
+	var found []catalog.Message
 	if wildcard {
 		found = offenders(in, pair)
 	}
@@ -116,26 +116,26 @@ func JudgeAuditors(in Input) verdict.Judgement {
 		var other []string
 		for f := range p.Functions {
 			if f != "auditoria" && f != "supervision" {
-				other = append(other, fmt.Sprintf("%s (%s)", f, p.Examples[f]))
+				other = append(other, f+" ("+p.Examples[f]+")")
 			}
 		}
 		if len(other) > 0 {
 			sort.Strings(other)
-			found = append(found, fmt.Sprintf("audit account %s also does %s", a, strings.Join(other, ", ")))
+			found = append(found, catalog.Says("opacc3.auditor_also", "account", a, "functions", other))
 		}
 	}
 
 	if len(found) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc3.a", "a", found))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings", "list", found))
 	}
 
-	return silence(in, "audit accounts hold no other function")
+	return silence(in, catalog.Says("opacc3.auditors_clean"))
 }
 
 func JudgeInventory(in Input) verdict.Judgement {
 
-	if in.Problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
+	if !in.Problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.Problem)
 	}
 
 	var accounts []string
@@ -151,11 +151,11 @@ func JudgeInventory(in Input) verdict.Judgement {
 	}
 
 	if len(accounts) == 0 {
-		return silence(in, "no action observed in the window")
+		return silence(in, catalog.Says("opacc3.no_action"))
 	}
 
-	if in.Chain != "" {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc3.a", "a", in.Chain))
+	if !in.Chain.IsZero() {
+		return passes.Gap(verdict.CauseCollection, in.Chain)
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.a_accounts_acted_b", "a", len(accounts), "b", strings.Join(accounts, "; ")))
@@ -168,12 +168,12 @@ func JudgeSecurity(in Input) verdict.Judgement {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.accesses_to_security_information_a", "a", accesses))
 	}
 
-	return silence(in, "no access to security information in the window")
+	return silence(in, catalog.Says("opacc3.no_security_access"))
 }
 
-func offenders(in Input, pair Pair) []string {
+func offenders(in Input, pair Pair) []catalog.Message {
 
-	var out []string
+	var out []catalog.Message
 
 	for _, p := range in.Fleet.People {
 		if !p.Agents[in.AgentID] || !Violates(p.Functions, pair) {
@@ -185,27 +185,27 @@ func offenders(in Input, pair Pair) []string {
 				held = append(held, fmt.Sprintf("%s (%s)", f, p.Examples[f]))
 			}
 		}
-		out = append(out, p.Name+": "+strings.Join(held, " + "))
+		out = append(out, catalog.Says("opacc3.holds", "account", p.Name, "functions", strings.Join(held, " + ")))
 	}
 
-	sort.Strings(out)
+	catalog.SortMessages(out)
 	return out
 }
 
-func silence(in Input, reason string) verdict.Judgement {
-	if in.Chain != "" {
+func silence(in Input, reason catalog.Message) verdict.Judgement {
+	if !in.Chain.IsZero() {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc3.a_but_b", "a", reason, "b", in.Chain))
 	}
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.a", "a", reason))
+	return verdict.Explain(verdict.Compliant, "", reason)
 }
 
-func Chain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, functions []Function) string {
+func Chain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, functions []Function) catalog.Message {
 
 	switch {
 	case w == nil:
-		return "no audit_watch_snapshot in the window"
+		return catalog.Says("gap.no_fact", "fact", "audit_watch_snapshot")
 	case w.Auditd != fact.AuditdRunning:
-		return strings.TrimSpace("auditd " + w.Auditd + " " + w.Error)
+		return catalog.Says("chain.auditd", "state", catalog.Says("auditd."+w.Auditd), "error", w.Error)
 	}
 
 	var unwatched []string
@@ -221,18 +221,18 @@ func Chain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, functions []Fun
 	}
 	if len(unwatched) > 0 {
 		sort.Strings(unwatched)
-		return "auditd does not watch " + strings.Join(unwatched, ", ")
+		return catalog.Says("chain.unwatched_many", "paths", unwatched)
 	}
 
 	if c == nil || c.Status != fact.SourceRead {
-		return "the Wazuh agent configuration is unknown"
+		return catalog.Says("chain.config_unknown")
 	}
 	for _, l := range c.Localfiles {
 		if l.Format == "audit" {
-			return ""
+			return catalog.Message{}
 		}
 	}
-	return "Wazuh does not read the audit log (no localfile with log_format audit)"
+	return catalog.Says("chain.no_audit_log")
 }
 
 func watched(w *fact.AuditWatchSnapshot, path string) bool {
