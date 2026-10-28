@@ -2,7 +2,6 @@ package opacc5
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -18,13 +17,13 @@ type EV05Input struct {
 	Now    time.Time
 
 	MaxHours        int
-	MaxHoursProblem string
+	MaxHoursProblem catalog.Message
 }
 
 func JudgeEV05(in EV05Input) verdict.Judgement {
 
-	if in.MaxHoursProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_06_a", "a", in.MaxHoursProblem))
+	if !in.MaxHoursProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxHoursProblem)
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -38,14 +37,15 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	open := map[string][]notice{}
 	limit := time.Duration(in.MaxHours) * time.Hour
 
-	var late, onTime []string
+	var late, onTime []catalog.Message
 
 	measure := func(who string, n notice, end time.Time, closed bool) {
 		took := end.Sub(n.at)
-		item := fmt.Sprintf("%s (%s %s): %.1f hours", who, n.reason, n.ref, took.Hours())
+		code := "opacc5.disabled_after"
 		if !closed {
-			item += " and still enabled"
+			code = "opacc5.still_enabled"
 		}
+		item := catalog.Says(code, "account", who, "reason", catalog.Says("opacc5.notice."+n.reason), "ref", n.ref, "hours", fmt.Sprintf("%.1f", took.Hours()))
 		switch {
 		case took > limit:
 			late = append(late, item)
@@ -62,7 +62,7 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		case "notificacion_compromiso", "fin_relacion":
 			ref := e.Referencia
 			if ref == "" {
-				ref = "no reference"
+				ref = "-"
 			}
 			open[who] = append(open[who], notice{at: e.Time, reason: e.Tipo, ref: ref})
 		case "inhabilitacion":
@@ -82,16 +82,16 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	}
 
 	if len(late) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.not_disabled_within_a_hours_b", "a", in.MaxHours, "b", strings.Join(late, "; ")))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.not_disabled_within_a_hours_b", "a", in.MaxHours, "b", late))
 	}
 
 	if len(onTime) == 0 && pending == 0 {
 		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.the_services_logged_no_compromise_or_end"))
 	}
 
-	reason := fmt.Sprintf("disabled within %d hours: %s", in.MaxHours, strings.Join(onTime, "; "))
+	reason := catalog.Says("opacc5.disabled_within", "hours", in.MaxHours, "list", onTime)
 	if pending > 0 {
-		reason += fmt.Sprintf("; %d notices still within the deadline", pending)
+		reason = catalog.Says("opacc5.disabled_within_pending", "reason", reason, "pending", pending)
 	}
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a", "a", reason))
+	return verdict.Explain(verdict.Compliant, "", reason)
 }

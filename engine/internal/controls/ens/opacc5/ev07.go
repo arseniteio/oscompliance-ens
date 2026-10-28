@@ -1,8 +1,6 @@
 package opacc5
 
 import (
-	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -49,7 +47,7 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_01_not_usable_the_mechanism_to_compare"))
 	}
 
-	var other []string
+	var other []catalog.Message
 	unknown, total := 0, 0
 
 	for _, m := range in.Methods {
@@ -62,16 +60,16 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 		}
 
 		if r := Reinforcement(strings.Split(m.Factors, "+")); r != in.Mechanism {
-			class := r
-			if class == "" {
-				class = "no ENS mechanism"
+			class := catalog.Says("findings", "list", r)
+			if r == "" {
+				class = catalog.Says("opacc5.no_mechanism")
 			}
-			other = append(other, fmt.Sprintf("%s %s (%s, %d logins)", m.Service, m.Factors, class, m.Count))
+			other = append(other, catalog.Says("opacc5.login_method", "service", m.Service, "factors", m.Factors, "class", class, "count", m.Count))
 		}
 	}
 
 	if len(other) > 0 {
-		sort.Strings(other)
+		catalog.SortMessages(other)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.logins_not_by_a_b", "a", in.Mechanism, "b", other))
 	}
 	if unknown > 0 {

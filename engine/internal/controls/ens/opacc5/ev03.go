@@ -1,9 +1,7 @@
 package opacc5
 
 import (
-	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -23,13 +21,13 @@ type EV03Input struct {
 	Reaching map[string]bool
 
 	MaxAttempts        int
-	MaxAttemptsProblem string
+	MaxAttemptsProblem catalog.Message
 }
 
 func JudgeEV03(in EV03Input) verdict.Judgement {
 
-	if in.MaxAttemptsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_03_a", "a", in.MaxAttemptsProblem))
+	if !in.MaxAttemptsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxAttemptsProblem)
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -41,7 +39,7 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		times[key] = append(times[key], f.Time)
 	}
 
-	var failing []string
+	var failing []catalog.Message
 	failed := map[string]int{}
 
 	for _, b := range in.Bursts {
@@ -53,13 +51,13 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 
 		key := b.Service + " " + origin(b.Key)
 		if n := maxWithin(times[key], originSpan); n > in.MaxAttempts {
-			failing = append(failing, fmt.Sprintf("%s: %d failures within %s", key, n, originSpan))
+			failing = append(failing, catalog.Says("opacc5.failures_within", "origin", key, "count", n, "minutes", int(originSpan.Minutes())))
 		}
 	}
 
 	if len(failing) > 0 {
-		sort.Strings(failing)
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.origins_with_more_than_a_failures_b", "a", in.MaxAttempts, "b", strings.Join(failing, "; ")))
+		catalog.SortMessages(failing)
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.origins_with_more_than_a_failures_b", "a", in.MaxAttempts, "b", failing))
 	}
 
 	var blind []string
@@ -72,12 +70,12 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc5.no_failure_seen_and_the_log_is_not_known", "a", blind))
 	}
 
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.no_origin_failed_more_than_a_times_withi", "a", in.MaxAttempts, "b", originSpan))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.no_origin_failed_more_than_a_times_withi", "a", in.MaxAttempts, "b", int(originSpan.Minutes())))
 }
 
 func origin(o string) string {
 	if o == "" {
-		return "unknown origin"
+		return "?"
 	}
 	return o
 }

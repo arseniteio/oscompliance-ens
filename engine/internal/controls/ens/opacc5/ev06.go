@@ -1,9 +1,7 @@
 package opacc5
 
 import (
-	"fmt"
 	"regexp"
-	"sort"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
@@ -44,19 +42,19 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		return noService()
 	}
 
-	var found []string
+	var found []catalog.Message
 	for _, m := range in.Messages {
 		if p := RevealingPattern(m.Message); p != "" {
 			msg := m.Message
 			if len(msg) > 120 {
 				msg = msg[:120] + "…"
 			}
-			found = append(found, fmt.Sprintf("%s %s %q (%d)", m.Service, p, msg, m.Count))
+			found = append(found, catalog.Says("opacc5.revealing", "service", m.Service, "pattern", p, "message", msg, "count", m.Count))
 		}
 	}
 
 	if len(found) > 0 {
-		sort.Strings(found)
+		catalog.SortMessages(found)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.rejections_that_reveal_why_a", "a", found))
 	}
 

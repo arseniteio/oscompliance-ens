@@ -1,8 +1,6 @@
 package opacc5
 
 import (
-	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -31,19 +29,19 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 		return noService()
 	}
 
-	var gaps []string
+	var gaps []catalog.Message
 
 	for _, s := range in.Services {
 
 		if s.Declared && s.Log == nil {
-			gaps = append(gaps, s.Name+": declared in P-02 but no labelled localfile reaches the agent")
+			gaps = append(gaps, catalog.Says("opacc5.declared_not_collected", "service", s.Name))
 			continue
 		}
 
 		if s.Log != nil && s.Log.Status == fact.SourceRead && s.Log.Size > 0 {
 			if modified, err := time.Parse(time.RFC3339, s.Log.Modified); err == nil {
 				if s.Span.Count == 0 || modified.Sub(s.Span.Newest) > deliveryLag {
-					gaps = append(gaps, fmt.Sprintf("%s: written at %s, newest event in Wazuh %s", s.Name, s.Log.Modified, newest(s.Span.Newest, s.Span.Count)))
+					gaps = append(gaps, catalog.Says("opacc5.log_behind", "service", s.Name, "modified", s.Log.Modified, "newest", newest(s.Span.Newest, s.Span.Count)))
 				}
 			}
 		}
@@ -54,8 +52,8 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 	}
 
 	if len(gaps) > 0 {
-		sort.Strings(gaps)
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.a", "a", gaps))
+		catalog.SortMessages(gaps)
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", gaps))
 	}
 
 	if len(in.Passes) < 2 {
@@ -67,19 +65,19 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 
 func newest(t time.Time, count int) string {
 	if count == 0 {
-		return "none"
+		return "-"
 	}
 	return t.UTC().Format(time.RFC3339)
 }
 
-func compare(before, after LogPass) []string {
+func compare(before, after LogPass) []catalog.Message {
 
 	now := map[string]fact.ServiceLog{}
 	for _, l := range after.Logs {
 		now[l.Service+"\x00"+l.Path] = l
 	}
 
-	var gaps []string
+	var gaps []catalog.Message
 	when := after.Snapshot.TS
 
 	for _, prev := range before.Logs {
@@ -94,12 +92,12 @@ func compare(before, after LogPass) []string {
 		case !ok:
 
 		case cur.Status == fact.SourceAbsent:
-			gaps = append(gaps, fmt.Sprintf("%s: %s disappeared by %s", prev.Service, prev.Path, when))
+			gaps = append(gaps, catalog.Says("opacc5.log_disappeared", "service", prev.Service, "path", prev.Path, "when", when))
 		case cur.Status != fact.SourceRead:
 		case cur.Inode != prev.Inode && !keptAside(cur, prev.Inode, before.Snapshot.TS):
-			gaps = append(gaps, fmt.Sprintf("%s: %s replaced by %s without a rotated copy", prev.Service, prev.Path, when))
+			gaps = append(gaps, catalog.Says("opacc5.log_replaced", "service", prev.Service, "path", prev.Path, "when", when))
 		case cur.Inode == prev.Inode && cur.Size < prev.Size:
-			gaps = append(gaps, fmt.Sprintf("%s: %s truncated by %s (%d to %d bytes)", prev.Service, prev.Path, when, prev.Size, cur.Size))
+			gaps = append(gaps, catalog.Says("opacc5.log_truncated", "service", prev.Service, "path", prev.Path, "when", when, "before", prev.Size, "after", cur.Size))
 		}
 	}
 

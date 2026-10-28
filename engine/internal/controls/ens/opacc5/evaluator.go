@@ -10,6 +10,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -115,7 +116,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	judge("EV-02", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV02Input{Services: services, Policies: policies, MaxAttempts: maxAttempts, MaxAttemptsProblem: attemptsProblem}
-		if attemptsProblem == "" {
+		if attemptsProblem.IsZero() {
 			events, err := e.suspects(ctx, agent.ID, window, "usuario", maxAttempts, []string{"autenticacion", "bloqueo", "desbloqueo"})
 			if err != nil {
 				read("streaks", err)
@@ -128,7 +129,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	judge("EV-03", []string{"logs", "events"}, func() evaluator.Result {
 		in := EV03Input{Services: services, Reaching: reaching(services), MaxAttempts: maxAttempts, MaxAttemptsProblem: attemptsProblem}
-		if attemptsProblem == "" {
+		if attemptsProblem.IsZero() {
 			bursts, err := e.facts.ServiceFailureBursts(ctx, agent.ID, window, "data.origen", originSpan)
 			if err != nil {
 				read("bursts", err)
@@ -232,7 +233,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 	_, in.ProcedureProblem = listParam(policy, agent.ID, "P-04")
 	if v, err := policy.Bool(agent.ID, control, "P-09"); err != nil {
-		in.LastAccessProblem = err.Error()
+		in.LastAccessProblem = passes.Param("P-09", err)
 	} else {
 		in.LastAccess = v
 	}
@@ -315,26 +316,26 @@ func reaching(services []Service) map[string]bool {
 }
 
 func notRead(err error) verdict.Judgement {
-	return verdict.Explain(verdict.NotEvaluable, verdict.CauseCollection, catalog.Says("opacc5.a", "a", err.Error()))
+	return verdict.Explain(verdict.NotEvaluable, verdict.CauseCollection, catalog.Says("gap.query", "error", err.Error()))
 }
 
-func listParam(policy params.Lister, agentID, id string) ([]string, string) {
+func listParam(policy params.Lister, agentID, id string) ([]string, catalog.Message) {
 	values, err := policy.List(agentID, control, id)
 	if err != nil {
-		return nil, err.Error()
+		return nil, passes.Param(id, err)
 	}
-	return values, ""
+	return values, catalog.Message{}
 }
 
-func intParam(policy params.Lister, agentID, id string) (int, string) {
+func intParam(policy params.Lister, agentID, id string) (int, catalog.Message) {
 
 	n, err := policy.Number(agentID, control, id)
 	if err != nil {
-		return 0, err.Error()
+		return 0, passes.Param(id, err)
 	}
 	if n < 0 || n != float64(int(n)) {
-		return 0, fmt.Sprintf("%v is not a whole number of zero or more", n)
+		return 0, catalog.Says("param.not_whole", "param", id, "value", n)
 	}
 
-	return int(n), ""
+	return int(n), catalog.Message{}
 }

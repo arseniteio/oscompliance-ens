@@ -19,35 +19,36 @@ var mechanismRequirements = map[string]string{
 
 var mechanismValue = regexp.MustCompile(`^R([1-4])\b`)
 
-func Mechanism(values []string, err error) (string, string) {
+func Mechanism(values []string, err error) (string, catalog.Message) {
 
 	if err != nil {
-		return "", err.Error()
+		return "", passes.Param("P-01", err)
 	}
 	if len(values) == 0 {
-		return "", "not set"
+		return "", catalog.Says("param.not_set", "param", "P-01")
 	}
 
 	m := mechanismValue.FindStringSubmatch(strings.ToUpper(strings.TrimSpace(values[0])))
 	if m == nil {
-		return "", "\"" + values[0] + "\" is not R1, R2, R3 or R4"
+		return "", catalog.Says("opacc5.not_mechanism", "value", values[0])
 	}
 
-	return "R" + m[1], ""
+	return "R" + m[1], catalog.Message{}
 }
 
 type DecisionInput struct {
 	Level string
 
-	Mechanism, MechanismProblem string
+	Mechanism        string
+	MechanismProblem catalog.Message
 
 	Policies map[string]Policy
 	Services []Service
 
-	ProcedureProblem string
+	ProcedureProblem catalog.Message
 
 	LastAccess        bool
-	LastAccessProblem string
+	LastAccessProblem catalog.Message
 
 	Exclusion *aggregate.Attestation
 
@@ -71,17 +72,16 @@ func Decisions(in DecisionInput, requirements []string) map[string]verdict.Judge
 	d := map[string]verdict.Judgement{}
 
 	if in.Exclusion != nil && len(in.Services) == 0 {
-		reason := "excluded by the Statement of Applicability: " + in.Exclusion.Reference
 		for _, r := range requirements {
-			d[r] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc5.a", "a", reason))
+			d[r] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc5.excluded", "reference", in.Exclusion.Reference))
 		}
 		return d
 	}
 
 	for req, m := range mechanismRequirements {
 		switch {
-		case in.MechanismProblem != "":
-			d[req] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_01_a_the_mechanism_is_unknown", "a", in.MechanismProblem))
+		case !in.MechanismProblem.IsZero():
+			d[req] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.mechanism_unknown", "problem", in.MechanismProblem))
 		case m != in.Mechanism:
 			d[req] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc5.applies_with_a_p_01_is_b", "a", m, "b", in.Mechanism))
 		case m == "R1" && in.Level != "" && in.Level != "BAJO":
@@ -104,13 +104,13 @@ func Decisions(in DecisionInput, requirements []string) map[string]verdict.Judge
 		}
 	}
 
-	if in.ProcedureProblem != "" && !failed("EV-02", "EV-03") {
-		d["op.acc.5.8"] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_04_reactivation_procedure_a", "a", in.ProcedureProblem))
+	if !in.ProcedureProblem.IsZero() && !failed("EV-02", "EV-03") {
+		d["op.acc.5.8"] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.procedure_problem", "problem", in.ProcedureProblem))
 	}
 
 	switch {
-	case in.LastAccessProblem != "":
-		d["op.acc.5.r5.2"] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_09_a", "a", in.LastAccessProblem))
+	case !in.LastAccessProblem.IsZero():
+		d["op.acc.5.r5.2"] = passes.Gap(verdict.CauseConfiguration, in.LastAccessProblem)
 	case !in.LastAccess:
 		d["op.acc.5.r5.2"] = verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.p_09_says_the_service_does_not_tell_user"))
 	}

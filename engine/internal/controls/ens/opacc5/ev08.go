@@ -1,7 +1,6 @@
 package opacc5
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -16,7 +15,7 @@ type EV08Input struct {
 	Certificates []source.CertificateCount
 
 	Rows        []string
-	RowsProblem string
+	RowsProblem catalog.Message
 }
 
 func JudgeEV08(in EV08Input) verdict.Judgement {
@@ -24,8 +23,8 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	if len(in.Services) == 0 {
 		return noService()
 	}
-	if in.RowsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_07_a", "a", in.RowsProblem))
+	if !in.RowsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.RowsProblem)
 	}
 
 	admitted := map[string]map[string]bool{}
@@ -38,7 +37,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 		admitted[strings.TrimSpace(issuer)] = set
 	}
 
-	var failing []string
+	var failing []catalog.Message
 	total := 0
 
 	for _, c := range in.Certificates {
@@ -50,15 +49,15 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 
 		switch {
 		case !listed:
-			failing = append(failing, fmt.Sprintf("%s: issuer %q not admitted in P-07 (%d logins)", c.Service, issuer, c.Count))
+			failing = append(failing, catalog.Says("opacc5.issuer_not_admitted", "service", c.Service, "issuer", issuer, "count", c.Count))
 		case !checks[revocation]:
-			failing = append(failing, fmt.Sprintf("%s: %s checked by %q, P-07 demands %s (%d logins)", c.Service, issuer, revocation, strings.Join(sortedKeys(checks), " or "), c.Count))
+			failing = append(failing, catalog.Says("opacc5.revocation_check", "service", c.Service, "issuer", issuer, "check", revocation, "demands", strings.Join(sortedKeys(checks), " | "), "count", c.Count))
 		}
 	}
 
 	if len(failing) > 0 {
-		sort.Strings(failing)
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.a", "a", failing))
+		catalog.SortMessages(failing)
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", failing))
 	}
 	if total == 0 {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc5.no_certificate_login_in_the_window"))

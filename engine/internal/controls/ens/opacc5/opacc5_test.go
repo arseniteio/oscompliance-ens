@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -52,7 +53,7 @@ func TestJudgeEV01(t *testing.T) {
 	check(t, "index too short", JudgeEV01(EV01Input{Services: []Service{sede(30 * day)}, Now: now, MinDays: 365}), verdict.NonCompliant, "", "sede (30 days")
 	check(t, "disk reaches further", JudgeEV01(EV01Input{Services: []Service{disk}, Now: now, MinDays: 365}), verdict.Compliant, "", "sede (400 days")
 	check(t, "nothing known", JudgeEV01(EV01Input{Services: []Service{{Name: "sede"}}, Now: now, MinDays: 365}), verdict.NotEvaluable, verdict.CauseEvidence, "no event")
-	check(t, "P-08 missing", JudgeEV01(EV01Input{MinDaysProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-08")
+	check(t, "P-08 missing", JudgeEV01(EV01Input{MinDaysProblem: catalog.Says("param.not_set", "param", "P-08")}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-08")
 }
 
 func TestJudgeEV02(t *testing.T) {
@@ -147,7 +148,7 @@ func TestJudgeEV05(t *testing.T) {
 	late := []source.ServiceEvent{notice("b", ago(100*time.Hour)), event("inhabilitacion", "b", "", ago(60*time.Hour))}
 	pending := []source.ServiceEvent{notice("c", ago(30*time.Hour))}
 
-	check(t, "on time", JudgeEV05(EV05Input{Services: []Service{sede(day)}, Events: onTime, Now: now, MaxHours: 24}), verdict.Compliant, "", "sede a (notificacion_compromiso INC-1): 10.0 hours")
+	check(t, "on time", JudgeEV05(EV05Input{Services: []Service{sede(day)}, Events: onTime, Now: now, MaxHours: 24}), verdict.Compliant, "", "sede a (compromise notice INC-1): 10.0 hours")
 	check(t, "late", JudgeEV05(EV05Input{Services: []Service{sede(day)}, Events: late, Now: now, MaxHours: 24}), verdict.NonCompliant, "", "40.0 hours")
 	check(t, "pending past deadline", JudgeEV05(EV05Input{Services: []Service{sede(day)}, Events: pending, Now: now, MaxHours: 24}), verdict.NonCompliant, "", "still enabled")
 	check(t, "no notice", JudgeEV05(EV05Input{Services: []Service{sede(day)}, Now: now, MaxHours: 24}), verdict.NotEvaluable, verdict.CauseEvidence, "no compromise")
@@ -198,7 +199,7 @@ func TestJudgeEV08(t *testing.T) {
 	rows := []string{"FNMT-RCM | ocsp, crl"}
 
 	check(t, "admitted", JudgeEV08(EV08Input{Services: services, Rows: rows, Certificates: []source.CertificateCount{{Service: "sede", Issuer: "FNMT-RCM", Revocation: "ocsp", Count: 3}}}), verdict.Compliant, "", "3 certificate logins")
-	check(t, "not checked", JudgeEV08(EV08Input{Services: services, Rows: rows, Certificates: []source.CertificateCount{{Service: "sede", Issuer: "FNMT-RCM", Revocation: "ninguna", Count: 1}}}), verdict.NonCompliant, "", "crl or ocsp")
+	check(t, "not checked", JudgeEV08(EV08Input{Services: services, Rows: rows, Certificates: []source.CertificateCount{{Service: "sede", Issuer: "FNMT-RCM", Revocation: "ninguna", Count: 1}}}), verdict.NonCompliant, "", "crl | ocsp")
 	check(t, "unknown issuer", JudgeEV08(EV08Input{Services: services, Rows: rows, Certificates: []source.CertificateCount{{Service: "sede", Issuer: "ACME CA", Revocation: "ocsp", Count: 1}}}), verdict.NonCompliant, "", "not admitted")
 	check(t, "none", JudgeEV08(EV08Input{Services: services, Rows: rows}), verdict.NotEvaluable, verdict.CauseCollection, "")
 }
@@ -262,11 +263,11 @@ func TestDecisions(t *testing.T) {
 		Policies: map[string]Policy{"sede": {Found: true, Complexity: "desactivada", MinLength: 8}}}, reqs)
 	check(t, "R1 weak complexity", d["op.acc.5.r1.2"], verdict.NonCompliant, "", "complexity off")
 
-	d = Decisions(DecisionInput{MechanismProblem: "not set", Services: services, ProcedureProblem: "not set", LastAccessProblem: "not set"}, reqs)
+	d = Decisions(DecisionInput{MechanismProblem: catalog.Says("param.not_set", "param", "P-01"), Services: services, ProcedureProblem: catalog.Says("param.not_set", "param", "P-04"), LastAccessProblem: catalog.Says("param.not_set", "param", "P-09")}, reqs)
 	check(t, "no P-01", d["op.acc.5.r3.3"], verdict.NotEvaluable, verdict.CauseConfiguration, "P-01")
 	check(t, "no P-04", d["op.acc.5.8"], verdict.NotEvaluable, verdict.CauseConfiguration, "P-04")
 
-	d = Decisions(DecisionInput{Services: services, ProcedureProblem: "not set", Evidence: map[string]verdict.Judgement{"EV-03": {Status: verdict.NonCompliant}}}, reqs)
+	d = Decisions(DecisionInput{Services: services, ProcedureProblem: catalog.Says("param.not_set", "param", "P-04"), Evidence: map[string]verdict.Judgement{"EV-03": {Status: verdict.NonCompliant}}}, reqs)
 	if _, ok := d["op.acc.5.8"]; ok {
 		t.Error("a measured failure of EV-03 decides .8 before P-04")
 	}

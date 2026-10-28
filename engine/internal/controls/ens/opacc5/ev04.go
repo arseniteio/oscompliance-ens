@@ -1,8 +1,6 @@
 package opacc5
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -17,13 +15,13 @@ type EV04Input struct {
 	Now      time.Time
 
 	MaxAge        int
-	MaxAgeProblem string
+	MaxAgeProblem catalog.Message
 }
 
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
-	if in.MaxAgeProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_05_a", "a", in.MaxAgeProblem))
+	if !in.MaxAgeProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxAgeProblem)
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -37,7 +35,8 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	}
 
 	limit := time.Duration(in.MaxAge) * 24 * time.Hour
-	var old, unknown []string
+	var old []catalog.Message
+	var unknown []string
 	active := 0
 
 	for _, a := range in.Accounts {
@@ -57,18 +56,18 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 
 		case !a.LastChange.IsZero():
 			if age := in.Now.Sub(a.LastChange); age > limit {
-				old = append(old, fmt.Sprintf("%s (changed %d days ago)", who, int(age.Hours()/24)))
+				old = append(old, catalog.Says("opacc5.changed_days_ago", "account", who, "days", int(age.Hours()/24)))
 			}
 
 		case !oldest[a.Service].IsZero() && in.Now.Sub(oldest[a.Service]) > limit:
-			old = append(old, fmt.Sprintf("%s (no change in the %d days the index keeps)", who, int(in.Now.Sub(oldest[a.Service]).Hours()/24)))
+			old = append(old, catalog.Says("opacc5.no_change_in_index", "account", who, "days", int(in.Now.Sub(oldest[a.Service]).Hours()/24)))
 		default:
 			unknown = append(unknown, who)
 		}
 	}
 
 	if len(old) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.credentials_older_than_a_days_b", "a", in.MaxAge, "b", strings.Join(old, ", ")))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.credentials_older_than_a_days_b", "a", in.MaxAge, "b", old))
 	}
 
 	if len(unknown) > 0 {

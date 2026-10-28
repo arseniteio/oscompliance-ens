@@ -1,9 +1,6 @@
 package opacc5
 
 import (
-	"fmt"
-	"sort"
-
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -17,19 +14,19 @@ type EV02Input struct {
 	Events []source.ServiceEvent
 
 	MaxAttempts        int
-	MaxAttemptsProblem string
+	MaxAttemptsProblem catalog.Message
 }
 
 func JudgeEV02(in EV02Input) verdict.Judgement {
 
-	if in.MaxAttemptsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_03_a", "a", in.MaxAttemptsProblem))
+	if !in.MaxAttemptsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxAttemptsProblem)
 	}
 	if len(in.Services) == 0 {
 		return noService()
 	}
 
-	var failing, unknown, fine []string
+	var failing, unknown, fine []catalog.Message
 
 	for _, s := range in.Services {
 
@@ -37,36 +34,34 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 
 		switch {
 		case !p.Found || p.Lockout == "":
-			unknown = append(unknown, s.Name+": no lockout policy in its log")
+			unknown = append(unknown, catalog.Says("opacc5.no_lockout_policy", "service", s.Name))
 		case p.Lockout == "desactivado":
-			failing = append(failing, s.Name+": lockout disabled")
+			failing = append(failing, catalog.Says("opacc5.lockout_disabled", "service", s.Name))
 		case p.MaxAttempts == 0:
-			unknown = append(unknown, s.Name+": lockout without a number of attempts")
+			unknown = append(unknown, catalog.Says("opacc5.lockout_no_attempts", "service", s.Name))
 		case p.MaxAttempts > in.MaxAttempts:
-			failing = append(failing, fmt.Sprintf("%s: locks after %d attempts, P-03 allows %d", s.Name, p.MaxAttempts, in.MaxAttempts))
+			failing = append(failing, catalog.Says("opacc5.locks_late", "service", s.Name, "attempts", p.MaxAttempts, "max", in.MaxAttempts))
 		case p.Reactivation == "automatica":
-			failing = append(failing, s.Name+": reactivates accounts automatically")
+			failing = append(failing, catalog.Says("opacc5.auto_reactivation", "service", s.Name))
 		default:
-			fine = append(fine, fmt.Sprintf("%s locks after %d", s.Name, p.MaxAttempts))
+			fine = append(fine, catalog.Says("opacc5.locks_after", "service", s.Name, "attempts", p.MaxAttempts))
 		}
 	}
 
-	for _, r := range longRuns(in.Events, in.MaxAttempts) {
-		failing = append(failing, r)
-	}
+	failing = append(failing, longRuns(in.Events, in.MaxAttempts)...)
 
 	if len(failing) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.a", "a", failing))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.a", "a", unknown))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.ab", "a", fine, "b", fmt.Sprintf("; no account failed more than %d times in a row", in.MaxAttempts)))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.lockouts_fine", "list", fine, "max", in.MaxAttempts))
 }
 
-func longRuns(events []source.ServiceEvent, limit int) []string {
+func longRuns(events []source.ServiceEvent, limit int) []catalog.Message {
 
 	type state struct {
 		run, longest int
@@ -96,13 +91,13 @@ func longRuns(events []source.ServiceEvent, limit int) []string {
 		}
 	}
 
-	var out []string
+	var out []catalog.Message
 	for key, a := range accounts {
 		if a.longest > limit {
-			out = append(out, fmt.Sprintf("%s: %d failures in a row without a lockout", key, a.longest))
+			out = append(out, catalog.Says("opacc5.failures_in_a_row", "account", key, "count", a.longest))
 		}
 	}
-	sort.Strings(out)
+	catalog.SortMessages(out)
 
 	return out
 }
