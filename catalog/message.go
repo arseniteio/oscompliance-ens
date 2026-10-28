@@ -70,9 +70,10 @@ func (m Message) Render(lang string) string {
 		return m.Code
 	}
 
-	return placeholder.ReplaceAllStringFunc(text, func(p string) string {
+	// Trimmed: an empty last argument leaves no dangling space.
+	return strings.TrimSpace(placeholder.ReplaceAllStringFunc(text, func(p string) string {
 		return renderArg(lang, m.Args[p[1:len(p)-1]])
-	})
+	}))
 }
 
 func renderArg(lang string, v any) string {
