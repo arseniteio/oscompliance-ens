@@ -1,9 +1,10 @@
 package opacc6
 
 import (
-	"fmt"
 	"net/netip"
 	"strings"
+
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 )
 
 type Zones struct {
@@ -11,7 +12,7 @@ type Zones struct {
 	local    bool
 }
 
-func ParseZones(lines []string) (Zones, string) {
+func ParseZones(lines []string) (Zones, catalog.Message) {
 
 	var z Zones
 
@@ -38,10 +39,10 @@ func ParseZones(lines []string) (Zones, string) {
 			continue
 		}
 
-		return Zones{}, fmt.Sprintf("%q is not a network, an address or local", value)
+		return Zones{}, catalog.Says("opacc6.not_zone", "value", value)
 	}
 
-	return z, ""
+	return z, catalog.Message{}
 }
 
 func (z Zones) Controlled(origin string) (controlled, known bool) {

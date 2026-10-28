@@ -1,9 +1,9 @@
 package passes
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 )
 
@@ -13,7 +13,7 @@ type AuthLog struct {
 	Known   bool
 	Reaches bool
 
-	Detail string
+	Detail catalog.Message
 }
 
 func ProbeResult(probes []fact.AuthLogProbe, seen map[string]bool, now time.Time) AuthLog {
@@ -29,7 +29,7 @@ func ProbeResult(probes []fact.AuthLogProbe, seen map[string]bool, now time.Time
 		written++
 
 		if seen[p.RunID] {
-			return AuthLog{Known: true, Reaches: true, Detail: "probe " + p.RunID + " of " + p.TS + " came back from Wazuh"}
+			return AuthLog{Known: true, Reaches: true, Detail: catalog.Says("probe.back", "run", p.RunID, "ts", p.TS)}
 		}
 
 		if ts, err := time.Parse(time.RFC3339, p.TS); err == nil && now.Sub(ts) > probeDelivery {
@@ -39,12 +39,12 @@ func ProbeResult(probes []fact.AuthLogProbe, seen map[string]bool, now time.Time
 
 	switch {
 	case len(probes) == 0:
-		return AuthLog{Detail: "no auth_log_probe in the window"}
+		return AuthLog{Detail: catalog.Says("gap.no_fact", "fact", "auth_log_probe")}
 	case written == 0:
-		return AuthLog{Detail: "the agent could not write its probe to syslog: " + lastError}
+		return AuthLog{Detail: catalog.Says("probe.not_written", "error", lastError)}
 	case settled == 0:
-		return AuthLog{Detail: "the newest probe has not had time to come back yet"}
+		return AuthLog{Detail: catalog.Says("probe.pending")}
 	}
 
-	return AuthLog{Known: true, Detail: fmt.Sprintf("%d probes written to the authentication log never reached Wazuh", settled)}
+	return AuthLog{Known: true, Detail: catalog.Says("probe.lost", "count", settled)}
 }

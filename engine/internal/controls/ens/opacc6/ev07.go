@@ -1,8 +1,6 @@
 package opacc6
 
 import (
-	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -19,13 +17,13 @@ type EV07Input struct {
 	Log passes.AuthLog
 
 	Channels        []string
-	ChannelsProblem string
+	ChannelsProblem catalog.Message
 }
 
 func JudgeEV07(in EV07Input) verdict.Judgement {
 
-	if in.ChannelsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_07_a", "a", in.ChannelsProblem))
+	if !in.ChannelsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.ChannelsProblem)
 	}
 
 	authorized := map[string]bool{}
@@ -34,7 +32,7 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 	}
 
 	used := map[string]int{}
-	outside := map[string]int{}
+	outside := map[[3]string]int{}
 
 	for _, l := range in.Logins {
 
@@ -45,16 +43,16 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 
 		used[channel]++
 		if !authorized[channel] {
-			outside[fmt.Sprintf("%s by %s from %s", channel, l.Account, l.SourceIP)]++
+			outside[[3]string{channel, l.Account, l.SourceIP}]++
 		}
 	}
 
 	if len(outside) > 0 {
-		var list []string
+		var list []catalog.Message
 		for k, n := range outside {
-			list = append(list, fmt.Sprintf("%s (%d)", k, n))
+			list = append(list, catalog.Says("opacc6.login_through", "channel", k[0], "account", k[1], "ip", k[2], "count", n))
 		}
-		sort.Strings(list)
+		catalog.SortMessages(list)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.remote_logins_through_channels_not_in_p", "a", list))
 	}
 
@@ -65,11 +63,11 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_remote_login_in_the_window"))
 	}
 
-	var list []string
+	var list []catalog.Message
 	for c, n := range used {
-		list = append(list, fmt.Sprintf("%s (%d logins)", c, n))
+		list = append(list, catalog.Says("opacc6.channel_logins", "channel", c, "count", n))
 	}
-	sort.Strings(list)
+	catalog.SortMessages(list)
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.remote_logins_only_through_p_07_channels", "a", list))
 }

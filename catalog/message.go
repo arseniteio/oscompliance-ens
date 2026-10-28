@@ -32,6 +32,9 @@ func Says(code string, pairs ...any) Message {
 	return m
 }
 
+// Raw carries text that reads the same in every language: a value, a path, a configuration line.
+func Raw(text string) Message { return Says("raw", "text", text) }
+
 func (m Message) IsZero() bool { return m.Code == "" }
 
 var messages = map[string]map[string]string{}

@@ -133,7 +133,7 @@ func JudgeEV05(rows []string, rowsProblem catalog.Message, maxDays int, daysProb
 		t, err := time.Parse("2006-01-02", date)
 		if err != nil {
 			if t, err = time.Parse(time.RFC3339, date); err != nil {
-				bad = append(bad, catalog.Says("findings", "list", date))
+				bad = append(bad, catalog.Raw(date))
 				continue
 			}
 		}

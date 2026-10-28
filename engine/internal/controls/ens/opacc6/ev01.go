@@ -15,15 +15,15 @@ type EV01Input struct {
 	Log passes.AuthLog
 
 	Sources        []string
-	SourcesProblem string
+	SourcesProblem catalog.Message
 }
 
 var quietLogLevels = map[string]bool{"QUIET": true, "FATAL": true, "ERROR": true}
 
 func JudgeEV01(in EV01Input) verdict.Judgement {
 
-	if in.SourcesProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_03_a", "a", in.SourcesProblem))
+	if !in.SourcesProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.SourcesProblem)
 	}
 
 	local := false
@@ -36,7 +36,7 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.p_03_lists_no_local_source_a_are_measure", "a", in.Sources))
 	}
 
-	var gaps []string
+	var gaps []catalog.Message
 
 	if in.Log.Known && !in.Log.Reaches {
 		gaps = append(gaps, in.Log.Detail)
@@ -44,7 +44,7 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	if gap, found := in.Settings.Gap(); found {
 		if len(gaps) > 0 {
-			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", gaps))
+			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", gaps))
 		}
 		return gap
 	}
@@ -55,7 +55,7 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 	case fact.SourceAbsent:
 	case fact.SourceRead:
 		if level := strings.ToUpper(sshd.Get("loglevel")); quietLogLevels[level] {
-			gaps = append(gaps, "sshd LogLevel "+level+" drops accepted and failed logins")
+			gaps = append(gaps, catalog.Says("opacc6.sshd_loglevel", "level", level))
 		}
 	default:
 		if len(gaps) == 0 {
@@ -64,11 +64,11 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 	}
 
 	if len(gaps) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", gaps))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", gaps))
 	}
 
 	if !in.Log.Known {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", in.Log.Detail))
+		return passes.Gap(verdict.CauseCollection, in.Log.Detail)
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.the_authentication_log_reaches_wazuh_a_a", "a", in.Log.Detail))

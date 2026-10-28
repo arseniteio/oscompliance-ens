@@ -42,7 +42,7 @@ func TestJudgeEV02(t *testing.T) {
 
 func TestJudgeEV03(t *testing.T) {
 
-	reaches := passes.AuthLog{Known: true, Reaches: true, Detail: "probe came back"}
+	reaches := passes.AuthLog{Known: true, Reaches: true, Detail: catalog.Says("probe.back", "run", "r1", "ts", "2026-10-01T00:00:00Z")}
 	s := sudoers(0, grant("group", "sudo"))
 	base := func(e ...source.Elevation) EV03Input {
 		return EV03Input{Accounts: accounts(), Sudoers: s, Elevations: e, Log: reaches, Groups: []string{"sudo"}}
@@ -59,7 +59,7 @@ func TestJudgeEV03(t *testing.T) {
 	check(t, "sudoers blind spots", JudgeEV03(blind), want{verdict.NotEvaluable, verdict.CauseCollection, nil})
 
 	quiet := base()
-	quiet.Log = passes.AuthLog{Known: true, Detail: "probes never reached Wazuh"}
+	quiet.Log = passes.AuthLog{Known: true, Detail: catalog.Says("probe.lost", "count", 2)}
 	check(t, "quiet and blind", JudgeEV03(quiet), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"never reached"}})
 	check(t, "quiet and reaching", JudgeEV03(base()), want{verdict.Compliant, "", nil})
 }

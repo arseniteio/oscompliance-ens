@@ -1,7 +1,6 @@
 package opacc6
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 
@@ -27,7 +26,7 @@ type EV05Input struct {
 	Today    time.Time
 
 	MaxAge        int
-	MaxAgeProblem string
+	MaxAgeProblem catalog.Message
 }
 
 func JudgeEV05(in EV05Input) verdict.Judgement {
@@ -35,11 +34,11 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	if gap, found := in.Accounts.Gap(); found {
 		return gap
 	}
-	if in.MaxAgeProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_04_a", "a", in.MaxAgeProblem))
+	if !in.MaxAgeProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxAgeProblem)
 	}
 
-	var failing, unknown []string
+	var failing, unknown []catalog.Message
 	examined := 0
 
 	for _, a := range in.Accounts.Records {
@@ -47,7 +46,7 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		disabled, known := opacc1.IsDisabled(a, in.Today)
 
 		if !known {
-			unknown = append(unknown, a.AccountName+": cannot tell whether it can log in")
+			unknown = append(unknown, catalog.Says("opacc6.login_unknown", "account", a.AccountName))
 			continue
 		}
 		if disabled {
@@ -63,20 +62,20 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 
 		switch {
 		case a.AuthorizedKeys == nil:
-			unknown = append(unknown, a.AccountName+": authorized keys unknown")
+			unknown = append(unknown, catalog.Says("opacc6.keys_unknown", "account", a.AccountName))
 		case *a.AuthorizedKeys > 0 && a.AuthorizedKeysChanged == "":
-			unknown = append(unknown, a.AccountName+": authorized keys change time unknown")
+			unknown = append(unknown, catalog.Says("opacc6.keys_change_unknown", "account", a.AccountName))
 		case *a.AuthorizedKeys > 0:
 			changed, err := time.Parse(time.RFC3339, a.AuthorizedKeysChanged)
 			if err != nil {
-				unknown = append(unknown, a.AccountName+": authorized_keys_changed "+a.AuthorizedKeysChanged)
+				unknown = append(unknown, catalog.Raw(a.AccountName+": authorized_keys_changed "+a.AuthorizedKeysChanged))
 			} else if age := days(in.Today.Sub(changed)); age > in.MaxAge {
-				failing = append(failing, fmt.Sprintf("%s: %d SSH keys unchanged for %d days", a.AccountName, *a.AuthorizedKeys, age))
+				failing = append(failing, catalog.Says("opacc6.keys_old", "account", a.AccountName, "keys", *a.AuthorizedKeys, "days", age))
 			}
 		}
 	}
 
-	if f := loginDefsMax(in.Settings, in.MaxAge); f != "" {
+	if f := loginDefsMax(in.Settings, in.MaxAge); !f.IsZero() {
 		failing = append(failing, f)
 	}
 
@@ -85,65 +84,65 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", unknown))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_accounts_that_can_log_in_every_credent", "a", examined, "b", in.MaxAge))
 }
 
-func passwordAge(a fact.IdentityRecord, today time.Time, maxAge int) (failing, unknown []string) {
+func passwordAge(a fact.IdentityRecord, today time.Time, maxAge int) (failing, unknown []catalog.Message) {
 
 	switch {
 	case a.PasswordChangeForced:
 	case a.PasswordChanged == "":
-		unknown = append(unknown, a.AccountName+": date of the last password change unknown")
+		unknown = append(unknown, catalog.Says("opacc6.password_change_unknown", "account", a.AccountName))
 	default:
 		changed, err := time.Parse("2006-01-02", a.PasswordChanged)
 		if err != nil {
-			unknown = append(unknown, a.AccountName+": password_changed "+a.PasswordChanged)
+			unknown = append(unknown, catalog.Raw(a.AccountName+": password_changed "+a.PasswordChanged))
 		} else if age := days(today.Sub(changed)); age > maxAge {
-			failing = append(failing, fmt.Sprintf("%s: password %d days old", a.AccountName, age))
+			failing = append(failing, catalog.Says("opacc6.password_old", "account", a.AccountName, "days", age))
 		}
 	}
 
 	switch {
 	case a.PasswordMaxDays == nil:
-		failing = append(failing, a.AccountName+": password never expires")
+		failing = append(failing, catalog.Says("opacc6.password_never_expires", "account", a.AccountName))
 	case *a.PasswordMaxDays > maxAge:
-		failing = append(failing, fmt.Sprintf("%s: password expires after %d days", a.AccountName, *a.PasswordMaxDays))
+		failing = append(failing, catalog.Says("opacc6.password_expires_after", "account", a.AccountName, "days", *a.PasswordMaxDays))
 	}
 
 	return failing, unknown
 }
 
-func loginDefsMax(settings Settings, maxAge int) string {
+func loginDefsMax(settings Settings, maxAge int) catalog.Message {
 
 	if _, found := settings.Gap(); found {
-		return ""
+		return catalog.Message{}
 	}
 
 	v, unreadable, seen := settings.Lookup("/etc/login.defs", "", "PASS_MAX_DAYS")
 
 	if !seen || len(unreadable) > 0 {
-		return ""
+		return catalog.Message{}
 	}
 
 	for _, f := range settings.Files {
 		if f.Source == "/etc/login.defs" && f.Status == fact.SourceAbsent {
-			return ""
+			return catalog.Message{}
 		}
 	}
 
 	if !v.Found {
-		return "login.defs: no PASS_MAX_DAYS, new accounts get passwords that never expire"
+		return catalog.Says("opacc6.no_pass_max_days")
 	}
 
 	n, err := strconv.Atoi(v.Value)
 	if err != nil || n > maxAge || n < 0 {
-		return "login.defs: PASS_MAX_DAYS " + v.Value + " for new accounts"
+		return catalog.Says("opacc6.pass_max_days", "value", v.Value)
 	}
 
-	return ""
+	return catalog.Message{}
 }
 
 func days(d time.Duration) int {

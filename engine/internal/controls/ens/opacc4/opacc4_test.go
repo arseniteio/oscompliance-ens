@@ -153,7 +153,7 @@ func TestJudgeEV06(t *testing.T) {
 
 	check(t, "authorised with note", JudgeEV06([]source.Login{login}, []string{"jgomez | VPN"}, catalog.Message{}, reaches), verdict.Compliant, "", "1 remote logins")
 	check(t, "not authorised", JudgeEV06([]source.Login{login}, []string{"ana"}, catalog.Message{}, reaches), verdict.NonCompliant, "", "jgomez from 10.0.0.9")
-	check(t, "quiet and blind", JudgeEV06(nil, []string{"ana"}, catalog.Message{}, passes.AuthLog{Detail: "no probe"}), verdict.NotEvaluable, verdict.CauseCollection, "no probe")
+	check(t, "quiet and blind", JudgeEV06(nil, []string{"ana"}, catalog.Message{}, passes.AuthLog{Detail: catalog.Says("gap.no_fact", "fact", "auth_log_probe")}), verdict.NotEvaluable, verdict.CauseCollection, "auth_log_probe")
 }
 
 func TestJudgeEV07(t *testing.T) {

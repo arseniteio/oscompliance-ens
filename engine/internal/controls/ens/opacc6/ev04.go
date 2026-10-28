@@ -1,9 +1,7 @@
 package opacc6
 
 import (
-	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -20,13 +18,13 @@ type EV04Input struct {
 	Log      passes.AuthLog
 
 	MaxAttempts        int
-	MaxAttemptsProblem string
+	MaxAttemptsProblem catalog.Message
 }
 
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
-	if in.MaxAttemptsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_05_a", "a", in.MaxAttemptsProblem))
+	if !in.MaxAttemptsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxAttemptsProblem)
 	}
 
 	byAccount := map[string][]time.Time{}
@@ -39,7 +37,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		locked[l.Account] = true
 	}
 
-	var offenders []string
+	var offenders []catalog.Message
 	worst := 0
 
 	for account, times := range byAccount {
@@ -48,13 +46,13 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		worst = max(worst, n)
 
 		if n > in.MaxAttempts && !locked[account] {
-			offenders = append(offenders, fmt.Sprintf("%s (%d failures within %s)", account, n, attemptInterval))
+			offenders = append(offenders, catalog.Says("opacc6.failures_within", "account", account, "count", n, "minutes", int(attemptInterval.Minutes())))
 		}
 	}
 
 	if len(offenders) > 0 {
-		sort.Strings(offenders)
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.more_than_a_failed_attempts_without_a_lo", "a", in.MaxAttempts, "b", strings.Join(offenders, ", ")))
+		catalog.SortMessages(offenders)
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.more_than_a_failed_attempts_without_a_lo", "a", in.MaxAttempts, "b", offenders))
 	}
 
 	if len(in.Failures) == 0 {
@@ -64,7 +62,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_failed_attempt_in_the_window"))
 	}
 
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_failed_attempts_on_b_accounts_at_most", "a", len(in.Failures), "b", len(byAccount), "c", worst, "d", attemptInterval))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_failed_attempts_on_b_accounts_at_most", "a", len(in.Failures), "b", len(byAccount), "c", worst, "d", int(attemptInterval.Minutes())))
 }
 
 func maxWithin(times []time.Time, span time.Duration) int {

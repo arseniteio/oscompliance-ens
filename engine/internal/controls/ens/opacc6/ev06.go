@@ -2,7 +2,6 @@ package opacc6
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -20,7 +19,7 @@ type Notice struct {
 	Reason  string
 }
 
-func ParseRegister(rows []string) ([]Notice, string) {
+func ParseRegister(rows []string) ([]Notice, catalog.Message) {
 
 	var out []Notice
 
@@ -31,13 +30,13 @@ func ParseRegister(rows []string) ([]Notice, string) {
 			cells[i] = strings.TrimSpace(cells[i])
 		}
 		if len(cells) < 2 || cells[0] == "" {
-			return nil, fmt.Sprintf("row %q: want usuario | fecha | motivo", row)
+			return nil, catalog.Says("opacc6.register_row", "param", RegisterParam, "row", row)
 		}
 
 		at, err := time.Parse(time.RFC3339, cells[1])
 		if err != nil {
 			if at, err = time.Parse("2006-01-02", cells[1]); err != nil {
-				return nil, fmt.Sprintf("row %q: %q is not a date", row, cells[1])
+				return nil, catalog.Says("opacc6.register_date", "param", RegisterParam, "row", row, "value", cells[1])
 			}
 		}
 
@@ -48,7 +47,7 @@ func ParseRegister(rows []string) ([]Notice, string) {
 		out = append(out, n)
 	}
 
-	return out, ""
+	return out, catalog.Message{}
 }
 
 type EV06Input struct {
@@ -56,23 +55,23 @@ type EV06Input struct {
 	Now     time.Time
 
 	Notices        []Notice
-	NoticesProblem string
+	NoticesProblem catalog.Message
 
 	MaxHours        int
-	MaxHoursProblem string
+	MaxHoursProblem catalog.Message
 }
 
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
-	if in.NoticesProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.a_register_of_compromised_and_departed_a", "a", RegisterParam, "b", in.NoticesProblem))
+	if !in.NoticesProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.NoticesProblem)
 	}
-	if in.MaxHoursProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_06_a", "a", in.MaxHoursProblem))
+	if !in.MaxHoursProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxHoursProblem)
 	}
 
 	limit := time.Duration(in.MaxHours) * time.Hour
-	var late, unknown, onTime []string
+	var late, unknown, onTime []catalog.Message
 
 	for _, n := range in.Notices {
 
@@ -89,28 +88,28 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 			end = a.DisabledSince
 		}
 
-		where := fmt.Sprintf("%s (%s %s)", n.Account, n.Reason, n.At.UTC().Format(time.RFC3339))
+		where := catalog.Raw(fmt.Sprintf("%s (%s %s)", n.Account, n.Reason, n.At.UTC().Format(time.RFC3339)))
 
 		switch {
 		case end == nil:
 			if took := in.Now.Sub(n.At); took > limit {
-				late = append(late, fmt.Sprintf("%s: still enabled after %d hours", where, int(took.Hours())))
+				late = append(late, catalog.Says("opacc6.still_enabled", "notice", where, "hours", int(took.Hours())))
 			} else {
-				onTime = append(onTime, where+": within the deadline, not disabled yet")
+				onTime = append(onTime, catalog.Says("opacc6.within_deadline", "notice", where))
 			}
 		case !end.After(n.At):
-			onTime = append(onTime, where+": already disabled")
+			onTime = append(onTime, catalog.Says("opacc6.already_disabled", "notice", where))
 		case a.DeletedAt == nil && !a.DisabledObserved:
 
 			if took := end.Sub(n.At); took > limit {
-				unknown = append(unknown, fmt.Sprintf("%s: disabled within %d hours, when it took is unknown", where, int(took.Hours())))
+				unknown = append(unknown, catalog.Says("opacc6.disabled_when_unknown", "notice", where, "hours", int(took.Hours())))
 			} else {
 				onTime = append(onTime, where)
 			}
 		default:
 
 			if took := end.Sub(n.At); took > limit {
-				late = append(late, fmt.Sprintf("%s: disabled after %d hours", where, int(took.Hours())))
+				late = append(late, catalog.Says("opacc6.disabled_after", "notice", where, "hours", int(took.Hours())))
 			} else {
 				onTime = append(onTime, where)
 			}
@@ -118,17 +117,17 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 	}
 
 	if len(late) > 0 {
-		sort.Strings(late)
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.not_disabled_within_a_hours_b", "a", in.MaxHours, "b", strings.Join(late, "; ")))
+		catalog.SortMessages(late)
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.not_disabled_within_a_hours_b", "a", in.MaxHours, "b", late))
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
 	if len(onTime) == 0 {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_notice_in_the_register_for_an_account"))
 	}
 
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.disabled_within_a_hours_of_the_notice_b", "a", in.MaxHours, "b", strings.Join(onTime, "; ")))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.disabled_within_a_hours_of_the_notice_b", "a", in.MaxHours, "b", onTime))
 }

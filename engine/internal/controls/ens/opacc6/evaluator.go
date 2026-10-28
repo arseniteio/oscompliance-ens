@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
@@ -167,7 +168,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		zones, err := policy.List(agent.ID, control, "P-02")
 		if err != nil {
-			in.ZonesProblem = err.Error()
+			in.ZonesProblem = passes.Param("P-02", err)
 		} else {
 			in.Zones, in.ZonesProblem = ParseZones(zones)
 		}
@@ -205,7 +206,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	judge("EV-06", []string{"history"}, func() evaluator.Result {
 		in := EV06Input{History: accountHistory, Now: today}
 		if rows, err := policy.List(agent.ID, control, RegisterParam); err != nil {
-			in.NoticesProblem = err.Error()
+			in.NoticesProblem = passes.Param(RegisterParam, err)
 		} else {
 			in.Notices, in.NoticesProblem = ParseRegister(rows)
 		}
@@ -342,41 +343,41 @@ func identityRun(a Accounts) string {
 	return a.Snapshot.RecordsRun()
 }
 
-func listParam(policy params.Lister, agentID, id string) ([]string, string) {
+func listParam(policy params.Lister, agentID, id string) ([]string, catalog.Message) {
 	values, err := policy.List(agentID, control, id)
 	if err != nil {
-		return nil, err.Error()
+		return nil, passes.Param(id, err)
 	}
-	return values, ""
+	return values, catalog.Message{}
 }
 
-func columnParam(policy params.Lister, agentID, id string, col int) ([]string, string) {
+func columnParam(policy params.Lister, agentID, id string, col int) ([]string, catalog.Message) {
 	values, err := policy.ListColumn(agentID, control, id, col)
 	if err != nil {
-		return nil, err.Error()
+		return nil, passes.Param(id, err)
 	}
-	return values, ""
+	return values, catalog.Message{}
 }
 
-func intParam(policy params.Lister, agentID, id string) (int, string) {
+func intParam(policy params.Lister, agentID, id string) (int, catalog.Message) {
 
 	n, err := policy.Number(agentID, control, id)
 	if err != nil {
-		return 0, err.Error()
+		return 0, passes.Param(id, err)
 	}
 
 	if n < 0 || n != float64(int(n)) {
-		return 0, fmt.Sprintf("%v is not a whole number of zero or more", n)
+		return 0, catalog.Says("param.not_whole", "param", id, "value", n)
 	}
 
-	return int(n), ""
+	return int(n), catalog.Message{}
 }
 
-func minimumsParam(policy params.Lister, agentID string) (map[string]int, string) {
+func minimumsParam(policy params.Lister, agentID string) (map[string]int, catalog.Message) {
 
 	rows, err := policy.List(agentID, control, "P-10")
 	if err != nil {
-		return nil, err.Error()
+		return nil, passes.Param("P-10", err)
 	}
 
 	known := map[string]bool{CriterionLength: true, CriterionClasses: true, CriterionHistory: true, CriterionBlocklist: true}
@@ -388,16 +389,16 @@ func minimumsParam(policy params.Lister, agentID string) (map[string]int, string
 		criterion, value = strings.TrimSpace(criterion), strings.TrimSpace(value)
 
 		if !known[criterion] {
-			return nil, fmt.Sprintf("unknown criterion %q", criterion)
+			return nil, catalog.Says("opacc6.unknown_criterion", "criterion", criterion)
 		}
 
 		n, err := strconv.Atoi(value)
 		if err != nil || n < 0 {
-			return nil, fmt.Sprintf("%s minimum %q is not a number", criterion, value)
+			return nil, catalog.Says("opacc6.minimum_not_number", "criterion", criterion, "value", value)
 		}
 
 		minimums[criterion] = n
 	}
 
-	return minimums, ""
+	return minimums, catalog.Message{}
 }

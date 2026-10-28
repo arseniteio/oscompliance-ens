@@ -13,7 +13,7 @@ type EV08Input struct {
 	Listening Listening
 
 	Rows        []string
-	RowsProblem string
+	RowsProblem catalog.Message
 }
 
 type channelRow struct {
@@ -26,8 +26,8 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	if gap, found := in.Listening.Gap(); found {
 		return gap
 	}
-	if in.RowsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_07_a", "a", in.RowsProblem))
+	if !in.RowsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.RowsProblem)
 	}
 
 	rows := map[string]channelRow{}
@@ -44,29 +44,30 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 
 	channels, other := in.Listening.Channels()
 
-	var failing, unknown, fine []string
+	var failing, unknown []catalog.Message
+	var fine []string
 
 	for _, c := range channels {
 
-		where := fmt.Sprintf("%s (%s on %v)", c.Name, strings.Join(c.Processes, ","), c.Ports)
+		where := catalog.Says("opacc6.channel_where", "name", c.Name, "processes", strings.Join(c.Processes, ","), "ports", fmt.Sprint(c.Ports))
 		row, listed := rows[c.Name]
 
 		switch {
 		case !listed:
-			failing = append(failing, where+": no P-07 row")
+			failing = append(failing, catalog.Says("opacc6.no_p07_row", "channel", where))
 			continue
 		case !c.Encrypted:
-			failing = append(failing, where+": not encrypted")
+			failing = append(failing, catalog.Says("opacc6.not_encrypted", "channel", where))
 			continue
 		}
 
 		if row.constant == "no" {
 			switch state := enablement(c); state {
 			case "enabled":
-				failing = append(failing, where+": enabled at boot, P-07 says it is not of constant use")
+				failing = append(failing, catalog.Says("opacc6.enabled_at_boot", "channel", where))
 				continue
 			case "":
-				unknown = append(unknown, where+": whether it starts at boot is unknown")
+				unknown = append(unknown, catalog.Says("opacc6.boot_unknown", "channel", where))
 				continue
 			}
 		}
@@ -75,22 +76,22 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", failing))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
-	reason := "no remote access channel listening"
+	reason := catalog.Says("opacc6.no_channel_listening")
 	if len(fine) > 0 {
-		reason = "listening channels encrypted and as declared in P-07: " + strings.Join(fine, ", ")
+		reason = catalog.Says("opacc6.channels_fine", "list", fine)
 	}
 	if len(other) > 0 {
-		reason += fmt.Sprintf("; %d other listeners are not access channels", len(other))
+		reason = catalog.Says("opacc6.other_listeners", "reason", reason, "count", len(other))
 	}
 
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a", "a", reason))
+	return verdict.Explain(verdict.Compliant, "", reason)
 }
 
 func enablement(c Channel) string {

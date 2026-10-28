@@ -1,8 +1,6 @@
 package opacc6
 
 import (
-	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -31,11 +29,11 @@ type EV02Input struct {
 	Log       passes.AuthLog
 
 	Zones        Zones
-	ZonesProblem string
+	ZonesProblem catalog.Message
 }
 
 type access struct {
-	what       string
+	what       catalog.Message
 	controlled bool
 	zoneKnown  bool
 	factors    int
@@ -61,8 +59,8 @@ func JudgeEV02(in EV02Input) map[string]verdict.Judgement {
 
 func ev02Gap(in EV02Input) (verdict.Judgement, bool) {
 
-	if in.ZonesProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_02_a", "a", in.ZonesProblem)), true
+	if !in.ZonesProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.ZonesProblem), true
 	}
 	if gap, found := in.Settings.Gap(); found {
 		return gap, true
@@ -92,12 +90,12 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 		return true
 	}
 
-	var failing, unknown []string
+	var failing, unknown []catalog.Message
 
 	for _, a := range accesses(in.Logins, in.Zones, sshd, in.PAM) {
 
 		if !a.zoneKnown && req != ReqR21 {
-			unknown = append(unknown, a.what+": origin is not an address")
+			unknown = append(unknown, catalog.Says("opacc6.origin_not_address", "what", a.what))
 			continue
 		}
 		if !needsTwo(a) {
@@ -106,11 +104,11 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 
 		switch {
 		case a.factors == 0:
-			unknown = append(unknown, a.what+": factors unknown")
+			unknown = append(unknown, catalog.Says("opacc6.factors_unknown", "what", a.what))
 		case a.factors < 2 && match:
-			unknown = append(unknown, a.what+": one factor by the global sshd configuration, but a Match block may change it")
+			unknown = append(unknown, catalog.Says("opacc6.one_factor_match", "what", a.what))
 		case a.factors < 2:
-			failing = append(failing, a.what+": one factor")
+			failing = append(failing, catalog.Says("opacc6.one_factor", "what", a.what))
 		}
 	}
 
@@ -131,30 +129,30 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 			}
 		}
 
-		a := access{what: "channel " + c.Name, controlled: len(exposed) == 0, zoneKnown: true, factors: minimum, password: password}
+		a := access{what: catalog.Says("opacc6.channel", "name", c.Name), controlled: len(exposed) == 0, zoneKnown: true, factors: minimum, password: password}
 		if len(exposed) > 0 {
-			a.what += " on " + strings.Join(exposed, ", ")
+			a.what = catalog.Says("opacc6.channel_on", "name", c.Name, "addresses", exposed)
 		}
 
 		switch {
 		case !needsTwo(a):
 		case !known:
-			unknown = append(unknown, a.what+": factors it requires unknown")
+			unknown = append(unknown, catalog.Says("opacc6.channel_factors_unknown", "what", a.what))
 		case minimum < 2 && match && c.Name == "ssh":
-			unknown = append(unknown, a.what+": accepts one factor by the global configuration, but a Match block may change it")
+			unknown = append(unknown, catalog.Says("opacc6.accepts_one_factor_match", "what", a.what))
 		case minimum < 2:
-			failing = append(failing, a.what+": accepts one factor")
+			failing = append(failing, catalog.Says("opacc6.accepts_one_factor", "what", a.what))
 		}
 	}
 
 	if len(failing) > 0 {
-		sort.Strings(failing)
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", failing))
+		catalog.SortMessages(failing)
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", failing))
 	}
 
 	if len(unknown) > 0 {
-		sort.Strings(unknown)
-		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
+		catalog.SortMessages(unknown)
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
 	if len(in.Logins) == 0 && !in.Log.Reaches {
@@ -182,7 +180,7 @@ func accesses(logins []source.Login, zones Zones, sshd SSHD, pam PAM) []access {
 		}
 		seen[key] = true
 
-		a := access{what: fmt.Sprintf("%s login of %s from %s", l.Method, l.Account, origin)}
+		a := access{what: catalog.Says("opacc6.login_of", "method", l.Method, "account", l.Account, "origin", origin)}
 		a.controlled, a.zoneKnown = zones.Controlled(origin)
 
 		switch l.Method {

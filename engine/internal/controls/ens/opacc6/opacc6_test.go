@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
@@ -79,7 +80,7 @@ func TestJudgeEV03(t *testing.T) {
 		reason string
 	}{
 		{"no PAM read", EV03Input{Settings: config(), MaxAttempts: 5}, verdict.NotEvaluable, verdict.CauseCollection, "no pam_snapshot"},
-		{"P-05 missing", EV03Input{Settings: config(), PAM: pam("login auth required pam_unix.so"), MaxAttemptsProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-05"},
+		{"P-05 missing", EV03Input{Settings: config(), PAM: pam("login auth required pam_unix.so"), MaxAttemptsProblem: catalog.Says("param.not_set", "param", "P-05")}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-05"},
 		{"stock Ubuntu: no lockout on login", EV03Input{
 			Settings: config(keysOnly), PAM: pam("sshd auth required pam_unix.so", "login auth required pam_unix.so"), MaxAttempts: 5,
 		}, verdict.NonCompliant, "", "login: no lockout module"},
@@ -143,7 +144,7 @@ func TestJudgeEV05(t *testing.T) {
 		reason string
 	}{
 		{"no identity pass", EV05Input{MaxAge: 180}, verdict.NotEvaluable, verdict.CauseCollection, "identity_snapshot"},
-		{"P-04 missing", EV05Input{Accounts: accounts(fresh), MaxAgeProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-04"},
+		{"P-04 missing", EV05Input{Accounts: accounts(fresh), MaxAgeProblem: catalog.Says("param.not_set", "param", "P-04")}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-04"},
 		{"fresh, service skipped", EV05Input{Accounts: accounts(fresh, service, forced), Settings: defs, Today: today, MaxAge: 180}, verdict.Compliant, "", "2 accounts"},
 		{"old password", EV05Input{Accounts: accounts(fresh, old), Settings: defs, Today: today, MaxAge: 180}, verdict.NonCompliant, "", "bob: password 662 days old"},
 		{"never expires", EV05Input{Accounts: accounts(never), Settings: defs, Today: today, MaxAge: 180}, verdict.NonCompliant, "", "eve: password never expires"},
@@ -177,7 +178,7 @@ func TestJudgeEV09(t *testing.T) {
 		cause  verdict.Cause
 		reason string
 	}{
-		{"P-08 missing", EV09Input{PointsProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-08"},
+		{"P-08 missing", EV09Input{PointsProblem: catalog.Says("param.not_set", "param", "P-08")}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-08"},
 		{"clean", EV09Input{Sudoers: sudoers(nil, root), PAM: pam("su auth required pam_unix.so"), Points: []string{"sudo", "su"}}, verdict.Compliant, "", "sudo, su"},
 		{"NOPASSWD ALL", EV09Input{Sudoers: sudoers(nil, all), PAM: pam(), Points: []string{"sudo"}}, verdict.NonCompliant, "", "group ops"},
 		{"one command, not listed", EV09Input{Sudoers: sudoers(nil, one), PAM: pam(), Points: []string{"sudo"}}, verdict.Compliant, "", ""},
@@ -208,8 +209,8 @@ func TestJudgeEV11(t *testing.T) {
 		cause  verdict.Cause
 		reason string
 	}{
-		{"P-10 missing", EV11Input{PAM: pam("passwd password required pam_unix.so"), Settings: config(), MinimumsProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-10"},
-		{"stock Ubuntu pam_unix", EV11Input{PAM: pam("passwd password [success=1] pam_unix.so obscure yescrypt"), Settings: config(), Minimums: p10}, verdict.NonCompliant, "", "longitud_minima 6 (P-10 12)"},
+		{"P-10 missing", EV11Input{PAM: pam("passwd password required pam_unix.so"), Settings: config(), MinimumsProblem: catalog.Says("param.not_set", "param", "P-10")}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-10"},
+		{"stock Ubuntu pam_unix", EV11Input{PAM: pam("passwd password [success=1] pam_unix.so obscure yescrypt"), Settings: config(), Minimums: p10}, verdict.NonCompliant, "", "minimum length 6 (P-10 12)"},
 		{"pwquality, drop-in wins over main file", EV11Input{
 			PAM: pam("passwd password requisite pam_pwquality.so retry=3", "passwd password required pam_pwhistory.so use_authtok", "passwd password [success=1] pam_unix.so use_authtok"),
 			Settings: config(
@@ -217,11 +218,11 @@ func TestJudgeEV11(t *testing.T) {
 				file("/etc/security/pwquality.conf.d/50-ens.conf", "minlen", "14"),
 			),
 			Minimums: p10,
-		}, verdict.Compliant, "", "longitud_minima 14"},
+		}, verdict.Compliant, "", "minimum length 14"},
 		{"credits count as classes", EV11Input{
 			PAM:      pam("passwd password requisite pam_pwquality.so minlen=12 dcredit=-1 ucredit=-1 dictcheck=0", "passwd password required pam_unix.so remember=5"),
 			Settings: config(), Minimums: p10,
-		}, verdict.NonCompliant, "", "clases_de_caracteres 2 (P-10 3), lista_de_bloqueo 0 (P-10 1)"},
+		}, verdict.NonCompliant, "", "character classes 2 (P-10 3); blocklist 0 (P-10 1)"},
 		{"no passwd stack", EV11Input{PAM: pam("sshd auth required pam_unix.so"), Settings: config(), Minimums: p10}, verdict.NotEvaluable, verdict.CauseCollection, "passwd"},
 	}
 
@@ -247,7 +248,7 @@ func TestJudgeEV12(t *testing.T) {
 		{"DebianBanner no", EV12Input{Settings: config(sshdT("debianbanner", "no", "banner", "none"), ubuntu), Allowed: []string{ExposureVersion}}, verdict.Compliant, "", ExposureVersion},
 		{"ninguna with sshd always fails", EV12Input{Settings: config(sshdT("debianbanner", "no"), ubuntu), Allowed: []string{"ninguna"}}, verdict.NonCompliant, "", ExposureVersion},
 		{"banner and addendum", EV12Input{Settings: config(sshdT("debianbanner", "no", "banner", "/etc/issue.net", "versionaddendum", "corp"), ubuntu), Allowed: []string{ExposureVersion}}, verdict.NonCompliant, "", ExposureAddendum + ", " + ExposureBanner},
-		{"P-11 missing", EV12Input{Settings: config(), AllowedProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-11"},
+		{"P-11 missing", EV12Input{Settings: config(), AllowedProblem: catalog.Says("param.not_set", "param", "P-11")}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-11"},
 	}
 
 	for _, c := range cases {
@@ -256,8 +257,8 @@ func TestJudgeEV12(t *testing.T) {
 }
 
 var (
-	reaches = passes.AuthLog{Known: true, Reaches: true, Detail: "probe came back"}
-	lost    = passes.AuthLog{Known: true, Detail: "3 probes written to the authentication log never reached Wazuh"}
+	reaches = passes.AuthLog{Known: true, Reaches: true, Detail: catalog.Says("probe.back", "run", "r1", "ts", "2026-10-01T00:00:00Z")}
+	lost    = passes.AuthLog{Known: true, Detail: catalog.Says("probe.lost", "count", 3)}
 )
 
 func TestProbeResult(t *testing.T) {
@@ -304,11 +305,11 @@ func TestJudgeEV01(t *testing.T) {
 		cause  verdict.Cause
 		reason string
 	}{
-		{"P-03 missing", EV01Input{SourcesProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-03"},
+		{"P-03 missing", EV01Input{SourcesProblem: catalog.Says("param.not_set", "param", "P-03")}, verdict.NotEvaluable, verdict.CauseConfiguration, "P-03"},
 		{"no local source", EV01Input{Sources: []string{"ldap"}}, verdict.Compliant, "", "ldap"},
 		{"probe came back", EV01Input{Settings: info, Sources: []string{"local"}, Log: reaches}, verdict.Compliant, "", "reaches Wazuh"},
 		{"probe lost", EV01Input{Settings: info, Sources: []string{"local"}, Log: lost}, verdict.NonCompliant, "", "never reached Wazuh"},
-		{"probe not known", EV01Input{Settings: info, Sources: []string{"local"}, Log: passes.AuthLog{Detail: "no auth_log_probe in the window"}}, verdict.NotEvaluable, verdict.CauseCollection, "no auth_log_probe"},
+		{"probe not known", EV01Input{Settings: info, Sources: []string{"local"}, Log: passes.AuthLog{Detail: catalog.Says("gap.no_fact", "fact", "auth_log_probe")}}, verdict.NotEvaluable, verdict.CauseCollection, "no auth_log_probe"},
 		{"sshd quiet", EV01Input{Settings: quiet, Sources: []string{"local"}, Log: reaches}, verdict.NonCompliant, "", "LogLevel QUIET"},
 	}
 
@@ -326,7 +327,7 @@ func TestJudgeEV07(t *testing.T) {
 	check(t, "not in P-07", JudgeEV07(EV07Input{Logins: []source.Login{ssh}, Log: reaches, Channels: []string{"rdp"}}), verdict.NonCompliant, "", "ssh by ana from 10.0.0.5 (1)")
 	check(t, "quiet but logging", JudgeEV07(EV07Input{Log: reaches, Channels: []string{"ssh"}}), verdict.Compliant, "", "no remote login")
 	check(t, "quiet and blind", JudgeEV07(EV07Input{Log: lost, Channels: []string{"ssh"}}), verdict.NotEvaluable, verdict.CauseCollection, "never reached")
-	check(t, "P-07 missing", JudgeEV07(EV07Input{ChannelsProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-07")
+	check(t, "P-07 missing", JudgeEV07(EV07Input{ChannelsProblem: catalog.Says("param.not_set", "param", "P-07")}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-07")
 }
 
 func TestJudgeEV04(t *testing.T) {
@@ -342,12 +343,12 @@ func TestJudgeEV04(t *testing.T) {
 	burst := fail("ana", 0, 1, 2, 3, 4, 5)
 	spread := fail("bob", 0, 20, 40, 60, 80, 100)
 
-	check(t, "burst without lockout", JudgeEV04(EV04Input{Failures: burst, Log: reaches, MaxAttempts: 5}), verdict.NonCompliant, "", "ana (6 failures within 15m0s)")
+	check(t, "burst without lockout", JudgeEV04(EV04Input{Failures: burst, Log: reaches, MaxAttempts: 5}), verdict.NonCompliant, "", "ana (6 failures within 15 minutes)")
 	check(t, "burst stopped", JudgeEV04(EV04Input{Failures: burst, Lockouts: []source.Lockout{{Account: "ana"}}, Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "stopped by a lockout")
 	check(t, "spread out", JudgeEV04(EV04Input{Failures: spread, Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "at most 1 within")
 	check(t, "quiet", JudgeEV04(EV04Input{Log: reaches, MaxAttempts: 5}), verdict.Compliant, "", "no failed attempt")
 	check(t, "quiet and blind", JudgeEV04(EV04Input{Log: lost, MaxAttempts: 5}), verdict.NotEvaluable, verdict.CauseCollection, "")
-	check(t, "P-05 missing", JudgeEV04(EV04Input{MaxAttemptsProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-05")
+	check(t, "P-05 missing", JudgeEV04(EV04Input{MaxAttemptsProblem: catalog.Says("param.not_set", "param", "P-05")}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-05")
 }
 
 func TestJudgeEV10(t *testing.T) {
@@ -371,7 +372,7 @@ func TestJudgeEV10(t *testing.T) {
 	check(t, "idle account", JudgeEV10(EV10Input{Accounts: accounts(active, idle), Today: today, MaxIdle: 45}), verdict.NonCompliant, "", "bob (last used 288 days ago)")
 	check(t, "never used, old credential", JudgeEV10(EV10Input{Accounts: accounts(automation), Today: today, MaxIdle: 45}), verdict.NonCompliant, "", "deploy (never used, credential set")
 	check(t, "undated", JudgeEV10(EV10Input{Accounts: accounts(undated), Today: today, MaxIdle: 45}), verdict.NotEvaluable, verdict.CauseEvidence, "odd")
-	check(t, "P-09 missing", JudgeEV10(EV10Input{Accounts: accounts(active), MaxIdleProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-09")
+	check(t, "P-09 missing", JudgeEV10(EV10Input{Accounts: accounts(active), MaxIdleProblem: catalog.Says("param.not_set", "param", "P-09")}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-09")
 }
 
 func TestMechanismDecisions(t *testing.T) {
@@ -393,7 +394,7 @@ func TestMechanismDecisions(t *testing.T) {
 		t.Errorf("no P-01: %+v", d)
 	}
 
-	if m, p := Mechanism([]string{"R5"}, nil); m != "" || p == "" {
+	if m, p := Mechanism([]string{"R5"}, nil); m != "" || p.IsZero() {
 		t.Errorf("R5: %q %q", m, p)
 	}
 }
@@ -408,7 +409,7 @@ func listening(addresses []string, sockets ...fact.ListeningSocket) Listening {
 func TestParseZones(t *testing.T) {
 
 	z, problem := ParseZones([]string{"10.0.0.0/8 office", "192.168.1.7", "fd00::/8", "local console"})
-	if problem != "" {
+	if !problem.IsZero() {
 		t.Fatal(problem)
 	}
 
@@ -420,7 +421,7 @@ func TestParseZones(t *testing.T) {
 	if _, known := z.Controlled(""); known {
 		t.Error("empty origin must be unknown")
 	}
-	if _, problem := ParseZones([]string{"10.0.0.0/33"}); problem == "" {
+	if _, problem := ParseZones([]string{"10.0.0.0/33"}); problem.IsZero() {
 		t.Error("bad prefix must make P-02 unusable")
 	}
 }
@@ -476,7 +477,7 @@ func TestJudgeEV02(t *testing.T) {
 	got = JudgeEV02(EV02Input{Logins: []source.Login{keyLogin}, Listening: listening([]string{"203.0.113.5"}, ssh), Settings: config(keys, match), PAM: plain, Log: reaches, Zones: office})
 	check(t, "r8.1 match", got[ReqR81], verdict.NotEvaluable, verdict.CauseEvidence, "Match block")
 
-	got = JudgeEV02(EV02Input{ZonesProblem: "not set"})
+	got = JudgeEV02(EV02Input{ZonesProblem: catalog.Says("param.not_set", "param", "P-02")})
 	check(t, "no P-02", got[ReqR81], verdict.NotEvaluable, verdict.CauseConfiguration, "P-02")
 
 	if w := worst(got[ReqR81], verdict.Judgement{Status: verdict.NonCompliant}); w.Status != verdict.NonCompliant {
@@ -500,7 +501,7 @@ func TestJudgeEV06(t *testing.T) {
 		"gone | 2026-10-20 | compromiso",
 		"elsewhere | 2026-10-01 | baja",
 	})
-	if problem != "" {
+	if !problem.IsZero() {
 		t.Fatal(problem)
 	}
 
@@ -514,9 +515,9 @@ func TestJudgeEV06(t *testing.T) {
 	check(t, "upper bound within", JudgeEV06(EV06Input{History: hist, Now: today, Notices: bound, MaxHours: 200}), verdict.Compliant, "", "preseen")
 
 	check(t, "empty register", JudgeEV06(EV06Input{History: hist, Now: today, MaxHours: 24}), verdict.Compliant, "", "no notice")
-	check(t, "no register", JudgeEV06(EV06Input{NoticesProblem: "not set", MaxHours: 24}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-12")
+	check(t, "no register", JudgeEV06(EV06Input{NoticesProblem: catalog.Says("param.not_set", "param", "P-12"), MaxHours: 24}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-12")
 
-	if _, problem := ParseRegister([]string{"ana | yesterday | baja"}); problem == "" {
+	if _, problem := ParseRegister([]string{"ana | yesterday | baja"}); problem.IsZero() {
 		t.Error("bad date must make the register unusable")
 	}
 }

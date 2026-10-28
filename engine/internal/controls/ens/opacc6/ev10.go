@@ -1,8 +1,6 @@
 package opacc6
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
@@ -18,7 +16,7 @@ type EV10Input struct {
 	LastAlert map[string]time.Time
 
 	MaxIdle        int
-	MaxIdleProblem string
+	MaxIdleProblem catalog.Message
 }
 
 func JudgeEV10(in EV10Input) verdict.Judgement {
@@ -26,18 +24,18 @@ func JudgeEV10(in EV10Input) verdict.Judgement {
 	if gap, found := in.Accounts.Gap(); found {
 		return gap
 	}
-	if in.MaxIdleProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_09_a", "a", in.MaxIdleProblem))
+	if !in.MaxIdleProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxIdleProblem)
 	}
 
-	var idle, unknown []string
+	var idle, unknown []catalog.Message
 	examined := 0
 
 	for _, a := range in.Accounts.Records {
 
 		disabled, known := opacc1.IsDisabled(a, in.Today)
 		if !known {
-			unknown = append(unknown, a.AccountName+": cannot tell whether it can log in")
+			unknown = append(unknown, catalog.Says("opacc6.login_unknown", "account", a.AccountName))
 			continue
 		}
 		if disabled {
@@ -45,28 +43,28 @@ func JudgeEV10(in EV10Input) verdict.Judgement {
 		}
 		examined++
 
-		last, since := lastUse(a.LastLogin, in.LastAlert[a.AccountName]), "last used"
+		last, since := lastUse(a.LastLogin, in.LastAlert[a.AccountName]), "opacc6.idle_used"
 
 		if last.IsZero() {
-			last, since = newestDate(a.PasswordChanged, a.AuthorizedKeysChanged), "never used, credential set"
+			last, since = newestDate(a.PasswordChanged, a.AuthorizedKeysChanged), "opacc6.idle_never_used"
 		}
 
 		if last.IsZero() {
-			unknown = append(unknown, a.AccountName+": never used and no credential date")
+			unknown = append(unknown, catalog.Says("opacc6.never_used_no_date", "account", a.AccountName))
 			continue
 		}
 
 		if d := days(in.Today.Sub(last)); d > in.MaxIdle {
-			idle = append(idle, fmt.Sprintf("%s (%s %d days ago)", a.AccountName, since, d))
+			idle = append(idle, catalog.Says(since, "account", a.AccountName, "days", d))
 		}
 	}
 
 	if len(idle) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.enabled_and_unused_for_more_than_a_days", "a", in.MaxIdle, "b", strings.Join(idle, ", ")))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.enabled_and_unused_for_more_than_a_days", "a", in.MaxIdle, "b", idle))
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_accounts_that_can_log_in_all_used_with", "a", examined, "b", in.MaxIdle))

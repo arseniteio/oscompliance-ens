@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
@@ -17,7 +16,7 @@ type EV03Input struct {
 	PAM      PAM
 
 	MaxAttempts        int
-	MaxAttemptsProblem string
+	MaxAttemptsProblem catalog.Message
 }
 
 var passwordServices = []string{"sshd", "login", "gdm-password", "lightdm", "sddm"}
@@ -32,7 +31,7 @@ type Lockout struct {
 	Module     string
 	Deny       int
 	UnlockSecs int
-	Problem    string
+	Problem    catalog.Message
 }
 
 func JudgeEV03(in EV03Input) verdict.Judgement {
@@ -43,13 +42,14 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 	if gap, found := in.Settings.Gap(); found {
 		return gap
 	}
-	if in.MaxAttemptsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_05_a", "a", in.MaxAttemptsProblem))
+	if !in.MaxAttemptsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.MaxAttemptsProblem)
 	}
 
 	paths, unknown := passwordPaths(in.Settings, in.PAM)
 
-	var failing, judged []string
+	var failing []catalog.Message
+	var judged []string
 
 	for _, service := range paths {
 
@@ -57,35 +57,35 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		judged = append(judged, service)
 
 		switch {
-		case l.Problem != "":
-			unknown = append(unknown, service+": "+l.Problem)
+		case !l.Problem.IsZero():
+			unknown = append(unknown, catalog.Says("item.name_detail", "name", service, "detail", l.Problem))
 		case l.Module == "":
-			failing = append(failing, service+": no lockout module")
+			failing = append(failing, catalog.Says("opacc6.no_lockout_module", "service", service))
 		case l.Deny == 0:
-			failing = append(failing, fmt.Sprintf("%s: %s without deny", service, l.Module))
+			failing = append(failing, catalog.Says("opacc6.without_deny", "service", service, "module", l.Module))
 		case l.Deny > in.MaxAttempts:
-			failing = append(failing, fmt.Sprintf("%s: %s deny=%d, P-05 allows %d", service, l.Module, l.Deny, in.MaxAttempts))
+			failing = append(failing, catalog.Says("opacc6.deny_too_high", "service", service, "module", l.Module, "deny", l.Deny, "max", in.MaxAttempts))
 		case l.UnlockSecs > 0:
-			failing = append(failing, fmt.Sprintf("%s: %s unlocks by itself after %d s", service, l.Module, l.UnlockSecs))
+			failing = append(failing, catalog.Says("opacc6.unlocks_by_itself", "service", service, "module", l.Module, "seconds", l.UnlockSecs))
 		}
 	}
 
 	if len(failing) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", failing))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings_semicolon", "list", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", unknown))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
 	if len(judged) == 0 {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_login_path_accepts_passwords"))
 	}
 
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_lock_after_at_most_b_failed_attempts_u", "a", strings.Join(judged, ", "), "b", in.MaxAttempts))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_lock_after_at_most_b_failed_attempts_u", "a", judged, "b", in.MaxAttempts))
 }
 
-func passwordPaths(settings Settings, pam PAM) (paths, unknown []string) {
+func passwordPaths(settings Settings, pam PAM) (paths []string, unknown []catalog.Message) {
 
 	for _, service := range passwordServices {
 
@@ -106,7 +106,7 @@ func passwordPaths(settings Settings, pam PAM) (paths, unknown []string) {
 			continue
 		case fact.SourceRead:
 		default:
-			unknown = append(unknown, "sshd: effective configuration not read: "+sshd.Error)
+			unknown = append(unknown, catalog.Says("opacc6.sshd_not_read", "error", sshd.Error))
 			continue
 		}
 
@@ -132,7 +132,7 @@ func lockoutOf(service string, pam PAM, settings Settings) Lockout {
 
 		if r.Module == "pam_tally2.so" {
 			l.Deny, l.Problem = intArg(r, "deny", 0)
-			if l.Problem == "" {
+			if l.Problem.IsZero() {
 				l.UnlockSecs, l.Problem = unlockArg(r, 0)
 			}
 			return l
@@ -141,12 +141,12 @@ func lockoutOf(service string, pam PAM, settings Settings) Lockout {
 		deny, unlock := faillockDeny, faillockUnlock
 
 		if v, unreadable, _ := settings.Lookup("/etc/security/faillock.conf", "", "deny"); len(unreadable) > 0 {
-			l.Problem = "faillock.conf unreadable"
+			l.Problem = catalog.Says("opacc6.unreadable", "file", "faillock.conf")
 			return l
 		} else if v.Found {
 			n, err := strconv.Atoi(v.Value)
 			if err != nil {
-				l.Problem = "faillock.conf deny=" + v.Value
+				l.Problem = catalog.Raw("faillock.conf deny=" + v.Value)
 				return l
 			}
 			deny = n
@@ -155,13 +155,13 @@ func lockoutOf(service string, pam PAM, settings Settings) Lockout {
 		if v, _, _ := settings.Lookup("/etc/security/faillock.conf", "", "unlock_time"); v.Found {
 			n, ok := unlockValue(v.Value)
 			if !ok {
-				l.Problem = "faillock.conf unlock_time=" + v.Value
+				l.Problem = catalog.Raw("faillock.conf unlock_time=" + v.Value)
 				return l
 			}
 			unlock = n
 		}
 
-		if l.Deny, l.Problem = intArg(r, "deny", deny); l.Problem == "" {
+		if l.Deny, l.Problem = intArg(r, "deny", deny); l.Problem.IsZero() {
 			l.UnlockSecs, l.Problem = unlockArg(r, unlock)
 		}
 
@@ -171,34 +171,34 @@ func lockoutOf(service string, pam PAM, settings Settings) Lockout {
 	return l
 }
 
-func intArg(r fact.PAMRule, name string, def int) (int, string) {
+func intArg(r fact.PAMRule, name string, def int) (int, catalog.Message) {
 
 	v, found := Arg(r, name)
 	if !found {
-		return def, ""
+		return def, catalog.Message{}
 	}
 
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return 0, fmt.Sprintf("%s %s=%s", r.Module, name, v)
+		return 0, catalog.Raw(fmt.Sprintf("%s %s=%s", r.Module, name, v))
 	}
 
-	return n, ""
+	return n, catalog.Message{}
 }
 
-func unlockArg(r fact.PAMRule, def int) (int, string) {
+func unlockArg(r fact.PAMRule, def int) (int, catalog.Message) {
 
 	v, found := Arg(r, "unlock_time")
 	if !found {
-		return def, ""
+		return def, catalog.Message{}
 	}
 
 	n, ok := unlockValue(v)
 	if !ok {
-		return 0, fmt.Sprintf("%s unlock_time=%s", r.Module, v)
+		return 0, catalog.Raw(fmt.Sprintf("%s unlock_time=%s", r.Module, v))
 	}
 
-	return n, ""
+	return n, catalog.Message{}
 }
 
 func unlockValue(v string) (int, bool) {

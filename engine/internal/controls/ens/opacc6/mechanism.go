@@ -21,32 +21,32 @@ var mechanismRequirements = map[string][]string{
 
 var mechanismValue = regexp.MustCompile(`^R([1-4])\b`)
 
-func Mechanism(values []string, err error) (mechanism, problem string) {
+func Mechanism(values []string, err error) (mechanism string, problem catalog.Message) {
 
 	if err != nil {
-		return "", err.Error()
+		return "", passes.Param("P-01", err)
 	}
 
 	if len(values) == 0 {
-		return "", "not set"
+		return "", catalog.Says("param.not_set", "param", "P-01")
 	}
 
 	m := mechanismValue.FindStringSubmatch(strings.ToUpper(strings.TrimSpace(values[0])))
 	if m == nil {
-		return "", "\"" + values[0] + "\" is not R1, R2, R3 or R4"
+		return "", catalog.Says("opacc5.not_mechanism", "value", values[0])
 	}
 
-	return "R" + m[1], ""
+	return "R" + m[1], catalog.Message{}
 }
 
-func MechanismDecisions(mechanism, problem string) map[string]verdict.Judgement {
+func MechanismDecisions(mechanism string, problem catalog.Message) map[string]verdict.Judgement {
 
 	decisions := map[string]verdict.Judgement{}
 
 	for id, mechanisms := range mechanismRequirements {
 
-		if problem != "" {
-			decisions[id] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_01_a_the_mechanism_is_unknown", "a", problem))
+		if !problem.IsZero() {
+			decisions[id] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.mechanism_unknown", "problem", problem))
 			continue
 		}
 

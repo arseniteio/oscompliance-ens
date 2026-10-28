@@ -20,7 +20,7 @@ type EV12Input struct {
 	Settings Settings
 
 	Allowed        []string
-	AllowedProblem string
+	AllowedProblem catalog.Message
 }
 
 func JudgeEV12(in EV12Input) verdict.Judgement {
@@ -28,8 +28,8 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 	if gap, found := in.Settings.Gap(); found {
 		return gap
 	}
-	if in.AllowedProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_11_a", "a", in.AllowedProblem))
+	if !in.AllowedProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.AllowedProblem)
 	}
 
 	sshd := in.Settings.SSHD()

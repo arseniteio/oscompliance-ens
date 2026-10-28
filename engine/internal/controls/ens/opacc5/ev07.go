@@ -60,7 +60,7 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 		}
 
 		if r := Reinforcement(strings.Split(m.Factors, "+")); r != in.Mechanism {
-			class := catalog.Says("findings", "list", r)
+			class := catalog.Raw(r)
 			if r == "" {
 				class = catalog.Says("opacc5.no_mechanism")
 			}

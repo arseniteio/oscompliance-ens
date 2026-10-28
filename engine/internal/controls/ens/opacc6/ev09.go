@@ -22,20 +22,20 @@ type EV09Input struct {
 	PAM     PAM
 
 	Points        []string
-	PointsProblem string
+	PointsProblem catalog.Message
 }
 
 type Finding struct {
 	Point  string
-	Detail string
+	Detail catalog.Message
 }
 
 var undefinedAlias = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 func JudgeEV09(in EV09Input) verdict.Judgement {
 
-	if in.PointsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_08_a", "a", in.PointsProblem))
+	if !in.PointsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.PointsProblem)
 	}
 
 	listed := map[string]bool{}
@@ -51,24 +51,24 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 	}
 
 	var findings []Finding
-	var unknown []string
+	var unknown []catalog.Message
 
 	switch {
 	case !sudoListed:
 	case in.Sudoers.Snapshot == nil:
-		unknown = append(unknown, "no sudoers_snapshot in the window")
+		unknown = append(unknown, catalog.Says("gap.no_fact", "fact", "sudoers_snapshot"))
 	case in.Sudoers.Snapshot.Status == fact.SourceAbsent:
 
 	case in.Sudoers.Snapshot.Status != fact.SourceRead:
-		unknown = append(unknown, "sudoers unreadable")
+		unknown = append(unknown, catalog.Says("opacc6.unreadable", "file", "sudoers"))
 	case len(in.Sudoers.Grants) < in.Sudoers.Snapshot.RecordsEmitted:
-		unknown = append(unknown, fmt.Sprintf("sudoers read incomplete: %d of %d sudo_grant received", len(in.Sudoers.Grants), in.Sudoers.Snapshot.RecordsEmitted))
+		unknown = append(unknown, catalog.Says("opacc6.sudoers_incomplete", "got", len(in.Sudoers.Grants), "want", in.Sudoers.Snapshot.RecordsEmitted))
 	default:
 		f, u := sudoFindings(in.Sudoers)
 		findings, unknown = append(findings, f...), append(unknown, u...)
 
 		if b := in.Sudoers.Snapshot.BlindSpots; b > 0 {
-			unknown = append(unknown, fmt.Sprintf("sudoers has %d grants to unnamed subjects: %s", b, strings.Join(in.Sudoers.Snapshot.BlindSpotReasons, "; ")))
+			unknown = append(unknown, catalog.Says("opacc6.sudoers_blind", "count", b, "reasons", strings.Join(in.Sudoers.Snapshot.BlindSpotReasons, "; ")))
 		}
 	}
 
@@ -77,10 +77,10 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 		findings, unknown = append(findings, f...), append(unknown, u...)
 	}
 
-	var failing []string
+	var failing []catalog.Message
 	for _, f := range findings {
 		if listed[strings.ToLower(f.Point)] || (f.Point == "sudo" && sudoListed) {
-			failing = append(failing, f.Point+" ("+f.Detail+")")
+			failing = append(failing, catalog.Says("opacc6.point_detail", "point", f.Point, "detail", f.Detail))
 		}
 	}
 
@@ -89,13 +89,13 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 	}
 
 	if len(unknown) > 0 {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", unknown))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("findings_semicolon", "list", unknown))
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.re_authentication_required_at_a", "a", in.Points))
 }
 
-func sudoFindings(s Sudoers) (findings []Finding, unknown []string) {
+func sudoFindings(s Sudoers) (findings []Finding, unknown []catalog.Message) {
 
 	for _, g := range s.Grants {
 
@@ -108,11 +108,11 @@ func sudoFindings(s Sudoers) (findings []Finding, unknown []string) {
 		for _, cmd := range g.NoPasswdCommands {
 			switch {
 			case cmd == "ALL":
-				findings = append(findings, Finding{Point: "sudo", Detail: "NOPASSWD: ALL for " + where})
+				findings = append(findings, Finding{Point: "sudo", Detail: catalog.Says("opacc6.nopasswd_all", "where", where)})
 			case undefinedAlias.MatchString(cmd):
-				unknown = append(unknown, "undefined Cmnd_Alias "+cmd+" for "+where)
+				unknown = append(unknown, catalog.Says("opacc6.undefined_alias", "alias", cmd, "where", where))
 			default:
-				findings = append(findings, Finding{Point: "sudo:" + commandPath(cmd), Detail: "NOPASSWD for " + where})
+				findings = append(findings, Finding{Point: "sudo:" + commandPath(cmd), Detail: catalog.Says("opacc6.nopasswd", "where", where)})
 			}
 		}
 	}
@@ -129,10 +129,10 @@ func sudoFindings(s Sudoers) (findings []Finding, unknown []string) {
 
 		switch {
 		case setting == "!authenticate":
-			findings = append(findings, Finding{Point: point, Detail: "!authenticate in " + where})
+			findings = append(findings, Finding{Point: point, Detail: catalog.Says("opacc6.not_authenticate", "where", where)})
 		case strings.HasPrefix(setting, "timestamp_timeout="):
 			if n, err := strconv.ParseFloat(strings.TrimPrefix(setting, "timestamp_timeout="), 64); err == nil && n < 0 {
-				findings = append(findings, Finding{Point: point, Detail: "credential cached without expiry in " + where})
+				findings = append(findings, Finding{Point: point, Detail: catalog.Says("opacc6.cached_forever", "where", where)})
 			}
 		}
 	}
@@ -145,16 +145,16 @@ func commandPath(cmd string) string {
 	return path
 }
 
-func suFindings(pam PAM) (findings []Finding, unknown []string) {
+func suFindings(pam PAM) (findings []Finding, unknown []catalog.Message) {
 
 	if gap, found := pam.Gap(); found {
-		return nil, []string{"su: " + gap.Reason}
+		return nil, []catalog.Message{catalog.Says("item.name_detail", "name", "su", "detail", gap.Message)}
 	}
 
 	for _, service := range []string{"su", "su-l"} {
 		for _, r := range pam.Stack(service, "auth") {
 			if _, trust := Arg(r, "trust"); r.Module == "pam_wheel.so" && trust {
-				findings = append(findings, Finding{Point: "su", Detail: fmt.Sprintf("pam_wheel trust in %s:%d", r.File, r.Line)})
+				findings = append(findings, Finding{Point: "su", Detail: catalog.Says("opacc6.wheel_trust", "file", r.File, "line", r.Line)})
 			}
 		}
 	}
