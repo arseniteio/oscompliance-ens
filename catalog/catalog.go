@@ -14,21 +14,41 @@ import (
 var files embed.FS
 
 type Control struct {
-	Framework    string               `json:"framework"`
-	Control      string               `json:"control"`
-	Title        string               `json:"title"`
-	Status       string               `json:"status"`
-	Requirements []Requirement        `json:"requirements"`
-	Evidences    []Evidence           `json:"evidences"`
-	Parameters   map[string]Parameter `json:"parameters"`
+	Framework         string               `json:"framework"`
+	Control           string               `json:"control"`
+	Title             string               `json:"title"`
+	Status            string               `json:"status"`
+	Family            string               `json:"family,omitempty"`
+	Category          string               `json:"category,omitempty"`
+	Dimension         string               `json:"dimension,omitempty"`
+	LevelDimension    []string             `json:"level_dimension,omitempty"`
+	AnnexSection      string               `json:"annex_section,omitempty"`
+	Description       string               `json:"description,omitempty"`
+	Levels            []string             `json:"levels,omitempty"`
+	MeasurementPlanes []string             `json:"measurement_planes,omitempty"`
+	Source            *Source              `json:"source,omitempty"`
+	Version           string               `json:"version,omitempty"`
+	Requirements      []Requirement        `json:"requirements"`
+	Evidences         []Evidence           `json:"evidences"`
+	Parameters        map[string]Parameter `json:"parameters"`
+}
+
+type Source struct {
+	Template string `json:"template"`
+	Version  string `json:"version"`
+	Date     string `json:"date,omitempty"`
 }
 
 type Requirement struct {
 	ID                  string   `json:"id"`
 	Title               string   `json:"title"`
+	Kind                string   `json:"kind,omitempty"`
 	Levels              []string `json:"levels"`
-	EvidenceIDs         []string `json:"evidence_ids"`
 	ApplicabilityReason string   `json:"applicability_reason,omitempty"`
+	Description         string   `json:"description,omitempty"`
+	Interpretation      string   `json:"interpretation,omitempty"`
+	EvidenceIDs         []string `json:"evidence_ids"`
+	ParameterIDs        []string `json:"parameter_ids,omitempty"`
 }
 
 func (r Requirement) AppliesAt(level string) bool {
@@ -36,9 +56,14 @@ func (r Requirement) AppliesAt(level string) bool {
 }
 
 type Evidence struct {
-	ID           string   `json:"id"`
-	Levels       []string `json:"levels"`
-	Requirements []string `json:"requirements"`
+	ID            string   `json:"id"`
+	Title         string   `json:"title,omitempty"`
+	Description   string   `json:"description,omitempty"`
+	Levels        []string `json:"levels"`
+	Requirements  []string `json:"requirements"`
+	Category      string   `json:"category,omitempty"`
+	Criticality   string   `json:"criticality,omitempty"`
+	AuditQuestion string   `json:"audit_question,omitempty"`
 }
 
 const (
@@ -49,8 +74,39 @@ const (
 	ClassPlatform = "platform"
 )
 
+// Parameter carries the whole definition the configuration screen shows; the engine reads only Class.
 type Parameter struct {
-	Class string `json:"class"`
+	Class           string              `json:"class"`
+	Name            string              `json:"name,omitempty"`
+	Label           string              `json:"label,omitempty"`
+	Description     string              `json:"description,omitempty"`
+	Levels          []string            `json:"levels,omitempty"`
+	Requirements    []string            `json:"requirements,omitempty"`
+	Type            string              `json:"type,omitempty"`
+	Pattern         bool                `json:"pattern,omitempty"`
+	MatchMode       string              `json:"match_mode,omitempty"`
+	Example         string              `json:"example,omitempty"`
+	Options         []string            `json:"options,omitempty"`
+	OptionsByLevel  map[string][]string `json:"options_by_level,omitempty"`
+	Columns         []Column            `json:"columns,omitempty"`
+	Required        bool                `json:"required,omitempty"`
+	MinValue        *float64            `json:"min_value,omitempty"`
+	MaxValue        *float64            `json:"max_value,omitempty"`
+	DefaultValue    any                 `json:"default_value,omitempty"`
+	InitialValue    any                 `json:"initial_value,omitempty"`
+	AgentUsage      string              `json:"agent_usage,omitempty"`
+	EngineUsage     string              `json:"engine_usage,omitempty"`
+	EvidenceIDs     []string            `json:"evidence_ids,omitempty"`
+	IfNotConfigured string              `json:"if_not_configured,omitempty"`
+}
+
+type Column struct {
+	Name     string   `json:"name"`
+	Label    string   `json:"label"`
+	Type     string   `json:"type"`
+	Required bool     `json:"required"`
+	Options  []string `json:"options,omitempty"`
+	Variadic bool     `json:"variadic,omitempty"`
 }
 
 type Template struct {
