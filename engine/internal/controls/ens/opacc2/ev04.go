@@ -34,7 +34,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	case s == nil:
 		return passes.NotEvaluable(verdict.CauseCollection, "no acl_snapshot in the window")
 	case s.Status == fact.SourceAbsent:
-		return passes.NotEvaluable(verdict.CauseCollection, "the manager sent no oscompliance.json with the P-08 paths")
+		return passes.NotEvaluable(verdict.CauseCollection, "the group configuration carries no P-08 paths for this machine")
 	case s.Status != fact.SourceRead:
 		return passes.NotEvaluable(verdict.CauseCollection, s.Config+" unreadable: "+s.Error)
 	case len(in.ACLs.Records) < s.RecordsEmitted:

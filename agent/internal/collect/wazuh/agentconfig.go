@@ -3,6 +3,7 @@ package wazuh
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"strconv"
 	"strings"
@@ -108,11 +109,15 @@ type SharedPaths struct {
 	ExecWatches []string `json:"exec_watches"`
 }
 
-const DefaultSharedPaths = "/var/ossec/etc/shared/oscompliance.json"
+// The engine writes the paths as a comment inside the group configuration: the Wazuh API only writes
+// agent.conf, and an unknown element would make the manager reject the file.
+const ManagedPathsMarker = "oscompliance "
 
-func ReadSharedPaths(path string) (paths SharedPaths, ok bool, err error) {
+// ReadSharedPaths returns the paths of the last applicable block that carries them: a block naming
+// this machine comes after the group-wide one and replaces it.
+func ReadSharedPaths(cfg AgentConfigPaths) (paths SharedPaths, ok bool, err error) {
 
-	data, err := fsread.ReadFile(path)
+	data, err := fsread.ReadFile(cfg.SharedConf)
 
 	if errors.Is(err, fs.ErrNotExist) {
 		return SharedPaths{}, false, nil
@@ -121,9 +126,23 @@ func ReadSharedPaths(path string) (paths SharedPaths, ok bool, err error) {
 		return SharedPaths{}, false, err
 	}
 
-	if err := json.Unmarshal(data, &paths); err != nil {
+	blocks, err := applicableBlocks(data, "agent_config", agentName(cfg.ClientKeys))
+	if err != nil {
 		return SharedPaths{}, false, err
 	}
 
-	return paths, true, nil
+	// encoding/xml joins every comment of a block into one string.
+	for _, b := range blocks {
+		_, body, found := strings.Cut(b.Comments, ManagedPathsMarker+"{")
+		if !found {
+			continue
+		}
+		var next SharedPaths
+		if err := json.NewDecoder(strings.NewReader("{" + body)).Decode(&next); err != nil {
+			return SharedPaths{}, false, fmt.Errorf("managed paths: %w", err)
+		}
+		paths, ok = next, true
+	}
+
+	return paths, ok, nil
 }

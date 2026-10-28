@@ -17,17 +17,22 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc5"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/groupconf"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/run"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/store"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/wazuhapi"
 )
 
 var version = "dev"
 
-const passwordEnv = "OSC_INDEXER_PASSWORD"
+const (
+	passwordEnv    = "OSC_INDEXER_PASSWORD"
+	apiPasswordEnv = "OSC_WAZUH_API_PASSWORD"
+)
 
 func main() {
 	if err := runMain(); err != nil {
@@ -48,6 +53,13 @@ func runMain() error {
 	window := flag.Duration("window", 26*time.Hour, "only facts newer than this count")
 	lookback := flag.Duration("lookback", 7*24*time.Hour, "agents with facts this recent are judged")
 	interval := flag.Duration("interval", 0, "time between passes; 0 runs one pass and exits")
+	apiURL := flag.String("wazuh-api", "", "Wazuh API URL; empty leaves the group configuration alone")
+	apiUser := flag.String("wazuh-api-user", "oscompliance", "Wazuh API user; password in $"+apiPasswordEnv+"; least privilege: catalog/wazuh/engine-api-role.json")
+	apiCA := flag.String("wazuh-api-ca", "", "certificate the Wazuh API is trusted with (PEM)")
+	apiServerName := flag.String("wazuh-api-server-name", "", "name checked in the Wazuh API certificate, when it differs from the URL host")
+	syncInterval := flag.Duration("sync-interval", 15*time.Minute, "minimum time between two group configuration syncs")
+	syncApply := flag.Bool("sync-apply", false, "write the group configuration; without it the changes are only logged and recorded")
+	configHistoryIndex := flag.String("config-history-index", "oscompliance-config-history", "index recording every group configuration change")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
@@ -80,6 +92,23 @@ func runMain() error {
 
 	facts := source.New(client, *alerts, *monitoring)
 
+	var groups *groupSync
+	if *apiURL != "" {
+		apiPassword := os.Getenv(apiPasswordEnv)
+		if apiPassword == "" {
+			return fmt.Errorf("$%s is not set", apiPasswordEnv)
+		}
+		api, err := wazuhapi.New(*apiURL, *apiUser, apiPassword, *apiCA, *apiServerName)
+		if err != nil {
+			return err
+		}
+		history, err := store.NewConfigHistory(ctx, client, *configHistoryIndex)
+		if err != nil {
+			return fmt.Errorf("config history index: %w", err)
+		}
+		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply}
+	}
+
 	controls := []evaluator.Evaluator{
 		opacc1.NewEvaluator(facts, hist),
 		opacc2.NewEvaluator(facts),
@@ -105,6 +134,7 @@ func runMain() error {
 			policy = params.Unavailable(err)
 		} else {
 			policy = loaded
+			groups.run(ctx, loaded, time.Now())
 		}
 
 		start, before := time.Now(), client.Requests()
@@ -125,5 +155,40 @@ func runMain() error {
 			return nil
 		case <-time.After(*interval):
 		}
+	}
+}
+
+type groupSync struct {
+	api     *wazuhapi.Client
+	history *store.ConfigHistory
+	every   time.Duration
+	apply   bool
+	last    time.Time
+}
+
+// run keeps the group configuration in step with the parameters. A failed sync never stops the
+// pass: the verdicts still come out, and the next sync tries again.
+func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Time) {
+
+	if g == nil || now.Sub(g.last) < g.every {
+		return
+	}
+	g.last = now
+
+	groups := policy.Groups()
+	if len(groups) == 0 {
+		slog.Warn("group configuration", "error", "the ENS scope names no Wazuh group: the engine only configures a scope by group")
+		return
+	}
+
+	changes, err := groupconf.Sync(ctx, g.api, policy, groups, g.apply, now)
+	for _, c := range changes {
+		slog.Info("group configuration", "group", c.Group, "agents", c.Agents, "applied", c.Applied)
+		if err := g.history.Write(ctx, c); err != nil {
+			slog.Warn("group configuration history", "group", c.Group, "error", err)
+		}
+	}
+	if err != nil {
+		slog.Error("group configuration", "error", err)
 	}
 }

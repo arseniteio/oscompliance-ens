@@ -55,17 +55,17 @@ func permRules(arch string) [][]string {
 }
 
 type Config struct {
-	Auditctl    string
-	SharedPaths string
+	Auditctl string
+	Wazuh    wazuh.AgentConfigPaths
 }
 
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot := fact.AuditWatchSnapshot{Envelope: e.Envelope(fact.AuditWatchSnapshotFact), Auditd: fact.AuditdRunning, Wanted: []string{}, Loaded: []string{}}
 
-	paths, _, err := wazuh.ReadSharedPaths(cfg.SharedPaths)
+	paths, _, err := wazuh.ReadSharedPaths(cfg.Wazuh)
 	if err != nil {
-		snapshot.Auditd, snapshot.Error = fact.AuditdError, cfg.SharedPaths+": "+err.Error()
+		snapshot.Auditd, snapshot.Error = fact.AuditdError, cfg.Wazuh.SharedConf+": "+err.Error()
 		return e.Emit(snapshot)
 	}
 	snapshot.Wanted = append(snapshot.Wanted, paths.AuditWatches...)

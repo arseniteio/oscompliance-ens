@@ -32,8 +32,8 @@ op.acc.4 reads facts other controls also use; none is specific to it.
 | sshd logins, rule 5715 and children | Wazuh | EV-06 |
 | `auth_log_probe` and rule 119002 | agent and Wazuh | EV-06 |
 
-The paths of P-07 reach auditd through the shared `oscompliance.json`
-(`audit_watches`); changes of mode, owner and attributes, and writes to the
+The paths of P-07 reach auditd through the group configuration the engine
+writes (`audit_watches`); changes of mode, owner and attributes, and writes to the
 account and sudo files, are audited with key `oscompliance_perm`.
 
 ## 3. Parameters
@@ -111,7 +111,3 @@ Changed on purpose:
 - The review register is a parameter (P-08); a date in the future is left
   out instead of hiding the real ones.
 
-## 6. Open points
-
-- The plugin must offer P-08.
-- The manager side must write the P-07 paths to `audit_watches`.

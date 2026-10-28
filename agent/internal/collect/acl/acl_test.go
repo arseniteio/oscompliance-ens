@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/collecttest"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/wazuh"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
 )
 
@@ -21,10 +22,20 @@ func TestCollectACL(t *testing.T) {
 	if err := os.Chmod(datos, 0o750); err != nil {
 		t.Fatal(err)
 	}
-	collecttest.Write(t, filepath.Join(dir, "oscompliance.json"), `{"acl_paths":["`+datos+`","`+filepath.Join(dir, "missing")+`"]}`)
+	collecttest.Write(t, filepath.Join(dir, "client.keys"), "001 lab-agent-01 any key\n")
+	collecttest.Write(t, filepath.Join(dir, "agent.conf"), `<agent_config>
+  <!-- oscompliance {"acl_paths":["/elsewhere"],"audit_watches":[],"exec_watches":[]} -->
+</agent_config>
+<agent_config name="lab-agent-01">
+  <!-- oscompliance {"acl_paths":["`+datos+`","`+filepath.Join(dir, "missing")+`"],"audit_watches":[],"exec_watches":[]} -->
+</agent_config>
+<agent_config name="other">
+  <!-- oscompliance {"acl_paths":["/other"],"audit_watches":[],"exec_watches":[]} -->
+</agent_config>`)
+	conf := wazuh.AgentConfigPaths{SharedConf: filepath.Join(dir, "agent.conf"), ClientKeys: filepath.Join(dir, "client.keys")}
 
 	facts := collecttest.Facts(t, func(e *emit.Emitter) error {
-		return Collect(e, Config{SharedPaths: filepath.Join(dir, "oscompliance.json")})
+		return Collect(e, Config{Wazuh: conf})
 	})
 
 	if len(facts) != 3 || facts[0]["mode"] != "0750" || facts[0]["acl"] == nil || facts[1]["status"] != "absent" || facts[2]["records_emitted"] != 2.0 {
@@ -32,10 +43,10 @@ func TestCollectACL(t *testing.T) {
 	}
 
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error {
-		return Collect(e, Config{SharedPaths: filepath.Join(dir, "none.json")})
+		return Collect(e, Config{Wazuh: wazuh.AgentConfigPaths{SharedConf: filepath.Join(dir, "none.conf")}})
 	})
 	if len(facts) != 1 || facts[0]["status"] != "absent" {
-		t.Errorf("no shared file: %v", facts)
+		t.Errorf("no group configuration: %v", facts)
 	}
 }
 

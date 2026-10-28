@@ -45,8 +45,8 @@ Schemas: `catalog/schemas/facts`.
   Defaults setting; `@include`, `#include` and `@includedir` followed.
 - **wazuh**: the FIM directories, ignores and frequency, and the localfiles,
   of the agent's ossec.conf and of the shared blocks that apply to it.
-- **acl**, **audit**: they read `/var/ossec/etc/shared/oscompliance.json`,
-  which the manager places in the group's shared files (section 3). `acl`
+- **acl**, **audit**: they read the paths the engine writes into the group
+  configuration (section 3). `acl`
   reports mode, owner and POSIX ACL of each `acl_paths` entry. `audit` loads,
   for each `audit_watches` entry, four auditd watches, one per permission
   (r, w, x, a) with keys `oscompliance_read`, `_write`, `_exec`, `_attr`, so
@@ -65,20 +65,21 @@ Wazuh's audit rules leave unknown keys at level 0; rule 119004 indexes ours.
 ## 3. Paths from parameters
 
 Some paths come from parameters the agent cannot read: P-08 (rights to
-check) and P-06 (resources to audit). The manager writes them to a shared
-file of the group, which Wazuh copies to every agent of the group:
+check) and P-06 (resources to audit). The engine writes them into the group
+configuration through the Wazuh API, as a comment of its region, and Wazuh
+copies it to every agent of the group (`engine/internal/groupconf`):
 
-```json
-{"acl_paths": ["/srv/datos"], "audit_watches": ["/srv/datos"]}
+```xml
+<!-- oscompliance {"acl_paths":["/srv/datos"],"audit_watches":["/srv/datos"],"exec_watches":[]} -->
 ```
+
+A block naming a machine replaces the group-wide paths for that machine.
 
 The FIM paths (P-02) need no file: Wazuh FIM already watches /etc, /usr/bin,
 /usr/sbin, /bin, /sbin and /boot by default, and the engine checks that each
 P-02 path is covered. A P-02 path elsewhere needs a `<directories>` entry in
 the group configuration. The audit log reaches Wazuh through a localfile
-with `log_format audit` in the group configuration. Writing the shared file
-and those entries from the parameters belongs to the manager side (plugin or
-installer); the lab writes its own in `scripts/manager-setup.sh`.
+with `log_format audit` in the group configuration. The engine writes both.
 
 ## 4. Parameters
 
@@ -152,15 +153,13 @@ Changed on purpose:
 - EV-06 learns the kind of access from the watch key (one watch per
   permission) instead of decoding syscalls and open flags, so new syscalls
   (openat2) are not blind spots.
-- Paths that come from parameters reach the agent through a shared file of
-  the group instead of files maintained on every machine; v1 regenerated
-  audit rules from local files every pass.
+- Paths that come from parameters reach the agent through the group
+  configuration the engine writes, instead of files maintained on every
+  machine; v1 regenerated audit rules from local files every pass.
 - The umask is read anywhere in a line, not only as the first word.
 - The sweep always includes `/` whatever its file system type (an overlay
   root was skipped).
 
 ## 7. Open points
 
-- The manager side must write `oscompliance.json`, the FIM directories for
-  P-02 paths outside the default ones, and the audit localfile.
 - Containers without auditd leave EV-06 NOT_EVALUABLE by COLLECTION.

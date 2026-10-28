@@ -104,9 +104,9 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"authprobe": func() error { return authprobe.Collect(e) },
 		"firewall":  func() error { return firewall.Collect(e, firewall.Default) },
 		"wazuh":     func() error { return wazuh.CollectAgentConfig(e, wazuh.DefaultAgentConfig) },
-		"acl":       func() error { return acl.Collect(e, acl.Config{SharedPaths: wazuh.DefaultSharedPaths}) },
+		"acl":       func() error { return acl.Collect(e, acl.Config{Wazuh: wazuh.DefaultAgentConfig}) },
 		"audit": func() error {
-			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", SharedPaths: wazuh.DefaultSharedPaths})
+			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", Wazuh: wazuh.DefaultAgentConfig})
 		},
 		"services": func() error {
 			return wazuh.CollectServiceLogs(e, wazuh.ServiceLogConfig{SharedConf: "/var/ossec/etc/shared/agent.conf", ClientKeys: "/var/ossec/etc/client.keys"})

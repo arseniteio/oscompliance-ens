@@ -19,6 +19,10 @@ type Config struct {
 	Global struct {
 		EnsLevel string `json:"ensLevel"`
 	} `json:"global"`
+	Scope struct {
+		Mode     string   `json:"mode"`
+		GroupIDs []string `json:"groupIds"`
+	} `json:"scope"`
 	Controls []struct {
 		ControlID  string `json:"controlId"`
 		Enabled    *bool  `json:"enabled"`
@@ -48,6 +52,14 @@ type Config struct {
 const NoTemplate = "none"
 
 var systemTypes = map[string]bool{"linux": true, "zimbra-ldap": true, "windows": true, "manager": true}
+
+// Groups are the Wazuh groups of the ENS scope; a scope by agent or the whole fleet names none.
+func (c *Config) Groups() []string {
+	if c.Scope.Mode != "group" {
+		return nil
+	}
+	return c.Scope.GroupIDs
+}
 
 func (c *Config) Level() string {
 	return c.Global.EnsLevel

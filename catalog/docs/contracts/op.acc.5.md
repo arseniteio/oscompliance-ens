@@ -44,9 +44,8 @@ naming the machine, with a label naming the service:
 Wazuh adds the label to every event; rule 119003 indexes any JSON event with
 `oscompliance_service` and `tipo`. The agent installs nothing: the manager
 distributes the localfile, and the agent's `services` collector reads the same
-shared configuration to watch the file (section 3). Writing these blocks from
-P-02 belongs to the manager side (plugin or installer); the lab writes its
-own in `scripts/manager-setup.sh`.
+shared configuration to watch the file (section 3). The engine writes these
+blocks from P-02 through the Wazuh API.
 
 The contract, one JSON line per event, `ts` (RFC 3339) and `tipo` mandatory:
 
@@ -193,7 +192,5 @@ Changed on purpose:
 
 ## 8. Open points
 
-- The manager side must write the labelled localfiles from P-02 (plugin or
-  installer, through the Wazuh API group configuration).
 - Failures without an origin are counted for EV-03 only as an upper bound and
   never accuse.

@@ -17,14 +17,14 @@ import (
 )
 
 type Config struct {
-	SharedPaths string
+	Wazuh wazuh.AgentConfigPaths
 }
 
 func Collect(e *emit.Emitter, cfg Config) error {
 
-	snapshot := fact.ACLSnapshot{Envelope: e.Envelope(fact.ACLSnapshotFact), Config: cfg.SharedPaths, Status: fact.SourceRead}
+	snapshot := fact.ACLSnapshot{Envelope: e.Envelope(fact.ACLSnapshotFact), Config: cfg.Wazuh.SharedConf, Status: fact.SourceRead}
 
-	paths, ok, err := wazuh.ReadSharedPaths(cfg.SharedPaths)
+	paths, ok, err := wazuh.ReadSharedPaths(cfg.Wazuh)
 
 	switch {
 	case err != nil:

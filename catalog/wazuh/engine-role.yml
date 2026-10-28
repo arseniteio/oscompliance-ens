@@ -15,6 +15,7 @@ oscompliance_engine:
     - index_patterns:
         - "oscompliance-verdicts"
         - "oscompliance-identity-history"
+        - "oscompliance-config-history"
       allowed_actions:
         - "create_index"
         - "manage_mapping"

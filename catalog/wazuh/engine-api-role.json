@@ -1,0 +1,11 @@
+{
+  "role": "oscompliance_engine",
+  "policy": {
+    "name": "oscompliance_engine_groups",
+    "policy": {
+      "actions": ["group:read", "group:update_config", "agent:read"],
+      "resources": ["group:id:*", "agent:id:*", "agent:group:*"],
+      "effect": "allow"
+    }
+  }
+}

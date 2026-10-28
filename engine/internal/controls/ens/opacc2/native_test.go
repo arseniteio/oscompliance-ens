@@ -66,7 +66,7 @@ func TestJudgeEV03(t *testing.T) {
 func TestJudgeEV04(t *testing.T) {
 
 	acls := func(records ...fact.ACLRecord) ACLs {
-		return ACLs{Snapshot: &fact.ACLSnapshot{Config: "/var/ossec/etc/shared/oscompliance.json", Status: fact.SourceRead, RecordsEmitted: len(records)}, Records: records}
+		return ACLs{Snapshot: &fact.ACLSnapshot{Config: "/var/ossec/etc/shared/agent.conf", Status: fact.SourceRead, RecordsEmitted: len(records)}, Records: records}
 	}
 	datos := fact.ACLRecord{Path: "/srv/datos", Status: fact.SourceRead, Mode: "0750", Owner: "root:ops", ACL: []string{"g:auditors:r-x", "m::r-x", "u:auditor:r-x"}}
 
@@ -77,7 +77,7 @@ func TestJudgeEV04(t *testing.T) {
 	check(t, "missing entry", JudgeEV04(EV04Input{ACLs: acls(datos), Rows: []string{"/srv/datos | 750 | | u:auditor:r-x g:auditors:r-x u:eva:rwx"}}), want{verdict.NonCompliant, "", []string{"lacks u:eva:rwx"}})
 	check(t, "path missing", JudgeEV04(EV04Input{ACLs: acls(fact.ACLRecord{Path: "/srv/x", Status: fact.SourceAbsent}), Rows: []string{"/srv/x | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"does not exist"}})
 	check(t, "not sent", JudgeEV04(EV04Input{ACLs: acls(), Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"not in the paths"}})
-	check(t, "no shared file", JudgeEV04(EV04Input{ACLs: ACLs{Snapshot: &fact.ACLSnapshot{Status: fact.SourceAbsent}}, Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"oscompliance.json"}})
+	check(t, "no paths in the group configuration", JudgeEV04(EV04Input{ACLs: ACLs{Snapshot: &fact.ACLSnapshot{Status: fact.SourceAbsent}}, Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"group configuration"}})
 	check(t, "P-08 missing", JudgeEV04(EV04Input{RowsProblem: "not set"}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
 }
 

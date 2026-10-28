@@ -87,6 +87,7 @@ type agentConfig struct {
 	Profile    string      `xml:"profile,attr"`
 	Localfiles []localfile `xml:"localfile"`
 	Syscheck   []syscheck  `xml:"syscheck"`
+	Comments   string      `xml:",comment"`
 }
 
 type localfile struct {

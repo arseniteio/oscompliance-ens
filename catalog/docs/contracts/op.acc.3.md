@@ -25,8 +25,8 @@ An action is an account running a binary or touching a path:
 | auditd, through Wazuh's audit decoder | `audit.auid` (the login, kept across su and sudo), `audit.exe`, `audit.file.name`, `audit.key` | 119004 |
 | Wazuh's sudo alerts | `data.srcuser`, `data.command` (the whole command line) | 5402, 5403, 5407 |
 
-The auditd watches come from the manager: the shared `oscompliance.json`
-lists the P-03 binaries in `exec_watches` (one execution watch each, key
+The auditd watches come from the group configuration the engine writes: it
+lists the P-03 binaries (paths in a bin or sbin directory) in `exec_watches` (one execution watch each, key
 `oscompliance_exec`) and the P-03 paths and the security paths
 (/var/ossec/etc, /etc/audit, /var/log/audit) in `audit_watches`. The agent's
 `audit` collector loads them and reports what is loaded in
@@ -100,7 +100,7 @@ Changed on purpose:
   the command line are all there. v1's parser lost the path (PATH records
   were not read) and the arguments, so path indicators never matched, and a
   numeric uid filter after `ausearch -i` left EV-03 always empty.
-- The watched binaries follow P-03 through the manager's shared file instead
+- The watched binaries follow P-03 through the group configuration instead
   of a fixed template that had to be reloaded by hand.
 - Silence is proven per machine by its audit chain, not by any heartbeat of
   any machine in the last 24 hours.
@@ -111,8 +111,3 @@ Changed on purpose:
   COMPLIANT.
 - P-06 is the window, as its description says; v1 used a fixed 30 days.
 
-## 6. Open points
-
-- The plugin's P-04 must carry each task's command (third column).
-- The manager side must write `exec_watches` and `audit_watches` from P-03
-  and the audit localfile.

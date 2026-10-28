@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/acl_snapshot.v1.json",
   "title": "acl_snapshot v1",
-  "description": "Summary of one read of the paths of the shared oscompliance.json, emitted after their acl_record facts.",
+  "description": "Summary of one read of the paths of the group configuration, emitted after their acl_record facts.",
   "type": "object",
   "required": [
     "config",
@@ -18,7 +18,7 @@
       "minLength": 1
     },
     "status": {
-      "description": "read; absent (the manager sent no oscompliance.json); unreadable.",
+      "description": "read; absent (the group configuration carries no paths); unreadable.",
       "enum": [
         "read",
         "absent",
