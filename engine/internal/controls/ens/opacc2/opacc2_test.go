@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -67,7 +68,7 @@ func TestJudgeEV01(t *testing.T) {
 	badP07.MinUmask = "abc"
 
 	config := base(sweep(), umasks("027"))
-	config.ConfigProblem = "P-02: not set"
+	config.ConfigProblem = catalog.Says("param.not_set", "param", "P-02")
 
 	cases := map[string]struct {
 		in EV01Input
@@ -115,9 +116,9 @@ func TestJudgeEV07(t *testing.T) {
 		"no sweep":                         {EV07Input{}, want{verdict.NotEvaluable, verdict.CauseCollection, nil}},
 		"all reviewed":                     {EV07Input{Sweep: sweep(suid("/usr/bin/sudo"), suid("/usr/bin/passwd")), Authorized: baseline}, want{verdict.Compliant, "", []string{"2 SUID/SGID"}}},
 		"unreviewed SUID":                  {EV07Input{Sweep: sweep(suid("/usr/bin/sudo"), suid("/tmp/x")), Authorized: baseline}, want{verdict.NonCompliant, "", []string{"/tmp/x (4755)"}}},
-		"unowned without baseline":         {EV07Input{Sweep: sweep(unowned, suid("/usr/bin/sudo")), AuthorizedProblem: "not set"}, want{verdict.NonCompliant, "", []string{"uid 1500"}}},
-		"SUID without baseline":            {EV07Input{Sweep: sweep(suid("/usr/bin/sudo")), AuthorizedProblem: "not set"}, want{verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-10"}}},
-		"no SUID needs no baseline":        {EV07Input{Sweep: sweep(), AuthorizedProblem: "not set"}, want{verdict.Compliant, "", nil}},
+		"unowned without baseline":         {EV07Input{Sweep: sweep(unowned, suid("/usr/bin/sudo")), AuthorizedProblem: catalog.Says("param.not_set", "param", "P-00")}, want{verdict.NonCompliant, "", []string{"uid 1500"}}},
+		"SUID without baseline":            {EV07Input{Sweep: sweep(suid("/usr/bin/sudo")), AuthorizedProblem: catalog.Says("param.not_set", "param", "P-00")}, want{verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-10"}}},
+		"no SUID needs no baseline":        {EV07Input{Sweep: sweep(), AuthorizedProblem: catalog.Says("param.not_set", "param", "P-00")}, want{verdict.Compliant, "", nil}},
 		"timeout with nothing wrong found": {timedOut, want{verdict.NotEvaluable, verdict.CauseCollection, []string{"time limit"}}},
 	}
 
@@ -160,7 +161,7 @@ func TestJudgeEV05(t *testing.T) {
 	}
 
 	config := base(sudoers(0))
-	config.ConfigProblem = "P-05: not set"
+	config.ConfigProblem = catalog.Says("param.not_set", "param", "P-05")
 
 	noGroups := base(sudoers(0))
 	noGroups.Accounts.Groups = nil

@@ -1,8 +1,6 @@
 package opacc2
 
 import (
-	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -28,13 +26,13 @@ type EV06Input struct {
 
 	Rules    []string
 	Profiles []string
-	Problem  string
+	Problem  catalog.Message
 }
 
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
-	if in.Problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a", "a", in.Problem))
+	if !in.Problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.Problem)
 	}
 
 	type rule struct {
@@ -68,7 +66,7 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		}
 	}
 
-	var violations, blind []string
+	var violations, blind []catalog.Message
 	noProfile, judged := 0, 0
 
 	for _, a := range in.Accesses {
@@ -84,7 +82,7 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 
 		who := person(a, byUID)
 		if who == "" {
-			blind = append(blind, a.Path+": no person behind the access")
+			blind = append(blind, catalog.Says("opacc2.access_no_person", "path", a.Path))
 			continue
 		}
 
@@ -101,33 +99,32 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 			}
 		}
 		if best < 0 {
-			blind = append(blind, fmt.Sprintf("%s (%s, profile %s): no P-06 row", a.Path, who, profile))
+			blind = append(blind, catalog.Says("opacc2.access_no_rule", "path", a.Path, "account", who, "profile", profile))
 			continue
 		}
 
 		judged++
 		if !rules[best].allowed[kind] {
-			violations = append(violations, fmt.Sprintf("%s by %s (profile %s) on %s", kind, who, profile, a.Path))
+			violations = append(violations, catalog.Says("opacc2.access_violation", "kind", catalog.Says("access."+kind), "account", who, "profile", profile, "path", a.Path))
 		}
 	}
 
 	if len(violations) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.accesses_beyond_the_permitted_type_a", "a", dedupe(violations)))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.accesses_beyond_the_permitted_type_a", "a", catalog.UniqueMessages(violations)))
 	}
 
 	if len(blind) > 0 {
-		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc2.a", "a", dedupe(blind)))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("findings", "list", catalog.UniqueMessages(blind)))
 	}
 
-	if gap := auditChain(in.Watches, in.Config, paths); gap != "" {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.a", "a", gap))
+	if gap := auditChain(in.Watches, in.Config, paths); !gap.IsZero() {
+		return passes.Gap(verdict.CauseCollection, gap)
 	}
 
-	reason := fmt.Sprintf("%d accesses within the types P-06 permits", judged)
 	if noProfile > 0 {
-		reason += fmt.Sprintf("; %d by accounts without a P-09 profile, not judged", noProfile)
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.accesses_permitted_unprofiled", "accesses", judged, "unprofiled", noProfile))
 	}
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a", "a", reason))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.accesses_permitted", "accesses", judged))
 }
 
 func person(a source.AuditAccess, byUID map[int]string) string {
@@ -146,13 +143,13 @@ func person(a source.AuditAccess, byUID map[int]string) string {
 	return ""
 }
 
-func auditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, paths []string) string {
+func auditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, paths []string) catalog.Message {
 
 	switch {
 	case w == nil:
-		return "no audit_watch_snapshot in the window"
+		return catalog.Says("gap.no_fact", "fact", "audit_watch_snapshot")
 	case w.Auditd != fact.AuditdRunning:
-		return "auditd " + w.Auditd + " " + w.Error
+		return catalog.Says("chain.auditd", "state", catalog.Says("auditd."+w.Auditd), "error", w.Error)
 	}
 
 	for _, p := range paths {
@@ -163,19 +160,19 @@ func auditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, paths []st
 			}
 		}
 		if !watched {
-			return p + " is not watched by auditd"
+			return catalog.Says("chain.unwatched", "path", p)
 		}
 	}
 
 	if c == nil || c.Status != fact.SourceRead {
-		return "the Wazuh agent configuration is unknown"
+		return catalog.Says("chain.config_unknown")
 	}
 	for _, l := range c.Localfiles {
 		if l.Format == "audit" {
-			return ""
+			return catalog.Message{}
 		}
 	}
-	return "Wazuh does not read the audit log (no localfile with log_format audit)"
+	return catalog.Says("chain.no_audit_log")
 }
 
 func cellsOf(row string, n int) []string {
@@ -203,22 +200,4 @@ func contains(list []string, v string) bool {
 		}
 	}
 	return false
-}
-
-func dedupe(list []string) []string {
-	seen := map[string]int{}
-	var out []string
-	for _, x := range list {
-		if seen[x] == 0 {
-			out = append(out, x)
-		}
-		seen[x]++
-	}
-	sort.Strings(out)
-	for i, x := range out {
-		if n := seen[x]; n > 1 {
-			out[i] = fmt.Sprintf("%s (%d times)", x, n)
-		}
-	}
-	return out
 }

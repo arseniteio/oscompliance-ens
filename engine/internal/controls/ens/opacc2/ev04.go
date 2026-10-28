@@ -1,7 +1,6 @@
 package opacc2
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,13 +20,13 @@ type EV04Input struct {
 	ACLs ACLs
 
 	Rows        []string
-	RowsProblem string
+	RowsProblem catalog.Message
 }
 
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
-	if in.RowsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.p_08_a", "a", in.RowsProblem))
+	if !in.RowsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.RowsProblem)
 	}
 
 	s := in.ACLs.Snapshot
@@ -47,7 +46,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		byPath[r.Path] = r
 	}
 
-	var deviations, gaps []string
+	var deviations, gaps []catalog.Message
 	verified := 0
 
 	for _, row := range in.Rows {
@@ -65,36 +64,34 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 
 		switch {
 		case !ok:
-			gaps = append(gaps, path+": not in the paths the agent was sent")
+			gaps = append(gaps, catalog.Says("opacc2.acl_not_sent", "path", path))
 			continue
 		case r.Status == fact.SourceAbsent:
-			gaps = append(gaps, path+": does not exist")
+			gaps = append(gaps, catalog.Says("item.absent", "path", path))
 			continue
 		case r.Status != fact.SourceRead:
-			gaps = append(gaps, path+": "+r.Error)
+			gaps = append(gaps, catalog.Says("item.error", "path", path, "error", r.Error))
 			continue
 		}
 
-		var why []string
+		var why []catalog.Message
 
 		if want, err := strconv.ParseUint(mode, 8, 32); err != nil {
-			gaps = append(gaps, fmt.Sprintf("%s: declared mode %q is not octal", path, mode))
+			gaps = append(gaps, catalog.Says("opacc2.mode_not_octal", "path", path, "mode", mode))
 			continue
 		} else if got, _ := strconv.ParseUint(r.Mode, 8, 32); got != want {
-			why = append(why, fmt.Sprintf("mode %s, declared %s", r.Mode, mode))
+			why = append(why, catalog.Says("opacc2.mode_differs", "got", r.Mode, "want", mode))
 		}
 
 		if owner != "" && owner != r.Owner {
-			why = append(why, fmt.Sprintf("owner %s, declared %s", r.Owner, owner))
+			why = append(why, catalog.Says("opacc2.owner_differs", "got", r.Owner, "want", owner))
 		}
 
-		if diff := aclDifference(acl, r.ACL); diff != "" {
-			why = append(why, diff)
-		}
+		why = append(why, aclDifference(acl, r.ACL)...)
 
 		verified++
 		if len(why) > 0 {
-			deviations = append(deviations, path+": "+strings.Join(why, ", "))
+			deviations = append(deviations, catalog.Says("item.path_list", "path", path, "list", why))
 		}
 	}
 
@@ -102,13 +99,13 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.rights_differ_from_p_08_a", "a", deviations))
 	}
 	if len(gaps) > 0 {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.a", "a", gaps))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("findings", "list", gaps))
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_resources_with_the_rights_p_08_declare", "a", verified))
 }
 
-func aclDifference(declared string, applied []string) string {
+func aclDifference(declared string, applied []string) []catalog.Message {
 
 	want := map[string]bool{}
 	for _, e := range strings.FieldsFunc(declared, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' }) {
@@ -132,14 +129,14 @@ func aclDifference(declared string, applied []string) string {
 	slices.Sort(missing)
 	slices.Sort(extra)
 
-	var out []string
+	var out []catalog.Message
 	if len(missing) > 0 {
-		out = append(out, "ACL lacks "+strings.Join(missing, " "))
+		out = append(out, catalog.Says("opacc2.acl_lacks", "entries", missing))
 	}
 	if len(extra) > 0 {
-		out = append(out, "ACL has undeclared "+strings.Join(extra, " "))
+		out = append(out, catalog.Says("opacc2.acl_extra", "entries", extra))
 	}
-	return strings.Join(out, ", ")
+	return out
 }
 
 func normalizeACL(e string) string {

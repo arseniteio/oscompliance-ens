@@ -1,9 +1,7 @@
 package opacc2
 
 import (
-	"fmt"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -20,31 +18,31 @@ type EV02Input struct {
 	Window  time.Duration
 
 	Critical        []string
-	CriticalProblem string
+	CriticalProblem catalog.Message
 }
 
 func JudgeEV02(in EV02Input) verdict.Judgement {
 
-	if in.CriticalProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.p_02_a", "a", in.CriticalProblem))
+	if !in.CriticalProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.CriticalProblem)
 	}
 
-	var changed []string
+	var changed []catalog.Message
 	for _, c := range in.Changes {
 		for _, p := range in.Critical {
 			if under(c.Path, p) {
-				what := c.Event
+				event := catalog.Says("fim." + c.Event)
 				if len(c.Changed) > 0 {
-					what += " (" + strings.Join(c.Changed, ",") + ")"
+					event = catalog.Says("opacc2.fim_event_fields", "event", event, "fields", c.Changed)
 				}
-				changed = append(changed, fmt.Sprintf("%s %s at %s", c.Path, what, c.Time.UTC().Format(time.RFC3339)))
+				changed = append(changed, catalog.Says("opacc2.file_changed", "path", c.Path, "event", event, "at", c.Time.UTC().Format(time.RFC3339)))
 				break
 			}
 		}
 	}
 
 	if len(changed) > 0 {
-		sort.Strings(changed)
+		catalog.SortMessages(changed)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.critical_files_changed_a", "a", changed))
 	}
 
@@ -57,10 +55,10 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.wazuh_fim_is_disabled_on_this_machine"))
 	}
 
-	var unwatched []string
+	var unwatched []catalog.Message
 	for _, p := range in.Critical {
-		if why := notWatched(*in.Config, p, in.Window); why != "" {
-			unwatched = append(unwatched, p+" ("+why+")")
+		if why := notWatched(*in.Config, p, in.Window); !why.IsZero() {
+			unwatched = append(unwatched, catalog.Says("item.path_why", "path", p, "why", why))
 		}
 	}
 
@@ -71,11 +69,11 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_critical_paths_watched_by_wazuh_fim_no", "a", len(in.Critical)))
 }
 
-func notWatched(c fact.WazuhAgentConfig, path string, window time.Duration) string {
+func notWatched(c fact.WazuhAgentConfig, path string, window time.Duration) catalog.Message {
 
 	for _, i := range c.Ignored {
 		if under(path, i) {
-			return "ignored by " + i
+			return catalog.Says("opacc2.fim_ignored", "rule", i)
 		}
 	}
 
@@ -84,15 +82,15 @@ func notWatched(c fact.WazuhAgentConfig, path string, window time.Duration) stri
 			continue
 		}
 		if d.Realtime || d.Whodata {
-			return ""
+			return catalog.Message{}
 		}
 		if c.SyscheckFrequency == 0 || time.Duration(c.SyscheckFrequency)*time.Second <= window {
-			return ""
+			return catalog.Message{}
 		}
-		return fmt.Sprintf("scanned every %d s, longer than the window", c.SyscheckFrequency)
+		return catalog.Says("opacc2.fim_slow", "seconds", c.SyscheckFrequency)
 	}
 
-	return "no FIM directory covers it"
+	return catalog.Says("opacc2.fim_uncovered")
 }
 
 func under(path, dir string) bool {

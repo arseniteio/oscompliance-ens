@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
@@ -129,7 +130,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		ev07 := EV07Input{Sweep: sw}
 		authorized, err := policy.List(agent.ID, control, "P-10")
 		if err != nil {
-			ev07.AuthorizedProblem = "P-10: " + err.Error()
+			ev07.AuthorizedProblem = passes.Param("P-10", err)
 		}
 		ev07.Authorized = authorized
 		results["EV-07"] = evaluator.Result{Judgement: JudgeEV07(ev07), RunID: runOf(sw.Snapshot)}
@@ -173,7 +174,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	} else {
 		in := EV02Input{Config: config, Changes: changes, Window: e.pass.Now.Sub(window)}
 		if in.Critical, err = policy.List(agent.ID, control, "P-02"); err != nil {
-			in.CriticalProblem = err.Error()
+			in.CriticalProblem = passes.Param("P-02", err)
 		}
 		results["EV-02"] = evaluator.Result{Judgement: JudgeEV02(in)}
 	}
@@ -210,7 +211,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		var err error
 		in := EV04Input{ACLs: acls}
 		if in.Rows, err = policy.List(agent.ID, control, "P-08"); err != nil {
-			in.RowsProblem = err.Error()
+			in.RowsProblem = passes.Param("P-08", err)
 		}
 		runID := ""
 		if acls.Snapshot != nil {
@@ -226,14 +227,14 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		if w, ok := e.watches[agent.ID]; ok {
 			in.Watches = &w
 		}
-		var problems []string
+		var problems []catalog.Message
 		if in.Rules, err = policy.List(agent.ID, control, "P-06"); err != nil {
-			problems = append(problems, "P-06: "+err.Error())
+			problems = append(problems, passes.Param("P-06", err))
 		}
 		if in.Profiles, err = policy.List(agent.ID, control, "P-09"); err != nil {
-			problems = append(problems, "P-09: "+err.Error())
+			problems = append(problems, passes.Param("P-09", err))
 		}
-		in.Problem = joinProblems(problems)
+		in.Problem = passes.Problems(problems)
 		results["EV-06"] = evaluator.Result{Judgement: JudgeEV06(in)}
 	}
 
@@ -247,54 +248,54 @@ func runOf(s *fact.FileSweepSnapshot) string {
 	return s.RecordsRun()
 }
 
-func ev01Params(policy params.Lister, agentID string) (scope, exceptions []string, sticky bool, umask, problem string) {
+func ev01Params(policy params.Lister, agentID string) (scope, exceptions []string, sticky bool, umask string, problem catalog.Message) {
 
-	var problems []string
+	var problems []catalog.Message
 
 	scope, err := policy.List(agentID, control, "P-02")
 	if err != nil {
-		problems = append(problems, "P-02: "+err.Error())
+		problems = append(problems, passes.Param("P-02", err))
 	}
 
 	exceptions, err = policy.List(agentID, control, "P-11")
 	if err != nil && !errors.Is(err, params.ErrNotSet) {
-		problems = append(problems, "P-11: "+err.Error())
+		problems = append(problems, passes.Param("P-11", err))
 	}
 
 	sticky, err = policy.Bool(agentID, control, "P-03")
 	if err != nil {
-		problems = append(problems, "P-03: "+err.Error())
+		problems = append(problems, passes.Param("P-03", err))
 	}
 
 	values, err := policy.List(agentID, control, "P-07")
 	if err != nil {
-		problems = append(problems, "P-07: "+err.Error())
+		problems = append(problems, passes.Param("P-07", err))
 	} else {
 		umask = values[0]
 	}
 
-	return scope, exceptions, sticky, umask, joinProblems(problems)
+	return scope, exceptions, sticky, umask, passes.Problems(problems)
 }
 
-func ev05Params(policy params.Lister, agentID string) (groups, declared []string, problem string) {
+func ev05Params(policy params.Lister, agentID string) (groups, declared []string, problem catalog.Message) {
 
-	var problems []string
+	var problems []catalog.Message
 
 	if _, err := policy.List(agentID, control, "P-05"); err != nil {
-		problems = append(problems, "P-05: "+err.Error())
+		problems = append(problems, passes.Param("P-05", err))
 	}
 
 	declared, err := policy.ListColumn(agentID, control, "P-09", 0)
 	if err != nil {
-		problems = append(problems, "P-09: "+err.Error())
+		problems = append(problems, passes.Param("P-09", err))
 	}
 
 	groups, err = policy.List(agentID, control, "P-12")
 	if err != nil {
-		problems = append(problems, "P-12: "+err.Error())
+		problems = append(problems, passes.Param("P-12", err))
 	}
 
-	return groups, declared, joinProblems(problems)
+	return groups, declared, passes.Problems(problems)
 }
 
 func joinProblems(problems []string) string {

@@ -1,9 +1,6 @@
 package opacc2
 
 import (
-	"fmt"
-	"sort"
-
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -50,7 +47,7 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		}
 	}
 
-	var escalations, undecided []string
+	var escalations, undecided []catalog.Message
 	denied, used := 0, 0
 
 	for _, e := range in.Elevations {
@@ -70,26 +67,27 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 
 		case fromPrivileged:
 		case !local[e.From]:
-			undecided = append(undecided, fmt.Sprintf("%s %s to %s (not a local account)", e.Method, e.From, e.To))
+			undecided = append(undecided, catalog.Says("opacc2.elevation_not_local", "method", e.Method, "from", e.From, "to", e.To))
 		case sudoers.BlindSpots > 0:
-			undecided = append(undecided, fmt.Sprintf("%s %s to %s (sudoers has grants to unnamed accounts)", e.Method, e.From, e.To))
+			undecided = append(undecided, catalog.Says("opacc2.elevation_unnamed_grants", "method", e.Method, "from", e.From, "to", e.To))
 		default:
-			cmd := ""
+			at := e.Time.UTC().Format("2006-01-02T15:04:05Z")
 			if e.Command != "" {
-				cmd = " running " + e.Command
+				escalations = append(escalations, catalog.Says("opacc2.escalation_command", "method", e.Method, "from", e.From, "to", e.To, "command", e.Command, "at", at))
+			} else {
+				escalations = append(escalations, catalog.Says("opacc2.escalation", "method", e.Method, "from", e.From, "to", e.To, "at", at))
 			}
-			escalations = append(escalations, fmt.Sprintf("%s by %s to %s%s at %s", e.Method, e.From, e.To, cmd, e.Time.UTC().Format("2006-01-02T15:04:05Z")))
 		}
 	}
 
 	if len(escalations) > 0 {
-		sort.Strings(escalations)
+		catalog.SortMessages(escalations)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.privilege_escalations_by_unprivileged_ac", "a", escalations))
 	}
 
 	if len(undecided) > 0 {
-		sort.Strings(undecided)
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.a", "a", undecided))
+		catalog.SortMessages(undecided)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("findings", "list", undecided))
 	}
 
 	if used == 0 && denied == 0 && !in.Log.Reaches {

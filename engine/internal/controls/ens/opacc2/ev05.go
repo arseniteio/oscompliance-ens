@@ -1,7 +1,6 @@
 package opacc2
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
@@ -30,13 +29,13 @@ type EV05Input struct {
 	Groups   []string
 	Declared []string
 
-	ConfigProblem string
+	ConfigProblem catalog.Message
 }
 
 func JudgeEV05(in EV05Input) verdict.Judgement {
 
-	if in.ConfigProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a", "a", in.ConfigProblem))
+	if !in.ConfigProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.ConfigProblem)
 	}
 
 	if gap, found := passes.IdentityGap(in.Accounts.Identity, in.Accounts.IdentityRecords); found {
@@ -64,15 +63,15 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		declared[name] = true
 	}
 
-	var undeclared []string
+	var undeclared []catalog.Message
 	for name, via := range privileged {
 		if !declared[name] {
-			undeclared = append(undeclared, fmt.Sprintf("%s (%s)", name, strings.Join(via, ", ")))
+			undeclared = append(undeclared, catalog.Says("item.name_list", "name", name, "list", via))
 		}
 	}
 
 	if len(undeclared) > 0 {
-		sort.Strings(undeclared)
+		catalog.SortMessages(undeclared)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.privileges_not_declared_in_p_09_a", "a", undeclared))
 	}
 

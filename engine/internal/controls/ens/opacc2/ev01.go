@@ -1,9 +1,7 @@
 package opacc2
 
 import (
-	"fmt"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -27,13 +25,13 @@ type EV01Input struct {
 	StickyAllowed bool
 	MinUmask      string
 
-	ConfigProblem string
+	ConfigProblem catalog.Message
 }
 
 func JudgeEV01(in EV01Input) verdict.Judgement {
 
-	if in.ConfigProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a", "a", in.ConfigProblem))
+	if !in.ConfigProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.ConfigProblem)
 	}
 
 	minimum, err := strconv.ParseUint(in.MinUmask, 8, 32)
@@ -53,7 +51,7 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		exception[filepath.Clean(p)] = true
 	}
 
-	var writable []string
+	var writable []catalog.Message
 
 	for _, f := range in.Sweep.Files {
 
@@ -65,10 +63,10 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 			continue
 		}
 
-		writable = append(writable, fmt.Sprintf("%s (%s)", f.Path, f.Mode))
+		writable = append(writable, catalog.Says("item.path_mode", "path", f.Path, "mode", f.Mode))
 	}
 
-	var weak, blind []string
+	var weak, blind []catalog.Message
 	declared := 0
 
 	for _, src := range in.Umask.Sources {
@@ -77,35 +75,35 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		case fact.SourceAbsent:
 			continue
 		case fact.SourceUnreadable:
-			blind = append(blind, src.Path+" unreadable")
+			blind = append(blind, catalog.Says("item.unreadable", "path", src.Path))
 			continue
 		}
 
 		for _, u := range src.Uninterpretable {
-			blind = append(blind, fmt.Sprintf("%s: umask %q is not octal", src.Path, u))
+			blind = append(blind, catalog.Says("opacc2.umask_not_octal", "path", src.Path, "umask", u))
 		}
 
 		for _, u := range src.Umasks {
 			declared++
 			value, _ := strconv.ParseUint(u, 8, 32)
 			if value&minimum != minimum {
-				weak = append(weak, fmt.Sprintf("%s umask %s", src.Path, u))
+				weak = append(weak, catalog.Says("opacc2.umask_of", "path", src.Path, "umask", u))
 			}
 		}
 	}
 
-	var findings []string
+	var findings []catalog.Message
 
 	if len(writable) > 0 {
-		sort.Strings(writable)
-		findings = append(findings, "world-writable in P-02: "+strings.Join(writable, ", "))
+		catalog.SortMessages(writable)
+		findings = append(findings, catalog.Says("opacc2.world_writable", "files", writable))
 	}
 	if len(weak) > 0 {
-		findings = append(findings, fmt.Sprintf("umask weaker than %s (P-07): %s", in.MinUmask, strings.Join(weak, ", ")))
+		findings = append(findings, catalog.Says("opacc2.weak_umask", "minimum", in.MinUmask, "sources", weak))
 	}
 
 	if len(findings) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.a", "a", findings))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings", "list", findings))
 	}
 
 	if partial := passes.Partial(*in.Sweep.Snapshot); !partial.IsZero() {

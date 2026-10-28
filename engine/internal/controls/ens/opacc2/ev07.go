@@ -1,10 +1,7 @@
 package opacc2
 
 import (
-	"fmt"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
@@ -15,7 +12,7 @@ type EV07Input struct {
 	Sweep Sweep
 
 	Authorized        []string
-	AuthorizedProblem string
+	AuthorizedProblem catalog.Message
 }
 
 func JudgeEV07(in EV07Input) verdict.Judgement {
@@ -29,40 +26,40 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 		authorized[filepath.Clean(p)] = true
 	}
 
-	var unowned, unauthorized []string
+	var unowned, unauthorized []catalog.Message
 	privileged := 0
 
 	for _, f := range in.Sweep.Files {
 
 		if f.NoOwner || f.NoGroup {
-			unowned = append(unowned, fmt.Sprintf("%s (uid %d, gid %d)", f.Path, f.UID, f.GID))
+			unowned = append(unowned, catalog.Says("opacc2.unowned_file", "path", f.Path, "uid", f.UID, "gid", f.GID))
 		}
 
 		if f.SUID || f.SGID {
 			privileged++
-			if in.AuthorizedProblem == "" && !authorized[f.Path] {
-				unauthorized = append(unauthorized, fmt.Sprintf("%s (%s)", f.Path, f.Mode))
+			if in.AuthorizedProblem.IsZero() && !authorized[f.Path] {
+				unauthorized = append(unauthorized, catalog.Says("item.path_mode", "path", f.Path, "mode", f.Mode))
 			}
 		}
 	}
 
-	var findings []string
+	var findings []catalog.Message
 
 	if len(unowned) > 0 {
-		sort.Strings(unowned)
-		findings = append(findings, "without owner or group: "+strings.Join(unowned, ", "))
+		catalog.SortMessages(unowned)
+		findings = append(findings, catalog.Says("opacc2.without_owner", "files", unowned))
 	}
 
 	if len(unauthorized) > 0 {
-		sort.Strings(unauthorized)
-		findings = append(findings, "SUID/SGID not in P-10: "+strings.Join(unauthorized, ", "))
+		catalog.SortMessages(unauthorized)
+		findings = append(findings, catalog.Says("opacc2.suid_not_in_p10", "files", unauthorized))
 	}
 
 	if len(findings) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.a", "a", findings))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings", "list", findings))
 	}
 
-	if privileged > 0 && in.AuthorizedProblem != "" {
+	if privileged > 0 && !in.AuthorizedProblem.IsZero() {
 		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a_suid_sgid_files_and_p_10_cannot_be_use", "a", privileged, "b", in.AuthorizedProblem))
 	}
 

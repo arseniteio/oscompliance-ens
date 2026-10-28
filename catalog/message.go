@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -97,4 +98,23 @@ func renderArg(lang string, v any) string {
 	default:
 		return fmt.Sprint(v)
 	}
+}
+
+// SortMessages orders messages by their English text, as the lists of strings they replace were.
+func SortMessages(list []Message) {
+	slices.SortFunc(list, func(a, b Message) int { return strings.Compare(a.Render("en"), b.Render("en")) })
+}
+
+// UniqueMessages drops repeated messages, keeping the first of each.
+func UniqueMessages(list []Message) []Message {
+	seen := map[string]bool{}
+	var out []Message
+	for _, m := range list {
+		k := m.Render("en")
+		if !seen[k] {
+			seen[k] = true
+			out = append(out, m)
+		}
+	}
+	return out
 }

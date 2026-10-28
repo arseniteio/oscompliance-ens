@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -36,7 +37,7 @@ func TestJudgeEV02(t *testing.T) {
 	off.SyscheckDisabled = true
 	check(t, "FIM off", JudgeEV02(EV02Input{Config: off, Critical: critical}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"disabled"}})
 	check(t, "no config", JudgeEV02(EV02Input{Critical: critical}), want{verdict.NotEvaluable, verdict.CauseCollection, nil})
-	check(t, "P-02 missing", JudgeEV02(EV02Input{CriticalProblem: "not set"}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
+	check(t, "P-02 missing", JudgeEV02(EV02Input{CriticalProblem: catalog.Says("param.not_set", "param", "P-00")}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
 }
 
 func TestJudgeEV03(t *testing.T) {
@@ -78,7 +79,7 @@ func TestJudgeEV04(t *testing.T) {
 	check(t, "path missing", JudgeEV04(EV04Input{ACLs: acls(fact.ACLRecord{Path: "/srv/x", Status: fact.SourceAbsent}), Rows: []string{"/srv/x | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"does not exist"}})
 	check(t, "not sent", JudgeEV04(EV04Input{ACLs: acls(), Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"not in the paths"}})
 	check(t, "no paths in the group configuration", JudgeEV04(EV04Input{ACLs: ACLs{Snapshot: &fact.ACLSnapshot{Status: fact.SourceAbsent}}, Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"group configuration"}})
-	check(t, "P-08 missing", JudgeEV04(EV04Input{RowsProblem: "not set"}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
+	check(t, "P-08 missing", JudgeEV04(EV04Input{RowsProblem: catalog.Says("param.not_set", "param", "P-00")}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
 }
 
 func TestJudgeEV06(t *testing.T) {
@@ -105,5 +106,5 @@ func TestJudgeEV06(t *testing.T) {
 	unread := base()
 	unread.Config = &fact.WazuhAgentConfig{Status: fact.SourceRead}
 	check(t, "audit log not read", JudgeEV06(unread), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"log_format audit"}})
-	check(t, "params", JudgeEV06(EV06Input{Problem: "P-06: not set"}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
+	check(t, "params", JudgeEV06(EV06Input{Problem: catalog.Says("param.not_set", "param", "P-06")}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
 }
