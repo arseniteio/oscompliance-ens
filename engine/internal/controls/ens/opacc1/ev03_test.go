@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -29,8 +30,8 @@ func TestJudgeEV03(t *testing.T) {
 		cause   verdict.Cause
 		reasons []string
 	}{
-		{"P-04 not set", LoginInput{ForbiddenProblem: "not set", AuthSeen: true}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-04", "not set"}},
-		{"P-04 problem wins over a silent source", LoginInput{ForbiddenProblem: "not set"}, verdict.NotEvaluable, verdict.CauseConfiguration, nil},
+		{"P-04 not set", LoginInput{ForbiddenProblem: catalog.Says("param.not_set", "param", "P-04"), AuthSeen: true}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-04", "not set"}},
+		{"P-04 problem wins over a silent source", LoginInput{ForbiddenProblem: catalog.Says("param.not_set", "param", "P-04")}, verdict.NotEvaluable, verdict.CauseConfiguration, nil},
 		{"no authentication events", LoginInput{Forbidden: generic}, verdict.NotEvaluable, verdict.CauseCollection, []string{"no authentication events"}},
 		{"generic account logged in", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("jperez"), login("admin")}}, verdict.NonCompliant, "", []string{"admin (1)"}},
 		{"case is ignored", LoginInput{Forbidden: generic, AuthSeen: true, Logins: []source.Login{login("Admin")}}, verdict.NonCompliant, "", []string{"admin (1)"}},
@@ -75,7 +76,7 @@ func TestJudgeEV05(t *testing.T) {
 		t.Errorf("named login: %+v", got)
 	}
 
-	got = JudgeEV05(LoginInput{ForbiddenProblem: "not set", AuthSeen: true})
+	got = JudgeEV05(LoginInput{ForbiddenProblem: catalog.Says("param.not_set", "param", "P-03"), AuthSeen: true})
 	if got.Status != verdict.NotEvaluable || got.Cause != verdict.CauseConfiguration || !strings.Contains(got.Reason, "P-03: not set") {
 		t.Errorf("P-03 not set: %+v", got)
 	}

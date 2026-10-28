@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -28,7 +29,7 @@ type EV03Input struct {
 func JudgeEV03(in EV03Input) verdict.Judgement {
 
 	if in.MaxAttemptsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-03: "+in.MaxAttemptsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_03_a", "a", in.MaxAttemptsProblem))
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -58,7 +59,7 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 
 	if len(failing) > 0 {
 		sort.Strings(failing)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("origins with more than %d failures: %s", in.MaxAttempts, strings.Join(failing, "; "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.origins_with_more_than_a_failures_b", "a", in.MaxAttempts, "b", strings.Join(failing, "; ")))
 	}
 
 	var blind []string
@@ -68,10 +69,10 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		}
 	}
 	if len(blind) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, "no failure seen and the log is not known to reach Wazuh: "+strings.Join(blind, ", "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc5.no_failure_seen_and_the_log_is_not_known", "a", blind))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("no origin failed more than %d times within %s", in.MaxAttempts, originSpan)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.no_origin_failed_more_than_a_times_withi", "a", in.MaxAttempts, "b", originSpan))
 }
 
 func origin(o string) string {

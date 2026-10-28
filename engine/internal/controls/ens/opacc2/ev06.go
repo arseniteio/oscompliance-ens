@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -33,7 +34,7 @@ type EV06Input struct {
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
 	if in.Problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, in.Problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a", "a", in.Problem))
 	}
 
 	type rule struct {
@@ -111,22 +112,22 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 	}
 
 	if len(violations) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "accesses beyond the permitted type: " + strings.Join(dedupe(violations), "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.accesses_beyond_the_permitted_type_a", "a", dedupe(violations)))
 	}
 
 	if len(blind) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(dedupe(blind), "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc2.a", "a", dedupe(blind)))
 	}
 
 	if gap := auditChain(in.Watches, in.Config, paths); gap != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, gap)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.a", "a", gap))
 	}
 
 	reason := fmt.Sprintf("%d accesses within the types P-06 permits", judged)
 	if noProfile > 0 {
 		reason += fmt.Sprintf("; %d by accounts without a P-09 profile, not judged", noProfile)
 	}
-	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a", "a", reason))
 }
 
 func person(a source.AuditAccess, byUID map[int]string) string {

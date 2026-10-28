@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -39,17 +40,17 @@ func JudgeEV11(in EV11Input) verdict.Judgement {
 		return gap
 	}
 	if in.MinimumsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-10: "+in.MinimumsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_10_a", "a", in.MinimumsProblem))
 	}
 
 	stack := in.PAM.Stack("passwd", "password")
 	if len(stack) == 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, "no password stack for passwd in /etc/pam.d")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.no_password_stack_for_passwd_in_etc_pam"))
 	}
 
 	q, problem := qualityOf(stack, in.Settings)
 	if problem != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, problem)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", problem))
 	}
 
 	var failing, met []string
@@ -72,10 +73,10 @@ func JudgeEV11(in EV11Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: q.Mechanism + ": " + strings.Join(failing, ", ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a_b", "a", q.Mechanism, "b", failing))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: q.Mechanism + ": " + strings.Join(met, ", ")}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_b", "a", q.Mechanism, "b", met))
 }
 
 func qualityOf(stack []fact.PAMRule, settings Settings) (Quality, string) {

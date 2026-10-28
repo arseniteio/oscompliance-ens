@@ -1,12 +1,12 @@
 package opacc1
 
 import (
-	"fmt"
 	"sort"
-	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
@@ -17,7 +17,7 @@ type Inventory struct {
 
 	UIDMin int
 
-	UIDMinProblem string
+	UIDMinProblem catalog.Message
 
 	Today time.Time
 }
@@ -37,7 +37,7 @@ func (in Inventory) people() []fact.IdentityRecord {
 
 func inventoryGap(in Inventory) (verdict.Judgement, bool) {
 
-	if in.UIDMinProblem != "" {
+	if !in.UIDMinProblem.IsZero() {
 		return notEvaluable(verdict.CauseConfiguration, in.UIDMinProblem), true
 	}
 
@@ -66,25 +66,20 @@ func JudgeEV01(in Inventory) verdict.Judgement {
 
 	sort.Ints(uids)
 
-	var shared []string
+	var shared []catalog.Message
 
 	for _, uid := range uids {
-		shared = append(shared, fmt.Sprintf("UID %d (%s)", uid, strings.Join(byUID[uid], ", ")))
+		shared = append(shared, catalog.Says("opacc1.uid_shared_by", "uid", uid, "accounts", byUID[uid]))
 	}
 
 	if len(shared) > 0 {
-		return verdict.Judgement{
-			Status: verdict.NonCompliant,
-			Reason: "UIDs shared by more than one account: " + strings.Join(shared, "; "),
-		}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc1.ev01.shared_uids", "uids", shared))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d accounts, %d with UID >= %d (P-10), all UIDs unique", len(in.Records), len(in.people()), in.UIDMin),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev01.unique",
+		"accounts", len(in.Records), "people", len(in.people()), "uid_min", in.UIDMin))
 }
 
-func notEvaluable(cause verdict.Cause, reason string) verdict.Judgement {
-	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: cause, Reason: reason}
+func notEvaluable(cause verdict.Cause, m catalog.Message) verdict.Judgement {
+	return passes.Gap(cause, m)
 }

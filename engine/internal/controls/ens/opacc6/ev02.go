@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -61,7 +62,7 @@ func JudgeEV02(in EV02Input) map[string]verdict.Judgement {
 func ev02Gap(in EV02Input) (verdict.Judgement, bool) {
 
 	if in.ZonesProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-02: "+in.ZonesProblem), true
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_02_a", "a", in.ZonesProblem)), true
 	}
 	if gap, found := in.Settings.Gap(); found {
 		return gap, true
@@ -148,19 +149,19 @@ func judgeZone(req string, in EV02Input) verdict.Judgement {
 
 	if len(failing) > 0 {
 		sort.Strings(failing)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", failing))
 	}
 
 	if len(unknown) > 0 {
 		sort.Strings(unknown)
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
 	}
 
 	if len(in.Logins) == 0 && !in.Log.Reaches {
-		return passes.NotEvaluable(verdict.CauseCollection, "logins cannot be seen: "+in.Log.Detail)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.logins_cannot_be_seen_a", "a", in.Log.Detail))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d logins and %d channels examined, two factors wherever %s requires them", len(in.Logins), len(channels), req)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_logins_and_b_channels_examined_two_fac", "a", len(in.Logins), "b", len(channels), "c", req))
 }
 
 func accesses(logins []source.Login, zones Zones, sshd SSHD, pam PAM) []access {

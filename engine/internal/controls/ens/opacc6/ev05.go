@@ -3,9 +3,9 @@ package opacc6
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc1"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
@@ -36,7 +36,7 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 		return gap
 	}
 	if in.MaxAgeProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-04: "+in.MaxAgeProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_04_a", "a", in.MaxAgeProblem))
 	}
 
 	var failing, unknown []string
@@ -81,17 +81,14 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "older than P-04 (" + strconv.Itoa(in.MaxAge) + " days): " + strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.older_than_p_04_a_days_b", "a", strconv.Itoa(in.MaxAge), "b", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", unknown))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d accounts that can log in, every credential changed within %d days and set to expire within them", examined, in.MaxAge),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_accounts_that_can_log_in_every_credent", "a", examined, "b", in.MaxAge))
 }
 
 func passwordAge(a fact.IdentityRecord, today time.Time, maxAge int) (failing, unknown []string) {

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -27,7 +28,7 @@ func TestJudgeEV01(t *testing.T) {
 	root := account("root", 0, "locked", 0)
 
 	badP10 := inventory(root)
-	badP10.UIDMinProblem = "P-10: \"many\" is not a number"
+	badP10.UIDMinProblem = catalog.Says("param.invalid", "param", "P-10", "error", `"many" is not a number`)
 
 	incomplete := inventory(root)
 	incomplete.Current = identitySnapshot("cur", 3)

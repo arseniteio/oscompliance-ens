@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -64,10 +65,10 @@ type EV06Input struct {
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
 	if in.NoticesProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, RegisterParam+" (register of compromised and departed accounts): "+in.NoticesProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.a_register_of_compromised_and_departed_a", "a", RegisterParam, "b", in.NoticesProblem))
 	}
 	if in.MaxHoursProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-06: "+in.MaxHoursProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_06_a", "a", in.MaxHoursProblem))
 	}
 
 	limit := time.Duration(in.MaxHours) * time.Hour
@@ -118,16 +119,16 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 
 	if len(late) > 0 {
 		sort.Strings(late)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("not disabled within %d hours: %s", in.MaxHours, strings.Join(late, "; "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.not_disabled_within_a_hours_b", "a", in.MaxHours, "b", strings.Join(late, "; ")))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
 	}
 
 	if len(onTime) == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no notice in the register for an account of this machine"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_notice_in_the_register_for_an_account"))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("disabled within %d hours of the notice: %s", in.MaxHours, strings.Join(onTime, "; "))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.disabled_within_a_hours_of_the_notice_b", "a", in.MaxHours, "b", strings.Join(onTime, "; ")))
 }

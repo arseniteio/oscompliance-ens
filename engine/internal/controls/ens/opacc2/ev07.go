@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -58,20 +59,16 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 	}
 
 	if len(findings) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(findings, ". ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.a", "a", findings))
 	}
 
 	if privileged > 0 && in.AuthorizedProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration,
-			fmt.Sprintf("%d SUID/SGID files and P-10 cannot be used: %s", privileged, in.AuthorizedProblem))
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a_suid_sgid_files_and_p_10_cannot_be_use", "a", privileged, "b", in.AuthorizedProblem))
 	}
 
-	if partial := passes.Partial(*in.Sweep.Snapshot); partial != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, "nothing found, but "+partial)
+	if partial := passes.Partial(*in.Sweep.Snapshot); !partial.IsZero() {
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.nothing_found_but_a", "a", partial))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d SUID/SGID files, all in P-10; no file without owner", privileged),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_suid_sgid_files_all_in_p_10_no_file_wi", "a", privileged))
 }

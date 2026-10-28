@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -43,7 +44,7 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 		return gap
 	}
 	if in.MaxAttemptsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-05: "+in.MaxAttemptsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_05_a", "a", in.MaxAttemptsProblem))
 	}
 
 	paths, unknown := passwordPaths(in.Settings, in.PAM)
@@ -70,21 +71,18 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", unknown))
 	}
 
 	if len(judged) == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no login path accepts passwords"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_login_path_accepts_passwords"))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%s lock after at most %d failed attempts until unlocked by an administrator", strings.Join(judged, ", "), in.MaxAttempts),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_lock_after_at_most_b_failed_attempts_u", "a", strings.Join(judged, ", "), "b", in.MaxAttempts))
 }
 
 func passwordPaths(settings Settings, pam PAM) (paths, unknown []string) {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -54,14 +55,14 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 
 	if len(gaps) > 0 {
 		sort.Strings(gaps)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(gaps, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.a", "a", gaps))
 	}
 
 	if len(in.Passes) < 2 {
-		return passes.NotEvaluable(verdict.CauseCollection, "continuity needs two reads of the logs in the window")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc5.continuity_needs_two_reads_of_the_logs_i"))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d reads of the logs, no file lost, truncated or rotated without a trace", len(in.Passes))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a_reads_of_the_logs_no_file_lost_truncat", "a", len(in.Passes)))
 }
 
 func newest(t time.Time, count int) string {

@@ -1,10 +1,9 @@
 package opacc1
 
 import (
-	"fmt"
 	"sort"
-	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -96,34 +95,28 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 	received := len(in.Records)
 
 	if in.Previous == nil {
-		return verdict.Judgement{
-			Status: verdict.Compliant,
-			Reason: fmt.Sprintf("baseline: first complete pass, %d accounts", received),
-		}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev02.baseline", "accounts", received))
 	}
 
 	changes := DiffIdentities(in.PreviousRecords, in.Records)
 
-	var parts []string
+	var parts []catalog.Message
 
 	if len(changes.Created) > 0 {
-		parts = append(parts, "created: "+strings.Join(changes.Created, ", "))
+		parts = append(parts, catalog.Says("opacc1.ev02.created", "accounts", changes.Created))
 	}
 	if len(changes.Deleted) > 0 {
-		parts = append(parts, "deleted: "+strings.Join(changes.Deleted, ", "))
+		parts = append(parts, catalog.Says("opacc1.ev02.deleted", "accounts", changes.Deleted))
 	}
 	if len(changes.Modified) > 0 {
-		parts = append(parts, "modified: "+strings.Join(changes.Modified, ", "))
+		parts = append(parts, catalog.Says("opacc1.ev02.modified", "accounts", changes.Modified))
 	}
 
 	if len(parts) == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no changes since " + in.Previous.RunID}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev02.unchanged", "run", in.Previous.RunID))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: "since " + in.Previous.RunID + ": " + strings.Join(parts, "; "),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev02.changes", "run", in.Previous.RunID, "changes", parts))
 }
 
 func identityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (verdict.Judgement, bool) {

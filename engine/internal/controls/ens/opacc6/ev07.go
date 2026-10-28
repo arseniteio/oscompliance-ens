@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -24,7 +25,7 @@ type EV07Input struct {
 func JudgeEV07(in EV07Input) verdict.Judgement {
 
 	if in.ChannelsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-07: "+in.ChannelsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_07_a", "a", in.ChannelsProblem))
 	}
 
 	authorized := map[string]bool{}
@@ -54,14 +55,14 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 			list = append(list, fmt.Sprintf("%s (%d)", k, n))
 		}
 		sort.Strings(list)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "remote logins through channels not in P-07: " + strings.Join(list, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.remote_logins_through_channels_not_in_p", "a", list))
 	}
 
 	if len(used) == 0 {
 		if !in.Log.Reaches {
-			return passes.NotEvaluable(verdict.CauseCollection, "remote logins cannot be seen: "+in.Log.Detail)
+			return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.remote_logins_cannot_be_seen_a", "a", in.Log.Detail))
 		}
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no remote login in the window"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_remote_login_in_the_window"))
 	}
 
 	var list []string
@@ -70,5 +71,5 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 	}
 	sort.Strings(list)
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: "remote logins only through P-07 channels: " + strings.Join(list, ", ")}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.remote_logins_only_through_p_07_channels", "a", list))
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
-	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -57,7 +57,7 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 
 	if len(found) > 0 {
 		sort.Strings(found)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "rejections that reveal why: " + strings.Join(found, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.rejections_that_reveal_why_a", "a", found))
 	}
 
 	var silent []string
@@ -67,8 +67,8 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		}
 	}
 	if len(silent) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, "no rejection message ever logged by: "+strings.Join(silent, ", "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.no_rejection_message_ever_logged_by_a", "a", silent))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d rejection messages of the window reveal nothing", len(in.Messages))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a_rejection_messages_of_the_window_revea", "a", len(in.Messages)))
 }

@@ -1,10 +1,10 @@
 package opacc1
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -13,7 +13,7 @@ const DefaultUIDMin = 1000
 
 type EV04Input struct {
 	Accounts        []fact.IdentityRecord
-	AccountsProblem string
+	AccountsProblem catalog.Message
 
 	Declared    map[string]time.Time
 	DeclaredSet bool
@@ -21,25 +21,26 @@ type EV04Input struct {
 	DeadlineDays int
 	UIDMin       int
 
-	ConfigProblem string
+	ConfigProblem catalog.Message
 
 	Now time.Time
 }
 
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
-	if in.ConfigProblem != "" {
+	if !in.ConfigProblem.IsZero() {
 		return notEvaluable(verdict.CauseConfiguration, in.ConfigProblem)
 	}
 
-	if in.AccountsProblem != "" {
-		return notEvaluable(verdict.CauseCollection, "identity table: "+in.AccountsProblem)
+	if !in.AccountsProblem.IsZero() {
+		return notEvaluable(verdict.CauseCollection, in.AccountsProblem)
 	}
 
 	today := in.Now.UTC().Truncate(24 * time.Hour)
 
 	measured := 0
-	var overdue, unknown []string
+	var overdue []catalog.Message
+	var unknown []string
 
 	for _, account := range in.Accounts {
 
@@ -72,29 +73,22 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 			continue
 		}
 
-		overdue = append(overdue, fmt.Sprintf("%s (%d days)", account.AccountName, days))
+		overdue = append(overdue, catalog.Says("opacc1.account_days", "account", account.AccountName, "days", days))
 	}
 
 	if len(overdue) > 0 {
-		return verdict.Judgement{
-			Status: verdict.NonCompliant,
-			Reason: fmt.Sprintf("enabled more than %d days (P-05) after leaving: %s", in.DeadlineDays, strings.Join(overdue, ", ")),
-		}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc1.ev04.overdue", "days", in.DeadlineDays, "accounts", overdue))
 	}
 
 	if len(unknown) > 0 {
-		return notEvaluable(verdict.CauseEvidence,
-			"past the deadline with a locked password, SSH keys unknown: "+strings.Join(unknown, ", "))
+		return notEvaluable(verdict.CauseEvidence, catalog.Says("opacc1.ev04.keys_unknown", "accounts", unknown))
 	}
 
 	if measured == 0 && !in.DeclaredSet {
-		return notEvaluable(verdict.CauseConfiguration, "no offboarding dates: P-09 is empty and no account has an expiry date")
+		return notEvaluable(verdict.CauseConfiguration, catalog.Says("opacc1.ev04.no_dates"))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d accounts with an offboarding date, none enabled past %d days (P-05)", measured, in.DeadlineDays),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev04.in_time", "accounts", measured, "days", in.DeadlineDays))
 }
 
 func offboardingDate(account fact.IdentityRecord, declared map[string]time.Time) (time.Time, bool) {

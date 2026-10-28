@@ -1,9 +1,7 @@
 package opacc1
 
 import (
-	"fmt"
-	"strings"
-
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
@@ -12,13 +10,13 @@ type EV07Input struct {
 
 	Authorized []string
 
-	AuthorizedProblem string
+	AuthorizedProblem catalog.Message
 }
 
 func JudgeEV07(in EV07Input) verdict.Judgement {
 
-	if in.AuthorizedProblem != "" {
-		return notEvaluable(verdict.CauseConfiguration, "P-07: "+in.AuthorizedProblem)
+	if !in.AuthorizedProblem.IsZero() {
+		return notEvaluable(verdict.CauseConfiguration, in.AuthorizedProblem)
 	}
 
 	if gap, found := inventoryGap(in.Inventory); found {
@@ -57,19 +55,12 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 	}
 
 	if len(missing) > 0 {
-		return verdict.Judgement{
-			Status: verdict.NonCompliant,
-			Reason: "active accounts not in P-07: " + strings.Join(missing, ", "),
-		}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc1.ev07.unlisted", "accounts", missing))
 	}
 
 	if len(unknown) > 0 {
-		return notEvaluable(verdict.CauseEvidence,
-			"accounts not in P-07 with a locked password and SSH keys unknown: "+strings.Join(unknown, ", "))
+		return notEvaluable(verdict.CauseEvidence, catalog.Says("opacc1.ev07.keys_unknown", "accounts", unknown))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d active accounts, all in P-07", active),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev07.listed", "accounts", active))
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -26,7 +27,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 		return gap
 	}
 	if in.RowsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-07: "+in.RowsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_07_a", "a", in.RowsProblem))
 	}
 
 	rows := map[string]channelRow{}
@@ -74,11 +75,11 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
 	}
 
 	reason := "no remote access channel listening"
@@ -89,7 +90,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 		reason += fmt.Sprintf("; %d other listeners are not access channels", len(other))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a", "a", reason))
 }
 
 func enablement(c Channel) string {

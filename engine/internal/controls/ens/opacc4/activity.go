@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -70,7 +71,7 @@ func person(a source.AuditAccess, accounts Accounts) string {
 func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []string, problem, chain string) verdict.Judgement {
 
 	if problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-02: "+problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_02_a", "a", problem))
 	}
 
 	allowed := map[string]bool{}
@@ -98,16 +99,16 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 	}
 
 	if len(others) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "rights changed by accounts not in P-02: " + strings.Join(dedupe(others), "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.rights_changed_by_accounts_not_in_p_02_a", "a", dedupe(others)))
 	}
 	if len(unnamed) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, "rights changed by accounts that cannot be named: "+strings.Join(dedupe(unnamed), "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc4.rights_changed_by_accounts_that_cannot_b", "a", dedupe(unnamed)))
 	}
 	if chain != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, chain)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.a", "a", chain))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d rights changes, all by accounts of P-02", changes)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_rights_changes_all_by_accounts_of_p_02", "a", changes))
 }
 
 const ReviewParam = "P-08"
@@ -115,10 +116,10 @@ const ReviewParam = "P-08"
 func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem string, now time.Time) verdict.Judgement {
 
 	if daysProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-03: "+daysProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_03_a", "a", daysProblem))
 	}
 	if rowsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, ReviewParam+" (register of access rights reviews): "+rowsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.a_register_of_access_rights_reviews_b", "a", ReviewParam, "b", rowsProblem))
 	}
 
 	var newest time.Time
@@ -146,23 +147,23 @@ func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem strin
 
 	if newest.IsZero() {
 		if len(bad) > 0 {
-			return passes.NotEvaluable(verdict.CauseEvidence, "no usable review date: "+strings.Join(bad, ", "))
+			return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc4.no_usable_review_date_a", "a", bad))
 		}
-		return passes.NotEvaluable(verdict.CauseConfiguration, "the register has no review")
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.the_register_has_no_review"))
 	}
 
 	age := int(now.Sub(newest).Hours() / 24)
 	if age > maxDays {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("last review %d days ago, P-03 asks every %d: %s", age, maxDays, who)}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.last_review_a_days_ago_p_03_asks_every_b", "a", age, "b", maxDays, "c", who))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("last review %d days ago (P-03 %d): %s", age, maxDays, who)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.last_review_a_days_ago_p_03_b_c", "a", age, "b", maxDays, "c", who))
 }
 
 func JudgeEV06(logins []source.Login, authorised []string, problem string, log passes.AuthLog) verdict.Judgement {
 
 	if problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-05: "+problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_05_a", "a", problem))
 	}
 
 	allowed := map[string]bool{}
@@ -185,16 +186,16 @@ func JudgeEV06(logins []source.Login, authorised []string, problem string, log p
 	}
 
 	if len(others) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "remote logins by accounts not in P-05: " + strings.Join(dedupe(others), "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.remote_logins_by_accounts_not_in_p_05_a", "a", dedupe(others)))
 	}
 	if remote == 0 && !log.Reaches {
-		return passes.NotEvaluable(verdict.CauseCollection, "remote logins cannot be seen: "+log.Detail)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.remote_logins_cannot_be_seen_a", "a", log.Detail))
 	}
 	if remote == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no remote login in the window"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.no_remote_login_in_the_window"))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d remote logins, all by accounts of P-05", remote)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_remote_logins_all_by_accounts_of_p_05", "a", remote))
 }
 
 type Sensitive struct {
@@ -221,7 +222,7 @@ func ParseSensitive(rows []string) []Sensitive {
 func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sensitive, problem, chain string) verdict.Judgement {
 
 	if problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-07: "+problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_07_a", "a", problem))
 	}
 	if gap, found := accounts.gap(); found {
 		return gap
@@ -265,16 +266,16 @@ func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sen
 	}
 
 	if len(denied) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "accesses without need to know: " + strings.Join(dedupe(denied), "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.accesses_without_need_to_know_a", "a", dedupe(denied)))
 	}
 	if len(unnamed) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, "accesses by accounts that cannot be named: "+strings.Join(dedupe(unnamed), "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc4.accesses_by_accounts_that_cannot_be_name", "a", dedupe(unnamed)))
 	}
 	if chain != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, chain)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.a", "a", chain))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d accesses to need-to-know resources, all by their profiles", judged)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_accesses_to_need_to_know_resources_all", "a", judged))
 }
 
 func under(path, dir string) bool {

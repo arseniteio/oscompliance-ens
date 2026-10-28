@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
@@ -27,7 +28,7 @@ func TestJudgeEV07(t *testing.T) {
 		cause   verdict.Cause
 		reasons []string
 	}{
-		{"P-07 not set", EV07Input{AuthorizedProblem: "not set", Inventory: inventory(root)}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-07: not set"}},
+		{"P-07 not set", EV07Input{AuthorizedProblem: catalog.Says("param.not_set", "param", "P-07"), Inventory: inventory(root)}, verdict.NotEvaluable, verdict.CauseConfiguration, []string{"P-07: not set"}},
 		{"no inventory", EV07Input{Authorized: []string{"jperez"}, Inventory: Inventory{UIDMin: DefaultUIDMin}}, verdict.NotEvaluable, verdict.CauseCollection, nil},
 		{"incomplete inventory", EV07Input{Authorized: []string{"jperez"}, Inventory: incomplete}, verdict.NotEvaluable, verdict.CauseCollection, nil},
 		{"unauthorized active account", EV07Input{Authorized: []string{"jperez"}, Inventory: inventory(root, jperez, mgarcia)}, verdict.NonCompliant, "", []string{"not in P-07: mgarcia"}},

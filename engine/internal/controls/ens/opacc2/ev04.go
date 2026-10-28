@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -26,19 +27,19 @@ type EV04Input struct {
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
 	if in.RowsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-08: "+in.RowsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.p_08_a", "a", in.RowsProblem))
 	}
 
 	s := in.ACLs.Snapshot
 	switch {
 	case s == nil:
-		return passes.NotEvaluable(verdict.CauseCollection, "no acl_snapshot in the window")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.no_acl_snapshot_in_the_window"))
 	case s.Status == fact.SourceAbsent:
-		return passes.NotEvaluable(verdict.CauseCollection, "the group configuration carries no P-08 paths for this machine")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.the_group_configuration_carries_no_p_08"))
 	case s.Status != fact.SourceRead:
-		return passes.NotEvaluable(verdict.CauseCollection, s.Config+" unreadable: "+s.Error)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.a_unreadable_b", "a", s.Config, "b", s.Error))
 	case len(in.ACLs.Records) < s.RecordsEmitted:
-		return passes.NotEvaluable(verdict.CauseCollection, fmt.Sprintf("ACL read %s incomplete: %d of %d acl_record received", s.RunID, len(in.ACLs.Records), s.RecordsEmitted))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.acl_read_a_incomplete_b_of_c_acl_record", "a", s.RunID, "b", len(in.ACLs.Records), "c", s.RecordsEmitted))
 	}
 
 	byPath := map[string]fact.ACLRecord{}
@@ -98,13 +99,13 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	}
 
 	if len(deviations) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "rights differ from P-08: " + strings.Join(deviations, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.rights_differ_from_p_08_a", "a", deviations))
 	}
 	if len(gaps) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(gaps, "; "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.a", "a", gaps))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d resources with the rights P-08 declares", verified)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_resources_with_the_rights_p_08_declare", "a", verified))
 }
 
 func aclDifference(declared string, applied []string) string {

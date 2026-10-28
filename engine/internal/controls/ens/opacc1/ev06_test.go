@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -46,10 +47,10 @@ func TestJudgeEV06(t *testing.T) {
 	incomplete.Groups.RecordsEmitted = &two
 
 	noAccounts := base(group("sudo", "ubuntu"))
-	noAccounts.Accounts, noAccounts.AccountsProblem = nil, "no complete identity pass"
+	noAccounts.Accounts, noAccounts.AccountsProblem = nil, catalog.Says("opacc1.no_identity_pass_lookback")
 
 	badP11 := base()
-	badP11.ConfigProblem = "P-11: regex not supported"
+	badP11.ConfigProblem = catalog.Says("param.invalid", "param", "P-11", "error", "regex not supported")
 
 	silent := base(group("sudo", "jperez.adm"))
 	silent.AuthSeen = false

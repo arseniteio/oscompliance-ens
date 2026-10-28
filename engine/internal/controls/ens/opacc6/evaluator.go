@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"

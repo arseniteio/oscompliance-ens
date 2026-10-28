@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -23,7 +24,7 @@ type EV05Input struct {
 func JudgeEV05(in EV05Input) verdict.Judgement {
 
 	if in.MaxHoursProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-06: "+in.MaxHoursProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_06_a", "a", in.MaxHoursProblem))
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -81,16 +82,16 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 	}
 
 	if len(late) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("not disabled within %d hours: %s", in.MaxHours, strings.Join(late, "; "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.not_disabled_within_a_hours_b", "a", in.MaxHours, "b", strings.Join(late, "; ")))
 	}
 
 	if len(onTime) == 0 && pending == 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, "the services logged no compromise or end-of-relationship notice")
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.the_services_logged_no_compromise_or_end"))
 	}
 
 	reason := fmt.Sprintf("disabled within %d hours: %s", in.MaxHours, strings.Join(onTime, "; "))
 	if pending > 0 {
 		reason += fmt.Sprintf("; %d notices still within the deadline", pending)
 	}
-	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a", "a", reason))
 }

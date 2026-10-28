@@ -3,8 +3,8 @@ package opacc5
 import (
 	"fmt"
 	"sort"
-	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -23,7 +23,7 @@ type EV02Input struct {
 func JudgeEV02(in EV02Input) verdict.Judgement {
 
 	if in.MaxAttemptsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-03: "+in.MaxAttemptsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_03_a", "a", in.MaxAttemptsProblem))
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -56,14 +56,14 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.a", "a", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.a", "a", unknown))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: strings.Join(fine, "; ") + fmt.Sprintf("; no account failed more than %d times in a row", in.MaxAttempts)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.ab", "a", fine, "b", fmt.Sprintf("; no account failed more than %d times in a row", in.MaxAttempts)))
 }
 
 func longRuns(events []source.ServiceEvent, limit int) []string {

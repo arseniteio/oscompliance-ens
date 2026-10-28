@@ -3,6 +3,7 @@ package opacc6
 import (
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -28,19 +29,19 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 		return gap
 	}
 	if in.AllowedProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-11: "+in.AllowedProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_11_a", "a", in.AllowedProblem))
 	}
 
 	sshd := in.Settings.SSHD()
 
 	switch sshd.Status {
 	case fact.SourceAbsent:
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "sshd not installed: no authentication service shows anything"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.sshd_not_installed_no_authentication_ser"))
 	case fact.SourceRead:
 	case "":
-		return passes.NotEvaluable(verdict.CauseCollection, "the configuration read has no sshd -T")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.the_configuration_read_has_no_sshd_t"))
 	default:
-		return passes.NotEvaluable(verdict.CauseCollection, "sshd -T: "+sshd.Error)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.sshd_t_a", "a", sshd.Error))
 	}
 
 	exposures := []string{ExposureVersion}
@@ -73,8 +74,8 @@ func JudgeEV12(in EV12Input) verdict.Judgement {
 	}
 
 	if len(shown) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "shown before authenticating and not in P-11: " + strings.Join(shown, ", ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.shown_before_authenticating_and_not_in_p", "a", shown))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: "sshd shows only what P-11 allows: " + strings.Join(exposures, ", ")}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.sshd_shows_only_what_p_11_allows_a", "a", exposures))
 }

@@ -209,7 +209,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	judge("EV-08", []string{"logs", "events"}, func() evaluator.Result {
 		if mechanism != "" && mechanism != "R3" && mechanism != "R4" {
-			return evaluator.Result{Judgement: verdict.Judgement{Status: verdict.NotApplicable, Reason: "certificates are judged with R3 or R4; P-01 is " + mechanism}}
+			return evaluator.Result{Judgement: verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc5.certificates_are_judged_with_r3_or_r4_p", "a", mechanism))}
 		}
 		in := EV08Input{Services: services}
 		in.Rows, in.RowsProblem = listParam(policy, agent.ID, "P-07")
@@ -315,7 +315,7 @@ func reaching(services []Service) map[string]bool {
 }
 
 func notRead(err error) verdict.Judgement {
-	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: verdict.CauseCollection, Reason: err.Error()}
+	return verdict.Explain(verdict.NotEvaluable, verdict.CauseCollection, catalog.Says("opacc5.a", "a", err.Error()))
 }
 
 func listParam(policy params.Lister, agentID, id string) ([]string, string) {

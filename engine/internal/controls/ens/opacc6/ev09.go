@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -34,7 +35,7 @@ var undefinedAlias = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 func JudgeEV09(in EV09Input) verdict.Judgement {
 
 	if in.PointsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-08: "+in.PointsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_08_a", "a", in.PointsProblem))
 	}
 
 	listed := map[string]bool{}
@@ -84,14 +85,14 @@ func JudgeEV09(in EV09Input) verdict.Judgement {
 	}
 
 	if len(failing) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "no re-authentication at: " + strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.no_re_authentication_at_a", "a", failing))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", unknown))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: "re-authentication required at " + strings.Join(in.Points, ", ")}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.re_authentication_required_at_a", "a", in.Points))
 }
 
 func sudoFindings(s Sudoers) (findings []Finding, unknown []string) {

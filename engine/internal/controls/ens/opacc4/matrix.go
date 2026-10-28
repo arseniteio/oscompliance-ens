@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -91,11 +92,11 @@ type Sudoers struct {
 func (s Sudoers) gap() (verdict.Judgement, bool) {
 	switch {
 	case s.Snapshot == nil:
-		return passes.NotEvaluable(verdict.CauseCollection, "no sudoers_snapshot in the window"), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.no_sudoers_snapshot_in_the_window")), true
 	case s.Snapshot.Status == fact.SourceUnreadable:
-		return passes.NotEvaluable(verdict.CauseCollection, "sudoers unreadable"), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.sudoers_unreadable")), true
 	case len(s.Grants) < s.Snapshot.RecordsEmitted:
-		return passes.NotEvaluable(verdict.CauseCollection, fmt.Sprintf("sudoers read incomplete: %d of %d sudo_grant received", len(s.Grants), s.Snapshot.RecordsEmitted)), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.sudoers_read_incomplete_a_of_b_sudo_gran", "a", len(s.Grants), "b", s.Snapshot.RecordsEmitted)), true
 	}
 	return verdict.Judgement{}, false
 }
@@ -104,7 +105,7 @@ func (s Sudoers) blindSpots() (verdict.Judgement, bool) {
 	if s.Snapshot == nil || s.Snapshot.BlindSpots == 0 {
 		return verdict.Judgement{}, false
 	}
-	return passes.NotEvaluable(verdict.CauseCollection, fmt.Sprintf("sudoers has %d grants to unnamed subjects: %s", s.Snapshot.BlindSpots, strings.Join(s.Snapshot.BlindSpotReasons, "; "))), true
+	return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.sudoers_has_a_grants_to_unnamed_subjects", "a", s.Snapshot.BlindSpots, "b", strings.Join(s.Snapshot.BlindSpotReasons, "; "))), true
 }
 
 func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
@@ -113,10 +114,10 @@ func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 		return gap
 	}
 	if problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01: "+problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_01_a", "a", problem))
 	}
 	if sudoers.Snapshot.Status == fact.SourceAbsent {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "sudo is not installed: no privilege is granted through it"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.sudo_is_not_installed_no_privilege_is_gr"))
 	}
 
 	byKey := map[string]Row{}
@@ -152,16 +153,16 @@ func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 
 	if len(unauthorised) > 0 {
 		sort.Strings(unauthorised)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "privileges beyond P-01: " + strings.Join(unauthorised, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.privileges_beyond_p_01_a", "a", unauthorised))
 	}
 	if len(gaps) > 0 {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01: "+strings.Join(gaps, "; "))
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_01_a", "a", gaps))
 	}
 	if gap, blind := sudoers.blindSpots(); blind {
 		return gap
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d sudo grants, all as P-01 authorises", checked)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_sudo_grants_all_as_p_01_authorises", "a", checked))
 }
 
 type Accounts struct {
@@ -228,7 +229,7 @@ func JudgeEV03(accounts Accounts, groups []string, rows []Row, problem string) v
 		return gap
 	}
 	if problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.a", "a", problem))
 	}
 
 	roles := Roles(rows)
@@ -246,10 +247,10 @@ func JudgeEV03(accounts Accounts, groups []string, rows []Row, problem string) v
 
 	if len(undeclared) > 0 {
 		sort.Strings(undeclared)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "members of privileged groups that are not a P-01 role: " + strings.Join(undeclared, ", ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.members_of_privileged_groups_that_are_no", "a", undeclared))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d memberships of %s, all P-01 roles", members, strings.Join(groups, ", "))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_memberships_of_b_all_p_01_roles", "a", members, "b", strings.Join(groups, ", ")))
 }
 
 var runasOrTag = regexp.MustCompile(`\([^)]*\)|\b[A-Z_]+:`)
@@ -287,7 +288,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 		return gap
 	}
 	if in.Problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01: "+in.Problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_01_a", "a", in.Problem))
 	}
 
 	roles := Roles(in.Rows)
@@ -316,7 +317,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 
 	if len(excessive) > 0 {
 		sort.Strings(excessive)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "privileges above the minimum not authorised in P-01: " + strings.Join(excessive, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.privileges_above_the_minimum_not_authori", "a", excessive))
 	}
 
 	if gap, blind := in.Sudoers.blindSpots(); blind {
@@ -324,9 +325,9 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	}
 
 	if len(declared) > 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "broad privileges, all P-01 roles: " + strings.Join(declared, "; ")}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.broad_privileges_all_p_01_roles_a", "a", declared))
 	}
-	return verdict.Judgement{Status: verdict.Compliant, Reason: "no unrestricted sudo grant and no system account with a login shell"}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.no_unrestricted_sudo_grant_and_no_system"))
 }
 
 func loginShell(shell string) bool {

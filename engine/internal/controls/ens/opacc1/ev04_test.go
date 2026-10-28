@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -81,10 +82,10 @@ func TestJudgeEV04(t *testing.T) {
 	nologin.Shell = "/usr/sbin/nologin"
 
 	badConfig := base()
-	badConfig.ConfigProblem = "P-05: not set"
+	badConfig.ConfigProblem = catalog.Says("param.not_set", "param", "P-05")
 
 	noIdentity := base()
-	noIdentity.Accounts, noIdentity.AccountsProblem = nil, "no complete identity pass"
+	noIdentity.Accounts, noIdentity.AccountsProblem = nil, catalog.Says("opacc1.no_identity_pass_lookback")
 
 	cases := []struct {
 		name    string

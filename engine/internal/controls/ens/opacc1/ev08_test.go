@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -26,10 +27,10 @@ func TestJudgeEV08(t *testing.T) {
 	}
 
 	badConfig := base()
-	badConfig.ConfigProblem = "P-06: not set"
+	badConfig.ConfigProblem = catalog.Says("param.not_set", "param", "P-06")
 
 	noIdentity := base()
-	noIdentity.IdentityProblem = "no complete identity pass"
+	noIdentity.IdentityProblem = catalog.Says("opacc1.no_identity_pass_window")
 
 	declared := base(deletedAccount("ana", "2026-10-01", "2026-10-20", false, ""))
 	declared.Declared["ana"] = day("2026-09-01")

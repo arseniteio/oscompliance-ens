@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -22,7 +23,7 @@ type EV04Input struct {
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
 	if in.MaxAgeProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-05: "+in.MaxAgeProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_05_a", "a", in.MaxAgeProblem))
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -67,15 +68,15 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	}
 
 	if len(old) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("credentials older than %d days: %s", in.MaxAge, strings.Join(old, ", "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.credentials_older_than_a_days_b", "a", in.MaxAge, "b", strings.Join(old, ", ")))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, "no credential change recorded yet for: "+strings.Join(unknown, ", "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.no_credential_change_recorded_yet_for_a", "a", unknown))
 	}
 	if active == 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, "no account of the services logged in or changed its credential")
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.no_account_of_the_services_logged_in_or"))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d accounts, every credential changed within %d days", active, in.MaxAge)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a_accounts_every_credential_changed_with", "a", active, "b", in.MaxAge))
 }

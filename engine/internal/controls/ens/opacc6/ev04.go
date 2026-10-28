@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -25,7 +26,7 @@ type EV04Input struct {
 func JudgeEV04(in EV04Input) verdict.Judgement {
 
 	if in.MaxAttemptsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-05: "+in.MaxAttemptsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_05_a", "a", in.MaxAttemptsProblem))
 	}
 
 	byAccount := map[string][]time.Time{}
@@ -53,20 +54,17 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 
 	if len(offenders) > 0 {
 		sort.Strings(offenders)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("more than %d failed attempts without a lockout: %s", in.MaxAttempts, strings.Join(offenders, ", "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.more_than_a_failed_attempts_without_a_lo", "a", in.MaxAttempts, "b", strings.Join(offenders, ", ")))
 	}
 
 	if len(in.Failures) == 0 {
 		if !in.Log.Reaches {
-			return passes.NotEvaluable(verdict.CauseCollection, "failed attempts cannot be seen: "+in.Log.Detail)
+			return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.failed_attempts_cannot_be_seen_a", "a", in.Log.Detail))
 		}
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no failed attempt in the window"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.no_failed_attempt_in_the_window"))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d failed attempts on %d accounts, at most %d within %s or stopped by a lockout", len(in.Failures), len(byAccount), worst, attemptInterval),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_failed_attempts_on_b_accounts_at_most", "a", len(in.Failures), "b", len(byAccount), "c", worst, "d", attemptInterval))
 }
 
 func maxWithin(times []time.Time, span time.Duration) int {

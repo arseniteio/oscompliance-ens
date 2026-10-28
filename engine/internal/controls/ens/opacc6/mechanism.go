@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -45,7 +46,7 @@ func MechanismDecisions(mechanism, problem string) map[string]verdict.Judgement 
 	for id, mechanisms := range mechanismRequirements {
 
 		if problem != "" {
-			decisions[id] = passes.NotEvaluable(verdict.CauseConfiguration, "P-01 "+problem+": the mechanism is unknown")
+			decisions[id] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_01_a_the_mechanism_is_unknown", "a", problem))
 			continue
 		}
 
@@ -57,10 +58,7 @@ func MechanismDecisions(mechanism, problem string) map[string]verdict.Judgement 
 		}
 
 		if !applies {
-			decisions[id] = verdict.Judgement{
-				Status: verdict.NotApplicable,
-				Reason: "applies with " + strings.Join(mechanisms, " or ") + "; P-01 is " + mechanism,
-			}
+			decisions[id] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc6.applies_with_a_p_01_is_b", "a", mechanisms, "b", mechanism))
 		}
 	}
 

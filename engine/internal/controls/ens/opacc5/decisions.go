@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/aggregate"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -72,7 +73,7 @@ func Decisions(in DecisionInput, requirements []string) map[string]verdict.Judge
 	if in.Exclusion != nil && len(in.Services) == 0 {
 		reason := "excluded by the Statement of Applicability: " + in.Exclusion.Reference
 		for _, r := range requirements {
-			d[r] = verdict.Judgement{Status: verdict.NotApplicable, Reason: reason}
+			d[r] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc5.a", "a", reason))
 		}
 		return d
 	}
@@ -80,11 +81,11 @@ func Decisions(in DecisionInput, requirements []string) map[string]verdict.Judge
 	for req, m := range mechanismRequirements {
 		switch {
 		case in.MechanismProblem != "":
-			d[req] = passes.NotEvaluable(verdict.CauseConfiguration, "P-01 "+in.MechanismProblem+": the mechanism is unknown")
+			d[req] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_01_a_the_mechanism_is_unknown", "a", in.MechanismProblem))
 		case m != in.Mechanism:
-			d[req] = verdict.Judgement{Status: verdict.NotApplicable, Reason: "applies with " + m + "; P-01 is " + in.Mechanism}
+			d[req] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("opacc5.applies_with_a_p_01_is_b", "a", m, "b", in.Mechanism))
 		case m == "R1" && in.Level != "" && in.Level != "BAJO":
-			d[req] = verdict.Judgement{Status: verdict.NonCompliant, Reason: "P-01 is R1, a password alone, which the ENS only allows at BAJO; the level is " + in.Level}
+			d[req] = verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.p_01_is_r1_a_password_alone_which_the_en", "a", in.Level))
 		}
 	}
 
@@ -104,14 +105,14 @@ func Decisions(in DecisionInput, requirements []string) map[string]verdict.Judge
 	}
 
 	if in.ProcedureProblem != "" && !failed("EV-02", "EV-03") {
-		d["op.acc.5.8"] = passes.NotEvaluable(verdict.CauseConfiguration, "P-04 (reactivation procedure): "+in.ProcedureProblem)
+		d["op.acc.5.8"] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_04_reactivation_procedure_a", "a", in.ProcedureProblem))
 	}
 
 	switch {
 	case in.LastAccessProblem != "":
-		d["op.acc.5.r5.2"] = passes.NotEvaluable(verdict.CauseConfiguration, "P-09: "+in.LastAccessProblem)
+		d["op.acc.5.r5.2"] = passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_09_a", "a", in.LastAccessProblem))
 	case !in.LastAccess:
-		d["op.acc.5.r5.2"] = verdict.Judgement{Status: verdict.NonCompliant, Reason: "P-09 says the service does not tell users of their last access"}
+		d["op.acc.5.r5.2"] = verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.p_09_says_the_service_does_not_tell_user"))
 	}
 
 	return d
@@ -133,9 +134,9 @@ func complexity(in DecisionInput) (verdict.Judgement, bool) {
 
 	switch {
 	case len(weak) > 0:
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "password complexity off or no minimum length: " + strings.Join(weak, ", ")}, true
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.password_complexity_off_or_no_minimum_le", "a", weak)), true
 	case len(missing) > 0:
-		return passes.NotEvaluable(verdict.CauseEvidence, "no password policy with complexity and a minimum length declared by: "+strings.Join(missing, ", ")), true
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.no_password_policy_with_complexity_and_a", "a", missing)), true
 	}
 
 	return verdict.Judgement{}, false

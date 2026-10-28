@@ -3,6 +3,7 @@ package opacc6
 import (
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -22,7 +23,7 @@ var quietLogLevels = map[string]bool{"QUIET": true, "FATAL": true, "ERROR": true
 func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	if in.SourcesProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-03: "+in.SourcesProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_03_a", "a", in.SourcesProblem))
 	}
 
 	local := false
@@ -32,7 +33,7 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		}
 	}
 	if !local {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "P-03 lists no local source; " + strings.Join(in.Sources, ", ") + " are measured on their own servers"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.p_03_lists_no_local_source_a_are_measure", "a", in.Sources))
 	}
 
 	var gaps []string
@@ -43,7 +44,7 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	if gap, found := in.Settings.Gap(); found {
 		if len(gaps) > 0 {
-			return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(gaps, "; ")}
+			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", gaps))
 		}
 		return gap
 	}
@@ -58,17 +59,17 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 		}
 	default:
 		if len(gaps) == 0 {
-			return passes.NotEvaluable(verdict.CauseCollection, "sshd -T not read: "+sshd.Error)
+			return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.sshd_t_not_read_a", "a", sshd.Error))
 		}
 	}
 
 	if len(gaps) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(gaps, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.a", "a", gaps))
 	}
 
 	if !in.Log.Known {
-		return passes.NotEvaluable(verdict.CauseCollection, in.Log.Detail)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.a", "a", in.Log.Detail))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: "the authentication log reaches Wazuh (" + in.Log.Detail + ") and sshd logs logins"}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.the_authentication_log_reaches_wazuh_a_a", "a", in.Log.Detail))
 }

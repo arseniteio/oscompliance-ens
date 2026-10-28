@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -31,17 +32,17 @@ type Input struct {
 func JudgePair(id string, in Input) verdict.Judgement {
 
 	if in.Problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, in.Problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
 	}
 
 	want := requirementPair[id]
 	pair, ok := declared(in.Pairs, want)
 	if !ok {
-		return passes.NotEvaluable(verdict.CauseConfiguration, fmt.Sprintf("P-02 does not declare the pair %s | %s", want.Left, want.Right))
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.p_02_does_not_declare_the_pair_a_b", "a", want.Left, "b", want.Right))
 	}
 
 	if offenders := offenders(in, pair); len(offenders) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "incompatible functions: " + strings.Join(offenders, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc3.incompatible_functions_a", "a", offenders))
 	}
 
 	return silence(in, fmt.Sprintf("no account holds %s and %s", pair.Left, pair.Right))
@@ -50,13 +51,13 @@ func JudgePair(id string, in Input) verdict.Judgement {
 func JudgeTasks(in Input) verdict.Judgement {
 
 	if in.Problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, in.Problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
 	}
 	if len(in.TaskProblems) > 0 {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-04: "+strings.Join(in.TaskProblems, "; "))
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.p_04_a", "a", in.TaskProblems))
 	}
 	if len(in.Tasks) == 0 {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-04 declares no critical task")
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.p_04_declares_no_critical_task"))
 	}
 
 	var short, fine []string
@@ -79,11 +80,11 @@ func JudgeTasks(in Input) verdict.Judgement {
 	}
 
 	if len(short) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "critical tasks without enough people: " + strings.Join(short, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc3.critical_tasks_without_enough_people_a", "a", short))
 	}
 
 	if len(fine) > 0 && in.Chain == "" {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "critical tasks run by enough people: " + strings.Join(fine, "; ")}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.critical_tasks_run_by_enough_people_a", "a", fine))
 	}
 
 	return silence(in, "no critical task run on this machine in the window")
@@ -92,12 +93,12 @@ func JudgeTasks(in Input) verdict.Judgement {
 func JudgeAuditors(in Input) verdict.Judgement {
 
 	if in.Problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, in.Problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
 	}
 
 	pair, wildcard := declared(in.Pairs, requirementPair["EV-05"])
 	if !wildcard && len(in.Auditors) == 0 {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "neither P-02 declares auditoria | * nor P-05 lists audit accounts")
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.neither_p_02_declares_auditoria_nor_p_05"))
 	}
 
 	var found []string
@@ -125,7 +126,7 @@ func JudgeAuditors(in Input) verdict.Judgement {
 	}
 
 	if len(found) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(found, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc3.a", "a", found))
 	}
 
 	return silence(in, "audit accounts hold no other function")
@@ -134,7 +135,7 @@ func JudgeAuditors(in Input) verdict.Judgement {
 func JudgeInventory(in Input) verdict.Judgement {
 
 	if in.Problem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, in.Problem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc3.a", "a", in.Problem))
 	}
 
 	var accounts []string
@@ -146,7 +147,7 @@ func JudgeInventory(in Input) verdict.Judgement {
 	sort.Strings(accounts)
 
 	if in.Fleet.Unresolved[in.AgentID] > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, fmt.Sprintf("%d actions of accounts that could not be named", in.Fleet.Unresolved[in.AgentID]))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc3.a_actions_of_accounts_that_could_not_be", "a", in.Fleet.Unresolved[in.AgentID]))
 	}
 
 	if len(accounts) == 0 {
@@ -154,17 +155,17 @@ func JudgeInventory(in Input) verdict.Judgement {
 	}
 
 	if in.Chain != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, in.Chain)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc3.a", "a", in.Chain))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d accounts acted: %s", len(accounts), strings.Join(accounts, "; "))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.a_accounts_acted_b", "a", len(accounts), "b", strings.Join(accounts, "; ")))
 }
 
 func JudgeSecurity(in Input) verdict.Judgement {
 
 	if accesses := in.Fleet.Security[in.AgentID]; len(accesses) > 0 {
 		sort.Strings(accesses)
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "accesses to security information: " + strings.Join(accesses, "; ")}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.accesses_to_security_information_a", "a", accesses))
 	}
 
 	return silence(in, "no access to security information in the window")
@@ -193,9 +194,9 @@ func offenders(in Input, pair Pair) []string {
 
 func silence(in Input, reason string) verdict.Judgement {
 	if in.Chain != "" {
-		return passes.NotEvaluable(verdict.CauseCollection, reason+", but "+in.Chain)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc3.a_but_b", "a", reason, "b", in.Chain))
 	}
-	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc3.a", "a", reason))
 }
 
 func Chain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, functions []Function) string {

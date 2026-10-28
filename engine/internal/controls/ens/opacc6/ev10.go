@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc1"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -26,7 +27,7 @@ func JudgeEV10(in EV10Input) verdict.Judgement {
 		return gap
 	}
 	if in.MaxIdleProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-09: "+in.MaxIdleProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc6.p_09_a", "a", in.MaxIdleProblem))
 	}
 
 	var idle, unknown []string
@@ -61,14 +62,14 @@ func JudgeEV10(in EV10Input) verdict.Judgement {
 	}
 
 	if len(idle) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("enabled and unused for more than %d days: %s", in.MaxIdle, strings.Join(idle, ", "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc6.enabled_and_unused_for_more_than_a_days", "a", in.MaxIdle, "b", strings.Join(idle, ", ")))
 	}
 
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc6.a", "a", unknown))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d accounts that can log in, all used within %d days", examined, in.MaxIdle)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.a_accounts_that_can_log_in_all_used_with", "a", examined, "b", in.MaxIdle))
 }
 
 func lastUse(lastLogin string, alert time.Time) time.Time {

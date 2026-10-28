@@ -1,10 +1,11 @@
 package opacc6
 
 import (
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"

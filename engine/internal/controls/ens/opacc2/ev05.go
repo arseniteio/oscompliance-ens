@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -35,7 +36,7 @@ type EV05Input struct {
 func JudgeEV05(in EV05Input) verdict.Judgement {
 
 	if in.ConfigProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, in.ConfigProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.a", "a", in.ConfigProblem))
 	}
 
 	if gap, found := passes.IdentityGap(in.Accounts.Identity, in.Accounts.IdentityRecords); found {
@@ -49,12 +50,11 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 
 	switch {
 	case sudoers == nil:
-		return passes.NotEvaluable(verdict.CauseCollection, "no sudoers_snapshot in the window")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.no_sudoers_snapshot_in_the_window"))
 	case sudoers.Status == fact.SourceUnreadable:
-		return passes.NotEvaluable(verdict.CauseCollection, "sudoers unreadable")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.sudoers_unreadable"))
 	case len(in.Sudoers.Grants) < sudoers.RecordsEmitted:
-		return passes.NotEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("sudoers read %s incomplete: %d of %d sudo_grant received", sudoers.RunID, len(in.Sudoers.Grants), sudoers.RecordsEmitted))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.sudoers_read_a_incomplete_b_of_c_sudo_gr", "a", sudoers.RunID, "b", len(in.Sudoers.Grants), "c", sudoers.RecordsEmitted))
 	}
 
 	privileged, unresolved := privilegedAccounts(indexAccounts(in.Accounts), in.Groups, in.Sudoers.Grants)
@@ -73,22 +73,18 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 
 	if len(undeclared) > 0 {
 		sort.Strings(undeclared)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "privileges not declared in P-09: " + strings.Join(undeclared, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.privileges_not_declared_in_p_09_a", "a", undeclared))
 	}
 
 	if sudoers.BlindSpots > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("sudoers has %d grants not attributable to named accounts: %s", sudoers.BlindSpots, strings.Join(sudoers.BlindSpotReasons, "; ")))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.sudoers_has_a_grants_not_attributable_to", "a", sudoers.BlindSpots, "b", strings.Join(sudoers.BlindSpotReasons, "; ")))
 	}
 	if len(unresolved) > 0 {
 		sort.Strings(unresolved)
-		return passes.NotEvaluable(verdict.CauseCollection, "sudoers names groups or uids that do not exist: "+strings.Join(unresolved, ", "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.sudoers_names_groups_or_uids_that_do_not", "a", unresolved))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d privileged accounts, all declared in P-09", len(privileged)),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_privileged_accounts_all_declared_in_p", "a", len(privileged)))
 }
 
 type accountIndex struct {

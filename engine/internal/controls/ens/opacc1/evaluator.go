@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -104,7 +106,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		ev07 := EV07Input{Inventory: inventory}
 		authorized, err := policy.ListColumn(agent.ID, "op.acc.1", "P-07", 0)
 		if err != nil {
-			ev07.AuthorizedProblem = err.Error()
+			ev07.AuthorizedProblem = passes.Param("P-07", err)
 		}
 		ev07.Authorized = authorized
 		write("EV-07", JudgeEV07(ev07), runID)
@@ -194,7 +196,7 @@ func loginInput(policy params.Lister, agentID, paramID string, authSeen bool, lo
 
 	matcher, err := policy.Matcher(agentID, "op.acc.1", paramID)
 	if err != nil {
-		in.ForbiddenProblem = err.Error()
+		in.ForbiddenProblem = passes.Param(paramID, err)
 	}
 	in.Forbidden = matcher
 
@@ -210,7 +212,7 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 	case errors.Is(err, params.ErrNotSet):
 		in.Privileged, in.PrivilegedDefault = DefaultPrivilegedGroups, true
 	case err != nil:
-		in.ConfigProblem = "P-11: " + err.Error()
+		in.ConfigProblem = passes.Param("P-11", err)
 	default:
 		in.Privileged = privileged
 	}
@@ -220,12 +222,12 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 	case errors.Is(err, params.ErrNotSet):
 
 	case err != nil:
-		in.ConfigProblem = "P-12: " + err.Error()
+		in.ConfigProblem = passes.Param("P-12", err)
 	default:
 		in.Suffix = suffix[0]
 	}
 
-	if records, problem := completeIdentity(ev02); problem != "" {
+	if records, problem := completeIdentity(ev02); !problem.IsZero() {
 		in.AccountsProblem = problem
 	} else {
 		in.Accounts = identityNames(records)
@@ -248,19 +250,19 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 	return in, err
 }
 
-func completeIdentity(ev02 EV02Input) ([]fact.IdentityRecord, string) {
+func completeIdentity(ev02 EV02Input) ([]fact.IdentityRecord, catalog.Message) {
 
 	current := ev02.Current
 
 	if current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted {
-		return ev02.Records, ""
+		return ev02.Records, catalog.Message{}
 	}
 
 	if ev02.Previous != nil {
-		return ev02.PreviousRecords, ""
+		return ev02.PreviousRecords, catalog.Message{}
 	}
 
-	return nil, "no complete identity pass (EV-02) in the lookback"
+	return nil, catalog.Says("opacc1.no_identity_pass_lookback")
 }
 
 func inputEV04(policy params.Lister, agentID string, ev02 EV02Input, now time.Time) EV04Input {
@@ -276,11 +278,11 @@ func inputEV04(policy params.Lister, agentID string, ev02 EV02Input, now time.Ti
 
 	deadline, err := policy.Number(agentID, "op.acc.1", "P-05")
 	if err != nil {
-		problems = append(problems, "P-05: "+err.Error())
+		problems = append(problems, passes.Param("P-05", err))
 	}
 	in.DeadlineDays = int(deadline)
 
-	in.ConfigProblem = strings.Join(problems, "; ")
+	in.ConfigProblem = passes.Problems(problems)
 
 	return in
 }
@@ -294,10 +296,10 @@ func inputEV08(ctx context.Context, hist History, policy params.Lister, agent ve
 
 	retention, err := policy.Number(agent.ID, "op.acc.1", "P-06")
 	if err != nil {
-		problems = append(problems, "P-06: "+err.Error())
+		problems = append(problems, passes.Param("P-06", err))
 	}
 	in.RetentionDays = int(retention)
-	in.ConfigProblem = strings.Join(problems, "; ")
+	in.ConfigProblem = passes.Problems(problems)
 
 	known, err := hist.Load(ctx, agent.ID)
 	if err != nil {
@@ -308,7 +310,7 @@ func inputEV08(ctx context.Context, hist History, policy params.Lister, agent ve
 	complete := current != nil && readBoth(*current) && current.RecordsEmitted != nil && len(ev02.Records) >= *current.RecordsEmitted
 
 	if !complete {
-		in.IdentityProblem = "no complete current identity pass (EV-02) in the window"
+		in.IdentityProblem = catalog.Says("opacc1.no_identity_pass_window")
 	} else {
 		at, err := time.Parse(time.RFC3339, current.TS)
 		if err != nil {
@@ -339,15 +341,15 @@ type offboarding struct {
 	declared    map[string]time.Time
 	declaredSet bool
 	uidMin      int
-	problems    []string
+	problems    []catalog.Message
 }
 
 func offboardingParams(policy params.Lister, agentID string) offboarding {
 
 	off := offboarding{declared: map[string]time.Time{}}
 
-	var problem string
-	if off.uidMin, problem = uidMinParam(policy, agentID); problem != "" {
+	var problem catalog.Message
+	if off.uidMin, problem = uidMinParam(policy, agentID); !problem.IsZero() {
 		off.problems = append(off.problems, problem)
 	}
 
@@ -355,18 +357,18 @@ func offboardingParams(policy params.Lister, agentID string) offboarding {
 	switch {
 	case errors.Is(err, params.ErrNotSet):
 	case err != nil:
-		off.problems = append(off.problems, "P-09: "+err.Error())
+		off.problems = append(off.problems, passes.Param("P-09", err))
 	default:
 		for _, row := range rows {
 			cells := strings.Split(row, "|")
 			if len(cells) < 2 {
-				off.problems = append(off.problems, fmt.Sprintf("P-09: row %q has no date", row))
+				off.problems = append(off.problems, catalog.Says("opacc1.p09_no_date", "row", row))
 				continue
 			}
 			name, date := strings.TrimSpace(cells[0]), strings.TrimSpace(cells[1])
 			left, err := time.Parse("2006-01-02", date)
 			if name == "" || err != nil {
-				off.problems = append(off.problems, fmt.Sprintf("P-09: row %q is not \"usuario | YYYY-MM-DD\"", row))
+				off.problems = append(off.problems, catalog.Says("opacc1.p09_bad_row", "row", row))
 				continue
 			}
 			off.declared[name] = left
@@ -388,18 +390,18 @@ func identityNames(records []fact.IdentityRecord) []string {
 	return names
 }
 
-func uidMinParam(policy params.Lister, agentID string) (int, string) {
+func uidMinParam(policy params.Lister, agentID string) (int, catalog.Message) {
 
 	uidMin, err := policy.Number(agentID, "op.acc.1", "P-10")
 
 	switch {
 	case errors.Is(err, params.ErrNotSet):
-		return DefaultUIDMin, ""
+		return DefaultUIDMin, catalog.Message{}
 	case err != nil:
-		return DefaultUIDMin, "P-10: " + err.Error()
+		return DefaultUIDMin, passes.Param("P-10", err)
 	case uidMin < 0 || uidMin != float64(int(uidMin)):
-		return DefaultUIDMin, fmt.Sprintf("P-10: %v is not a UID", uidMin)
+		return DefaultUIDMin, catalog.Says("opacc1.p10_not_uid", "value", uidMin)
 	}
 
-	return int(uidMin), ""
+	return int(uidMin), catalog.Message{}
 }

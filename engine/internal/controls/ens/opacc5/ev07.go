@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -45,7 +46,7 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 		return noService()
 	}
 	if in.Mechanism == "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01 not usable: the mechanism to compare with is unknown")
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_01_not_usable_the_mechanism_to_compare"))
 	}
 
 	var other []string
@@ -71,14 +72,14 @@ func JudgeEV07(in EV07Input) verdict.Judgement {
 
 	if len(other) > 0 {
 		sort.Strings(other)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "logins not by " + in.Mechanism + ": " + strings.Join(other, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.logins_not_by_a_b", "a", in.Mechanism, "b", other))
 	}
 	if unknown > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, fmt.Sprintf("%d successful logins without factors in the log", unknown))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.a_successful_logins_without_factors_in_t", "a", unknown))
 	}
 	if total == 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, "no successful login in the window")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc5.no_successful_login_in_the_window"))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d successful logins, all by %s", total, in.Mechanism)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a_successful_logins_all_by_b", "a", total, "b", in.Mechanism))
 }

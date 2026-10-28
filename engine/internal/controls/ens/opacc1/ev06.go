@@ -1,11 +1,12 @@
 package opacc1
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -18,12 +19,12 @@ type EV06Input struct {
 	GroupRecords []fact.GroupRecord
 
 	Accounts        []string
-	AccountsProblem string
+	AccountsProblem catalog.Message
 
 	Privileged        []string
 	PrivilegedDefault bool
 
-	ConfigProblem string
+	ConfigProblem catalog.Message
 
 	Suffix string
 
@@ -33,32 +34,16 @@ type EV06Input struct {
 
 func JudgeEV06(in EV06Input) verdict.Judgement {
 
-	if in.ConfigProblem != "" {
+	if !in.ConfigProblem.IsZero() {
 		return notEvaluable(verdict.CauseConfiguration, in.ConfigProblem)
 	}
 
-	groups := in.Groups
-
-	if groups == nil {
-		return notEvaluable(verdict.CauseCollection, "no group_snapshot in the window")
+	if gap, found := passes.GroupGap(in.Groups, in.GroupRecords); found {
+		return gap
 	}
 
-	if groups.GroupStatus != fact.SourceRead {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("%s %s: %s", groups.GroupPath, groups.GroupStatus, groups.GroupError))
-	}
-
-	if groups.RecordsEmitted == nil {
-		return notEvaluable(verdict.CauseEvidence, "read group_snapshot without records_emitted")
-	}
-
-	if len(in.GroupRecords) < *groups.RecordsEmitted {
-		return notEvaluable(verdict.CauseCollection,
-			fmt.Sprintf("pass %s incomplete: %d of %d group_record received", groups.RunID, len(in.GroupRecords), *groups.RecordsEmitted))
-	}
-
-	if in.AccountsProblem != "" {
-		return notEvaluable(verdict.CauseCollection, "account list for admin identities: "+in.AccountsProblem)
+	if !in.AccountsProblem.IsZero() {
+		return notEvaluable(verdict.CauseCollection, in.AccountsProblem)
 	}
 
 	privileged := privilegedMembers(in)
@@ -69,13 +54,13 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		exists[name] = true
 	}
 
-	var structural []string
+	var structural []catalog.Message
 
 	for _, name := range sortedKeys(privileged) {
 		if in.Suffix != "" && exists[name+in.Suffix] {
 			continue
 		}
-		structural = append(structural, fmt.Sprintf("%s (%s)", name, strings.Join(privileged[name], ", ")))
+		structural = append(structural, catalog.Says("opacc1.member_of", "account", name, "groups", privileged[name]))
 	}
 
 	usage := map[string]int{}
@@ -86,32 +71,30 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 		}
 	}
 
-	var findings []string
+	var findings []catalog.Message
 
 	if len(structural) > 0 {
-		findings = append(findings, "no separate admin identity: "+strings.Join(structural, "; "))
+		findings = append(findings, catalog.Says("opacc1.ev06.no_admin_identity", "accounts", structural))
 	}
 
 	if len(usage) > 0 {
-		findings = append(findings, "privileged identity used to log in: "+countList(usage))
+		findings = append(findings, catalog.Says("opacc1.ev06.privileged_login", "accounts", countList(usage)))
 	}
 
 	if len(findings) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(findings, ". ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("findings", "list", findings))
 	}
 
 	if !in.AuthSeen {
-		return notEvaluable(verdict.CauseCollection, "no authentication events from this agent in the lookback: privileged logins cannot be checked")
+		return notEvaluable(verdict.CauseCollection, catalog.Says("opacc1.ev06.no_auth_events"))
 	}
 
-	reason := fmt.Sprintf("%d members of privileged groups (%s), none without a separate admin identity",
-		len(privileged), strings.Join(in.Privileged, ", "))
-
+	code := "opacc1.ev06.separated"
 	if in.PrivilegedDefault {
-		reason += "; P-11 not set, product default used"
+		code = "opacc1.ev06.separated_default"
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: reason}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says(code, "members", len(privileged), "groups", in.Privileged))
 }
 
 func privilegedMembers(in EV06Input) map[string][]string {

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
@@ -25,7 +26,7 @@ type EV02Input struct {
 func JudgeEV02(in EV02Input) verdict.Judgement {
 
 	if in.CriticalProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-02: "+in.CriticalProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.p_02_a", "a", in.CriticalProblem))
 	}
 
 	var changed []string
@@ -44,16 +45,16 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 
 	if len(changed) > 0 {
 		sort.Strings(changed)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "critical files changed: " + strings.Join(changed, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc2.critical_files_changed_a", "a", changed))
 	}
 
 	switch {
 	case in.Config == nil:
-		return passes.NotEvaluable(verdict.CauseCollection, "no wazuh_agent_config in the window: what FIM watches is unknown")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.no_wazuh_agent_config_in_the_window_what"))
 	case in.Config.Status != fact.SourceRead:
-		return passes.NotEvaluable(verdict.CauseCollection, "Wazuh agent configuration "+in.Config.Status+": "+in.Config.Error)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.wazuh_agent_configuration_a_b", "a", in.Config.Status, "b", in.Config.Error))
 	case in.Config.SyscheckDisabled:
-		return passes.NotEvaluable(verdict.CauseCollection, "Wazuh FIM is disabled on this machine")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.wazuh_fim_is_disabled_on_this_machine"))
 	}
 
 	var unwatched []string
@@ -64,10 +65,10 @@ func JudgeEV02(in EV02Input) verdict.Judgement {
 	}
 
 	if len(unwatched) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, "critical paths FIM does not watch in time: "+strings.Join(unwatched, ", "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc2.critical_paths_fim_does_not_watch_in_tim", "a", unwatched))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d critical paths watched by Wazuh FIM, no change in the window", len(in.Critical))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_critical_paths_watched_by_wazuh_fim_no", "a", len(in.Critical)))
 }
 
 func notWatched(c fact.WazuhAgentConfig, path string, window time.Duration) string {

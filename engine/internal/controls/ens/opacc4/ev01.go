@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
@@ -28,9 +29,9 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	switch {
 	case in.Firewall == nil:
-		return passes.NotEvaluable(verdict.CauseCollection, "no firewall_snapshot in the window")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.no_firewall_snapshot_in_the_window"))
 	case in.Firewall.Status != fact.SourceRead:
-		return passes.NotEvaluable(verdict.CauseCollection, in.Firewall.Tool+" could not be read: "+in.Firewall.Error)
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.a_could_not_be_read_b", "a", in.Firewall.Tool, "b", in.Firewall.Error))
 	}
 	if gap, found := in.Settings.Gap(); found {
 		return gap
@@ -38,14 +39,14 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	openings, unreadable := Openings(*in.Firewall, in.Settings)
 	if len(unreadable) > 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, strings.Join(unreadable, "; "))
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.a", "a", unreadable))
 	}
 	if len(openings) == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "the packet filter denies by default and nothing admits anonymous access"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.the_packet_filter_denies_by_default_and"))
 	}
 
 	if in.ResourcesProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-01: "+in.ResourcesProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_01_a", "a", in.ResourcesProblem))
 	}
 
 	authorised := map[string]bool{}
@@ -64,10 +65,10 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 	}
 
 	if len(open) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: "open by default and not authorised in P-01: " + strings.Join(open, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.open_by_default_and_not_authorised_in_p", "a", open))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: "every opening is authorised in P-01: " + strings.Join(allowed, "; ")}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.every_opening_is_authorised_in_p_01_a", "a", allowed))
 }
 
 func Openings(fw fact.FirewallSnapshot, settings opacc6.Settings) (openings []Opening, unreadable []string) {

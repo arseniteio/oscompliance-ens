@@ -1,10 +1,9 @@
 package opacc1
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/history"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -12,27 +11,28 @@ import (
 type EV08Input struct {
 	Deleted []history.Account
 
-	IdentityProblem string
+	IdentityProblem catalog.Message
 
 	RetentionDays int
 	Declared      map[string]time.Time
 	UIDMin        int
 
-	ConfigProblem string
+	ConfigProblem catalog.Message
 }
 
 func JudgeEV08(in EV08Input) verdict.Judgement {
 
-	if in.ConfigProblem != "" {
+	if !in.ConfigProblem.IsZero() {
 		return notEvaluable(verdict.CauseConfiguration, in.ConfigProblem)
 	}
 
-	if in.IdentityProblem != "" {
-		return notEvaluable(verdict.CauseCollection, "identity table: "+in.IdentityProblem)
+	if !in.IdentityProblem.IsZero() {
+		return notEvaluable(verdict.CauseCollection, in.IdentityProblem)
 	}
 
 	checked := 0
-	var violations, unknown []string
+	var violations []catalog.Message
+	var unknown []string
 
 	for _, account := range in.Deleted {
 
@@ -47,7 +47,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 
 		if account.DisabledSince == nil {
 			checked++
-			violations = append(violations, account.AccountName+" (deleted while enabled)")
+			violations = append(violations, catalog.Says("opacc1.ev08.deleted_enabled", "account", account.AccountName))
 			continue
 		}
 
@@ -63,30 +63,23 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 		days := int(account.DeletedAt.UTC().Truncate(24*time.Hour).Sub(start.UTC().Truncate(24*time.Hour)).Hours() / 24)
 
 		if days < in.RetentionDays {
-			violations = append(violations, fmt.Sprintf("%s (%d days)", account.AccountName, days))
+			violations = append(violations, catalog.Says("opacc1.account_days", "account", account.AccountName, "days", days))
 		}
 	}
 
 	if len(violations) > 0 {
-		return verdict.Judgement{
-			Status: verdict.NonCompliant,
-			Reason: fmt.Sprintf("deleted before %d days (P-06): %s", in.RetentionDays, strings.Join(violations, ", ")),
-		}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc1.ev08.early", "days", in.RetentionDays, "accounts", violations))
 	}
 
 	if len(unknown) > 0 {
-		return notEvaluable(verdict.CauseEvidence,
-			"deleted accounts with no known offboarding date or state, retention cannot be measured: "+strings.Join(unknown, ", "))
+		return notEvaluable(verdict.CauseEvidence, catalog.Says("opacc1.ev08.unknown", "accounts", unknown))
 	}
 
 	if checked == 0 {
-		return verdict.Judgement{Status: verdict.Compliant, Reason: "no account deleted in the window"}
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev08.none"))
 	}
 
-	return verdict.Judgement{
-		Status: verdict.Compliant,
-		Reason: fmt.Sprintf("%d accounts deleted in the window, all kept at least %d days (P-06)", checked, in.RetentionDays),
-	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc1.ev08.kept", "accounts", checked, "days", in.RetentionDays))
 }
 
 func retentionStart(account history.Account, declared map[string]time.Time) (time.Time, bool) {

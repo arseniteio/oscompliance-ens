@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -24,7 +25,7 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 		return noService()
 	}
 	if in.RowsProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-07: "+in.RowsProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_07_a", "a", in.RowsProblem))
 	}
 
 	admitted := map[string]map[string]bool{}
@@ -57,13 +58,13 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 
 	if len(failing) > 0 {
 		sort.Strings(failing)
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: strings.Join(failing, "; ")}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.a", "a", failing))
 	}
 	if total == 0 {
-		return passes.NotEvaluable(verdict.CauseCollection, "no certificate login in the window")
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc5.no_certificate_login_in_the_window"))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("%d certificate logins, issuers admitted and revocation checked as P-07 demands", total)}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.a_certificate_logins_issuers_admitted_an", "a", total))
 }
 
 func sortedKeys(set map[string]bool) []string {

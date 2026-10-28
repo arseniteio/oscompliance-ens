@@ -6,7 +6,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
@@ -19,13 +21,13 @@ func (l Listening) Gap() (verdict.Judgement, bool) {
 
 	switch {
 	case l.Snapshot == nil:
-		return notEvaluable(verdict.CauseCollection, "no listening_snapshot in the window"), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.no_listening_snapshot_in_the_window")), true
 	case l.Snapshot.Status != fact.SourceRead:
-		return notEvaluable(verdict.CauseCollection, "listening sockets unreadable: "+l.Snapshot.Error), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.listening_sockets_unreadable_a", "a", l.Snapshot.Error)), true
 	case len(l.Sockets) < l.Snapshot.RecordsEmitted:
-		return notEvaluable(verdict.CauseCollection, fmt.Sprintf("listening read %s incomplete: %d of %d listening_socket received", l.Snapshot.RunID, len(l.Sockets), l.Snapshot.RecordsEmitted)), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.listening_read_a_incomplete_b_of_c_liste", "a", l.Snapshot.RunID, "b", len(l.Sockets), "c", l.Snapshot.RecordsEmitted)), true
 	case len(l.Sockets) > 0 && !l.Snapshot.ProcessesMatched:
-		return notEvaluable(verdict.CauseCollection, "listening sockets not matched to processes: the agent does not run as root"), true
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.listening_sockets_not_matched_to_process")), true
 	}
 
 	return verdict.Judgement{}, false
@@ -148,8 +150,4 @@ func appendNew[T comparable](list []T, v T) []T {
 		return list
 	}
 	return append(list, v)
-}
-
-func notEvaluable(cause verdict.Cause, reason string) verdict.Judgement {
-	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: cause, Reason: reason}
 }

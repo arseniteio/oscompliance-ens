@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -20,7 +21,7 @@ type EV01Input struct {
 func JudgeEV01(in EV01Input) verdict.Judgement {
 
 	if in.MinDaysProblem != "" {
-		return passes.NotEvaluable(verdict.CauseConfiguration, "P-08: "+in.MinDaysProblem)
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.p_08_a", "a", in.MinDaysProblem))
 	}
 	if len(in.Services) == 0 {
 		return noService()
@@ -56,15 +57,15 @@ func JudgeEV01(in EV01Input) verdict.Judgement {
 	}
 
 	if len(short) > 0 {
-		return verdict.Judgement{Status: verdict.NonCompliant, Reason: fmt.Sprintf("access log kept less than %d days: %s", in.MinDays, strings.Join(short, ", "))}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc5.access_log_kept_less_than_a_days_b", "a", in.MinDays, "b", strings.Join(short, ", ")))
 	}
 	if len(unknown) > 0 {
-		return passes.NotEvaluable(verdict.CauseEvidence, strings.Join(unknown, "; "))
+		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc5.a", "a", unknown))
 	}
 
-	return verdict.Judgement{Status: verdict.Compliant, Reason: fmt.Sprintf("access log kept at least %d days: %s", in.MinDays, strings.Join(kept, ", "))}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc5.access_log_kept_at_least_a_days_b", "a", in.MinDays, "b", strings.Join(kept, ", ")))
 }
 
 func noService() verdict.Judgement {
-	return passes.NotEvaluable(verdict.CauseConfiguration, "no external-user service on this machine: none in P-02 and none read by the agent")
+	return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc5.no_external_user_service_on_this_machine"))
 }
