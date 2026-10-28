@@ -40,6 +40,9 @@ func Param(id string, err error) catalog.Message {
 	if errors.Is(err, params.ErrNotSet) {
 		return catalog.Says("param.not_set", "param", id)
 	}
+	if v, ok := errors.AsType[params.ValueError](err); ok {
+		return catalog.Says("param.invalid", "param", id, "error", v.Message)
+	}
 	return catalog.Says("param.invalid", "param", id, "error", err.Error())
 }
 

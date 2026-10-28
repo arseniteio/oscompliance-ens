@@ -5,15 +5,23 @@ import (
 
 	"errors"
 	"fmt"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
 )
 
 var ErrNotSet = errors.New("not set")
+
+// ValueError says why a parameter value cannot be used, in words the reasons can translate.
+type ValueError struct{ Message catalog.Message }
+
+func (e ValueError) Error() string { return e.Message.Render("en") }
+
+func invalid(code string, pairs ...any) error { return ValueError{catalog.Says(code, pairs...)} }
 
 type Config struct {
 	Global struct {
@@ -111,7 +119,7 @@ func (c *Config) List(agentID, controlID, paramID string) ([]string, error) {
 	}
 
 	if mode == "regex" {
-		return nil, fmt.Errorf("%s %s is a regular expression, which this evidence does not accept", controlID, paramID)
+		return nil, invalid("param.is_regex")
 	}
 
 	return listValue(value)
@@ -141,10 +149,10 @@ func (c *Config) Bool(agentID, controlID, paramID string) (bool, error) {
 		case "no", "false":
 			return false, nil
 		}
-		return false, fmt.Errorf("%q is not yes or no", v)
+		return false, invalid("param.not_yes_no", "value", v)
 	}
 
-	return false, fmt.Errorf("value of type %T is not yes or no", value)
+	return false, invalid("param.not_yes_no", "value", fmt.Sprint(value))
 }
 
 func number(value any, ok bool) (float64, error) {
@@ -162,13 +170,13 @@ func number(value any, ok bool) (float64, error) {
 		}
 		n, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
 		if err != nil {
-			return 0, fmt.Errorf("%q is not a number", v)
+			return 0, invalid("param.not_number", "value", v)
 		}
 		return n, nil
 	case nil:
 		return 0, ErrNotSet
 	default:
-		return 0, fmt.Errorf("value of type %T is not a number", value)
+		return 0, invalid("param.not_number", "value", fmt.Sprint(value))
 	}
 }
 
@@ -221,15 +229,15 @@ func ListMatcher(values ...string) Matcher {
 func PatternMatcher(source string) (Matcher, error) {
 
 	if source != strings.TrimSpace(source) {
-		return Matcher{}, fmt.Errorf("regular expression %q starts or ends with spaces", source)
+		return Matcher{}, invalid("param.regex_spaces", "value", source)
 	}
 	if len(source) > MaxPatternLength {
-		return Matcher{}, fmt.Errorf("regular expression longer than %d characters", MaxPatternLength)
+		return Matcher{}, invalid("param.regex_long", "max", MaxPatternLength)
 	}
 
 	pattern, err := regexp.Compile(`^(?:` + source + `)$`)
 	if err != nil {
-		return Matcher{}, fmt.Errorf("regular expression %q: %w", source, err)
+		return Matcher{}, invalid("param.regex_invalid", "value", source, "error", err.Error())
 	}
 
 	return Matcher{pattern: pattern, source: source}, nil
@@ -353,7 +361,7 @@ func listValue(value any) ([]string, error) {
 		for _, item := range v {
 			s, ok := item.(string)
 			if !ok {
-				return nil, fmt.Errorf("list entry %v is not a string", item)
+				return nil, invalid("param.not_text", "value", fmt.Sprint(item))
 			}
 			raw = append(raw, s)
 		}
@@ -362,7 +370,7 @@ func listValue(value any) ([]string, error) {
 	case nil:
 		return nil, ErrNotSet
 	default:
-		return nil, fmt.Errorf("value of type %T is not a list", value)
+		return nil, invalid("param.not_list", "value", fmt.Sprint(value))
 	}
 
 	var values []string
@@ -397,7 +405,7 @@ func Unavailable(err error) Lister {
 type unavailable struct{ err error }
 
 func (u unavailable) List(string, string, string) ([]string, error) {
-	return nil, fmt.Errorf("configuration not loaded: %w", u.err)
+	return nil, invalid("param.not_loaded", "error", u.err.Error())
 }
 
 func (u unavailable) ListColumn(agentID, controlID, paramID string, _ int) ([]string, error) {
@@ -405,15 +413,15 @@ func (u unavailable) ListColumn(agentID, controlID, paramID string, _ int) ([]st
 }
 
 func (u unavailable) Number(string, string, string) (float64, error) {
-	return 0, fmt.Errorf("configuration not loaded: %w", u.err)
+	return 0, invalid("param.not_loaded", "error", u.err.Error())
 }
 
 func (u unavailable) Bool(string, string, string) (bool, error) {
-	return false, fmt.Errorf("configuration not loaded: %w", u.err)
+	return false, invalid("param.not_loaded", "error", u.err.Error())
 }
 
 func (u unavailable) Matcher(string, string, string) (Matcher, error) {
-	return Matcher{}, fmt.Errorf("configuration not loaded: %w", u.err)
+	return Matcher{}, invalid("param.not_loaded", "error", u.err.Error())
 }
 
 func (u unavailable) Level() string { return "" }
