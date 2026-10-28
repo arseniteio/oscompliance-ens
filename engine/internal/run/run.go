@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -128,7 +127,8 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 				evidences[e.ID] = r.Judgement
 
 				v := base(agent, verdict.ScopeEvidence)
-				v.Evidence, v.Status, v.Cause, v.Reason, v.RunID = e.ID, r.Judgement.Status, r.Judgement.Cause, r.Judgement.Reason, r.RunID
+				v.Evidence, v.Status, v.Cause, v.RunID = e.ID, r.Judgement.Status, r.Judgement.Cause, r.RunID
+				v.Explained(r.Judgement.Message, r.Judgement.Reason)
 				store(v)
 			}
 
@@ -231,7 +231,8 @@ func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verd
 		reqs = append(reqs, r)
 
 		v := base(agent, verdict.ScopeRequirement)
-		v.Requirement, v.Status, v.Reason, v.Attested = req.ID, r.Status, r.Reason, r.Attested
+		v.Requirement, v.Status, v.Attested = req.ID, r.Status, r.Attested
+		v.Explained(r.Message, r.Reason)
 		if r.Status != verdict.NotApplicable {
 			evidenced := r.Evidenced
 			v.Evidenced = &evidenced
@@ -245,15 +246,15 @@ func aggregateVerdicts(policy params.Lister, control catalog.Control, agent verd
 	v.Status, v.Score = c.Status, c.Score
 
 	if c.Status == verdict.NotApplicable {
-		v.Reason = "no requirement applies"
+		v.Explained(catalog.Says("control.none_applies"), "")
 		if !enabled {
-			v.Reason = "control disabled in the configuration"
+			v.Explained(catalog.Says("control.disabled"), "")
 		}
 	} else {
 		coverage, applicable, measured := c.Coverage, c.Applicable, c.Measured
 		v.Coverage, v.ApplicableRequirements, v.MeasuredRequirements = &coverage, &applicable, &measured
 		v.UnmeasuredRequirements = c.Unmeasured
-		v.Reason = fmt.Sprintf("%d of %d applicable requirements compliant, %d measured", countCompliant(reqs), applicable, measured)
+		v.Explained(catalog.Says("control.summary", "compliant", countCompliant(reqs), "applicable", applicable, "measured", measured), "")
 	}
 
 	return append(out, v)
@@ -272,7 +273,7 @@ func countCompliant(reqs []aggregate.Requirement) int {
 func notApplicable(policy params.Lister, control catalog.Control, evidenceID string) (verdict.Judgement, bool) {
 
 	if !policy.ControlEnabled(control.Control) {
-		return verdict.Judgement{Status: verdict.NotApplicable, Reason: control.Control + " is disabled in the configuration"}, true
+		return verdict.Explain(verdict.NotApplicable, "", catalog.Says("evidence.control_disabled", "control", control.Control)), true
 	}
 
 	level := policy.Level()
@@ -282,8 +283,5 @@ func notApplicable(policy params.Lister, control catalog.Control, evidenceID str
 		return verdict.Judgement{}, false
 	}
 
-	return verdict.Judgement{
-		Status: verdict.NotApplicable,
-		Reason: fmt.Sprintf("%s applies at %s; active ENS level %s", evidenceID, strings.Join(evidence.Levels, ", "), level),
-	}, true
+	return verdict.Explain(verdict.NotApplicable, "", catalog.Says("evidence.out_of_level", "evidence", evidenceID, "levels", evidence.Levels, "level", level)), true
 }

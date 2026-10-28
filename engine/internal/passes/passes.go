@@ -3,12 +3,18 @@ package passes
 import (
 	"fmt"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
+
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
 func NotEvaluable(cause verdict.Cause, reason string) verdict.Judgement {
 	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: cause, Reason: reason}
+}
+
+func Gap(cause verdict.Cause, m catalog.Message) verdict.Judgement {
+	return verdict.Explain(verdict.NotEvaluable, cause, m)
 }
 
 func IdentityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (gap verdict.Judgement, found bool) {

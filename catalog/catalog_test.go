@@ -1,6 +1,11 @@
 package catalog
 
-import "testing"
+import (
+	"regexp"
+	"slices"
+	"strings"
+	"testing"
+)
 
 func TestOpAcc1(t *testing.T) {
 	c, ok := LookupControl("op.acc.1")
@@ -83,5 +88,45 @@ func TestCatalogConsistency(t *testing.T) {
 				t.Errorf("%s %s: class %q", c.Control, id, p.Class)
 			}
 		}
+	}
+}
+
+func TestMessagesAgree(t *testing.T) {
+
+	placeholders := func(s string) string {
+		found := regexp.MustCompile(`\{[a-z_]+\}`).FindAllString(s, -1)
+		slices.Sort(found)
+		return strings.Join(found, ",")
+	}
+
+	en, es := Messages("en"), Messages("es")
+	for code, text := range en {
+		other, ok := es[code]
+		if !ok {
+			t.Errorf("%s has no Spanish text", code)
+			continue
+		}
+		if placeholders(text) != placeholders(other) {
+			t.Errorf("%s: the Spanish text takes other values: %q / %q", code, text, other)
+		}
+	}
+	for code := range es {
+		if _, ok := en[code]; !ok {
+			t.Errorf("%s has no English text", code)
+		}
+	}
+}
+
+func TestRender(t *testing.T) {
+
+	m := Says("requirement.not_evidenced", "evidences", []Message{
+		Says("requirement.evidence_cause", "evidence", "EV-01", "cause", Says("cause.CONFIGURATION")),
+		Says("requirement.evidence_cause", "evidence", "EV-06", "cause", Says("cause.COLLECTION")),
+	})
+	if got := m.Render("es"); got != "no demostrado: EV-01 (sin configurar); EV-06 (sin recogida)" {
+		t.Errorf("nested messages: %q", got)
+	}
+	if got := m.Render("en"); got != "not evidenced: EV-01 (CONFIGURATION); EV-06 (COLLECTION)" {
+		t.Errorf("English: %q", got)
 	}
 }

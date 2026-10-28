@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
@@ -28,6 +30,8 @@ var mapping = map[string]any{
 			"status":                  kw(),
 			"cause":                   kw(),
 			"reason":                  map[string]any{"type": "keyword", "ignore_above": 2048},
+			"reason_code":             kw(),
+			"reason_args":             map[string]any{"type": "object", "enabled": false},
 			"run_id":                  kw(),
 			"window_start":            date(),
 			"window_end":              date(),
@@ -57,6 +61,10 @@ const bulkSize = 500
 func NewVerdicts(ctx context.Context, client *indexer.Client, index string) (*Verdicts, error) {
 
 	if err := client.EnsureIndex(ctx, index, mapping); err != nil {
+		return nil, err
+	}
+	// An index created by an older engine gets the new fields; existing ones are left as they are.
+	if err := client.Do(ctx, http.MethodPut, "/"+url.PathEscape(index)+"/_mapping", mapping["mappings"], nil); err != nil {
 		return nil, err
 	}
 

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed controls templates
+//go:embed controls templates messages
 var files embed.FS
 
 type Control struct {
@@ -152,6 +152,8 @@ func init() {
 		}
 		templates = append(templates, t)
 	}
+
+	loadMessages()
 }
 
 func decodeStrict(p string, v any) error {

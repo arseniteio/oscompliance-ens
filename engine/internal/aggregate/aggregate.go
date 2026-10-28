@@ -1,7 +1,6 @@
 package aggregate
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -26,6 +25,24 @@ type Requirement struct {
 	Evidenced bool
 	Attested  bool
 	Reason    string
+	Message   catalog.Message
+}
+
+func (r *Requirement) says(m catalog.Message) {
+	r.Message, r.Reason = m, m.Render("en")
+}
+
+// Cause renders as its own message, so the reader sees it named in their language.
+func Cause(c verdict.Cause) catalog.Message {
+	return catalog.Says("cause." + string(c))
+}
+
+// reasonOf is the message of a judgement or, for one not given a code yet, its English text.
+func reasonOf(j verdict.Judgement) any {
+	if j.Message.IsZero() {
+		return j.Reason
+	}
+	return j.Message
 }
 
 type Control struct {
@@ -42,30 +59,33 @@ func EvaluateRequirement(req catalog.Requirement, level string, controlEnabled b
 	out := Requirement{ID: req.ID}
 
 	if !controlEnabled {
-		out.Status, out.Reason = verdict.NotApplicable, "control disabled in the configuration"
+		out.Status = verdict.NotApplicable
+		out.says(catalog.Says("requirement.control_disabled"))
 		return out
 	}
 	if level != "" && !req.AppliesAt(level) {
-		reason := req.ApplicabilityReason
-		if reason == "" {
-			reason = fmt.Sprintf("applies at %s; active ENS level %s", strings.Join(req.Levels, ", "), level)
+		out.Status = verdict.NotApplicable
+		if req.ApplicabilityReason != "" {
+			out.says(catalog.Says("requirement.declared_out_of_level", "reason", req.ApplicabilityReason))
+		} else {
+			out.says(catalog.Says("requirement.out_of_level", "levels", req.Levels, "level", level))
 		}
-		out.Status, out.Reason = verdict.NotApplicable, reason
 		return out
 	}
 
 	if len(req.EvidenceIDs) == 0 {
 		if attestation != nil && attestation.Sufficient() {
 			out.Status, out.Evidenced, out.Attested = verdict.Compliant, true, true
-			out.Reason = "attested by document: " + attestation.Reference
+			out.says(catalog.Says("requirement.attested", "reference", attestation.Reference))
 			return out
 		}
 		out.Status = verdict.NonCompliant
-		out.Reason = "not evidenced: no technical evidence exists and no P-ATT attestation with a reference and a usable link"
+		out.says(catalog.Says("requirement.no_attestation"))
 		return out
 	}
 
-	var failing, unmeasured, compliant []string
+	var failing, compliant []string
+	var unmeasured []catalog.Message
 
 	for _, id := range req.EvidenceIDs {
 
@@ -81,7 +101,7 @@ func EvaluateRequirement(req catalog.Requirement, level string, controlEnabled b
 		case verdict.Compliant:
 			compliant = append(compliant, id)
 		default:
-			unmeasured = append(unmeasured, fmt.Sprintf("%s (%s)", id, j.Cause))
+			unmeasured = append(unmeasured, catalog.Says("requirement.evidence_cause", "evidence", id, "cause", Cause(j.Cause)))
 		}
 	}
 
@@ -89,17 +109,17 @@ func EvaluateRequirement(req catalog.Requirement, level string, controlEnabled b
 	case len(failing) > 0:
 
 		out.Status, out.Evidenced = verdict.NonCompliant, true
-		out.Reason = "non-compliant evidence: " + strings.Join(failing, ", ")
+		out.says(catalog.Says("requirement.non_compliant", "evidences", failing))
 	case len(unmeasured) > 0:
 		out.Status = verdict.NonCompliant
-		out.Reason = "not evidenced: " + strings.Join(unmeasured, ", ")
+		out.says(catalog.Says("requirement.not_evidenced", "evidences", unmeasured))
 	case len(compliant) > 0:
 		out.Status, out.Evidenced = verdict.Compliant, true
-		out.Reason = "compliant evidence: " + strings.Join(compliant, ", ")
+		out.says(catalog.Says("requirement.compliant", "evidences", compliant))
 	default:
 
 		out.Status = verdict.NonCompliant
-		out.Reason = "not evidenced: none of " + strings.Join(req.EvidenceIDs, ", ") + " applies"
+		out.says(catalog.Says("requirement.none_applies", "evidences", req.EvidenceIDs))
 	}
 
 	return out
@@ -107,7 +127,7 @@ func EvaluateRequirement(req catalog.Requirement, level string, controlEnabled b
 
 func FromDecision(id string, d verdict.Judgement) Requirement {
 
-	out := Requirement{ID: id, Status: d.Status, Reason: d.Reason}
+	out := Requirement{ID: id, Status: d.Status, Reason: d.Reason, Message: d.Message}
 
 	switch d.Status {
 	case verdict.Compliant, verdict.NonCompliant:
@@ -116,9 +136,9 @@ func FromDecision(id string, d verdict.Judgement) Requirement {
 	default:
 		out.Status = verdict.NonCompliant
 		if d.Cause != "" {
-			out.Reason = fmt.Sprintf("not evidenced (%s): %s", d.Cause, d.Reason)
+			out.says(catalog.Says("requirement.decision_gap_cause", "cause", Cause(d.Cause), "reason", reasonOf(d)))
 		} else {
-			out.Reason = "not evidenced: " + d.Reason
+			out.says(catalog.Says("requirement.decision_gap", "reason", reasonOf(d)))
 		}
 	}
 

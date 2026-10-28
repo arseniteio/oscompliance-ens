@@ -1,0 +1,22 @@
+{
+  "cause.COLLECTION": "COLLECTION",
+  "cause.CONFIGURATION": "CONFIGURATION",
+  "cause.EVIDENCE": "EVIDENCE",
+  "requirement.control_disabled": "control disabled in the configuration",
+  "requirement.declared_out_of_level": "{reason}",
+  "requirement.out_of_level": "applies at {levels}; active ENS level {level}",
+  "requirement.attested": "attested by document: {reference}",
+  "requirement.no_attestation": "not evidenced: no technical evidence exists and no P-ATT attestation with a reference and a usable link",
+  "requirement.evidence_cause": "{evidence} ({cause})",
+  "requirement.non_compliant": "non-compliant evidence: {evidences}",
+  "requirement.not_evidenced": "not evidenced: {evidences}",
+  "requirement.compliant": "compliant evidence: {evidences}",
+  "requirement.none_applies": "not evidenced: none of {evidences} applies",
+  "requirement.decision_gap_cause": "not evidenced ({cause}): {reason}",
+  "requirement.decision_gap": "not evidenced: {reason}",
+  "control.none_applies": "no requirement applies",
+  "control.disabled": "control disabled in the configuration",
+  "control.summary": "{compliant} of {applicable} applicable requirements compliant, {measured} measured",
+  "evidence.control_disabled": "{control} is disabled in the configuration",
+  "evidence.out_of_level": "{evidence} applies at {levels}; active ENS level {level}"
+}

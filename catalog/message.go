@@ -1,0 +1,100 @@
+package catalog
+
+import (
+	"encoding/json"
+	"fmt"
+	"path"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+// Message is a verdict reason the reader sees in their language: a code of messages/<lang>.json
+// and the values its placeholders take.
+type Message struct {
+	Code string         `json:"code"`
+	Args map[string]any `json:"args,omitempty"`
+}
+
+// Says builds a message from name/value pairs.
+func Says(code string, pairs ...any) Message {
+
+	m := Message{Code: code}
+	if len(pairs) == 0 {
+		return m
+	}
+
+	m.Args = map[string]any{}
+	for i := 0; i+1 < len(pairs); i += 2 {
+		m.Args[fmt.Sprint(pairs[i])] = pairs[i+1]
+	}
+	return m
+}
+
+func (m Message) IsZero() bool { return m.Code == "" }
+
+var messages = map[string]map[string]string{}
+
+var placeholder = regexp.MustCompile(`\{([a-z_]+)\}`)
+
+func loadMessages() {
+
+	entries, err := files.ReadDir("messages")
+	if err != nil {
+		panic(err)
+	}
+	for _, e := range entries {
+		raw, err := files.ReadFile(path.Join("messages", e.Name()))
+		if err != nil {
+			panic(err)
+		}
+		var texts map[string]string
+		if err := json.Unmarshal(raw, &texts); err != nil {
+			panic(fmt.Errorf("catalog messages/%s: %w", e.Name(), err))
+		}
+		messages[strings.TrimSuffix(e.Name(), ".json")] = texts
+	}
+}
+
+func Messages(lang string) map[string]string { return messages[lang] }
+
+// Render writes the message in lang; an unknown code renders as the code itself.
+func (m Message) Render(lang string) string {
+
+	text, ok := messages[lang][m.Code]
+	if !ok {
+		return m.Code
+	}
+
+	return placeholder.ReplaceAllStringFunc(text, func(p string) string {
+		return renderArg(lang, m.Args[p[1:len(p)-1]])
+	})
+}
+
+func renderArg(lang string, v any) string {
+
+	switch v := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return v
+	case Message:
+		return v.Render(lang)
+	case []Message:
+		parts := make([]string, len(v))
+		for i, m := range v {
+			parts[i] = m.Render(lang)
+		}
+		return strings.Join(parts, "; ")
+	case []string:
+		return strings.Join(v, ", ")
+	case int:
+		return strconv.Itoa(v)
+	case int64:
+		return strconv.FormatInt(v, 10)
+	case float64:
+		return strconv.FormatFloat(v, 'f', -1, 64)
+	default:
+		return fmt.Sprint(v)
+	}
+}

@@ -1,5 +1,7 @@
 package verdict
 
+import "github.com/OpenSourceCompliance/oscompliance-ens/catalog"
+
 type Status string
 
 const (
@@ -28,29 +30,38 @@ const (
 	CauseEvidence Cause = "EVIDENCE"
 )
 
+// Judgement keeps Reason in English for logs and composition; Message is what the reader sees,
+// in their language. A judgement without Message has not been given a code yet.
 type Judgement struct {
-	Status Status
-	Cause  Cause
-	Reason string
+	Status  Status
+	Cause   Cause
+	Reason  string
+	Message catalog.Message
+}
+
+func Explain(status Status, cause Cause, m catalog.Message) Judgement {
+	return Judgement{Status: status, Cause: cause, Reason: m.Render("en"), Message: m}
 }
 
 const SchemaVersion = "1"
 
 type Verdict struct {
-	OSComplianceVerdict string `json:"oscompliance_verdict"`
-	Timestamp           string `json:"@timestamp"`
-	Scope               string `json:"scope"`
-	Control             string `json:"control"`
-	Requirement         string `json:"requirement,omitempty"`
-	Evidence            string `json:"evidence,omitempty"`
-	Agent               Agent  `json:"agent"`
-	Status              Status `json:"status"`
-	Cause               Cause  `json:"cause,omitempty"`
-	Reason              string `json:"reason,omitempty"`
-	RunID               string `json:"run_id,omitempty"`
-	WindowStart         string `json:"window_start"`
-	WindowEnd           string `json:"window_end"`
-	EngineVersion       string `json:"engine_version"`
+	OSComplianceVerdict string         `json:"oscompliance_verdict"`
+	Timestamp           string         `json:"@timestamp"`
+	Scope               string         `json:"scope"`
+	Control             string         `json:"control"`
+	Requirement         string         `json:"requirement,omitempty"`
+	Evidence            string         `json:"evidence,omitempty"`
+	Agent               Agent          `json:"agent"`
+	Status              Status         `json:"status"`
+	Cause               Cause          `json:"cause,omitempty"`
+	Reason              string         `json:"reason,omitempty"`
+	ReasonCode          string         `json:"reason_code,omitempty"`
+	ReasonArgs          map[string]any `json:"reason_args,omitempty"`
+	RunID               string         `json:"run_id,omitempty"`
+	WindowStart         string         `json:"window_start"`
+	WindowEnd           string         `json:"window_end"`
+	EngineVersion       string         `json:"engine_version"`
 
 	Evidenced *bool `json:"evidenced,omitempty"`
 	Attested  bool  `json:"attested,omitempty"`
@@ -65,4 +76,13 @@ type Verdict struct {
 type Agent struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+// Explained sets the reason of a verdict from a message: the English text and the code with its values.
+func (v *Verdict) Explained(m catalog.Message, fallback string) {
+	if m.IsZero() {
+		v.Reason = fallback
+		return
+	}
+	v.Reason, v.ReasonCode, v.ReasonArgs = m.Render("en"), m.Code, m.Args
 }
