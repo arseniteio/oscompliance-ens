@@ -15,15 +15,15 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
 
-func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool, paths []string) string {
+func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool, paths []string) catalog.Message {
 
 	switch {
 	case w == nil:
-		return "no audit_watch_snapshot in the window"
+		return catalog.Says("gap.no_fact", "fact", "audit_watch_snapshot")
 	case w.Auditd != fact.AuditdRunning:
-		return strings.TrimSpace("auditd " + w.Auditd + " " + w.Error)
+		return catalog.Says("chain.auditd", "state", catalog.Says("auditd."+w.Auditd), "error", w.Error)
 	case perm && w.PermRules == 0:
-		return "the permission change rules are not loaded"
+		return catalog.Says("chain.no_perm_rules")
 	}
 
 	for _, p := range paths {
@@ -34,19 +34,19 @@ func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool,
 			}
 		}
 		if !watched {
-			return p + " is not watched by auditd"
+			return catalog.Says("chain.unwatched", "path", p)
 		}
 	}
 
 	if c == nil || c.Status != fact.SourceRead {
-		return "the Wazuh agent configuration is unknown"
+		return catalog.Says("chain.config_unknown")
 	}
 	for _, l := range c.Localfiles {
 		if l.Format == "audit" {
-			return ""
+			return catalog.Message{}
 		}
 	}
-	return "Wazuh does not read the audit log (no localfile with log_format audit)"
+	return catalog.Says("chain.no_audit_log")
 }
 
 func person(a source.AuditAccess, accounts Accounts) string {
@@ -68,10 +68,10 @@ func person(a source.AuditAccess, accounts Accounts) string {
 	return ""
 }
 
-func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []string, problem, chain string) verdict.Judgement {
+func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []string, problem, chain catalog.Message) verdict.Judgement {
 
-	if problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_02_a", "a", problem))
+	if !problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, problem)
 	}
 
 	allowed := map[string]bool{}
@@ -79,7 +79,8 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 		allowed[c] = true
 	}
 
-	var others, unnamed []string
+	var others []catalog.Message
+	var unnamed []string
 	changes := 0
 
 	for _, a := range accesses {
@@ -94,18 +95,18 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 		case who == "":
 			unnamed = append(unnamed, a.Path)
 		case !allowed[who]:
-			others = append(others, fmt.Sprintf("%s changed %s", who, a.Path))
+			others = append(others, catalog.Says("opacc4.changed_by", "account", who, "path", a.Path))
 		}
 	}
 
 	if len(others) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.rights_changed_by_accounts_not_in_p_02_a", "a", dedupe(others)))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.rights_changed_by_accounts_not_in_p_02_a", "a", catalog.UniqueMessages(others)))
 	}
 	if len(unnamed) > 0 {
 		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc4.rights_changed_by_accounts_that_cannot_b", "a", dedupe(unnamed)))
 	}
-	if chain != "" {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.a", "a", chain))
+	if !chain.IsZero() {
+		return passes.Gap(verdict.CauseCollection, chain)
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_rights_changes_all_by_accounts_of_p_02", "a", changes))
@@ -113,18 +114,18 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 
 const ReviewParam = "P-08"
 
-func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem string, now time.Time) verdict.Judgement {
+func JudgeEV05(rows []string, rowsProblem catalog.Message, maxDays int, daysProblem catalog.Message, now time.Time) verdict.Judgement {
 
-	if daysProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_03_a", "a", daysProblem))
+	if !daysProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, daysProblem)
 	}
-	if rowsProblem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.a_register_of_access_rights_reviews_b", "a", ReviewParam, "b", rowsProblem))
+	if !rowsProblem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, rowsProblem)
 	}
 
 	var newest time.Time
 	var who string
-	var bad []string
+	var bad []catalog.Message
 
 	for _, r := range rows {
 		c := strings.Split(r, "|")
@@ -132,12 +133,12 @@ func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem strin
 		t, err := time.Parse("2006-01-02", date)
 		if err != nil {
 			if t, err = time.Parse(time.RFC3339, date); err != nil {
-				bad = append(bad, date)
+				bad = append(bad, catalog.Says("findings", "list", date))
 				continue
 			}
 		}
 		if t.After(now) {
-			bad = append(bad, date+" (in the future)")
+			bad = append(bad, catalog.Says("opacc4.future_date", "date", date))
 			continue
 		}
 		if t.After(newest) {
@@ -160,10 +161,10 @@ func JudgeEV05(rows []string, rowsProblem string, maxDays int, daysProblem strin
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.last_review_a_days_ago_p_03_b_c", "a", age, "b", maxDays, "c", who))
 }
 
-func JudgeEV06(logins []source.Login, authorised []string, problem string, log passes.AuthLog) verdict.Judgement {
+func JudgeEV06(logins []source.Login, authorised []string, problem catalog.Message, log passes.AuthLog) verdict.Judgement {
 
-	if problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_05_a", "a", problem))
+	if !problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, problem)
 	}
 
 	allowed := map[string]bool{}
@@ -172,7 +173,7 @@ func JudgeEV06(logins []source.Login, authorised []string, problem string, log p
 		allowed[strings.TrimSpace(name)] = true
 	}
 
-	var others []string
+	var others []catalog.Message
 	remote := 0
 
 	for _, l := range logins {
@@ -181,12 +182,12 @@ func JudgeEV06(logins []source.Login, authorised []string, problem string, log p
 		}
 		remote++
 		if !allowed[l.Account] {
-			others = append(others, fmt.Sprintf("%s from %s", l.Account, l.SourceIP))
+			others = append(others, catalog.Says("opacc4.login_from", "account", l.Account, "ip", l.SourceIP))
 		}
 	}
 
 	if len(others) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.remote_logins_by_accounts_not_in_p_05_a", "a", dedupe(others)))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.remote_logins_by_accounts_not_in_p_05_a", "a", catalog.UniqueMessages(others)))
 	}
 	if remote == 0 && !log.Reaches {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.remote_logins_cannot_be_seen_a", "a", log.Detail))
@@ -219,16 +220,17 @@ func ParseSensitive(rows []string) []Sensitive {
 	return out
 }
 
-func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sensitive, problem, chain string) verdict.Judgement {
+func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sensitive, problem, chain catalog.Message) verdict.Judgement {
 
-	if problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_07_a", "a", problem))
+	if !problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, problem)
 	}
 	if gap, found := accounts.gap(); found {
 		return gap
 	}
 
-	var denied, unnamed []string
+	var denied []catalog.Message
+	var unnamed []string
 	judged := 0
 
 	for _, a := range accesses {
@@ -261,18 +263,18 @@ func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sen
 			}
 		}
 		if !ok {
-			denied = append(denied, fmt.Sprintf("%s on %s (groups %s)", who, a.Path, strings.Join(accounts.groupsOf(who), ",")))
+			denied = append(denied, catalog.Says("opacc4.access_by_groups", "account", who, "path", a.Path, "groups", accounts.groupsOf(who)))
 		}
 	}
 
 	if len(denied) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.accesses_without_need_to_know_a", "a", dedupe(denied)))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.accesses_without_need_to_know_a", "a", catalog.UniqueMessages(denied)))
 	}
 	if len(unnamed) > 0 {
 		return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc4.accesses_by_accounts_that_cannot_be_name", "a", dedupe(unnamed)))
 	}
-	if chain != "" {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.a", "a", chain))
+	if !chain.IsZero() {
+		return passes.Gap(verdict.CauseCollection, chain)
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.a_accesses_to_need_to_know_resources_all", "a", judged))

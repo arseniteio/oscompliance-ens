@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
@@ -154,7 +155,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	matrixRows, err := policy.List(agent.ID, control, "P-01")
-	matrixProblem := problemOf(err)
+	matrixProblem := problemOf("P-01", err)
 	matrix := ParseMatrix(matrixRows)
 
 	judge("EV-01", []string{"config"}, func() verdict.Judgement {
@@ -169,34 +170,34 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	judge("EV-03", []string{"accounts"}, func() verdict.Judgement {
 		groups, err := policy.List(agent.ID, control, "P-06")
-		problem := ""
+		problem := catalog.Message{}
 		switch {
 		case err != nil:
-			problem = "P-06: " + err.Error()
-		case matrixProblem != "":
-			problem = "P-01: " + matrixProblem
+			problem = passes.Param("P-06", err)
+		case !matrixProblem.IsZero():
+			problem = matrixProblem
 		}
 		return JudgeEV03(accounts, groups, matrix, problem)
 	})
 
 	judge("EV-04", []string{"audit", "accounts"}, func() verdict.Judgement {
 		competent, err := policy.ListColumn(agent.ID, control, "P-02", 0)
-		return JudgeEV04(accesses, accounts, competent, problemOf(err), AuditChain(watches, wazuh, true, nil))
+		return JudgeEV04(accesses, accounts, competent, problemOf("P-02", err), AuditChain(watches, wazuh, true, nil))
 	})
 
 	judge("EV-05", nil, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, control, ReviewParam)
 		days, daysErr := policy.Number(agent.ID, control, "P-03")
-		daysProblem := problemOf(daysErr)
+		daysProblem := problemOf("P-03", daysErr)
 		if daysErr == nil && (days < 1 || days != float64(int(days))) {
-			daysProblem = fmt.Sprintf("%v is not a whole number of days", days)
+			daysProblem = catalog.Says("param.not_days", "param", "P-03", "value", days)
 		}
-		return JudgeEV05(rows, problemOf(err), int(days), daysProblem, e.pass.Now)
+		return JudgeEV05(rows, problemOf(ReviewParam, err), int(days), daysProblem, e.pass.Now)
 	})
 
 	judge("EV-06", []string{"logins"}, func() verdict.Judgement {
 		authorised, err := policy.List(agent.ID, control, "P-05")
-		return JudgeEV06(logins, authorised, problemOf(err), passes.ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now))
+		return JudgeEV06(logins, authorised, problemOf("P-05", err), passes.ProbeResult(e.probes[agent.ID], e.seen[agent.ID], e.pass.Now))
 	})
 
 	judge("EV-07", []string{"audit", "accounts"}, func() verdict.Judgement {
@@ -206,7 +207,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		for _, r := range resources {
 			paths = append(paths, r.Path)
 		}
-		return JudgeEV07(accesses, accounts, resources, problemOf(err), AuditChain(watches, wazuh, false, paths))
+		return JudgeEV07(accesses, accounts, resources, problemOf("P-07", err), AuditChain(watches, wazuh, false, paths))
 	})
 
 	judge("EV-08", []string{"sudoers", "accounts", "config"}, func() verdict.Judgement {
@@ -222,9 +223,9 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, errors.Join(errs...)
 }
 
-func problemOf(err error) string {
+func problemOf(id string, err error) catalog.Message {
 	if err != nil {
-		return err.Error()
+		return passes.Param(id, err)
 	}
-	return ""
+	return catalog.Message{}
 }

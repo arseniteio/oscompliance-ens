@@ -1,7 +1,6 @@
 package opacc4
 
 import (
-	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -108,13 +107,13 @@ func (s Sudoers) blindSpots() (verdict.Judgement, bool) {
 	return passes.Gap(verdict.CauseCollection, catalog.Says("opacc4.sudoers_has_a_grants_to_unnamed_subjects", "a", s.Snapshot.BlindSpots, "b", strings.Join(s.Snapshot.BlindSpotReasons, "; "))), true
 }
 
-func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
+func JudgeEV02(sudoers Sudoers, rows []Row, problem catalog.Message) verdict.Judgement {
 
 	if gap, found := sudoers.gap(); found {
 		return gap
 	}
-	if problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_01_a", "a", problem))
+	if !problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, problem)
 	}
 	if sudoers.Snapshot.Status == fact.SourceAbsent {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.sudo_is_not_installed_no_privilege_is_gr"))
@@ -125,7 +124,7 @@ func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 		byKey[r.Role+"\x00"+r.Resource] = r
 	}
 
-	var unauthorised, gaps []string
+	var unauthorised, gaps []catalog.Message
 	checked := 0
 
 	for _, g := range sudoers.Grants {
@@ -135,24 +134,24 @@ func JudgeEV02(sudoers Sudoers, rows []Row, problem string) verdict.Judgement {
 
 		switch {
 		case !ok:
-			unauthorised = append(unauthorised, fmt.Sprintf("%s %s (%s:%d): no P-01 row for %s | sudo", who, g.Spec, g.File, g.Line, who))
+			unauthorised = append(unauthorised, catalog.Says("opacc4.grant_no_row", "who", who, "spec", g.Spec, "file", g.File, "line", g.Line))
 			continue
 		case len(row.Access) == 0:
-			gaps = append(gaps, who+" | sudo has no access declared")
+			gaps = append(gaps, catalog.Says("opacc4.row_no_access", "who", who))
 			continue
 		}
 
 		checked++
 		for _, part := range splitAccess(g.Spec) {
 			if !contains(row.Access, part) {
-				unauthorised = append(unauthorised, fmt.Sprintf("%s %s (%s:%d): %q not among %s", who, g.Spec, g.File, g.Line, part, strings.Join(row.Access, ", ")))
+				unauthorised = append(unauthorised, catalog.Says("opacc4.grant_beyond", "who", who, "spec", g.Spec, "file", g.File, "line", g.Line, "part", part, "access", row.Access))
 				break
 			}
 		}
 	}
 
 	if len(unauthorised) > 0 {
-		sort.Strings(unauthorised)
+		catalog.SortMessages(unauthorised)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.privileges_beyond_p_01_a", "a", unauthorised))
 	}
 	if len(gaps) > 0 {
@@ -223,30 +222,30 @@ func (a Accounts) gap() (verdict.Judgement, bool) {
 	return passes.GroupGap(a.Groups, a.GroupRecords)
 }
 
-func JudgeEV03(accounts Accounts, groups []string, rows []Row, problem string) verdict.Judgement {
+func JudgeEV03(accounts Accounts, groups []string, rows []Row, problem catalog.Message) verdict.Judgement {
 
 	if gap, found := accounts.gap(); found {
 		return gap
 	}
-	if problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.a", "a", problem))
+	if !problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, problem)
 	}
 
 	roles := Roles(rows)
-	var undeclared []string
+	var undeclared []catalog.Message
 	members := 0
 
 	for _, g := range groups {
 		for _, m := range accounts.members(g) {
 			members++
 			if !roles[m] {
-				undeclared = append(undeclared, m+" in "+g)
+				undeclared = append(undeclared, catalog.Says("opacc4.member_in", "account", m, "group", g))
 			}
 		}
 	}
 
 	if len(undeclared) > 0 {
-		sort.Strings(undeclared)
+		catalog.SortMessages(undeclared)
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.members_of_privileged_groups_that_are_no", "a", undeclared))
 	}
 
@@ -276,7 +275,7 @@ type EV08Input struct {
 
 	UIDMin  int
 	Rows    []Row
-	Problem string
+	Problem catalog.Message
 }
 
 func JudgeEV08(in EV08Input) verdict.Judgement {
@@ -287,8 +286,8 @@ func JudgeEV08(in EV08Input) verdict.Judgement {
 	if gap, found := in.Accounts.gap(); found {
 		return gap
 	}
-	if in.Problem != "" {
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.p_01_a", "a", in.Problem))
+	if !in.Problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, in.Problem)
 	}
 
 	roles := Roles(in.Rows)

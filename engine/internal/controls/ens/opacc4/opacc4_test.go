@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
@@ -45,7 +46,7 @@ func TestJudgeEV01(t *testing.T) {
 	check(t, "accept policy", JudgeEV01(EV01Input{Firewall: accept, Settings: config(), Resources: []string{"sudo"}}), verdict.NonCompliant, "", "cortafuegos: iptables ip input chain INPUT accepts")
 	check(t, "empty ruleset", JudgeEV01(EV01Input{Firewall: empty, Settings: config()}), verdict.NonCompliant, "", "no input chain")
 	check(t, "no firewall, authorised", JudgeEV01(EV01Input{Firewall: none, Settings: config(), Resources: []string{"cortafuegos"}}), verdict.Compliant, "", "authorised in P-01")
-	check(t, "guest share, no P-01", JudgeEV01(EV01Input{Firewall: drop, Settings: config(smb), ResourcesProblem: "not set"}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-01")
+	check(t, "guest share, no P-01", JudgeEV01(EV01Input{Firewall: drop, Settings: config(smb), ResourcesProblem: catalog.Says("param.not_set", "param", "P-01")}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-01")
 	check(t, "guest share not authorised", JudgeEV01(EV01Input{Firewall: drop, Settings: config(smb), Resources: []string{"cortafuegos"}}), verdict.NonCompliant, "", "publico: Samba share with guest ok = Yes")
 	check(t, "vsftpd", JudgeEV01(EV01Input{Firewall: drop, Settings: config(entries("/etc/vsftpd.conf", "", "anonymous_enable", "YES")), Resources: []string{"x"}}), verdict.NonCompliant, "", "vsftpd")
 	check(t, "no firewall fact", JudgeEV01(EV01Input{Settings: config()}), verdict.NotEvaluable, verdict.CauseCollection, "")
@@ -67,14 +68,14 @@ func TestJudgeEV02(t *testing.T) {
 		"ops | sudo | ALL=(root) /usr/bin/systemctl, /usr/bin/journalctl",
 	})
 
-	check(t, "as authorised, commas and blanks", JudgeEV02(sudoers(root, group, ops), matrix, ""), verdict.Compliant, "", "3 sudo grants")
-	check(t, "no row", JudgeEV02(sudoers(fact.SudoGrant{SubjectKind: "user", Subject: "eve", Spec: "ALL=(ALL) ALL"}), matrix, ""), verdict.NonCompliant, "", "no P-01 row for eve | sudo")
+	check(t, "as authorised, commas and blanks", JudgeEV02(sudoers(root, group, ops), matrix, catalog.Message{}), verdict.Compliant, "", "3 sudo grants")
+	check(t, "no row", JudgeEV02(sudoers(fact.SudoGrant{SubjectKind: "user", Subject: "eve", Spec: "ALL=(ALL) ALL"}), matrix, catalog.Message{}), verdict.NonCompliant, "", "no P-01 row for eve | sudo")
 
 	wider := ops
 	wider.Spec = "ALL=(root) /usr/bin/systemctl, /bin/bash"
-	check(t, "beyond the row", JudgeEV02(sudoers(wider), matrix, ""), verdict.NonCompliant, "", `"/bin/bash" not among`)
-	check(t, "no sudo", JudgeEV02(Sudoers{Snapshot: &fact.SudoersSnapshot{Status: fact.SourceAbsent}}, matrix, ""), verdict.Compliant, "", "not installed")
-	check(t, "no P-01", JudgeEV02(sudoers(root), nil, "not set"), verdict.NotEvaluable, verdict.CauseConfiguration, "P-01")
+	check(t, "beyond the row", JudgeEV02(sudoers(wider), matrix, catalog.Message{}), verdict.NonCompliant, "", `"/bin/bash" not among`)
+	check(t, "no sudo", JudgeEV02(Sudoers{Snapshot: &fact.SudoersSnapshot{Status: fact.SourceAbsent}}, matrix, catalog.Message{}), verdict.Compliant, "", "not installed")
+	check(t, "no P-01", JudgeEV02(sudoers(root), nil, catalog.Says("param.not_set", "param", "P-01")), verdict.NotEvaluable, verdict.CauseConfiguration, "P-01")
 }
 
 func accounts() Accounts {
@@ -100,8 +101,8 @@ func TestJudgeEV03AndEV08(t *testing.T) {
 
 	matrix := ParseMatrix([]string{"root | sudo | ALL=(ALL:ALL) ALL", "ana", "%sudo | sudo | ALL=(ALL:ALL) ALL"})
 
-	check(t, "members declared", JudgeEV03(accounts(), []string{"root", "sudo"}, matrix, ""), verdict.Compliant, "", "2 memberships")
-	check(t, "member not a role", JudgeEV03(accounts(), []string{"sudo"}, ParseMatrix([]string{"root"}), ""), verdict.NonCompliant, "", "ana in sudo")
+	check(t, "members declared", JudgeEV03(accounts(), []string{"root", "sudo"}, matrix, catalog.Message{}), verdict.Compliant, "", "2 memberships")
+	check(t, "member not a role", JudgeEV03(accounts(), []string{"sudo"}, ParseMatrix([]string{"root"}), catalog.Message{}), verdict.NonCompliant, "", "ana in sudo")
 
 	in := EV08Input{Sudoers: sudoers(fact.SudoGrant{SubjectKind: "group", Subject: "sudo", Spec: "ALL=(ALL:ALL) ALL"}), Accounts: accounts(), UIDMin: 1000, Rows: matrix}
 	check(t, "backup has a shell", JudgeEV08(in), verdict.NonCompliant, "", "backup (system account, uid 34, shell /bin/sh)")
@@ -126,23 +127,23 @@ func TestJudgeEV04(t *testing.T) {
 		return source.AuditAccess{Key: "oscompliance_perm", Success: "yes", AUID: auid, Path: path}
 	}
 
-	check(t, "competent", JudgeEV04([]source.AuditAccess{change("1000", "/srv/x")}, accounts(), []string{"ana"}, "", ""), verdict.Compliant, "", "1 rights changes")
-	check(t, "not competent", JudgeEV04([]source.AuditAccess{change("1000", "/etc/group")}, accounts(), []string{"rsec"}, "", ""), verdict.NonCompliant, "", "ana changed /etc/group")
-	check(t, "blind", JudgeEV04(nil, accounts(), []string{"rsec"}, "", "auditd absent"), verdict.NotEvaluable, verdict.CauseCollection, "auditd absent")
-	check(t, "P-02", JudgeEV04(nil, accounts(), nil, "not set", ""), verdict.NotEvaluable, verdict.CauseConfiguration, "P-02")
+	check(t, "competent", JudgeEV04([]source.AuditAccess{change("1000", "/srv/x")}, accounts(), []string{"ana"}, catalog.Message{}, catalog.Message{}), verdict.Compliant, "", "1 rights changes")
+	check(t, "not competent", JudgeEV04([]source.AuditAccess{change("1000", "/etc/group")}, accounts(), []string{"rsec"}, catalog.Message{}, catalog.Message{}), verdict.NonCompliant, "", "ana changed /etc/group")
+	check(t, "blind", JudgeEV04(nil, accounts(), []string{"rsec"}, catalog.Message{}, catalog.Says("chain.auditd", "state", catalog.Says("auditd.absent"), "error", "")), verdict.NotEvaluable, verdict.CauseCollection, "auditd absent")
+	check(t, "P-02", JudgeEV04(nil, accounts(), nil, catalog.Says("param.not_set", "param", "P-02"), catalog.Message{}), verdict.NotEvaluable, verdict.CauseConfiguration, "P-02")
 
-	if c := AuditChain(&fact.AuditWatchSnapshot{Auditd: fact.AuditdRunning}, &fact.WazuhAgentConfig{Status: fact.SourceRead, Localfiles: []fact.AgentLocalfile{{Format: "audit"}}}, true, nil); !strings.Contains(c, "permission change rules") {
+	if c := AuditChain(&fact.AuditWatchSnapshot{Auditd: fact.AuditdRunning}, &fact.WazuhAgentConfig{Status: fact.SourceRead, Localfiles: []fact.AgentLocalfile{{Format: "audit"}}}, true, nil); !strings.Contains(c.Render("en"), "permission change rules") {
 		t.Errorf("chain without perm rules: %q", c)
 	}
 }
 
 func TestJudgeEV05(t *testing.T) {
 
-	check(t, "recent", JudgeEV05([]string{"2026-09-01 | todo | RS", "2026-03-01 | todo | RS"}, "", 90, "", now), verdict.Compliant, "", "54 days ago")
-	check(t, "old", JudgeEV05([]string{"2026-03-01 | todo | RS"}, "", 90, "", now), verdict.NonCompliant, "", "238 days ago")
-	check(t, "future typo does not hide", JudgeEV05([]string{"2062-09-01 | x | y", "2026-09-01 | todo | RS"}, "", 90, "", now), verdict.Compliant, "", "")
-	check(t, "bad dates", JudgeEV05([]string{"01/09/2026 | x | y"}, "", 90, "", now), verdict.NotEvaluable, verdict.CauseEvidence, "01/09/2026")
-	check(t, "no register", JudgeEV05(nil, "not set", 90, "", now), verdict.NotEvaluable, verdict.CauseConfiguration, "P-08")
+	check(t, "recent", JudgeEV05([]string{"2026-09-01 | todo | RS", "2026-03-01 | todo | RS"}, catalog.Message{}, 90, catalog.Message{}, now), verdict.Compliant, "", "54 days ago")
+	check(t, "old", JudgeEV05([]string{"2026-03-01 | todo | RS"}, catalog.Message{}, 90, catalog.Message{}, now), verdict.NonCompliant, "", "238 days ago")
+	check(t, "future typo does not hide", JudgeEV05([]string{"2062-09-01 | x | y", "2026-09-01 | todo | RS"}, catalog.Message{}, 90, catalog.Message{}, now), verdict.Compliant, "", "")
+	check(t, "bad dates", JudgeEV05([]string{"01/09/2026 | x | y"}, catalog.Message{}, 90, catalog.Message{}, now), verdict.NotEvaluable, verdict.CauseEvidence, "01/09/2026")
+	check(t, "no register", JudgeEV05(nil, catalog.Says("param.not_set", "param", "P-08"), 90, catalog.Message{}, now), verdict.NotEvaluable, verdict.CauseConfiguration, "P-08")
 }
 
 func TestJudgeEV06(t *testing.T) {
@@ -150,9 +151,9 @@ func TestJudgeEV06(t *testing.T) {
 	reaches := passes.AuthLog{Known: true, Reaches: true}
 	login := source.Login{Account: "jgomez", SourceIP: "10.0.0.9", Method: source.MethodSSHD}
 
-	check(t, "authorised with note", JudgeEV06([]source.Login{login}, []string{"jgomez | VPN"}, "", reaches), verdict.Compliant, "", "1 remote logins")
-	check(t, "not authorised", JudgeEV06([]source.Login{login}, []string{"ana"}, "", reaches), verdict.NonCompliant, "", "jgomez from 10.0.0.9")
-	check(t, "quiet and blind", JudgeEV06(nil, []string{"ana"}, "", passes.AuthLog{Detail: "no probe"}), verdict.NotEvaluable, verdict.CauseCollection, "no probe")
+	check(t, "authorised with note", JudgeEV06([]source.Login{login}, []string{"jgomez | VPN"}, catalog.Message{}, reaches), verdict.Compliant, "", "1 remote logins")
+	check(t, "not authorised", JudgeEV06([]source.Login{login}, []string{"ana"}, catalog.Message{}, reaches), verdict.NonCompliant, "", "jgomez from 10.0.0.9")
+	check(t, "quiet and blind", JudgeEV06(nil, []string{"ana"}, catalog.Message{}, passes.AuthLog{Detail: "no probe"}), verdict.NotEvaluable, verdict.CauseCollection, "no probe")
 }
 
 func TestJudgeEV07(t *testing.T) {
@@ -162,7 +163,7 @@ func TestJudgeEV07(t *testing.T) {
 		return source.AuditAccess{Key: "oscompliance_read", Success: "yes", AUID: auid, Path: path}
 	}
 
-	check(t, "secondary group counts", JudgeEV07([]source.AuditAccess{read("1000", "/datos/rrhh/nominas.pdf")}, accounts(), resources, "", ""), verdict.Compliant, "", "1 accesses")
-	check(t, "longest resource wins", JudgeEV07([]source.AuditAccess{read("1000", "/datos/rrhh/direccion/plan.pdf")}, accounts(), resources, "", ""), verdict.NonCompliant, "", "ana on /datos/rrhh/direccion/plan.pdf")
-	check(t, "blind", JudgeEV07(nil, accounts(), resources, "", "/datos/rrhh is not watched by auditd"), verdict.NotEvaluable, verdict.CauseCollection, "not watched")
+	check(t, "secondary group counts", JudgeEV07([]source.AuditAccess{read("1000", "/datos/rrhh/nominas.pdf")}, accounts(), resources, catalog.Message{}, catalog.Message{}), verdict.Compliant, "", "1 accesses")
+	check(t, "longest resource wins", JudgeEV07([]source.AuditAccess{read("1000", "/datos/rrhh/direccion/plan.pdf")}, accounts(), resources, catalog.Message{}, catalog.Message{}), verdict.NonCompliant, "", "ana on /datos/rrhh/direccion/plan.pdf")
+	check(t, "blind", JudgeEV07(nil, accounts(), resources, catalog.Message{}, catalog.Says("chain.unwatched", "path", "/datos/rrhh")), verdict.NotEvaluable, verdict.CauseCollection, "not watched")
 }
