@@ -48,6 +48,30 @@ func TestTemplates(t *testing.T) {
 	}
 }
 
+func TestReportFieldsPointAtTheControl(t *testing.T) {
+	for _, c := range Controls() {
+		if len(c.Report) == 0 {
+			t.Errorf("%s has no report", c.Control)
+		}
+		evidences := map[string]bool{}
+		for _, e := range c.Evidences {
+			evidences[e.ID] = true
+		}
+		for _, f := range c.Report {
+			for _, id := range f.Evidences {
+				if !evidences[id] {
+					t.Errorf("%s report %s: unknown evidence %s", c.Control, f.ID, id)
+				}
+			}
+			for _, id := range f.Parameters {
+				if _, ok := c.Parameters[id]; !ok {
+					t.Errorf("%s report %s: unknown parameter %s", c.Control, f.ID, id)
+				}
+			}
+		}
+	}
+}
+
 func TestSystemTypeOf(t *testing.T) {
 	for _, c := range []struct{ id, platform, want string }{
 		{"000", "", "manager"},

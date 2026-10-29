@@ -31,6 +31,16 @@ type Control struct {
 	Requirements      []Requirement        `json:"requirements"`
 	Evidences         []Evidence           `json:"evidences"`
 	Parameters        map[string]Parameter `json:"parameters"`
+	Report            []ReportField        `json:"report"`
+}
+
+// ReportField is one field of the control report: what it shows and the evidences and parameters behind it.
+type ReportField struct {
+	ID          string   `json:"id"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	Evidences   []string `json:"evidences"`
+	Parameters  []string `json:"parameters"`
 }
 
 type Source struct {
