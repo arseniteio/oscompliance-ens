@@ -272,3 +272,26 @@ func (s *Source) PackageChanges(ctx context.Context, since time.Time) (map[strin
 
 	return out, err
 }
+
+// Only dpkg: Wazuh decodes the package of a dpkg log line, not of a yum one.
+var installRules = []any{"2901"}
+
+// NewPackages are the packages Wazuh saw newly installed (not updated) on each machine since a time.
+func (s *Source) NewPackages(ctx context.Context, since time.Time) (map[string][]string, error) {
+
+	filter := []any{
+		map[string]any{"terms": map[string]any{"rule.id": installRules}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+
+	out := map[string][]string{}
+
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("p", "data.package")}, nil, func(key map[string]any, _ json.RawMessage) error {
+		if id, p := keyString(key, "a"), keyString(key, "p"); id != "" && p != "" {
+			out[id] = append(out[id], p)
+		}
+		return nil
+	})
+
+	return out, err
+}

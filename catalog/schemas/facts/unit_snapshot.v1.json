@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/unit_snapshot.v1.json",
+  "title": "unit_snapshot v1",
+  "description": "The systemd services running on the machine. absent: the machine does not run systemd.",
+  "type": "object",
+  "required": [
+    "status",
+    "units"
+  ],
+  "properties": {
+    "fact": {
+      "const": "unit_snapshot"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "absent",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

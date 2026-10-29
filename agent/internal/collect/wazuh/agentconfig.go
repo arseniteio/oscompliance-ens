@@ -223,6 +223,8 @@ type SharedPaths struct {
 	AuditWatches []string `json:"audit_watches"`
 
 	ExecWatches []string `json:"exec_watches"`
+
+	BackupSources []string `json:"backup_sources"`
 }
 
 // The engine writes the paths as a comment inside the group configuration: the Wazuh API only writes

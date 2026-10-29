@@ -49,7 +49,8 @@ func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool,
 	return catalog.Says("chain.no_audit_log")
 }
 
-func person(a source.AuditAccess, accounts Accounts) string {
+// Person names the account behind an audited access: its login uid, else its uid.
+func Person(a source.AuditAccess, accounts Accounts) string {
 
 	for _, id := range []string{a.AUID, a.UID} {
 		if id == "" || id == "unset" || id == "-1" || id == "4294967295" {
@@ -90,7 +91,7 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 		}
 		changes++
 
-		who := person(a, accounts)
+		who := Person(a, accounts)
 		switch {
 		case who == "":
 			unnamed = append(unnamed, a.Path)
@@ -207,7 +208,7 @@ func JudgeEV07(accesses []source.AuditAccess, accounts Accounts, resources []Sen
 			continue
 		}
 
-		who := person(a, accounts)
+		who := Person(a, accounts)
 		if who == "" {
 			unnamed = append(unnamed, a.Path)
 			continue

@@ -20,6 +20,8 @@ type Paths struct {
 	ACL   []string `json:"acl_paths"`
 	Audit []string `json:"audit_watches"`
 	Exec  []string `json:"exec_watches"`
+
+	Backup []string `json:"backup_sources,omitempty"`
 }
 
 type Service struct {
@@ -47,7 +49,9 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.2", "P-08", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.2", "P-06", 1)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.4", "P-07", 0)...)
+	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.exp.3", "P-04", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, securityPaths...)
+	m.Paths.Backup = BackupSources(policy, agentID)
 
 	for _, indicator := range indicators(policy, agentID) {
 		if isBinary(indicator) {
@@ -70,6 +74,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.ACL = sorted(m.Paths.ACL)
 	m.Paths.Audit = sorted(m.Paths.Audit)
 	m.Paths.Exec = sorted(m.Paths.Exec)
+	m.Paths.Backup = sorted(m.Paths.Backup)
 	slices.SortFunc(m.Services, func(a, b Service) int { return strings.Compare(a.Name+a.Log, b.Name+b.Log) })
 
 	return m
@@ -90,6 +95,27 @@ func indicators(policy params.Lister, agentID string) []string {
 			if filepath.IsAbs(c) {
 				out = append(out, filepath.Clean(c))
 			}
+		}
+	}
+	return out
+}
+
+// BackupSources are the `fuente` of op.exp.3 P-07 (`alcance | fuente | destino`): `git:<directory>` or an
+// absolute file pattern. The engine judges the copies by the same strings it hands the agent.
+func BackupSources(policy params.Lister, agentID string) []string {
+
+	rows, err := policy.List(agentID, "op.exp.3", "P-07")
+	if err != nil {
+		return nil
+	}
+
+	var out []string
+	for _, r := range rows {
+		src := split(r, 2)[1]
+		if dir, ok := strings.CutPrefix(src, "git:"); ok && filepath.IsAbs(dir) {
+			out = append(out, "git:"+filepath.Clean(dir))
+		} else if filepath.IsAbs(src) {
+			out = append(out, filepath.Clean(src))
 		}
 	}
 	return out

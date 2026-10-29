@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/backup_snapshot.v1.json",
+  "title": "backup_snapshot v1",
+  "description": "The newest copy of each configuration source the group configuration declares (backup_sources): the last commit of a git directory or the newest file of a pattern.",
+  "type": "object",
+  "required": [
+    "status",
+    "sources"
+  ],
+  "properties": {
+    "fact": {
+      "const": "backup_snapshot"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "absent",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "read",
+              "absent",
+              "error"
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "newest": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

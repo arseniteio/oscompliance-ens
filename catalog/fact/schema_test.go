@@ -181,6 +181,12 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &NeighbourSnapshot{}
 		case VirtualizationFact:
 			v = &Virtualization{}
+		case PackageSelectionFact:
+			v = &PackageSelection{}
+		case UnitSnapshotFact:
+			v = &UnitSnapshot{}
+		case BackupSnapshotFact:
+			v = &BackupSnapshot{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}

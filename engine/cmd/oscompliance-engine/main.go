@@ -18,6 +18,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp1"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp2"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp3"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/groupconf"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
@@ -122,6 +123,7 @@ func runMain() error {
 		opacc6.NewEvaluator(facts, hist),
 		opexp1.NewEvaluator(facts),
 		opexp2.NewEvaluator(facts),
+		opexp3.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

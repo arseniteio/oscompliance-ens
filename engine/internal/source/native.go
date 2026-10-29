@@ -21,6 +21,18 @@ func (s *Source) Virtualizations(ctx context.Context, since time.Time) (map[stri
 	return newest[fact.Virtualization](ctx, s, fact.VirtualizationFact, since)
 }
 
+func (s *Source) PackageSelections(ctx context.Context, since time.Time) (map[string]fact.PackageSelection, error) {
+	return newest[fact.PackageSelection](ctx, s, fact.PackageSelectionFact, since)
+}
+
+func (s *Source) UnitSnapshots(ctx context.Context, since time.Time) (map[string]fact.UnitSnapshot, error) {
+	return newest[fact.UnitSnapshot](ctx, s, fact.UnitSnapshotFact, since)
+}
+
+func (s *Source) BackupSnapshots(ctx context.Context, since time.Time) (map[string]fact.BackupSnapshot, error) {
+	return newest[fact.BackupSnapshot](ctx, s, fact.BackupSnapshotFact, since)
+}
+
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }

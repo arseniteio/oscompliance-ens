@@ -14,14 +14,17 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/acl"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/audit"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/authprobe"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/backups"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/config"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/firewall"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/listening"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/neighbours"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/packages"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/pam"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sudoers"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sweep"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/umask"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/units"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/virtualization"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/wazuh"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
@@ -32,7 +35,7 @@ var version = "dev"
 
 const maxPass = 50 * time.Minute
 
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "packages", "units", "backups", "sweep"}
 
 func main() {
 	opts, err := parseOptions()
@@ -111,6 +114,9 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"authprobe":  func() error { return authprobe.Collect(e) },
 		"firewall":   func() error { return firewall.Collect(e, firewall.Default) },
 		"neighbours": func() error { return neighbours.Collect(e, neighbours.Default) },
+		"packages":   func() error { return packages.Collect(e, packages.Default) },
+		"units":      func() error { return units.Collect(e, units.Default) },
+		"backups":    func() error { return backups.Collect(e, backups.Config{Wazuh: wazuhPaths}) },
 		"virtualization": func() error {
 			return virtualization.Collect(e, virtualization.Default)
 		},

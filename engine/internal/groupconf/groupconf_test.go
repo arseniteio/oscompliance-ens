@@ -34,7 +34,11 @@ const fleet = `{
     ]},
     {"controlId": "op.acc.4", "parameters": [{"id": "P-07", "value": ["/datos/rrhh | rrhh"]}]},
     {"controlId": "op.acc.5", "parameters": [{"id": "P-02", "value": ["sede | web01 | /var/log/sede/auth.json"]}]},
-    {"controlId": "op.exp.2", "parameters": [{"id": "P-08", "value": ["/etc/shadow | 640 | root", "/etc/ssh | 755 | root"]}]}
+    {"controlId": "op.exp.2", "parameters": [{"id": "P-08", "value": ["/etc/shadow | 640 | root", "/etc/ssh | 755 | root"]}]},
+    {"controlId": "op.exp.3", "parameters": [
+      {"id": "P-04", "value": ["/etc/ssh"]},
+      {"id": "P-07", "value": ["sistema | git:/etc/ | git interno", "copias | /var/backups/etc-*.tgz | NAS", "otra | en la nube | x"]}
+    ]}
   ],
   "agents": {"003": {"controls": {"op.acc.2": {"parameters": {"P-08": ["/opt/other | 0700 | root"]}}}}}
 }`
@@ -49,10 +53,13 @@ func TestForAgent(t *testing.T) {
 	if strings.Join(m.Paths.ACL, ",") != "/etc/shadow,/etc/ssh" {
 		t.Errorf("ACL: %v", m.Paths.ACL)
 	}
+	if strings.Join(m.Paths.Backup, ",") != "/var/backups/etc-*.tgz,git:/etc" {
+		t.Errorf("backup sources: git directories and absolute patterns of op.exp.3 P-07: %v", m.Paths.Backup)
+	}
 	if strings.Join(m.Paths.Exec, ",") != "/usr/bin/git" {
 		t.Errorf("exec: binaries of P-03: %v", m.Paths.Exec)
 	}
-	want := "/datos/rrhh,/etc/audit,/srv/datos,/srv/repos,/var/log/audit,/var/ossec/etc"
+	want := "/datos/rrhh,/etc/audit,/etc/ssh,/srv/datos,/srv/repos,/var/log/audit,/var/ossec/etc"
 	if strings.Join(m.Paths.Audit, ",") != want {
 		t.Errorf("audit: %v", m.Paths.Audit)
 	}

@@ -24,8 +24,8 @@ restarting anything.
 | `paths.pam_dir` | `/etc/pam.d` | PAM configuration directory |
 
 Collectors: `identity`, `groups`, `umask`, `sudoers`, `config`, `pam`,
-`authprobe`, `listening`, `services`, `wazuh`, `acl`, `audit`, `firewall`, `neighbours`, `virtualization` and
-`sweep`.
+`authprobe`, `listening`, `services`, `wazuh`, `acl`, `audit`, `firewall`,
+`neighbours`, `virtualization`, `packages`, `units`, `backups` and `sweep`.
 
 Flags:
 

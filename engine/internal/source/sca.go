@@ -84,3 +84,77 @@ func whole(v any) int {
 	}
 	return 0
 }
+
+// SCALowest is the lowest score of each policy and machine since a time: the series of op.exp.3.
+func (s *Source) SCALowest(ctx context.Context, since time.Time) (map[string]map[string]int, error) {
+
+	filter := []any{
+		map[string]any{"term": map[string]any{"data.sca.type": "summary"}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+	sources := []any{terms("a", "agent.id"), terms("p", "data.sca.policy_id")}
+	sub := map[string]any{"low": map[string]any{"min": map[string]any{"field": "data.sca.score"}}}
+
+	out := map[string]map[string]int{}
+
+	err := s.composite(ctx, filter, sources, sub, func(key map[string]any, b json.RawMessage) error {
+		var c struct {
+			Low struct {
+				Value *float64 `json:"value"`
+			} `json:"low"`
+		}
+		if err := json.Unmarshal(b, &c); err != nil {
+			return err
+		}
+		id, policy := keyString(key, "a"), keyString(key, "p")
+		if id == "" || policy == "" || c.Low.Value == nil {
+			return nil
+		}
+		if out[id] == nil {
+			out[id] = map[string]int{}
+		}
+		out[id][policy] = int(*c.Low.Value)
+		return nil
+	})
+
+	return out, err
+}
+
+// SCARegression is a check that went from passed to failed.
+type SCARegression struct {
+	PolicyID string
+	CheckID  string
+	Title    string
+	Time     time.Time
+}
+
+func (s *Source) SCARegressions(ctx context.Context, since time.Time) (map[string][]SCARegression, error) {
+
+	filter := []any{
+		map[string]any{"term": map[string]any{"rule.id": "19007"}},
+		map[string]any{"term": map[string]any{"data.sca.check.previous_result": "passed"}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+	sources := []any{terms("a", "agent.id"), terms("p", "data.sca.policy_id"), terms("c", "data.sca.check.id"), terms("t", "data.sca.check.title")}
+
+	sub := map[string]any{"last": map[string]any{"max": map[string]any{"field": "timestamp"}}}
+
+	out := map[string][]SCARegression{}
+
+	err := s.composite(ctx, filter, sources, sub, func(key map[string]any, b json.RawMessage) error {
+		var c struct {
+			Last struct {
+				Value float64 `json:"value"`
+			} `json:"last"`
+		}
+		if err := json.Unmarshal(b, &c); err != nil {
+			return err
+		}
+		if id := keyString(key, "a"); id != "" {
+			out[id] = append(out[id], SCARegression{PolicyID: keyString(key, "p"), CheckID: keyString(key, "c"), Title: keyString(key, "t"), Time: time.UnixMilli(int64(c.Last.Value)).UTC()})
+		}
+		return nil
+	})
+
+	return out, err
+}
