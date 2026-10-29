@@ -176,7 +176,7 @@ func JudgeEV08(incidents []opexp7.Incident, rows []string, problem catalog.Messa
 			c = append(c, "")
 		}
 		if d, err := strconv.Atoi(strings.TrimSpace(c[1])); err == nil {
-			limits[strings.ToLower(strings.TrimSpace(c[0]))] = d
+			limits[opexp7.Severity(c[0])] = d
 		}
 	}
 

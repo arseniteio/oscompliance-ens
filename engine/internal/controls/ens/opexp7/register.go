@@ -46,6 +46,11 @@ var columns = []string{"incidente", "fase", "fecha", "severidad", "sistemas", "c
 
 func empty(v string) bool { v = strings.TrimSpace(v); return v == "" || v == "-" }
 
+// Severity names a severity the same way whatever its case or accent: «Crítica» and «critica» match.
+func Severity(v string) string {
+	return strings.NewReplacer("á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u").Replace(strings.ToLower(strings.TrimSpace(v)))
+}
+
 // ParseRegister groups the rows of P-13 by incident.
 func ParseRegister(rows []string) []Incident {
 
@@ -70,7 +75,7 @@ func ParseRegister(rows []string) []Incident {
 			}
 		}
 		p := Phase{
-			Name: strings.ToLower(f["fase"]), Date: opexp5.When(f["fecha"]), Severity: strings.ToLower(f["severidad"]), Systems: systems,
+			Name: strings.ToLower(f["fase"]), Date: opexp5.When(f["fecha"]), Severity: Severity(f["severidad"]), Systems: systems,
 			Class: f["clasificacion"], Escalated: f["escalado_a"], Notified: f["notificado_a"], Personal: strings.ToLower(f["datos_personales"]),
 			CCNCERT: f["notificacion_ccn_cert"], Legal: strings.ToLower(f["relevancia_juridica"]), Lessons: f["medidas_mejora"],
 			Reference: f["referencia"], Review: opexp5.When(f["revision_eventos"]), ReviewText: f["revision_eventos"],

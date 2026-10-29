@@ -2,6 +2,7 @@ package opexp7
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -119,7 +120,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-05", gated(registerProblem, func() verdict.Judgement { return JudgeEV05(incidents, manager, now) }))
 	put("EV-06", gated(registerProblem, func() verdict.Judgement { return JudgeEV06(incidents, e.responses[agent.ID], now) }))
 
+	// Without P-07 no system holds personal data: the evidence holds trivially.
 	personal, err := policy.List(agent.ID, Control, "P-07")
+	if errors.Is(err, params.ErrNotSet) {
+		err = nil
+	}
 	put("EV-07", JudgeEV07(incidents, personal, first(registerProblem, problemOf("P-07", err))))
 
 	put("EV-08", JudgeEV08(incidents, classes, first(registerProblem, classProblem)))

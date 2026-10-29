@@ -33,7 +33,7 @@ func ParseClasses(rows []string) ([]Class, catalog.Message) {
 			return nil, catalog.Says("opexp7.level_invalid", "value", strings.TrimSpace(c[2]))
 		}
 		notifiable := strings.EqualFold(strings.TrimSpace(c[3]), "si") || strings.EqualFold(strings.TrimSpace(c[3]), "sí")
-		out = append(out, Class{Category: strings.TrimSpace(c[0]), Severity: strings.ToLower(strings.TrimSpace(c[1])), Level: level, Notifiable: notifiable})
+		out = append(out, Class{Category: strings.TrimSpace(c[0]), Severity: Severity(c[1]), Level: level, Notifiable: notifiable})
 	}
 	if len(out) == 0 {
 		return nil, catalog.Says("param.not_set", "param", "P-01")
@@ -69,7 +69,7 @@ func bySeverity(rows []string) map[string][]string {
 			c[i] = strings.TrimSpace(c[i])
 		}
 		if len(c) > 0 && c[0] != "" {
-			out[strings.ToLower(c[0])] = c
+			out[Severity(c[0])] = c
 		}
 	}
 	return out
@@ -97,6 +97,9 @@ func JudgeEV01(hoursWithAlerts []source.AlertHour, classes []Class, problem cata
 		if n := counts[c.Severity]; n > 0 && !slices.ContainsFunc(list, func(s string) bool { return strings.HasPrefix(s, c.Severity+" ") }) {
 			list = append(list, fmt.Sprintf("%s %d h", c.Severity, n))
 		}
+	}
+	if len(list) == 0 {
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp7.no_relevant_alerts", "level", MinLevel(classes)))
 	}
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp7.detection", "list", list, "level", MinLevel(classes)))
 }
@@ -234,7 +237,7 @@ func Responded(in Incident, responses []time.Time, now time.Time) bool {
 	return slices.ContainsFunc(responses, func(t time.Time) bool { return !t.Before(in.Opened().Truncate(time.Hour)) && !t.After(in.End(now)) })
 }
 
-func serious(s string) bool { return s == "alta" || s == "critica" || s == "crítica" }
+func serious(s string) bool { return s == "alta" || s == "critica" }
 
 func JudgeEV06(incidents []Incident, responses []time.Time, now time.Time) verdict.Judgement {
 
@@ -316,7 +319,7 @@ func JudgeEV09(incidents []Incident, responses []time.Time, now time.Time) verdi
 	var bare []string
 	checked := 0
 	for _, in := range incidents {
-		if s := in.Severity(); s != "critica" && s != "crítica" {
+		if in.Severity() != "critica" {
 			continue
 		}
 		checked++
