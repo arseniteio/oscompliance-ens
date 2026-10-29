@@ -42,8 +42,8 @@ detections.
 
 One per pass: `products` (`product`, `running`) among clamav, mdatp,
 falcon-sensor, sophos-spl, eset, sentinelone and trendmicro-ds;
-`signatures`, the build time of ClamAV's daily database; `settings`
-(`proteccion_tiempo_real`: clamonacc running or `OnAccessIncludePath` set;
+`signatures`, the build time of ClamAV's daily database; `enabled_settings`, the
+ones switched on (`proteccion_tiempo_real`: clamonacc running or `OnAccessIncludePath` set;
 `actualizacion_automatica_firmas`: freshclam running; `analisis_comprimidos`:
 `ScanArchive` not off; `registro_syslog`: `LogSyslog` on); `last_scan`, the
 newest `End Date` of a clamscan summary in `/var/log/clamav/*.log`;

@@ -34,6 +34,9 @@ func running(p *fact.MalwareProtection) []string {
 	return out
 }
 
+// Settings are the ClamAV settings the agent reports; one it does not list is off.
+var Settings = []string{"proteccion_tiempo_real", "actualizacion_automatica_firmas", "analisis_comprimidos", "registro_syslog"}
+
 func hasClam(p *fact.MalwareProtection) bool {
 	return slices.ContainsFunc(p.Products, func(a fact.Antimalware) bool { return a.Product == "clamav" })
 }
@@ -71,11 +74,8 @@ func JudgeEV02(p *fact.MalwareProtection, maxHours int, problem catalog.Message,
 	if j, found := gap(p); found {
 		return j
 	}
-	if !hasClam(p) {
-		if len(running(p)) == 0 {
-			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp6.no_antimalware"))
-		}
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opexp6.signatures_unread", "products", running(p)))
+	if j, found := unread(p); found {
+		return j
 	}
 
 	built, err := time.Parse(time.RFC3339, p.Signatures)
@@ -86,6 +86,18 @@ func JudgeEV02(p *fact.MalwareProtection, maxHours int, problem catalog.Message,
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp6.signatures_old", "built", built.UTC().Format("2006-01-02 15:04"), "hours", age, "max", maxHours))
 	}
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp6.signatures_current", "built", built.UTC().Format("2006-01-02 15:04"), "max", maxHours))
+}
+
+// unread stands for what only ClamAV lets the agent read: nothing to judge without an antimalware, and
+// nothing to read with another one.
+func unread(p *fact.MalwareProtection) (verdict.Judgement, bool) {
+	switch {
+	case hasClam(p):
+		return verdict.Judgement{}, false
+	case len(running(p)) == 0:
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp6.no_antimalware")), true
+	}
+	return passes.Gap(verdict.CauseCollection, catalog.Says("opexp6.signatures_unread", "products", running(p))), true
 }
 
 func yes(v string) (bool, bool) {
@@ -106,8 +118,8 @@ func JudgeEV03(p *fact.MalwareProtection, rows []string, problem catalog.Message
 	if j, found := gap(p); found {
 		return j
 	}
-	if !hasClam(p) {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opexp6.signatures_unread", "products", running(p)))
+	if j, found := unread(p); found {
+		return j
 	}
 
 	var wrong, right []string
@@ -118,9 +130,9 @@ func JudgeEV03(p *fact.MalwareProtection, rows []string, problem catalog.Message
 		if !ok {
 			return passes.Gap(verdict.CauseConfiguration, catalog.Says("param.not_yes_no", "value", strings.TrimSpace(value)))
 		}
-		got, seen := p.Settings[setting]
+		got := slices.Contains(p.Settings, setting)
 		switch {
-		case !seen:
+		case !slices.Contains(Settings, setting):
 			return passes.Gap(verdict.CauseConfiguration, catalog.Says("opexp6.unknown_setting", "setting", setting))
 		case got != want:
 			wrong = append(wrong, setting)
@@ -145,7 +157,7 @@ func JudgeEV04(p *fact.MalwareProtection, alerts []source.AlertCount) verdict.Ju
 	if j, found := gap(p); found {
 		return j
 	}
-	if hasClam(p) && !p.Settings["registro_syslog"] {
+	if hasClam(p) && !slices.Contains(p.Settings, "registro_syslog") {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("opexp6.clamav_not_in_syslog"))
 	}
 
@@ -180,8 +192,8 @@ func JudgeEV05(p *fact.MalwareProtection, maxDays int, problem catalog.Message, 
 	if j, found := gap(p); found {
 		return j
 	}
-	if !hasClam(p) {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opexp6.signatures_unread", "products", running(p)))
+	if j, found := unread(p); found {
+		return j
 	}
 	last, err := time.Parse(time.RFC3339, p.LastScan)
 	if err != nil {
@@ -364,7 +376,7 @@ func JudgeEV12(policy string, problem catalog.Message, usb []source.AlertCount, 
 			if j, found := gap(p); found {
 				return j
 			}
-			if !p.Settings["proteccion_tiempo_real"] {
+			if !slices.Contains(p.Settings, "proteccion_tiempo_real") {
 				return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp6.usb_unscanned", "count", attached))
 			}
 		}

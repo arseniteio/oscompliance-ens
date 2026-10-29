@@ -23,7 +23,7 @@ func check(t *testing.T, name string, got verdict.Judgement, status verdict.Stat
 func clam() *fact.MalwareProtection {
 	return &fact.MalwareProtection{Status: fact.SourceRead, Products: []fact.Antimalware{{Product: "clamav", Running: true}},
 		Signatures: "2026-10-29T06:24:00Z", LastScan: "2026-10-27T03:00:00Z", Allowlist: "absent", Responses: []string{"firewall-drop"},
-		Settings: map[string]bool{"proteccion_tiempo_real": false, "actualizacion_automatica_firmas": true, "analisis_comprimidos": true, "registro_syslog": true}}
+		Settings: []string{"actualizacion_automatica_firmas", "analisis_comprimidos", "registro_syslog"}}
 }
 
 func TestAntimalware(t *testing.T) {
@@ -50,7 +50,7 @@ func TestJudgeEV04(t *testing.T) {
 	check(t, "detection", JudgeEV04(clam(), found), verdict.Compliant, "", "/tmp/eicar.com")
 	check(t, "repeated", JudgeEV04(clam(), append(found, source.AlertCount{Rule: ruleRepeated, Count: 1})), verdict.NonCompliant, "", "not resolved")
 	quiet := clam()
-	quiet.Settings["registro_syslog"] = false
+	quiet.Settings = []string{"analisis_comprimidos"}
 	check(t, "blind", JudgeEV04(quiet, nil), verdict.NotEvaluable, verdict.CauseCollection, "LogSyslog")
 }
 
