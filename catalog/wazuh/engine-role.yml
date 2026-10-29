@@ -9,6 +9,7 @@ oscompliance_engine:
     - index_patterns:
         - "wazuh-alerts-*"
         - "wazuh-monitoring-*"
+        - "wazuh-states-inventory-*"
         - "wazuh-ens-configuration"
       allowed_actions:
         - "read"

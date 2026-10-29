@@ -177,6 +177,8 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &AuditWatchSnapshot{}
 		case FirewallSnapshotFact:
 			v = &FirewallSnapshot{}
+		case NeighbourSnapshotFact:
+			v = &NeighbourSnapshot{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}

@@ -13,6 +13,10 @@ func (s *Source) WazuhAgentConfigs(ctx context.Context, since time.Time) (map[st
 	return newest[fact.WazuhAgentConfig](ctx, s, fact.WazuhAgentConfigFact, since)
 }
 
+func (s *Source) NeighbourSnapshots(ctx context.Context, since time.Time) (map[string]fact.NeighbourSnapshot, error) {
+	return newest[fact.NeighbourSnapshot](ctx, s, fact.NeighbourSnapshotFact, since)
+}
+
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }

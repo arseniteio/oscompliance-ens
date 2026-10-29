@@ -16,6 +16,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc4"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc5"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp1"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/groupconf"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
@@ -47,6 +48,7 @@ func runMain() error {
 	caFile := flag.String("ca", "", "CA certificate for the indexer (PEM)")
 	alerts := flag.String("alerts-index", "wazuh-alerts-*", "index pattern holding the facts")
 	monitoring := flag.String("monitoring-index", "wazuh-monitoring-*", "index pattern listing the registered agents")
+	states := flag.String("states-prefix", "wazuh-states-", "prefix of Wazuh's state indices (inventory)")
 	verdicts := flag.String("verdicts-index", "oscompliance-verdicts", "index the verdicts are written to")
 	configIndex := flag.String("config-index", "wazuh-ens-configuration", "plugin index holding the policy parameters")
 	historyIndex := flag.String("history-index", "oscompliance-identity-history", "index of the per-account history (EV-08)")
@@ -90,7 +92,7 @@ func runMain() error {
 		return fmt.Errorf("history index: %w", err)
 	}
 
-	facts := source.New(client, *alerts, *monitoring)
+	facts := source.New(client, *alerts, *monitoring, *states)
 
 	var groups *groupSync
 	if *apiURL != "" {
@@ -116,6 +118,7 @@ func runMain() error {
 		opacc4.NewEvaluator(facts),
 		opacc5.NewEvaluator(facts),
 		opacc6.NewEvaluator(facts, hist),
+		opexp1.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

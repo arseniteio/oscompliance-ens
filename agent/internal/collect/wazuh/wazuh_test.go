@@ -3,6 +3,7 @@ package wazuh
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -90,12 +91,14 @@ func TestCollectWazuhConfig(t *testing.T) {
     <ignore>/etc/mtab</ignore>
   </syscheck>
   <localfile><log_format>syslog</log_format><location>/var/log/dpkg.log</location></localfile>
+  <wodle name="syscollector"><disabled>no</disabled><interval>1h</interval><processes>no</processes></wodle>
 </ossec_config>
 `)
 	collecttest.Write(t, filepath.Join(dir, "agent.conf"), `<agent_config>
   <syscheck><directories realtime="yes">/srv/datos</directories></syscheck>
   <localfile><log_format>audit</log_format><location>/var/log/audit/audit.log</location></localfile>
 </agent_config>
+<agent_config><wodle name="syscollector"><interval>12h</interval></wodle></agent_config>
 <agent_config name="other"><syscheck><disabled>yes</disabled></syscheck></agent_config>
 `)
 
@@ -113,6 +116,10 @@ func TestCollectWazuhConfig(t *testing.T) {
 	}
 	if lf := c["localfiles"].([]any); len(lf) != 2 || lf[1].(map[string]any)["format"] != "audit" {
 		t.Errorf("localfiles: %v", lf)
+	}
+
+	if c["syscollector_disabled"] != false || c["syscollector_interval"] != 43200.0 || fmt.Sprint(c["syscollector_scans"]) != "[hardware os network packages ports]" {
+		t.Errorf("syscollector: %v %v %v", c["syscollector_disabled"], c["syscollector_interval"], c["syscollector_scans"])
 	}
 
 	facts = collecttest.Facts(t, func(e *emit.Emitter) error {

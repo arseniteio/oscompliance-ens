@@ -28,6 +28,10 @@ type WazuhAgentConfig struct {
 	Directories       []FIMDirectory   `json:"directories"`
 	Ignored           []string         `json:"ignored,omitempty"`
 	Localfiles        []AgentLocalfile `json:"localfiles"`
+
+	SyscollectorDisabled bool     `json:"syscollector_disabled"`
+	SyscollectorInterval int      `json:"syscollector_interval,omitempty"`
+	SyscollectorScans    []string `json:"syscollector_scans"`
 }
 
 type LogFile struct {

@@ -87,6 +87,7 @@ type agentConfig struct {
 	Profile    string      `xml:"profile,attr"`
 	Localfiles []localfile `xml:"localfile"`
 	Syscheck   []syscheck  `xml:"syscheck"`
+	Wodles     []wodle     `xml:"wodle"`
 	Comments   string      `xml:",comment"`
 }
 
@@ -108,6 +109,18 @@ type syscheck struct {
 		Paths    string `xml:",chardata"`
 	} `xml:"directories"`
 	Ignore []string `xml:"ignore"`
+}
+
+type wodle struct {
+	Name      string `xml:"name,attr"`
+	Disabled  string `xml:"disabled"`
+	Interval  string `xml:"interval"`
+	Hardware  string `xml:"hardware"`
+	OS        string `xml:"os"`
+	Network   string `xml:"network"`
+	Packages  string `xml:"packages"`
+	Ports     string `xml:"ports"`
+	Processes string `xml:"processes"`
 }
 
 type serviceFile struct {

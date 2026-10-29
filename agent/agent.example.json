@@ -2,7 +2,7 @@
   "output": "/var/log/oscompliance/facts.ndjson",
   "host": "",
   "state": "/var/lib/oscompliance/state.json",
-  "collectors": ["identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall"],
+  "collectors": ["identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours"],
   "sweep_timeout": "15m",
   "paths": {
     "passwd": "/etc/passwd",

@@ -8,7 +8,9 @@
     "status",
     "syscheck_disabled",
     "directories",
-    "localfiles"
+    "localfiles",
+    "syscollector_disabled",
+    "syscollector_scans"
   ],
   "properties": {
     "fact": {
@@ -89,6 +91,29 @@
             "type": "string"
           }
         }
+      }
+    },
+    "syscollector_disabled": {
+      "description": "No syscollector wodle, or <disabled>yes</disabled>.",
+      "type": "boolean"
+    },
+    "syscollector_interval": {
+      "description": "Seconds between syscollector scans.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "syscollector_scans": {
+      "description": "Syscollector scans switched on.",
+      "type": "array",
+      "items": {
+        "enum": [
+          "hardware",
+          "os",
+          "network",
+          "packages",
+          "ports",
+          "processes"
+        ]
       }
     }
   },

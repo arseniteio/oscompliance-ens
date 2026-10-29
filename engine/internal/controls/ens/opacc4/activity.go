@@ -115,50 +115,8 @@ func JudgeEV04(accesses []source.AuditAccess, accounts Accounts, competent []str
 const ReviewParam = "P-08"
 
 func JudgeEV05(rows []string, rowsProblem catalog.Message, maxDays int, daysProblem catalog.Message, now time.Time) verdict.Judgement {
-
-	if !daysProblem.IsZero() {
-		return passes.Gap(verdict.CauseConfiguration, daysProblem)
-	}
-	if !rowsProblem.IsZero() {
-		return passes.Gap(verdict.CauseConfiguration, rowsProblem)
-	}
-
-	var newest time.Time
-	var who string
-	var bad []catalog.Message
-
-	for _, r := range rows {
-		c := strings.Split(r, "|")
-		date := strings.TrimSpace(c[0])
-		t, err := time.Parse("2006-01-02", date)
-		if err != nil {
-			if t, err = time.Parse(time.RFC3339, date); err != nil {
-				bad = append(bad, catalog.Raw(date))
-				continue
-			}
-		}
-		if t.After(now) {
-			bad = append(bad, catalog.Says("opacc4.future_date", "date", date))
-			continue
-		}
-		if t.After(newest) {
-			newest, who = t, strings.TrimSpace(r)
-		}
-	}
-
-	if newest.IsZero() {
-		if len(bad) > 0 {
-			return passes.Gap(verdict.CauseEvidence, catalog.Says("opacc4.no_usable_review_date_a", "a", bad))
-		}
-		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc4.the_register_has_no_review"))
-	}
-
-	age := int(now.Sub(newest).Hours() / 24)
-	if age > maxDays {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opacc4.last_review_a_days_ago_p_03_asks_every_b", "a", age, "b", maxDays, "c", who))
-	}
-
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc4.last_review_a_days_ago_p_03_b_c", "a", age, "b", maxDays, "c", who))
+	j, _ := passes.Review(rows, rowsProblem, ReviewParam, maxDays, daysProblem, "P-03", now)
+	return j
 }
 
 func JudgeEV06(logins []source.Login, authorised []string, problem catalog.Message, log passes.AuthLog) verdict.Judgement {

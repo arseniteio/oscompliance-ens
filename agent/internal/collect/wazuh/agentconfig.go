@@ -29,7 +29,8 @@ var DefaultAgentConfig = AgentConfigPaths{
 func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
-		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}}
+		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}, SyscollectorScans: []string{}}
+	inventory := syscollector{disabled: true}
 
 	local, err := fsread.ReadFile(cfg.OssecConf)
 
@@ -50,6 +51,7 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 		return e.Emit(out)
 	}
 	add(&out, blocks, cfg.OssecConf)
+	inventory.add(blocks)
 
 	if shared, err := fsread.ReadFile(cfg.SharedConf); err == nil {
 		blocks, err := applicableBlocks(shared, "agent_config", name)
@@ -58,12 +60,96 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 			return e.Emit(out)
 		}
 		add(&out, blocks, cfg.SharedConf)
+		inventory.add(blocks)
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		out.Status, out.Error = fact.SourceUnreadable, err.Error()
 		return e.Emit(out)
 	}
 
+	out.SyscollectorDisabled, out.SyscollectorInterval, out.SyscollectorScans = inventory.disabled, inventory.interval, inventory.on()
 	return e.Emit(out)
+}
+
+var syscollectorScans = []string{"hardware", "os", "network", "packages", "ports", "processes"}
+
+// syscollector follows Wazuh's merge: a later block sets only the elements it writes, and an element
+// left out keeps Wazuh's default (every scan on, one hour).
+type syscollector struct {
+	seen     bool
+	disabled bool
+	interval int
+	off      map[string]bool
+}
+
+func (s *syscollector) add(blocks []agentConfig) {
+
+	for _, b := range blocks {
+		for _, w := range b.Wodles {
+
+			if w.Name != "syscollector" {
+				continue
+			}
+			if !s.seen {
+				s.seen, s.disabled, s.interval, s.off = true, false, 3600, map[string]bool{}
+			}
+
+			if d := strings.TrimSpace(w.Disabled); d != "" {
+				s.disabled = d == "yes"
+			}
+			if n, ok := seconds(w.Interval); ok {
+				s.interval = n
+			}
+
+			for scan, value := range map[string]string{"hardware": w.Hardware, "os": w.OS, "network": w.Network, "packages": w.Packages, "ports": w.Ports, "processes": w.Processes} {
+				if v := strings.TrimSpace(value); v != "" {
+					s.off[scan] = v != "yes"
+				}
+			}
+		}
+	}
+}
+
+func (s *syscollector) on() []string {
+
+	scans := []string{}
+	if !s.seen {
+		return scans
+	}
+	for _, scan := range syscollectorScans {
+		if !s.off[scan] {
+			scans = append(scans, scan)
+		}
+	}
+	return scans
+}
+
+// seconds reads a Wazuh time value: a number of seconds, or a number followed by s, m, h, d or w.
+func seconds(value string) (int, bool) {
+
+	v := strings.TrimSpace(value)
+	if v == "" {
+		return 0, false
+	}
+
+	unit := 1
+	switch v[len(v)-1] {
+	case 's':
+		v = v[:len(v)-1]
+	case 'm':
+		unit, v = 60, v[:len(v)-1]
+	case 'h':
+		unit, v = 3600, v[:len(v)-1]
+	case 'd':
+		unit, v = 86400, v[:len(v)-1]
+	case 'w':
+		unit, v = 604800, v[:len(v)-1]
+	}
+
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n * unit, true
 }
 
 func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {

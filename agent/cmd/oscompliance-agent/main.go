@@ -17,6 +17,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/config"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/firewall"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/listening"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/neighbours"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/pam"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sudoers"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sweep"
@@ -30,7 +31,7 @@ var version = "dev"
 
 const maxPass = 50 * time.Minute
 
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "sweep"}
 
 func main() {
 	opts, err := parseOptions()
@@ -106,10 +107,11 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"config": func() error {
 			return config.Collect(e, config.Config{Files: config.DefaultFiles, SSHD: opts.Paths.SSHD})
 		},
-		"authprobe": func() error { return authprobe.Collect(e) },
-		"firewall":  func() error { return firewall.Collect(e, firewall.Default) },
-		"wazuh":     func() error { return wazuh.CollectAgentConfig(e, wazuhPaths) },
-		"acl":       func() error { return acl.Collect(e, acl.Config{Wazuh: wazuhPaths}) },
+		"authprobe":  func() error { return authprobe.Collect(e) },
+		"firewall":   func() error { return firewall.Collect(e, firewall.Default) },
+		"neighbours": func() error { return neighbours.Collect(e, neighbours.Default) },
+		"wazuh":      func() error { return wazuh.CollectAgentConfig(e, wazuhPaths) },
+		"acl":        func() error { return acl.Collect(e, acl.Config{Wazuh: wazuhPaths}) },
 		"audit": func() error {
 			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", Wazuh: wazuhPaths})
 		},

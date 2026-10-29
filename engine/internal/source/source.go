@@ -22,11 +22,14 @@ type Source struct {
 	client     *indexer.Client
 	index      string
 	monitoring string
+	states     string
 	pass       passState
 }
 
-func New(client *indexer.Client, index, monitoring string) *Source {
-	return &Source{client: client, index: index, monitoring: monitoring}
+// New reads facts and alerts from index, the agents from monitoring, and Wazuh's inventory from the state
+// indices that start with states.
+func New(client *indexer.Client, index, monitoring, states string) *Source {
+	return &Source{client: client, index: index, monitoring: monitoring, states: states}
 }
 
 const ManagerID = "000"

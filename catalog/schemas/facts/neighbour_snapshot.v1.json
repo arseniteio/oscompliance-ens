@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/neighbour_snapshot.v1.json",
+  "title": "neighbour_snapshot v1",
+  "description": "The machine's IPv4 neighbour table (/proc/net/arp): the hosts it has talked to on its links. Entries still being resolved are left out.",
+  "type": "object",
+  "required": [
+    "status",
+    "neighbours"
+  ],
+  "properties": {
+    "fact": {
+      "const": "neighbour_snapshot"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "neighbours": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ip",
+          "mac",
+          "interface"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "ip": {
+            "type": "string"
+          },
+          "mac": {
+            "type": "string"
+          },
+          "interface": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}
