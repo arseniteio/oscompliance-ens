@@ -10,7 +10,8 @@
     "directories",
     "localfiles",
     "syscollector_disabled",
-    "syscollector_scans"
+    "syscollector_scans",
+    "sca_disabled"
   ],
   "properties": {
     "fact": {
@@ -115,6 +116,15 @@
           "processes"
         ]
       }
+    },
+    "sca_disabled": {
+      "description": "No <sca> block, or <enabled>no</enabled>.",
+      "type": "boolean"
+    },
+    "sca_interval": {
+      "description": "Seconds between SCA assessments.",
+      "type": "integer",
+      "minimum": 1
     }
   },
   "allOf": [

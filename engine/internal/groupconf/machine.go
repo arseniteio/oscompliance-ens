@@ -44,6 +44,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	}
 
 	m.Paths.ACL = cells(policy, agentID, "op.acc.2", "P-08", 0)
+	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.2", "P-08", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.2", "P-06", 1)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.4", "P-07", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, securityPaths...)

@@ -33,7 +33,8 @@ const fleet = `{
       {"id": "P-03", "value": ["desarrollo | /usr/bin/git | /srv/repos", "operacion | systemctl"]}
     ]},
     {"controlId": "op.acc.4", "parameters": [{"id": "P-07", "value": ["/datos/rrhh | rrhh"]}]},
-    {"controlId": "op.acc.5", "parameters": [{"id": "P-02", "value": ["sede | web01 | /var/log/sede/auth.json"]}]}
+    {"controlId": "op.acc.5", "parameters": [{"id": "P-02", "value": ["sede | web01 | /var/log/sede/auth.json"]}]},
+    {"controlId": "op.exp.2", "parameters": [{"id": "P-08", "value": ["/etc/shadow | 640 | root", "/etc/ssh | 755 | root"]}]}
   ],
   "agents": {"003": {"controls": {"op.acc.2": {"parameters": {"P-08": ["/opt/other | 0700 | root"]}}}}}
 }`
@@ -45,7 +46,7 @@ func TestForAgent(t *testing.T) {
 	if strings.Join(m.FIM, ",") != "/srv/app/config" {
 		t.Errorf("FIM: only what Wazuh does not watch by default: %v", m.FIM)
 	}
-	if strings.Join(m.Paths.ACL, ",") != "/etc/ssh" {
+	if strings.Join(m.Paths.ACL, ",") != "/etc/shadow,/etc/ssh" {
 		t.Errorf("ACL: %v", m.Paths.ACL)
 	}
 	if strings.Join(m.Paths.Exec, ",") != "/usr/bin/git" {
@@ -93,7 +94,7 @@ func TestRegion(t *testing.T) {
 	if strings.Join(names, ",") != ",odd01,web01" {
 		t.Fatalf("one common block, then only the machines that differ: %v", names)
 	}
-	if !strings.Contains(root.Blocks[0].Comments, `"acl_paths":["/etc/ssh"]`) || len(root.Blocks[0].Logs) != 2 {
+	if !strings.Contains(root.Blocks[0].Comments, `"acl_paths":["/etc/shadow","/etc/ssh"]`) || len(root.Blocks[0].Logs) != 2 {
 		t.Errorf("common block: %s", region)
 	}
 	if !strings.Contains(root.Blocks[1].Comments, `"/opt/other"`) {

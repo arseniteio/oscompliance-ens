@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/virtualization.v1.json",
+  "title": "virtualization v1",
+  "description": "Whether the machine is a virtual machine, from systemd-detect-virt, the firmware (DMI) or the CPU hypervisor flag. Containers are not virtual machines.",
+  "type": "object",
+  "required": [
+    "status",
+    "virtual"
+  ],
+  "properties": {
+    "fact": {
+      "const": "virtualization"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "unreadable"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "virtual": {
+      "type": "boolean"
+    },
+    "platform": {
+      "description": "As systemd-detect-virt --vm names it (kvm, vmware, microsoft...), or unknown.",
+      "type": "string"
+    },
+    "vendor": {
+      "type": "string"
+    },
+    "product": {
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "systemd-detect-virt",
+        "dmi",
+        "cpuinfo"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

@@ -31,6 +31,7 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
 		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}, SyscollectorScans: []string{}}
 	inventory := syscollector{disabled: true}
+	assessment := scaSettings{disabled: true}
 
 	local, err := fsread.ReadFile(cfg.OssecConf)
 
@@ -52,6 +53,7 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 	}
 	add(&out, blocks, cfg.OssecConf)
 	inventory.add(blocks)
+	assessment.add(blocks)
 
 	if shared, err := fsread.ReadFile(cfg.SharedConf); err == nil {
 		blocks, err := applicableBlocks(shared, "agent_config", name)
@@ -61,12 +63,14 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 		}
 		add(&out, blocks, cfg.SharedConf)
 		inventory.add(blocks)
+		assessment.add(blocks)
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		out.Status, out.Error = fact.SourceUnreadable, err.Error()
 		return e.Emit(out)
 	}
 
 	out.SyscollectorDisabled, out.SyscollectorInterval, out.SyscollectorScans = inventory.disabled, inventory.interval, inventory.on()
+	out.SCADisabled, out.SCAInterval = assessment.disabled, assessment.interval
 	return e.Emit(out)
 }
 
@@ -106,6 +110,32 @@ func (s *syscollector) add(blocks []agentConfig) {
 				}
 			}
 		}
+	}
+}
+
+// scaSettings follow the same merge; Wazuh's default interval is 12 hours.
+type scaSettings struct {
+	seen     bool
+	disabled bool
+	interval int
+}
+
+func (s *scaSettings) add(blocks []agentConfig) {
+	for _, b := range blocks {
+		for _, c := range b.SCA {
+			if !s.seen {
+				s.seen, s.disabled, s.interval = true, false, 43200
+			}
+			if e := strings.TrimSpace(c.Enabled); e != "" {
+				s.disabled = e != "yes"
+			}
+			if n, ok := seconds(c.Interval); ok {
+				s.interval = n
+			}
+		}
+	}
+	if !s.seen {
+		s.interval = 0
 	}
 }
 

@@ -46,7 +46,9 @@ var Keys = map[string][]string{
 	"/etc/samba/smb.conf":          {"guest ok", "public"},
 	"/etc/vsftpd.conf":             {"anonymous_enable"},
 	"sshd -T": {"passwordauthentication", "kbdinteractiveauthentication", "usepam", "pubkeyauthentication",
-		"pubkeyauthoptions", "authenticationmethods", "loglevel", "debianbanner", "versionaddendum", "banner"},
+		"pubkeyauthoptions", "authenticationmethods", "loglevel", "debianbanner", "versionaddendum", "banner",
+		"permitrootlogin", "permitemptypasswords", "x11forwarding", "hostbasedauthentication", "ignorerhosts",
+		"ciphers", "macs", "kexalgorithms"},
 }
 
 func keep(source string, entries []fact.ConfigEntry) []fact.ConfigEntry {

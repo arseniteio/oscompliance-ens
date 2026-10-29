@@ -32,6 +32,9 @@ type WazuhAgentConfig struct {
 	SyscollectorDisabled bool     `json:"syscollector_disabled"`
 	SyscollectorInterval int      `json:"syscollector_interval,omitempty"`
 	SyscollectorScans    []string `json:"syscollector_scans"`
+
+	SCADisabled bool `json:"sca_disabled"`
+	SCAInterval int  `json:"sca_interval,omitempty"`
 }
 
 type LogFile struct {

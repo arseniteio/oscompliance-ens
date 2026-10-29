@@ -22,6 +22,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sudoers"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sweep"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/umask"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/virtualization"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/wazuh"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
@@ -31,7 +32,7 @@ var version = "dev"
 
 const maxPass = 50 * time.Minute
 
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "sweep"}
 
 func main() {
 	opts, err := parseOptions()
@@ -110,8 +111,11 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"authprobe":  func() error { return authprobe.Collect(e) },
 		"firewall":   func() error { return firewall.Collect(e, firewall.Default) },
 		"neighbours": func() error { return neighbours.Collect(e, neighbours.Default) },
-		"wazuh":      func() error { return wazuh.CollectAgentConfig(e, wazuhPaths) },
-		"acl":        func() error { return acl.Collect(e, acl.Config{Wazuh: wazuhPaths}) },
+		"virtualization": func() error {
+			return virtualization.Collect(e, virtualization.Default)
+		},
+		"wazuh": func() error { return wazuh.CollectAgentConfig(e, wazuhPaths) },
+		"acl":   func() error { return acl.Collect(e, acl.Config{Wazuh: wazuhPaths}) },
 		"audit": func() error {
 			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", Wazuh: wazuhPaths})
 		},

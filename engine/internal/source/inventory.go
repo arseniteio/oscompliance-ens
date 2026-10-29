@@ -189,6 +189,7 @@ func (s *Source) inventoryCount(ctx context.Context, kind string, filter []any, 
 
 // Reporting is the newest monitoring record of a machine.
 type Reporting struct {
+	Name          string
 	Status        string
 	LastKeepAlive time.Time
 	IP            string
@@ -198,7 +199,7 @@ func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Rep
 
 	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
 	sub := map[string]any{"last": map[string]any{"top_hits": map[string]any{
-		"size": 1, "sort": []any{map[string]any{"timestamp": "desc"}}, "_source": []string{"status", "lastKeepAlive", "ip"},
+		"size": 1, "sort": []any{map[string]any{"timestamp": "desc"}}, "_source": []string{"name", "status", "lastKeepAlive", "ip"},
 	}}}
 
 	out := map[string]Reporting{}
@@ -210,6 +211,7 @@ func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Rep
 					Hits struct {
 						Hits []struct {
 							Source struct {
+								Name          string `json:"name"`
 								Status        string `json:"status"`
 								LastKeepAlive string `json:"lastKeepAlive"`
 								IP            string `json:"ip"`
@@ -225,7 +227,7 @@ func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Rep
 				return nil
 			}
 			h := c.Last.Hits.Hits[0].Source
-			r := Reporting{Status: h.Status, IP: h.IP}
+			r := Reporting{Name: h.Name, Status: h.Status, IP: h.IP}
 			if t, err := time.Parse(time.RFC3339, h.LastKeepAlive); err == nil {
 				r.LastKeepAlive = t
 			}

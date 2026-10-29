@@ -88,6 +88,7 @@ type agentConfig struct {
 	Localfiles []localfile `xml:"localfile"`
 	Syscheck   []syscheck  `xml:"syscheck"`
 	Wodles     []wodle     `xml:"wodle"`
+	SCA        []sca       `xml:"sca"`
 	Comments   string      `xml:",comment"`
 }
 
@@ -109,6 +110,11 @@ type syscheck struct {
 		Paths    string `xml:",chardata"`
 	} `xml:"directories"`
 	Ignore []string `xml:"ignore"`
+}
+
+type sca struct {
+	Enabled  string `xml:"enabled"`
+	Interval string `xml:"interval"`
 }
 
 type wodle struct {
