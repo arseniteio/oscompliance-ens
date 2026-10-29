@@ -43,6 +43,9 @@ type WazuhAgentConfig struct {
 
 	SealedDays []string  `json:"sealed_days"`
 	Lists      []CDBList `json:"lists"`
+
+	RulesetFiles int      `json:"ruleset_files"`
+	CustomRules  []string `json:"custom_rules"`
 }
 
 // CDBList is a list of the manager's etc/lists and when it last changed.

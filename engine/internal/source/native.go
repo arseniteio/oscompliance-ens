@@ -53,6 +53,10 @@ func (s *Source) MalwareProtections(ctx context.Context, since time.Time) (map[s
 	return newest[fact.MalwareProtection](ctx, s, fact.MalwareProtectionFact, since)
 }
 
+func (s *Source) TimeSyncs(ctx context.Context, since time.Time) (map[string]fact.TimeSync, error) {
+	return newest[fact.TimeSync](ctx, s, fact.TimeSyncFact, since)
+}
+
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }

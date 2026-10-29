@@ -197,6 +197,8 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &SnapshotList{}
 		case MalwareProtectionFact:
 			v = &MalwareProtection{}
+		case TimeSyncFact:
+			v = &TimeSync{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}

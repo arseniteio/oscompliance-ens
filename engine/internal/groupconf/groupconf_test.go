@@ -47,8 +47,8 @@ func TestForAgent(t *testing.T) {
 
 	m := ForAgent(policyOf(t, fleet), "001", "web01")
 
-	if strings.Join(m.FIM, ",") != "/srv/app/config" {
-		t.Errorf("FIM: only what Wazuh does not watch by default: %v", m.FIM)
+	if strings.Join(m.FIM, ",") != "/srv/app/config,/var/ossec/etc" {
+		t.Errorf("FIM: only what Wazuh does not watch by default, and the agent configuration: %v", m.FIM)
 	}
 	if strings.Join(m.Paths.ACL, ",") != "/etc/shadow,/etc/ssh" {
 		t.Errorf("ACL: %v", m.Paths.ACL)

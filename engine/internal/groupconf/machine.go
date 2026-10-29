@@ -32,6 +32,8 @@ type Service struct {
 // Paths whose changes op.acc.3 must see on every machine: the Wazuh agent and auditd themselves.
 var securityPaths = []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"}
 
+const agentConfiguration = "/var/ossec/etc"
+
 // Wazuh FIM watches these by default; a critical path elsewhere needs its own directory entry.
 var fimDefaults = []string{"/etc", "/usr/bin", "/usr/sbin", "/bin", "/sbin", "/boot"}
 
@@ -47,6 +49,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 
 	m.Paths.ACL = cells(policy, agentID, "op.acc.2", "P-08", 0)
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.2", "P-08", 0)...)
+	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.8", "P-14", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.2", "P-06", 1)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.4", "P-07", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.exp.3", "P-04", 0)...)
@@ -70,6 +73,8 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 		}
 	}
 
+	// op.exp.8 EV-13: the agent's own configuration is part of the logging system it protects.
+	m.FIM = append(m.FIM, agentConfiguration)
 	m.FIM = sorted(m.FIM)
 	m.Paths.ACL = sorted(m.Paths.ACL)
 	m.Paths.Audit = sorted(m.Paths.Audit)

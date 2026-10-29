@@ -35,8 +35,10 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
 		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}, SyscollectorScans: []string{},
 		SyscheckScanOnStart: true, Integrations: []string{}, ActiveResponses: activeResponses(filepath.Join(filepath.Dir(cfg.OssecConf), "shared", "ar.conf")),
-		SealedDays: sealedDays(filepath.Join(filepath.Dir(filepath.Dir(cfg.OssecConf)), "logs", "alerts"), time.Now()),
-		Lists:      lists(filepath.Join(filepath.Dir(cfg.OssecConf), "lists"))}
+		SealedDays:   sealedDays(filepath.Join(filepath.Dir(filepath.Dir(cfg.OssecConf)), "logs", "alerts"), time.Now()),
+		Lists:        lists(filepath.Join(filepath.Dir(cfg.OssecConf), "lists")),
+		RulesetFiles: len(files(filepath.Join(filepath.Dir(filepath.Dir(cfg.OssecConf)), "ruleset", "rules"))),
+		CustomRules:  files(filepath.Join(filepath.Dir(cfg.OssecConf), "rules"))}
 	inventory := syscollector{disabled: true}
 	assessment := scaSettings{disabled: true}
 
@@ -128,6 +130,18 @@ func sealedDays(dir string, now time.Time) []string {
 		name := filepath.Join(dir, d.Format("2006"), d.Format("Jan"), "ossec-alerts-"+d.Format("02")+".log.sum")
 		if _, err := os.Stat(name); err == nil {
 			out = append(out, d.Format("2006-01-02"))
+		}
+	}
+	return out
+}
+
+// files are the XML files of a rules directory.
+func files(dir string) []string {
+	out := []string{}
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".xml") {
+			out = append(out, e.Name())
 		}
 	}
 	return out

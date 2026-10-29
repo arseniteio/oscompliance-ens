@@ -17,7 +17,9 @@
     "integrations",
     "active_responses",
     "sealed_days",
-    "lists"
+    "lists",
+    "ruleset_files",
+    "custom_rules"
   ],
   "properties": {
     "fact": {
@@ -179,6 +181,18 @@
             "format": "date-time"
           }
         }
+      }
+    },
+    "ruleset_files": {
+      "description": "Rule files of ruleset/rules. 0 off the manager.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "custom_rules": {
+      "description": "Files of etc/rules. Empty off the manager.",
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     }
   },
