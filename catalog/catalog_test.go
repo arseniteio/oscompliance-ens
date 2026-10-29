@@ -39,8 +39,8 @@ func TestTemplates(t *testing.T) {
 		t.Errorf("windows: %v %+v", ok, w)
 	}
 
-	if m, ok := TypeDefaultTemplate("op.acc.1", "manager"); !ok || len(m.Values["op.acc.1"]) != 0 {
-		t.Errorf("manager: the common values, nothing of its own: %v %+v", ok, m)
+	if m, ok := TypeDefaultTemplate("op.acc.1", "manager"); !ok || m.Values["op.acc.1"]["P-10"] == nil {
+		t.Errorf("manager: the Linux values: %v %+v", ok, m)
 	}
 
 	if _, ok := BuiltinTemplate("windows-server", "op.acc.1"); !ok {

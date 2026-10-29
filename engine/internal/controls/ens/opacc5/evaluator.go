@@ -81,7 +81,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	if err != nil && !errors.Is(err, params.ErrNotSet) {
 		read("P-02", err)
 	}
-	declared := declaredNames(rows)
+	declared := declaredNames(rows, agent.Name)
 
 	logPasses, err := e.logPasses(ctx, agent.ID)
 	read("logs", err)

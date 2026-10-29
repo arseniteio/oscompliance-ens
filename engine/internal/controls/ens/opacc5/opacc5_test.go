@@ -37,7 +37,7 @@ func TestServices(t *testing.T) {
 	logs := []fact.ServiceLog{{Service: "sede", Path: "/var/log/sede.json"}, {Service: "api", Path: "/var/log/api.json"}}
 	spans := map[string]source.ServiceSpan{"sede": {Count: 3}}
 
-	got := Services(declaredNames([]string{"sede | sede.example.org | /var/log/sede.json", "portal | p | /x"}), logs, spans)
+	got := Services(declaredNames([]string{"sede | web01 | /var/log/sede.json", "portal | WEB01 | /x", "otro | db01 | /y"}, "web01"), logs, spans)
 
 	if len(got) != 3 || got[0].Name != "api" || got[0].Declared || got[1].Name != "portal" || got[1].Log != nil || !got[2].Declared || got[2].Span.Count != 3 {
 		t.Errorf("services: %+v", got)

@@ -49,12 +49,18 @@ func Services(declared []string, logs []fact.ServiceLog, spans map[string]source
 	return out
 }
 
-func declaredNames(rows []string) []string {
+// declaredNames are the services P-02 declares on this machine: its rows naming it as host, as the group
+// configuration does when it declares their logs.
+func declaredNames(rows []string, agentName string) []string {
 
 	var out []string
 	for _, r := range rows {
-		name, _, _ := strings.Cut(r, "|")
-		if name = strings.TrimSpace(name); name != "" {
+		cells := strings.Split(r, "|")
+		for len(cells) < 2 {
+			cells = append(cells, "")
+		}
+		name, host := strings.TrimSpace(cells[0]), strings.TrimSpace(cells[1])
+		if name != "" && strings.EqualFold(host, agentName) {
 			out = append(out, name)
 		}
 	}
