@@ -18,6 +18,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/config"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/firewall"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/listening"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/malware"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/neighbours"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/packages"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/pam"
@@ -38,7 +39,7 @@ var version = "dev"
 
 const maxPass = 50 * time.Minute
 
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "packages", "units", "backups", "updates", "transactions", "snapshots", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "packages", "units", "backups", "updates", "transactions", "snapshots", "malware", "sweep"}
 
 func main() {
 	opts, err := parseOptions()
@@ -125,6 +126,7 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 			return transactions.Collect(e, transactions.Default)
 		},
 		"snapshots": func() error { return snapshots.Collect(e, snapshots.Default) },
+		"malware":   func() error { return malware.Collect(e, malware.Default) },
 		"virtualization": func() error {
 			return virtualization.Collect(e, virtualization.Default)
 		},

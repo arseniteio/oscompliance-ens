@@ -11,7 +11,11 @@
     "localfiles",
     "syscollector_disabled",
     "syscollector_scans",
-    "sca_disabled"
+    "sca_disabled",
+    "syscheck_scan_on_start",
+    "rootcheck_disabled",
+    "integrations",
+    "active_responses"
   ],
   "properties": {
     "fact": {
@@ -125,6 +129,27 @@
       "description": "Seconds between SCA assessments.",
       "type": "integer",
       "minimum": 1
+    },
+    "syscheck_scan_on_start": {
+      "description": "FIM scans when the agent starts (Wazuh's default).",
+      "type": "boolean"
+    },
+    "rootcheck_disabled": {
+      "type": "boolean"
+    },
+    "integrations": {
+      "description": "<integration> names of this ossec.conf (on the manager: virustotal, slack...).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "active_responses": {
+      "description": "Active response scripts the manager sends to this machine (shared/ar.conf), restarts left out.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "allOf": [

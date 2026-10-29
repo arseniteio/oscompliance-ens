@@ -296,3 +296,52 @@ func (s *Source) NewPackages(ctx context.Context, since time.Time) (map[string][
 
 	return out, err
 }
+
+// AlertCount is how many times a rule fired on a machine, with some examples of what it was about.
+type AlertCount struct {
+	Rule     string
+	Count    int
+	Examples []string
+}
+
+// RuleCounts counts the alerts of some rules per machine since a time, with examples taken from a field.
+func (s *Source) RuleCounts(ctx context.Context, rules []string, field string, since time.Time) (map[string][]AlertCount, error) {
+
+	ids := make([]any, len(rules))
+	for i, r := range rules {
+		ids[i] = r
+	}
+	filter := []any{
+		map[string]any{"terms": map[string]any{"rule.id": ids}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+	sub := map[string]any{"x": map[string]any{"terms": map[string]any{"field": field, "size": 5}}}
+
+	out := map[string][]AlertCount{}
+
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("r", "rule.id")}, sub, func(key map[string]any, b json.RawMessage) error {
+		var c struct {
+			Count int `json:"doc_count"`
+			X     struct {
+				Buckets []struct {
+					Key any `json:"key"`
+				} `json:"buckets"`
+			} `json:"x"`
+		}
+		if err := json.Unmarshal(b, &c); err != nil {
+			return err
+		}
+		id := keyString(key, "a")
+		if id == "" {
+			return nil
+		}
+		a := AlertCount{Rule: keyString(key, "r"), Count: c.Count}
+		for _, x := range c.X.Buckets {
+			a.Examples = append(a.Examples, fmt.Sprint(x.Key))
+		}
+		out[id] = append(out[id], a)
+		return nil
+	})
+
+	return out, err
+}

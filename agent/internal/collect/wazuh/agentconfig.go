@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -29,7 +31,8 @@ var DefaultAgentConfig = AgentConfigPaths{
 func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
-		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}, SyscollectorScans: []string{}}
+		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}, SyscollectorScans: []string{},
+		SyscheckScanOnStart: true, Integrations: []string{}, ActiveResponses: activeResponses(filepath.Join(filepath.Dir(cfg.OssecConf), "shared", "ar.conf"))}
 	inventory := syscollector{disabled: true}
 	assessment := scaSettings{disabled: true}
 
@@ -113,6 +116,28 @@ func (s *syscollector) add(blocks []agentConfig) {
 	}
 }
 
+// activeResponses reads shared/ar.conf (`name - script - timeout`): the responses the manager sends this
+// machine. Wazuh's own restarts are not responses to an attack.
+func activeResponses(path string) []string {
+	out := []string{}
+	data, err := fsread.ReadFile(path)
+	if err != nil {
+		return out
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		f := strings.Split(line, " - ")
+		if len(f) < 2 {
+			continue
+		}
+		script := strings.TrimSpace(f[1])
+		if strings.HasPrefix(script, "restart-") || slices.Contains(out, script) {
+			continue
+		}
+		out = append(out, script)
+	}
+	return out
+}
+
 // scaSettings follow the same merge; Wazuh's default interval is 12 hours.
 type scaSettings struct {
 	seen     bool
@@ -194,6 +219,9 @@ func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {
 			if n, err := strconv.Atoi(strings.TrimSpace(s.Frequency)); err == nil {
 				out.SyscheckFrequency = n
 			}
+			if v := strings.TrimSpace(s.ScanOnStart); v != "" {
+				out.SyscheckScanOnStart = v == "yes"
+			}
 
 			for _, d := range s.Directories {
 				for _, p := range strings.Split(d.Paths, ",") {
@@ -207,6 +235,17 @@ func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {
 				if i = strings.TrimSpace(i); i != "" {
 					out.Ignored = append(out.Ignored, i)
 				}
+			}
+		}
+
+		for _, r := range b.Rootcheck {
+			if v := strings.TrimSpace(r.Disabled); v != "" {
+				out.RootcheckDisabled = v == "yes"
+			}
+		}
+		for _, i := range b.Integrations {
+			if n := strings.TrimSpace(i.Name); n != "" && !slices.Contains(out.Integrations, n) {
+				out.Integrations = append(out.Integrations, n)
 			}
 		}
 

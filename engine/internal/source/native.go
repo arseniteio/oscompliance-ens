@@ -49,6 +49,10 @@ func (s *Source) SnapshotLists(ctx context.Context, since time.Time) (map[string
 	return newest[fact.SnapshotList](ctx, s, fact.SnapshotListFact, since)
 }
 
+func (s *Source) MalwareProtections(ctx context.Context, since time.Time) (map[string]fact.MalwareProtection, error) {
+	return newest[fact.MalwareProtection](ctx, s, fact.MalwareProtectionFact, since)
+}
+
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }

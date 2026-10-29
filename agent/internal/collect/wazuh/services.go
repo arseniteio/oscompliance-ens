@@ -89,7 +89,13 @@ type agentConfig struct {
 	Syscheck   []syscheck  `xml:"syscheck"`
 	Wodles     []wodle     `xml:"wodle"`
 	SCA        []sca       `xml:"sca"`
-	Comments   string      `xml:",comment"`
+	Rootcheck  []struct {
+		Disabled string `xml:"disabled"`
+	} `xml:"rootcheck"`
+	Integrations []struct {
+		Name string `xml:"name"`
+	} `xml:"integration"`
+	Comments string `xml:",comment"`
 }
 
 type localfile struct {
@@ -104,6 +110,7 @@ type localfile struct {
 type syscheck struct {
 	Disabled    string `xml:"disabled"`
 	Frequency   string `xml:"frequency"`
+	ScanOnStart string `xml:"scan_on_start"`
 	Directories []struct {
 		Realtime string `xml:"realtime,attr"`
 		Whodata  string `xml:"whodata,attr"`

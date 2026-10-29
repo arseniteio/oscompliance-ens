@@ -35,6 +35,11 @@ type WazuhAgentConfig struct {
 
 	SCADisabled bool `json:"sca_disabled"`
 	SCAInterval int  `json:"sca_interval,omitempty"`
+
+	SyscheckScanOnStart bool     `json:"syscheck_scan_on_start"`
+	RootcheckDisabled   bool     `json:"rootcheck_disabled"`
+	Integrations        []string `json:"integrations"`
+	ActiveResponses     []string `json:"active_responses"`
 }
 
 type LogFile struct {
