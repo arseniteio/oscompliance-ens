@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/update_status.v1.json",
+  "title": "update_status v1",
+  "description": "What apt would upgrade now (a simulation, nothing downloaded) and the time of its newest package list.",
+  "type": "object",
+  "required": [
+    "manager",
+    "status",
+    "pending",
+    "security"
+  ],
+  "properties": {
+    "fact": {
+      "const": "update_status"
+    },
+    "manager": {
+      "enum": [
+        "apt",
+        "none"
+      ]
+    },
+    "status": {
+      "enum": [
+        "read",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "lists_updated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "pending": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "security": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

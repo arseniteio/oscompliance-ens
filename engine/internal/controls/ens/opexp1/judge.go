@@ -26,7 +26,8 @@ type Freshness struct {
 	Now          time.Time
 }
 
-func (f Freshness) stale(scans []string) (verdict.Judgement, bool) {
+// Stale is the judgement that stands for an inventory that cannot be shown current, if any.
+func (f Freshness) Stale(scans []string) (verdict.Judgement, bool) {
 
 	if !f.HoursProblem.IsZero() {
 		return passes.Gap(verdict.CauseConfiguration, f.HoursProblem), true
@@ -83,7 +84,7 @@ func missing(kind string) verdict.Judgement {
 
 func JudgeEV01(inv *source.Inventory, f Freshness) verdict.Judgement {
 
-	if j, stale := f.stale([]string{"os", "hardware"}); stale {
+	if j, stale := f.Stale([]string{"os", "hardware"}); stale {
 		return j
 	}
 	if inv == nil || inv.System == nil {
@@ -100,7 +101,7 @@ func JudgeEV01(inv *source.Inventory, f Freshness) verdict.Judgement {
 
 func JudgeEV02(inv *source.Inventory, f Freshness) verdict.Judgement {
 
-	if j, stale := f.stale([]string{"packages"}); stale {
+	if j, stale := f.Stale([]string{"packages"}); stale {
 		return j
 	}
 	if inv == nil || len(inv.Packages) == 0 {
@@ -123,7 +124,7 @@ func JudgeEV02(inv *source.Inventory, f Freshness) verdict.Judgement {
 
 func JudgeEV03(inv *source.Inventory, f Freshness) verdict.Judgement {
 
-	if j, stale := f.stale([]string{"network", "ports", "processes"}); stale {
+	if j, stale := f.Stale([]string{"network", "ports", "processes"}); stale {
 		return j
 	}
 	if inv == nil || len(inv.Addresses) == 0 {

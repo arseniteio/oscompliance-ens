@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/package_transaction.v1.json",
+  "title": "package_transaction v1",
+  "description": "One apt transaction of /var/log/apt/history.log: when it ran, who asked for it and the packages it changed (name version).",
+  "type": "object",
+  "required": [
+    "start",
+    "actor"
+  ],
+  "properties": {
+    "fact": {
+      "const": "package_transaction"
+    },
+    "start": {
+      "type": "string"
+    },
+    "end": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "installed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "upgraded": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "removed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

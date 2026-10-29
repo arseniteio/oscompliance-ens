@@ -21,10 +21,13 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/neighbours"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/packages"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/pam"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/snapshots"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sudoers"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/sweep"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/transactions"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/umask"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/units"
+	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/updates"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/virtualization"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/wazuh"
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
@@ -35,7 +38,7 @@ var version = "dev"
 
 const maxPass = 50 * time.Minute
 
-var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "packages", "units", "backups", "sweep"}
+var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config", "pam", "authprobe", "listening", "services", "wazuh", "acl", "audit", "firewall", "neighbours", "virtualization", "packages", "units", "backups", "updates", "transactions", "snapshots", "sweep"}
 
 func main() {
 	opts, err := parseOptions()
@@ -117,6 +120,11 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"packages":   func() error { return packages.Collect(e, packages.Default) },
 		"units":      func() error { return units.Collect(e, units.Default) },
 		"backups":    func() error { return backups.Collect(e, backups.Config{Wazuh: wazuhPaths}) },
+		"updates":    func() error { return updates.Collect(e, updates.Default) },
+		"transactions": func() error {
+			return transactions.Collect(e, transactions.Default)
+		},
+		"snapshots": func() error { return snapshots.Collect(e, snapshots.Default) },
 		"virtualization": func() error {
 			return virtualization.Collect(e, virtualization.Default)
 		},

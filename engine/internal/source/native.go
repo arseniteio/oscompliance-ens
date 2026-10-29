@@ -33,6 +33,22 @@ func (s *Source) BackupSnapshots(ctx context.Context, since time.Time) (map[stri
 	return newest[fact.BackupSnapshot](ctx, s, fact.BackupSnapshotFact, since)
 }
 
+func (s *Source) UpdateStatuses(ctx context.Context, since time.Time) (map[string]fact.UpdateStatus, error) {
+	return newest[fact.UpdateStatus](ctx, s, fact.UpdateStatusFact, since)
+}
+
+func (s *Source) TransactionSnapshots(ctx context.Context, since time.Time) (map[string]fact.TransactionSnapshot, error) {
+	return newest[fact.TransactionSnapshot](ctx, s, fact.TransactionSnapshotFact, since)
+}
+
+func (s *Source) PackageTransactions(ctx context.Context, agentID, runID string, since time.Time) ([]fact.PackageTransaction, error) {
+	return passRecords[fact.PackageTransaction](ctx, s, fact.PackageTransactionFact, agentID, runID, since)
+}
+
+func (s *Source) SnapshotLists(ctx context.Context, since time.Time) (map[string]fact.SnapshotList, error) {
+	return newest[fact.SnapshotList](ctx, s, fact.SnapshotListFact, since)
+}
+
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }

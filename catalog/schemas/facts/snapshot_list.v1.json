@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/snapshot_list.v1.json",
+  "title": "snapshot_list v1",
+  "description": "The LVM, ZFS and Btrfs snapshots of the machine and when each was taken.",
+  "type": "object",
+  "required": [
+    "status",
+    "snapshots"
+  ],
+  "properties": {
+    "fact": {
+      "const": "snapshot_list"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "snapshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "tool",
+          "name",
+          "created"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "tool": {
+            "enum": [
+              "lvm",
+              "zfs",
+              "btrfs"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}
