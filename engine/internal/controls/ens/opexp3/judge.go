@@ -11,6 +11,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc4"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp5"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
@@ -288,4 +289,29 @@ func JudgeEV10(regressions []source.SCARegression, cut time.Time, days int) verd
 	}
 	slices.Sort(list)
 	return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp3.regressions", "list", list, "days", days))
+}
+
+// JudgeEV05 needs every edit of the security configuration covered by an approved request of the change
+// register (op.exp.5 P-10).
+func JudgeEV05(fim []source.FIMChange, paths []string, requests []opexp5.Request, machine string, problem catalog.Message, since time.Time) verdict.Judgement {
+
+	if !problem.IsZero() {
+		return passes.Gap(verdict.CauseConfiguration, problem)
+	}
+
+	var edits []source.FIMChange
+	for _, f := range fim {
+		if slices.ContainsFunc(paths, func(p string) bool { return under(f.Path, p) }) {
+			edits = append(edits, f)
+		}
+	}
+	changes := opexp5.Changes(edits, nil, since)
+	if bare := opexp5.Uncovered(changes, requests, machine); len(bare) > 0 {
+		list := make([]string, len(bare))
+		for i, c := range bare {
+			list[i] = c.String()
+		}
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp3.edits_unauthorised", "list", list))
+	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp3.edits_covered", "count", len(changes)))
 }

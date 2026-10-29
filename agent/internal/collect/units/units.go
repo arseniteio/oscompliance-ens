@@ -21,20 +21,24 @@ var Default = Config{Systemctl: "/usr/bin/systemctl", RunDir: "/run/systemd/syst
 
 func Collect(e *emit.Emitter, cfg Config) error {
 
-	s := fact.UnitSnapshot{Envelope: e.Envelope(fact.UnitSnapshotFact), Status: fact.SourceRead, Units: []string{}}
+	s := fact.UnitSnapshot{Envelope: e.Envelope(fact.UnitSnapshotFact), Status: fact.SourceRead, Units: []string{}, Failed: []string{}}
 
 	if info, err := os.Stat(cfg.RunDir); !host.Exists(cfg.Systemctl) || err != nil || !info.IsDir() {
 		s.Status = fact.SourceAbsent
 		return e.Emit(s)
 	}
 
-	out, err := host.Run(cfg.Systemctl, "list-units", "--type=service", "--state=running", "--no-legend", "--plain", "--no-pager")
-	if err != nil {
-		s.Status, s.Error = fact.SourceError, err.Error()
-		return e.Emit(s)
+	for _, list := range []struct {
+		state string
+		into  *[]string
+	}{{"running", &s.Units}, {"failed", &s.Failed}} {
+		out, err := host.Run(cfg.Systemctl, "list-units", "--type=service", "--state="+list.state, "--no-legend", "--plain", "--no-pager")
+		if err != nil {
+			s.Status, s.Error = fact.SourceError, err.Error()
+			return e.Emit(s)
+		}
+		*list.into = parse(out)
 	}
-
-	s.Units = parse(out)
 	return e.Emit(s)
 }
 

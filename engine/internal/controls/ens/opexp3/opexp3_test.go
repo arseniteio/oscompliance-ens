@@ -8,6 +8,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc4"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp5"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
 )
@@ -96,4 +97,16 @@ func TestJudgeEV10(t *testing.T) {
 	r := []source.SCARegression{{PolicyID: "cis_ubuntu24-04", CheckID: "35500", Title: "Ensure SSH root login is disabled", Time: now.Add(-48 * time.Hour)}}
 	check(t, "regression", JudgeEV10(r, now.Add(-30*24*time.Hour), 30), verdict.NonCompliant, "", "35500 Ensure SSH root login")
 	check(t, "older than the series", JudgeEV10(r, now.Add(-24*time.Hour), 1), verdict.Compliant, "", "")
+}
+
+func TestJudgeEV05(t *testing.T) {
+
+	fim := []source.FIMChange{
+		{Time: now.Add(-3 * time.Hour), Path: "/etc/ssh/sshd_config", Event: "modified"},
+		{Time: now.Add(-2 * time.Hour), Path: "/etc/hosts", Event: "modified"},
+	}
+	requests := opexp5.ParseRegister([]string{"RFC-1 | 2026-10-28 | web01 | sshd | bajo | rsi | 2026-10-28 | 2026-10-29 10:00 | 2026-10-29 10:30 | implantada | | "})
+
+	check(t, "unauthorised", JudgeEV05(fim, []string{"/etc/ssh"}, nil, "web01", catalog.Message{}, now.Add(-26*time.Hour)), verdict.NonCompliant, "", "/etc/ssh/sshd_config")
+	check(t, "covered", JudgeEV05(fim, []string{"/etc/ssh"}, requests, "web01", catalog.Message{}, now.Add(-26*time.Hour)), verdict.Compliant, "", "1 edits")
 }

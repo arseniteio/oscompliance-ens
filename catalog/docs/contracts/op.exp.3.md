@@ -12,8 +12,8 @@ periodically.
 |---|---|---|
 | 3.1 minimum functionality kept | B/M/A | EV-01, EV-04, EV-10 |
 | 3.2 least privilege kept | B/M/A | EV-01, EV-10 |
-| 3.3 changes authorised beforehand | B/M/A | attestation (P-ATT) |
-| 3.4 reaction to notified vulnerabilities | B/M/A | attestation (P-ATT) |
+| 3.3 changes authorised beforehand | B/M/A | EV-05 |
+| 3.4 reaction to notified vulnerabilities | B/M/A | EV-06 |
 | 3.5 reaction to incidents | B/M/A | attestation (P-ATT) |
 | 3.6 only authorised staff edit the configuration | B/M/A | EV-02 |
 | r1.1 authorised baseline | M/A | attestation (P-ATT) |
@@ -32,6 +32,8 @@ Levels and evidence lists are in `controls/ens/op.exp.3.json`.
 | SCA summary alerts (op.exp.2 contract) | every score in the window, and the newest | EV-01 |
 | SCA check alerts, rule 19007 with `data.sca.check.previous_result: passed` | checks that went from passed to failed | EV-10 |
 | audited writes, rule 119004 key `oscompliance_write` | who wrote under the paths of P-04 | EV-02, EV-08 |
+| FIM alerts (`syscheck`) and op.exp.5 P-10 | edits under P-04 and the change register | EV-05 |
+| `wazuh-states-vulnerabilities-*` and op.exp.4 P-01 | open vulnerabilities and their deadlines | EV-06 |
 | `audit_watch_snapshot`, `wazuh_agent_config` (op.acc.2 contract) | the audit chain | EV-02, EV-08 |
 | `identity_snapshot`, `identity_record` (op.acc.1 contract) | the account behind an audit uid | EV-02, EV-08 |
 | dpkg alerts, rule 2901 (`data.package`) | packages newly installed | EV-03 |
@@ -72,7 +74,7 @@ file pattern (time of the newest file it matches).
 | P-03 accounts authorised to edit the security configuration | | EV-02 |
 | P-04 paths of the security configuration | platform; built-in per system type | EV-02, EV-08 |
 | P-05 days between verifications | | EV-11 |
-| P-06 change authorisation procedure | documentary | |
+| P-06 change authorisation procedure | documentary; the register is op.exp.5 P-10 | |
 | P-07 configuration copies `alcance \| fuente \| destino` | system | EV-09 |
 | P-08 accepted deviation (%) | documentary | |
 | P-09 maximum number of effective administrators | | EV-08 |
@@ -108,6 +110,11 @@ running, every P-04 path watched and the audit log read by Wazuh.
   process outside a unit, must be in P-02 (`getty@.service` covers every
   `getty@tty1.service`): otherwise NON_COMPLIANT. Without systemd only the
   listening processes are judged.
+- **EV-05 authorised edits.** Every FIM change of the window under P-04
+  must be covered by an approved request of op.exp.5 P-10 (op.exp.5
+  contract): otherwise NON_COMPLIANT.
+- **EV-06 reaction to vulnerabilities.** op.exp.4 EV-02 with the deadlines of
+  op.exp.4 P-01 (op.exp.4 contract).
 - **EV-08 administrators.** The accounts that wrote under P-04 in the
   window must be at most P-09: otherwise NON_COMPLIANT.
 - **EV-09 configuration copies.** The newest copy of every source of P-07
@@ -120,14 +127,15 @@ running, every P-04 path watched and the audit log read by Wazuh.
 
 ## 5. Parity with v1 and deliberate differences
 
-Kept: the requirements and EV-01 to EV-04, EV-08 to EV-11.
+Kept: the requirements and EV-01 to EV-06, EV-08 to EV-11.
 
 Changed on purpose:
 
-- EV-05, EV-06 and EV-07 are out of op.exp.3 for now: they judge the change
-  register (op.exp.5), the vulnerabilities (op.exp.4) and the incidents
-  (op.exp.7). Until those controls are migrated their requirements are
-  accredited by attestation.
+- EV-05 judges against the change register of op.exp.5 P-10; v1 left it
+  unjudged.
+- EV-06 is op.exp.4's remediation within deadline; v1 left it unjudged.
+- EV-07 is out of op.exp.3 for now: it judges the incidents of op.exp.7.
+  Until then 3.5 is accredited by attestation.
 - The SCA series and regressions come from Wazuh's own alerts; v1
   re-emitted them.
 - EV-03 reads Wazuh's package alerts and the agent's list of packages
@@ -139,5 +147,4 @@ Changed on purpose:
 
 - EV-03 on rpm machines needs the package of a dnf install: a decoder for
   `/var/log/dnf.rpm.log`, or the agent reading it.
-- EV-05, EV-06 and EV-07 come back when op.exp.5, op.exp.4 and op.exp.7
-  give them a source.
+- EV-07 comes back with op.exp.7.

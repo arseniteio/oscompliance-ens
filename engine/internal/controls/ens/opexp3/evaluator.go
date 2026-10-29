@@ -10,6 +10,8 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc4"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp2"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp4"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp5"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/groupconf"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
@@ -34,6 +36,8 @@ type Facts interface {
 	ListeningSnapshots(ctx context.Context, since time.Time) (map[string]fact.ListeningSnapshot, error)
 	ListeningSockets(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ListeningSocket, error)
 	BackupSnapshots(ctx context.Context, since time.Time) (map[string]fact.BackupSnapshot, error)
+	FIMChanges(ctx context.Context, agentID string, since time.Time) ([]source.FIMChange, error)
+	Vulnerabilities(ctx context.Context) (map[string][]source.VulnerabilityDay, error)
 }
 
 const control = "op.exp.3"
@@ -59,6 +63,7 @@ type Evaluator struct {
 	listening   map[string]fact.ListeningSnapshot
 	backups     map[string]fact.BackupSnapshot
 	lowest      map[int]map[string]map[string]int
+	vulns       map[string][]source.VulnerabilityDay
 }
 
 func NewEvaluator(facts Facts) *Evaluator {
@@ -94,6 +99,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		{"units", func() (err error) { e.units, err = e.facts.UnitSnapshots(ctx, w); return }},
 		{"listening", func() (err error) { e.listening, err = e.facts.ListeningSnapshots(ctx, w); return }},
 		{"backups", func() (err error) { e.backups, err = e.facts.BackupSnapshots(ctx, w); return }},
+		{"vulnerabilities", func() (err error) { e.vulns, err = e.facts.Vulnerabilities(ctx); return }},
 	}
 	for _, s := range steps {
 		if err := s.do(); err != nil {
@@ -200,6 +206,27 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		authorised, err := policy.List(agent.ID, control, "P-03")
 		return JudgeEV02(edits, accounts, authorised, problemOf("P-03", err), chain)
+	})
+
+	fim, err := e.facts.FIMChanges(ctx, agent.ID, window)
+	read("fim", err)
+
+	judge("EV-05", []string{"fim"}, func() verdict.Judgement {
+		if pathsErr != nil {
+			return passes.Gap(verdict.CauseConfiguration, passes.Param("P-04", pathsErr))
+		}
+		rows, err := policy.List(agent.ID, opexp5.Control, opexp5.RegisterParam)
+		return JudgeEV05(fim, paths, opexp5.ParseRegister(rows), agent.Name, problemOf("op.exp.5 P-10", err), window)
+	})
+
+	// The reaction to notified vulnerabilities is op.exp.4's remediation within deadline.
+	judge("EV-06", nil, func() verdict.Judgement {
+		rows, err := policy.List(agent.ID, "op.exp.4", "P-01")
+		deadlines, problem := opexp4.Deadlines(rows)
+		if err != nil {
+			problem = passes.Param("op.exp.4 P-01", err)
+		}
+		return opexp4.JudgeEV02(agent.ID == source.ManagerID, e.vulns[agent.ID], deadlines, problem, now)
 	})
 
 	judge("EV-08", []string{"audit", "accounts"}, func() verdict.Judgement {

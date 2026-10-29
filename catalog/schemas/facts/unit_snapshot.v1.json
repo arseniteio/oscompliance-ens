@@ -2,11 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/unit_snapshot.v1.json",
   "title": "unit_snapshot v1",
-  "description": "The systemd services running on the machine. absent: the machine does not run systemd.",
+  "description": "The systemd services running on the machine, and those failed. absent: the machine does not run systemd.",
   "type": "object",
   "required": [
     "status",
-    "units"
+    "units",
+    "failed"
   ],
   "properties": {
     "fact": {
@@ -23,6 +24,13 @@
       "type": "string"
     },
     "units": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "failed": {
+      "description": "Services systemd lists as failed.",
       "type": "array",
       "items": {
         "type": "string"

@@ -20,6 +20,7 @@ type UnitSnapshot struct {
 	Status string   `json:"status"`
 	Error  string   `json:"error,omitempty"`
 	Units  []string `json:"units"`
+	Failed []string `json:"failed"`
 }
 
 type BackupSource struct {
