@@ -24,6 +24,8 @@ type Source struct {
 	monitoring string
 	states     string
 	pass       passState
+
+	managerInventory func(ctx context.Context) (*Inventory, error)
 }
 
 // New reads facts and alerts from index, the agents from monitoring, and Wazuh's inventory from the state

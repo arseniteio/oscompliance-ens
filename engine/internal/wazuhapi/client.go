@@ -192,3 +192,129 @@ func (c *Client) PutGroupConfiguration(ctx context.Context, group, conf string) 
 	_, err := c.do(ctx, http.MethodPut, "/groups/"+url.PathEscape(group)+"/configuration", "application/xml", []byte(conf))
 	return err
 }
+
+// Syscollector is the inventory the manager holds of one agent, as its API serves it.
+type Syscollector struct {
+	OS           string
+	Version      string
+	Kernel       string
+	Architecture string
+	Cores        int
+	MemoryKB     int64
+	Packages     map[string]int
+	Addresses    []string
+	Listening    int
+	Processes    int
+	HasOS        bool
+	HasHardware  bool
+}
+
+const inventoryPage = 500
+
+// AgentSyscollector reads an agent's inventory from the manager: Wazuh does not index the manager's own
+// (agent 000) in the state indices.
+func (c *Client) AgentSyscollector(ctx context.Context, agentID string) (*Syscollector, error) {
+
+	base := "/syscollector/" + url.PathEscape(agentID)
+	out := &Syscollector{Packages: map[string]int{}}
+
+	var system []struct {
+		Architecture string `json:"architecture"`
+		OS           struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		} `json:"os"`
+		Release string `json:"release"`
+	}
+	if _, err := c.items(ctx, base+"/os", 0, 0, &system); err != nil {
+		return nil, err
+	}
+	if len(system) > 0 {
+		out.HasOS = true
+		out.OS, out.Version, out.Kernel, out.Architecture = system[0].OS.Name, system[0].OS.Version, system[0].Release, system[0].Architecture
+	}
+
+	var hw []struct {
+		CPU struct {
+			Cores int `json:"cores"`
+		} `json:"cpu"`
+		RAM struct {
+			Total int64 `json:"total"`
+		} `json:"ram"`
+	}
+	if _, err := c.items(ctx, base+"/hardware", 0, 0, &hw); err != nil {
+		return nil, err
+	}
+	if len(hw) > 0 {
+		out.HasHardware = true
+		out.Cores, out.MemoryKB = hw[0].CPU.Cores, hw[0].RAM.Total
+	}
+
+	for offset := 0; ; offset += inventoryPage {
+		var page []struct {
+			Format string `json:"format"`
+		}
+		total, err := c.items(ctx, base+"/packages?select=format", inventoryPage, offset, &page)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range page {
+			out.Packages[p.Format]++
+		}
+		if len(page) < inventoryPage || offset+len(page) >= total {
+			break
+		}
+	}
+
+	var addresses []struct {
+		Address string `json:"address"`
+	}
+	if _, err := c.items(ctx, base+"/netaddr?select=address", inventoryPage, 0, &addresses); err != nil {
+		return nil, err
+	}
+	for _, a := range addresses {
+		out.Addresses = append(out.Addresses, a.Address)
+	}
+
+	var none []struct{}
+	var err error
+	if out.Listening, err = c.items(ctx, base+"/ports?state=listening", 1, 0, &none); err != nil {
+		return nil, err
+	}
+	if out.Processes, err = c.items(ctx, base+"/processes", 1, 0, &none); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// items reads one page of an API listing into v and returns how many items the listing has in all. A
+// limit of 0 reads a listing that takes no paging (os and hardware hold one item).
+func (c *Client) items(ctx context.Context, path string, limit, offset int, v any) (int, error) {
+
+	if limit > 0 {
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		path = fmt.Sprintf("%s%slimit=%d&offset=%d", path, sep, limit, offset)
+	}
+	body, err := c.do(ctx, http.MethodGet, path, "", nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var page struct {
+		Data struct {
+			AffectedItems      json.RawMessage `json:"affected_items"`
+			TotalAffectedItems int             `json:"total_affected_items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &page); err != nil {
+		return 0, fmt.Errorf("wazuh api: %s: %w", path, err)
+	}
+	if err := json.Unmarshal(page.Data.AffectedItems, v); err != nil {
+		return 0, fmt.Errorf("wazuh api: %s: %w", path, err)
+	}
+	return page.Data.TotalAffectedItems, nil
+}

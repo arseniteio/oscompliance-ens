@@ -109,6 +109,7 @@ func runMain() error {
 			return fmt.Errorf("config history index: %w", err)
 		}
 		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply}
+		facts.UseManagerInventory(func(ctx context.Context) (*source.Inventory, error) { return managerInventory(ctx, api) })
 	}
 
 	controls := []evaluator.Evaluator{
@@ -199,4 +200,21 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 	if err != nil {
 		slog.Error("group configuration", "error", err)
 	}
+}
+
+func managerInventory(ctx context.Context, api *wazuhapi.Client) (*source.Inventory, error) {
+
+	s, err := api.AgentSyscollector(ctx, source.ManagerID)
+	if err != nil {
+		return nil, err
+	}
+
+	inv := &source.Inventory{Packages: s.Packages, Addresses: s.Addresses, Listening: s.Listening, Processes: s.Processes}
+	if s.HasOS {
+		inv.System = &source.System{OS: s.OS, Version: s.Version, Kernel: s.Kernel, Architecture: s.Architecture}
+	}
+	if s.HasHardware {
+		inv.Hardware = &source.Hardware{Cores: s.Cores, MemoryMB: int(s.MemoryKB / 1024)}
+	}
+	return inv, nil
 }

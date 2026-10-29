@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 )
 
@@ -112,7 +113,23 @@ func (s *Source) Inventories(ctx context.Context) (map[string]*Inventory, error)
 		}
 	}
 
+	if s.managerInventory != nil {
+		// A manager the API cannot read is left without inventory; the rest of the fleet is still judged.
+		inv, err := s.managerInventory(ctx)
+		if err != nil {
+			slog.Warn("manager inventory", "error", err)
+		} else if inv != nil {
+			out[ManagerID] = inv
+		}
+	}
+
 	return out, nil
+}
+
+// UseManagerInventory sets where the manager's own inventory is read, since Wazuh leaves it out of the
+// state indices.
+func (s *Source) UseManagerInventory(read func(ctx context.Context) (*Inventory, error)) {
+	s.managerInventory = read
 }
 
 func (s *Source) inventoryIndex(kind string) string {

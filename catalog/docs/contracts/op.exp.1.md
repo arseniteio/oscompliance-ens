@@ -29,6 +29,7 @@ emitting it again.
 | `wazuh-states-inventory-system-*`, `-hardware-*` | OS, kernel, architecture, CPU, memory | EV-01 |
 | `wazuh-states-inventory-packages-*` | installed packages | EV-02 |
 | `wazuh-states-inventory-networks-*`, `-ports-*`, `-processes-*` | addresses, listening ports, processes | EV-03, EV-05 |
+| Wazuh API `/syscollector/000/*` | the same inventory of the manager, which Wazuh does not index | EV-01 to EV-03, EV-05 |
 | `wazuh-monitoring-*` | status, last keepalive and address of each agent | EV-01 to EV-05 |
 | `listening_snapshot` fact (op.acc.6 contract) | the machine's own addresses | EV-05 |
 | `wazuh_agent_config` fact | the agent's syscollector settings | EV-01 to EV-03 |
@@ -120,7 +121,7 @@ Changed on purpose:
 
 ## 6. Open decisions
 
-- The manager (000) is not in the state indices of Wazuh 4.14. EV-01 to
-  EV-03 of the manager are NOT_EVALUABLE by COLLECTION until it is read
-  another way (Wazuh API `/syscollector/000`).
 - IPv6 neighbours are not read.
+- The manager's inventory needs the engine's Wazuh API user (`-wazuh-api`) with
+  `syscollector:read`; without it EV-01 to EV-03 of the manager are
+  NOT_EVALUABLE by COLLECTION.

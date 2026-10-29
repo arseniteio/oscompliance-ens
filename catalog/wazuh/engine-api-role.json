@@ -3,7 +3,7 @@
   "policy": {
     "name": "oscompliance_engine_groups",
     "policy": {
-      "actions": ["group:read", "group:update_config", "agent:read"],
+      "actions": ["group:read", "group:update_config", "agent:read", "syscollector:read"],
       "resources": ["group:id:*", "agent:id:*", "agent:group:*"],
       "effect": "allow"
     }
