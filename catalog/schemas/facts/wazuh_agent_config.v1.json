@@ -15,7 +15,9 @@
     "syscheck_scan_on_start",
     "rootcheck_disabled",
     "integrations",
-    "active_responses"
+    "active_responses",
+    "sealed_days",
+    "lists"
   ],
   "properties": {
     "fact": {
@@ -149,6 +151,34 @@
       "type": "array",
       "items": {
         "type": "string"
+      }
+    },
+    "sealed_days": {
+      "description": "Days (YYYY-MM-DD) of the last 400 whose alert log is signed (.log.sum). Empty off the manager.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lists": {
+      "description": "CDB lists of etc/lists. Empty off the manager.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "modified"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "modified": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       }
     }
   },

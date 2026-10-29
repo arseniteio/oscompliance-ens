@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
 
@@ -32,7 +34,9 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,
 		Directories: []fact.FIMDirectory{}, Localfiles: []fact.AgentLocalfile{}, SyscollectorScans: []string{},
-		SyscheckScanOnStart: true, Integrations: []string{}, ActiveResponses: activeResponses(filepath.Join(filepath.Dir(cfg.OssecConf), "shared", "ar.conf"))}
+		SyscheckScanOnStart: true, Integrations: []string{}, ActiveResponses: activeResponses(filepath.Join(filepath.Dir(cfg.OssecConf), "shared", "ar.conf")),
+		SealedDays: sealedDays(filepath.Join(filepath.Dir(filepath.Dir(cfg.OssecConf)), "logs", "alerts"), time.Now()),
+		Lists:      lists(filepath.Join(filepath.Dir(cfg.OssecConf), "lists"))}
 	inventory := syscollector{disabled: true}
 	assessment := scaSettings{disabled: true}
 
@@ -114,6 +118,37 @@ func (s *syscollector) add(blocks []agentConfig) {
 			}
 		}
 	}
+}
+
+// sealedDays are the days whose alert log Wazuh signed: logs/alerts/<year>/<Mon>/ossec-alerts-<dd>.log.sum.
+// Only the manager writes them.
+func sealedDays(dir string, now time.Time) []string {
+	out := []string{}
+	for d := now.AddDate(0, 0, -400); !d.After(now); d = d.AddDate(0, 0, 1) {
+		name := filepath.Join(dir, d.Format("2006"), d.Format("Jan"), "ossec-alerts-"+d.Format("02")+".log.sum")
+		if _, err := os.Stat(name); err == nil {
+			out = append(out, d.Format("2006-01-02"))
+		}
+	}
+	return out
+}
+
+// lists are the CDB lists of etc/lists, their compiled .cdb files left out.
+func lists(dir string) []fact.CDBList {
+	out := []fact.CDBList{}
+	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || strings.HasSuffix(path, ".cdb") {
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(dir, path)
+		out = append(out, fact.CDBList{Name: rel, Modified: info.ModTime().UTC().Format(time.RFC3339)})
+		return nil
+	})
+	return out
 }
 
 // activeResponses reads shared/ar.conf (`name - script - timeout`): the responses the manager sends this

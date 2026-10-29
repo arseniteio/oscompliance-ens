@@ -12,6 +12,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp2"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp4"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp5"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp7"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/evaluator"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/groupconf"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
@@ -227,6 +228,15 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			problem = passes.Param("op.exp.4 P-01", err)
 		}
 		return opexp4.JudgeEV02(agent.ID == source.ManagerID, e.vulns[agent.ID], deadlines, problem, now)
+	})
+
+	// The reaction to incidents is the improvement measures recorded in op.exp.7's register.
+	judge("EV-07", nil, func() verdict.Judgement {
+		rows, err := policy.List(agent.ID, opexp7.Control, opexp7.RegisterParam)
+		if err != nil {
+			return passes.Gap(verdict.CauseConfiguration, passes.Param("op.exp.7 P-13", err))
+		}
+		return opexp7.JudgeEV12(opexp7.Of(opexp7.ParseRegister(rows), agent.Name, now))
 	})
 
 	judge("EV-08", []string{"audit", "accounts"}, func() verdict.Judgement {

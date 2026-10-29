@@ -40,6 +40,15 @@ type WazuhAgentConfig struct {
 	RootcheckDisabled   bool     `json:"rootcheck_disabled"`
 	Integrations        []string `json:"integrations"`
 	ActiveResponses     []string `json:"active_responses"`
+
+	SealedDays []string  `json:"sealed_days"`
+	Lists      []CDBList `json:"lists"`
+}
+
+// CDBList is a list of the manager's etc/lists and when it last changed.
+type CDBList struct {
+	Name     string `json:"name"`
+	Modified string `json:"modified"`
 }
 
 type LogFile struct {

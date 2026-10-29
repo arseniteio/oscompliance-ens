@@ -14,7 +14,7 @@ periodically.
 | 3.2 least privilege kept | B/M/A | EV-01, EV-10 |
 | 3.3 changes authorised beforehand | B/M/A | EV-05 |
 | 3.4 reaction to notified vulnerabilities | B/M/A | EV-06 |
-| 3.5 reaction to incidents | B/M/A | attestation (P-ATT) |
+| 3.5 reaction to incidents | B/M/A | EV-07 |
 | 3.6 only authorised staff edit the configuration | B/M/A | EV-02 |
 | r1.1 authorised baseline | M/A | attestation (P-ATT) |
 | r1.2 periodic verification against the baseline | M/A | EV-03, EV-11 |
@@ -34,6 +34,7 @@ Levels and evidence lists are in `controls/ens/op.exp.3.json`.
 | audited writes, rule 119004 key `oscompliance_write` | who wrote under the paths of P-04 | EV-02, EV-08 |
 | FIM alerts (`syscheck`) and op.exp.5 P-10 | edits under P-04 and the change register | EV-05 |
 | `wazuh-states-vulnerabilities-*` and op.exp.4 P-01 | open vulnerabilities and their deadlines | EV-06 |
+| op.exp.7 P-13 | the incident register | EV-07 |
 | `audit_watch_snapshot`, `wazuh_agent_config` (op.acc.2 contract) | the audit chain | EV-02, EV-08 |
 | `identity_snapshot`, `identity_record` (op.acc.1 contract) | the account behind an audit uid | EV-02, EV-08 |
 | dpkg alerts, rule 2901 (`data.package`) | packages newly installed | EV-03 |
@@ -115,6 +116,8 @@ running, every P-04 path watched and the audit log read by Wazuh.
   contract): otherwise NON_COMPLIANT.
 - **EV-06 reaction to vulnerabilities.** op.exp.4 EV-02 with the deadlines of
   op.exp.4 P-01 (op.exp.4 contract).
+- **EV-07 reaction to incidents.** op.exp.7 EV-12 over the register of
+  op.exp.7 P-13: every closed incident of the machine records its measures.
 - **EV-08 administrators.** The accounts that wrote under P-04 in the
   window must be at most P-09: otherwise NON_COMPLIANT.
 - **EV-09 configuration copies.** The newest copy of every source of P-07
@@ -127,15 +130,14 @@ running, every P-04 path watched and the audit log read by Wazuh.
 
 ## 5. Parity with v1 and deliberate differences
 
-Kept: the requirements and EV-01 to EV-06, EV-08 to EV-11.
+Kept: the requirements and the eleven evidences.
 
 Changed on purpose:
 
 - EV-05 judges against the change register of op.exp.5 P-10; v1 left it
   unjudged.
 - EV-06 is op.exp.4's remediation within deadline; v1 left it unjudged.
-- EV-07 is out of op.exp.3 for now: it judges the incidents of op.exp.7.
-  Until then 3.5 is accredited by attestation.
+- EV-07 is op.exp.7's improvement measures; v1 left it unjudged.
 - The SCA series and regressions come from Wazuh's own alerts; v1
   re-emitted them.
 - EV-03 reads Wazuh's package alerts and the agent's list of packages
@@ -147,4 +149,3 @@ Changed on purpose:
 
 - EV-03 on rpm machines needs the package of a dnf install: a decoder for
   `/var/log/dnf.rpm.log`, or the agent reading it.
-- EV-07 comes back with op.exp.7.
