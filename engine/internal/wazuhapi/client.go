@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -202,6 +203,7 @@ type Syscollector struct {
 	Cores        int
 	MemoryKB     int64
 	Packages     map[string]int
+	Vendors      []string
 	Addresses    []string
 	Listening    int
 	Processes    int
@@ -253,13 +255,17 @@ func (c *Client) AgentSyscollector(ctx context.Context, agentID string) (*Syscol
 	for offset := 0; ; offset += inventoryPage {
 		var page []struct {
 			Format string `json:"format"`
+			Vendor string `json:"vendor"`
 		}
-		total, err := c.items(ctx, base+"/packages?select=format", inventoryPage, offset, &page)
+		total, err := c.items(ctx, base+"/packages?select=format,vendor", inventoryPage, offset, &page)
 		if err != nil {
 			return nil, err
 		}
 		for _, p := range page {
 			out.Packages[p.Format]++
+			if p.Vendor != "" && !slices.Contains(out.Vendors, p.Vendor) {
+				out.Vendors = append(out.Vendors, p.Vendor)
+			}
 		}
 		if len(page) < inventoryPage || offset+len(page) >= total {
 			break

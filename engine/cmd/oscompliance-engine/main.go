@@ -215,7 +215,7 @@ func managerInventory(ctx context.Context, api *wazuhapi.Client) (*source.Invent
 		return nil, err
 	}
 
-	inv := &source.Inventory{Packages: s.Packages, Addresses: s.Addresses, Listening: s.Listening, Processes: s.Processes}
+	inv := &source.Inventory{Packages: s.Packages, Vendors: s.Vendors, Addresses: s.Addresses, Listening: s.Listening, Processes: s.Processes}
 	if s.HasOS {
 		inv.System = &source.System{OS: s.OS, Version: s.Version, Kernel: s.Kernel, Architecture: s.Architecture}
 	}

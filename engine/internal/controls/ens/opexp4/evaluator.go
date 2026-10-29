@@ -163,7 +163,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-05", JudgeEV05(system, eol, problemOf("P-05", err), now))
 
 	sources, err := policy.List(agent.ID, control, "P-03")
-	put("EV-06", JudgeEV06(e.vendors[agent.ID], sources, problemOf("P-03", err)))
+	vendors := e.vendors[agent.ID]
+	if len(vendors) == 0 && inv != nil {
+		vendors = inv.Vendors
+	}
+	put("EV-06", JudgeEV06(vendors, sources, problemOf("P-03", err)))
 
 	windows, err := policy.List(agent.ID, control, "P-04")
 	put("EV-07", JudgeEV07(transactions, window, windows, agent.Name, problemOf("P-04", err)))

@@ -13,6 +13,7 @@ type Inventory struct {
 	System    *System
 	Hardware  *Hardware
 	Packages  map[string]int
+	Vendors   []string
 	Addresses []string
 	Listening int
 	Processes int
