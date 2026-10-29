@@ -86,6 +86,11 @@ func runPass(opts options) error {
 }
 
 func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
+
+	wazuhPaths := wazuh.DefaultAgentConfig
+	wazuhPaths.SharedConf = opts.Paths.WazuhSharedConf
+	wazuhPaths.ClientKeys = opts.Paths.WazuhClientKeys
+
 	return map[string]func() error{
 		"identity": func() error {
 			return accounts.CollectIdentity(e, accounts.IdentityConfig{
@@ -103,13 +108,13 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		},
 		"authprobe": func() error { return authprobe.Collect(e) },
 		"firewall":  func() error { return firewall.Collect(e, firewall.Default) },
-		"wazuh":     func() error { return wazuh.CollectAgentConfig(e, wazuh.DefaultAgentConfig) },
-		"acl":       func() error { return acl.Collect(e, acl.Config{Wazuh: wazuh.DefaultAgentConfig}) },
+		"wazuh":     func() error { return wazuh.CollectAgentConfig(e, wazuhPaths) },
+		"acl":       func() error { return acl.Collect(e, acl.Config{Wazuh: wazuhPaths}) },
 		"audit": func() error {
-			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", Wazuh: wazuh.DefaultAgentConfig})
+			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", Wazuh: wazuhPaths})
 		},
 		"services": func() error {
-			return wazuh.CollectServiceLogs(e, wazuh.ServiceLogConfig{SharedConf: "/var/ossec/etc/shared/agent.conf", ClientKeys: "/var/ossec/etc/client.keys"})
+			return wazuh.CollectServiceLogs(e, wazuh.ServiceLogConfig{SharedConf: wazuhPaths.SharedConf, ClientKeys: wazuhPaths.ClientKeys})
 		},
 		"listening": func() error {
 			return listening.Collect(e, listening.Config{Proc: "/proc", Systemctl: "/usr/bin/systemctl"})

@@ -34,6 +34,10 @@ type paths struct {
 	SSHD    string `json:"sshd"`
 	Sudoers string `json:"sudoers"`
 	PAMDir  string `json:"pam_dir"`
+	// The group configuration the engine writes, and the agent's own key that names this machine in it.
+	// On the Wazuh manager: the agent.conf of one ENS group, and no key (its client.keys lists every agent).
+	WazuhSharedConf string `json:"wazuh_shared_conf"`
+	WazuhClientKeys string `json:"wazuh_client_keys"`
 }
 
 type duration struct{ time.Duration }
@@ -55,12 +59,14 @@ func defaultOptions() options {
 		Collectors:   slices.DeleteFunc(slices.Clone(allCollectors), func(c string) bool { return c == "sweep" }),
 		SweepTimeout: duration{15 * time.Minute},
 		Paths: paths{
-			Passwd:  "/etc/passwd",
-			Shadow:  "/etc/shadow",
-			Group:   "/etc/group",
-			SSHD:    "/usr/sbin/sshd",
-			Sudoers: "/etc/sudoers",
-			PAMDir:  "/etc/pam.d",
+			Passwd:          "/etc/passwd",
+			Shadow:          "/etc/shadow",
+			Group:           "/etc/group",
+			SSHD:            "/usr/sbin/sshd",
+			Sudoers:         "/etc/sudoers",
+			PAMDir:          "/etc/pam.d",
+			WazuhSharedConf: "/var/ossec/etc/shared/agent.conf",
+			WazuhClientKeys: "/var/ossec/etc/client.keys",
 		},
 	}
 }
