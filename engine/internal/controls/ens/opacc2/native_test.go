@@ -76,10 +76,11 @@ func TestJudgeEV04(t *testing.T) {
 	check(t, "owner", JudgeEV04(EV04Input{ACLs: acls(datos), Rows: []string{"/srv/datos | 750 | root:root | u:auditor:r-x g:auditors:r-x"}}), want{verdict.NonCompliant, "", []string{"owner root:ops"}})
 	check(t, "undeclared entry", JudgeEV04(EV04Input{ACLs: acls(datos), Rows: []string{"/srv/datos | 750 | root:ops | u:auditor:r-x"}}), want{verdict.NonCompliant, "", []string{"undeclared g:auditors:r-x"}})
 	check(t, "missing entry", JudgeEV04(EV04Input{ACLs: acls(datos), Rows: []string{"/srv/datos | 750 | | u:auditor:r-x g:auditors:r-x u:eva:rwx"}}), want{verdict.NonCompliant, "", []string{"lacks u:eva:rwx"}})
-	check(t, "path missing", JudgeEV04(EV04Input{ACLs: acls(fact.ACLRecord{Path: "/srv/x", Status: fact.SourceAbsent}), Rows: []string{"/srv/x | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"does not exist"}})
+	check(t, "path missing", JudgeEV04(EV04Input{ACLs: acls(fact.ACLRecord{Path: "/srv/x", Status: fact.SourceAbsent}), Rows: []string{"/srv/x | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseConfiguration, []string{"does not have: /srv/x"}})
+	check(t, "a missing path does not hide a deviation", JudgeEV04(EV04Input{ACLs: acls(datos, fact.ACLRecord{Path: "/srv/x", Status: fact.SourceAbsent}), Rows: []string{"/srv/datos | 0700 | |", "/srv/x | 750 | |"}}), want{verdict.NonCompliant, "", []string{"mode 0750"}})
 	check(t, "not sent", JudgeEV04(EV04Input{ACLs: acls(), Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"not in the paths"}})
 	check(t, "no paths in the group configuration", JudgeEV04(EV04Input{ACLs: ACLs{Snapshot: &fact.ACLSnapshot{Status: fact.SourceAbsent}}, Rows: []string{"/srv/y | 750 | |"}}), want{verdict.NotEvaluable, verdict.CauseCollection, []string{"group configuration"}})
-	check(t, "P-08 missing", JudgeEV04(EV04Input{RowsProblem: catalog.Says("param.not_set", "param", "P-00")}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
+	check(t, "P-08 missing", JudgeEV04(EV04Input{RowsProblem: catalog.Says("param.not_set", "param", "P-08")}), want{verdict.NotEvaluable, verdict.CauseConfiguration, nil})
 }
 
 func TestJudgeEV06(t *testing.T) {

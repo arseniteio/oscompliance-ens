@@ -46,7 +46,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 		byPath[r.Path] = r
 	}
 
-	var deviations, gaps []catalog.Message
+	var deviations, gaps, missing []catalog.Message
 	verified := 0
 
 	for _, row := range in.Rows {
@@ -67,7 +67,7 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 			gaps = append(gaps, catalog.Says("opacc2.acl_not_sent", "path", path))
 			continue
 		case r.Status == fact.SourceAbsent:
-			gaps = append(gaps, catalog.Says("item.absent", "path", path))
+			missing = append(missing, catalog.Raw(path))
 			continue
 		case r.Status != fact.SourceRead:
 			gaps = append(gaps, catalog.Says("item.error", "path", path, "error", r.Error))
@@ -100,6 +100,10 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	}
 	if len(gaps) > 0 {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("findings", "list", gaps))
+	}
+	// A declared resource the machine does not have is a P-08 that does not match it, not a gap in what was read.
+	if len(missing) > 0 {
+		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.declared_missing", "paths", missing, "verified", verified))
 	}
 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc2.a_resources_with_the_rights_p_08_declare", "a", verified))

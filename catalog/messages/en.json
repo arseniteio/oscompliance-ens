@@ -103,6 +103,7 @@
   "opacc2.acl_read_a_incomplete_b_of_c_acl_record": "ACL read {a} incomplete: {b} of {c} acl_record received",
   "opacc2.critical_files_changed_a": "critical files changed: {a}",
   "opacc2.critical_paths_fim_does_not_watch_in_tim": "critical paths FIM does not watch in time: {a}",
+  "opacc2.declared_missing": "P-08 declares resources this machine does not have: {paths} ({verified} others checked)",
   "opacc2.elevation_not_local": "{method} {from} to {to} (not a local account)",
   "opacc2.elevation_unnamed_grants": "{method} {from} to {to} (sudoers has grants to unnamed accounts)",
   "opacc2.elevations_cannot_be_seen_a": "elevations cannot be seen: {a}",
