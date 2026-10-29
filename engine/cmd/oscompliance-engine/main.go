@@ -17,6 +17,7 @@ import (
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc5"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp1"
+	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp10"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp2"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp3"
 	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp4"
@@ -136,6 +137,7 @@ func runMain() error {
 		opexp7.NewEvaluator(facts),
 		opexp8.NewEvaluator(facts),
 		opexp9.NewEvaluator(facts),
+		opexp10.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

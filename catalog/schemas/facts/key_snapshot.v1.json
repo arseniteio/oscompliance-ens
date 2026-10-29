@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/key_snapshot.v1.json",
+  "title": "key_snapshot v1",
+  "description": "The sweep for keys and certificates behind the key_record and certificate_record records of a pass.",
+  "type": "object",
+  "required": [
+    "status",
+    "roots",
+    "keys_emitted",
+    "certificates_emitted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "key_snapshot"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "roots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "keys_emitted": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "certificates_emitted": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

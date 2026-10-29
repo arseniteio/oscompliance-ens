@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/certificate_record.v1.json",
+  "title": "certificate_record v1",
+  "description": "An X.509 certificate found on disk, the system public CAs left out: subject, expiry, public key and signature algorithms.",
+  "type": "object",
+  "required": [
+    "path",
+    "subject",
+    "not_after",
+    "key_algorithm",
+    "key_bits",
+    "signature_algorithm"
+  ],
+  "properties": {
+    "fact": {
+      "const": "certificate_record"
+    },
+    "path": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "not_after": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "key_algorithm": {
+      "type": "string"
+    },
+    "key_bits": {
+      "type": "integer"
+    },
+    "signature_algorithm": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

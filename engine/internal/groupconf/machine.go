@@ -22,6 +22,7 @@ type Paths struct {
 	Exec  []string `json:"exec_watches"`
 
 	Backup []string `json:"backup_sources,omitempty"`
+	Keys   []string `json:"key_stores,omitempty"`
 }
 
 type Service struct {
@@ -33,6 +34,9 @@ type Service struct {
 var securityPaths = []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"}
 
 const agentConfiguration = "/var/ossec/etc"
+
+// op.exp.10 EV-05: the tools that generate keys, watched once the machine has key stores to protect.
+var keyTools = []string{"/usr/bin/ssh-keygen", "/usr/bin/openssl"}
 
 // Wazuh FIM watches these by default; a critical path elsewhere needs its own directory entry.
 var fimDefaults = []string{"/etc", "/usr/bin", "/usr/sbin", "/bin", "/sbin", "/boot"}
@@ -55,6 +59,11 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.exp.3", "P-04", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, securityPaths...)
 	m.Paths.Backup = BackupSources(policy, agentID)
+	m.Paths.Keys = cells(policy, agentID, "op.exp.10", "P-02", 0)
+	m.Paths.Audit = append(m.Paths.Audit, m.Paths.Keys...)
+	if len(m.Paths.Keys) > 0 {
+		m.Paths.Exec = append(m.Paths.Exec, keyTools...)
+	}
 
 	for _, indicator := range indicators(policy, agentID) {
 		if isBinary(indicator) {
@@ -80,6 +89,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.Audit = sorted(m.Paths.Audit)
 	m.Paths.Exec = sorted(m.Paths.Exec)
 	m.Paths.Backup = sorted(m.Paths.Backup)
+	m.Paths.Keys = sorted(m.Paths.Keys)
 	slices.SortFunc(m.Services, func(a, b Service) int { return strings.Compare(a.Name+a.Log, b.Name+b.Log) })
 
 	return m

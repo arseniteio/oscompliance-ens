@@ -26,7 +26,7 @@ restarting anything.
 Collectors: `identity`, `groups`, `umask`, `sudoers`, `config`, `pam`,
 `authprobe`, `listening`, `services`, `wazuh`, `acl`, `audit`, `firewall`,
 `neighbours`, `virtualization`, `packages`, `units`, `backups`, `updates`,
-`transactions`, `snapshots`, `malware`, `timesync` and `sweep`.
+`transactions`, `snapshots`, `malware`, `timesync`, `keys` and `sweep`.
 
 Flags:
 

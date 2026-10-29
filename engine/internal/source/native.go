@@ -57,6 +57,18 @@ func (s *Source) TimeSyncs(ctx context.Context, since time.Time) (map[string]fac
 	return newest[fact.TimeSync](ctx, s, fact.TimeSyncFact, since)
 }
 
+func (s *Source) KeySnapshots(ctx context.Context, since time.Time) (map[string]fact.KeySnapshot, error) {
+	return newest[fact.KeySnapshot](ctx, s, fact.KeySnapshotFact, since)
+}
+
+func (s *Source) KeyRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.KeyRecord, error) {
+	return passRecords[fact.KeyRecord](ctx, s, fact.KeyRecordFact, agentID, runID, since)
+}
+
+func (s *Source) CertificateRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.CertificateRecord, error) {
+	return passRecords[fact.CertificateRecord](ctx, s, fact.CertificateRecordFact, agentID, runID, since)
+}
+
 func (s *Source) ACLSnapshots(ctx context.Context, since time.Time) (map[string]fact.ACLSnapshot, error) {
 	return newest[fact.ACLSnapshot](ctx, s, fact.ACLSnapshotFact, since)
 }
