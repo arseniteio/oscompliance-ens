@@ -53,6 +53,44 @@ func (s *Source) RegisteredAgents(ctx context.Context, since time.Time) ([]verdi
 	return append(monitoring, manager...), nil
 }
 
+// Platforms is the `os.platform` of every registered agent, from its newest inventory document.
+func (s *Source) Platforms(ctx context.Context, since time.Time) (map[string]string, error) {
+
+	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
+	sub := map[string]any{"last": map[string]any{"top_hits": map[string]any{
+		"size": 1, "sort": []any{map[string]any{"timestamp": "desc"}}, "_source": []string{"os.platform"},
+	}}}
+
+	platforms := map[string]string{}
+
+	err := s.compositeIn(ctx, s.monitoring, filter, []any{map[string]any{"a": map[string]any{"terms": map[string]any{"field": "id"}}}}, sub,
+		func(key map[string]any, b json.RawMessage) error {
+			var c struct {
+				Last struct {
+					Hits struct {
+						Hits []struct {
+							Source struct {
+								OS struct {
+									Platform string `json:"platform"`
+								} `json:"os"`
+							} `json:"_source"`
+						} `json:"hits"`
+					} `json:"hits"`
+				} `json:"last"`
+			}
+			if err := json.Unmarshal(b, &c); err != nil {
+				return err
+			}
+			if len(c.Last.Hits.Hits) > 0 {
+				platforms[keyString(key, "a")] = c.Last.Hits.Hits[0].Source.OS.Platform
+			}
+			return nil
+		})
+
+	platforms[ManagerID] = ""
+	return platforms, err
+}
+
 func (s *Source) agentNames(ctx context.Context, index, idField, nameField string, filter []any) ([]verdict.Agent, error) {
 
 	sub := map[string]any{"name": map[string]any{"terms": map[string]any{"field": nameField, "size": 1}}}

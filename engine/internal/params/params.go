@@ -55,11 +55,31 @@ type Config struct {
 			MatchModes map[string]string `json:"matchModes"`
 		} `json:"controls"`
 	} `json:"agents"`
+
+	inventoryTypes map[string]string
 }
 
 const NoTemplate = "none"
 
-var systemTypes = map[string]bool{"linux": true, "zimbra-ldap": true, "windows": true, "manager": true}
+// UseInventoryTypes gives each machine the system type its inventory platform says. It wins over the type
+// the configuration stored, so a new machine gets the template of its type without anyone saving it.
+func (c *Config) UseInventoryTypes(platforms map[string]string) {
+	c.inventoryTypes = map[string]string{}
+	for agentID, platform := range platforms {
+		if t := catalog.SystemTypeOf(agentID, platform); t != "" {
+			c.inventoryTypes[agentID] = t
+		}
+	}
+}
+
+func (c *Config) systemType(agentID, stored string) string {
+	if t, ok := c.inventoryTypes[agentID]; ok {
+		return t
+	}
+	return stored
+}
+
+var systemTypes = map[string]bool{"linux": true, "windows": true, "manager": true}
 
 // Groups are the Wazuh groups of the ENS scope; a scope by agent or the whole fleet names none.
 func (c *Config) Groups() []string {
@@ -299,7 +319,7 @@ func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, 
 			}
 		}
 
-		if values, modes, ok := c.template(agent.TypeOverride, agent.DetectedType, entry.TemplateID, controlID); ok {
+		if values, modes, ok := c.template(agent.TypeOverride, c.systemType(agentID, agent.DetectedType), entry.TemplateID, controlID); ok {
 			if value, ok := values[paramID]; ok {
 				return value, modes[paramID], true
 			}

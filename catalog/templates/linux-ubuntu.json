@@ -1,6 +1,7 @@
 {
   "id": "linux-ubuntu",
   "name": "Linux",
+  "description": "Ubuntu 22.04 y 24.04 con el agente de Wazuh y el agente OSCompliance. La lista de SUID es la de 22.04 y 24.04 juntas.",
   "kind": "base",
   "system_type": "linux",
   "type_default": true,

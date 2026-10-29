@@ -39,12 +39,25 @@ func TestTemplates(t *testing.T) {
 		t.Errorf("windows: %v %+v", ok, w)
 	}
 
-	if _, ok := TypeDefaultTemplate("op.acc.1", "manager"); ok {
-		t.Error("manager has no op.acc.1 template")
+	if m, ok := TypeDefaultTemplate("op.acc.1", "manager"); !ok || len(m.Values["op.acc.1"]) != 0 {
+		t.Errorf("manager: the common values, nothing of its own: %v %+v", ok, m)
 	}
 
-	if _, ok := BuiltinTemplate("zimbra-ldap", "op.acc.1"); !ok {
-		t.Error("zimbra-ldap by id")
+	if _, ok := BuiltinTemplate("windows-server", "op.acc.1"); !ok {
+		t.Error("windows-server by id")
+	}
+}
+
+func TestSystemTypeOf(t *testing.T) {
+	for _, c := range []struct{ id, platform, want string }{
+		{"000", "", "manager"},
+		{"001", "ubuntu", "linux"},
+		{"002", "Windows", "windows"},
+		{"003", "darwin", ""},
+	} {
+		if got := SystemTypeOf(c.id, c.platform); got != c.want {
+			t.Errorf("%s %s: %q, want %q", c.id, c.platform, got, c.want)
+		}
 	}
 }
 

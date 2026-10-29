@@ -1,6 +1,7 @@
 {
   "id": "windows-server",
   "name": "Windows",
+  "description": "Servidor Windows: solo lo que se puede fundamentar para la plataforma; lo que depende del dominio o de la organización queda sin valor.",
   "kind": "base",
   "system_type": "windows",
   "type_default": true,

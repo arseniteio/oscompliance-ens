@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed controls templates messages
+//go:embed controls templates messages system-types.json
 var files embed.FS
 
 type Control struct {
@@ -112,6 +112,7 @@ type Column struct {
 type Template struct {
 	ID          string                       `json:"id"`
 	Name        string                       `json:"name"`
+	Description string                       `json:"description"`
 	Kind        string                       `json:"kind"`
 	SystemType  string                       `json:"system_type"`
 	TypeDefault bool                         `json:"type_default"`
@@ -154,6 +155,7 @@ func init() {
 	}
 
 	loadMessages()
+	loadSystemTypes()
 }
 
 func decodeStrict(p string, v any) error {
@@ -229,4 +231,32 @@ func TypeDefaultTemplate(controlID, systemType string) (Template, bool) {
 		}
 	}
 	return Template{}, false
+}
+
+// Platforms of the Wazuh inventory (`os.platform`) behind each system type.
+var platformTypes = map[string]string{}
+
+func loadSystemTypes() {
+	raw, err := files.ReadFile("system-types.json")
+	if err != nil {
+		panic(err)
+	}
+	var byType map[string][]string
+	if err := json.Unmarshal(raw, &byType); err != nil {
+		panic(err)
+	}
+	for systemType, platforms := range byType {
+		for _, p := range platforms {
+			platformTypes[p] = systemType
+		}
+	}
+}
+
+// SystemTypeOf is the type of a machine from the inventory: the manager by its id, the rest by platform.
+// Empty when the platform says nothing.
+func SystemTypeOf(agentID, platform string) string {
+	if agentID == "000" {
+		return "manager"
+	}
+	return platformTypes[strings.ToLower(strings.TrimSpace(platform))]
 }

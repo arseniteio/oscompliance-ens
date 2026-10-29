@@ -133,6 +133,11 @@ func runMain() error {
 			slog.Warn("parameters", "error", err)
 			policy = params.Unavailable(err)
 		} else {
+			if platforms, err := facts.Platforms(ctx, time.Now().Add(-*lookback)); err != nil {
+				slog.Warn("inventory platforms", "error", err)
+			} else {
+				loaded.UseInventoryTypes(platforms)
+			}
 			policy = loaded
 			groups.run(ctx, loaded, time.Now())
 		}

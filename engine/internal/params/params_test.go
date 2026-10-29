@@ -37,7 +37,7 @@ const active = `{
     "003": {"detectedType": "windows"},
     "004": {"detectedType": "linux", "controls": {"op.acc.1": {"templateId": "none"}}},
     "005": {"detectedType": "linux", "controls": {"op.acc.1": {"templateId": "custom-svc"}}},
-    "006": {"typeOverride": "zimbra-ldap", "detectedType": "linux"},
+    "006": {"typeOverride": "windows", "detectedType": "linux"},
     "007": {"detectedType": "router"}
   }
 }`
@@ -76,7 +76,7 @@ func TestResolution(t *testing.T) {
 		{"004", "P-11", nil, ErrNotSet},
 		{"004", "P-03", []string{"common-svc"}, nil},
 
-		{"006", "P-01", []string{"LDAP"}, nil},
+		{"006", "P-11", []string{"Administrators"}, nil},
 
 		{"007", "P-01", nil, ErrNotSet},
 
@@ -103,6 +103,28 @@ func TestResolution(t *testing.T) {
 
 	if _, err := c.List("999", "op.acc.1", "P-06"); err == nil || errors.Is(err, ErrNotSet) {
 		t.Errorf("regex in List: want an error, got %v", err)
+	}
+}
+
+func TestInventoryTypes(t *testing.T) {
+	c := load(t)
+	c.UseInventoryTypes(map[string]string{"003": "ubuntu", "006": "ubuntu", "008": "debian", "009": "darwin"})
+
+	cases := []struct {
+		agent string
+		want  []string
+	}{
+		{"008", []string{"sudo", "wheel", "admin"}},
+		{"003", []string{"sudo", "wheel", "admin"}},
+		{"006", []string{"Administrators"}},
+	}
+	for _, tc := range cases {
+		if got, err := c.List(tc.agent, "op.acc.1", "P-11"); err != nil || !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("%s P-11: got %v %v, want %v", tc.agent, got, err, tc.want)
+		}
+	}
+	if _, err := c.List("009", "op.acc.1", "P-11"); !errors.Is(err, ErrNotSet) {
+		t.Errorf("an unknown platform gets no template: %v", err)
 	}
 }
 
