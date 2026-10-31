@@ -32,6 +32,7 @@ func run() error {
 	agents := flag.Int("agents", 1000, "simulated agents")
 	first := flag.Int("first-id", 10000, "first simulated agent ID")
 	hours := flag.Int("hours", 26, "hourly passes per agent")
+	group := flag.String("group", "ens", "Wazuh group the simulated agents belong to")
 	quiet := flag.Bool("quiet", false, "unchanged collectors send nothing; each pass ends with agent_pass")
 	fullAge := flag.Int("full-hours-ago", 0, "with -quiet, age of the full pass in hours (0: the oldest hourly pass)")
 	flag.Parse()
@@ -100,7 +101,7 @@ func run() error {
 
 		id, name := fmt.Sprintf("%05d", *first+i), fmt.Sprintf("sim-%05d", *first+i)
 
-		if err := add(*monitoring, map[string]any{"id": id, "name": name, "status": "active", "timestamp": now.Format(time.RFC3339)}); err != nil {
+		if err := add(*monitoring, map[string]any{"id": id, "name": name, "group": []string{*group}, "status": "active", "timestamp": now.Format(time.RFC3339)}); err != nil {
 			return err
 		}
 
