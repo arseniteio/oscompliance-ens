@@ -34,6 +34,7 @@ func run() error {
 	hours := flag.Int("hours", 26, "hourly passes per agent")
 	group := flag.String("group", "ens", "Wazuh group the simulated agents belong to")
 	quiet := flag.Bool("quiet", false, "unchanged collectors send nothing; each pass ends with agent_pass")
+	keepalive := flag.Bool("keepalive", false, "only refresh the agents' monitoring record, as Wazuh does every few minutes")
 	fullAge := flag.Int("full-hours-ago", 0, "with -quiet, age of the full pass in hours (0: the oldest hourly pass)")
 	flag.Parse()
 
@@ -103,6 +104,9 @@ func run() error {
 
 		if err := add(*monitoring, map[string]any{"id": id, "name": name, "group": []string{*group}, "status": "active", "timestamp": now.Format(time.RFC3339)}); err != nil {
 			return err
+		}
+		if *keepalive {
+			continue
 		}
 
 		full := uuid()
