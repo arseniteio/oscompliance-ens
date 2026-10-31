@@ -36,6 +36,12 @@ func Decode(data map[string]any, v any) error {
 				return fmt.Errorf("decode %s: %w", name, err)
 			}
 			converted[name] = n
+		case reflect.Float32, reflect.Float64:
+			n, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				return fmt.Errorf("decode %s: %w", name, err)
+			}
+			converted[name] = n
 		case reflect.Bool:
 			b, err := strconv.ParseBool(s)
 			if err != nil {

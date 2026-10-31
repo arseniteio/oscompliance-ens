@@ -48,6 +48,13 @@ func TestDecodeIndexedFacts(t *testing.T) {
 	}
 }
 
+func TestDecodeFloats(t *testing.T) {
+	var ts fact.TimeSync
+	if err := Decode(map[string]any{"fact": "time_sync", "tool": "chrony", "offset_seconds": "-0.00025", "synchronised": "true"}, &ts); err != nil || ts.Offset != -0.00025 || !ts.Synchronised {
+		t.Errorf("time sync: %+v %v", ts, err)
+	}
+}
+
 func TestDecodeRejectsBadScalars(t *testing.T) {
 	var r fact.IdentityRecord
 	if err := Decode(map[string]any{"uid": "abc"}, &r); err == nil {
