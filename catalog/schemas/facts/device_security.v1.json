@@ -2,13 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/device_security.v1.json",
   "title": "device_security v1",
-  "description": "How the machine protects an unattended session and its disk: chassis, screen lock of the graphical session (system dconf), idle timeouts of shells (TMOUT) and logind (StopIdleSessionSec), and encryption of the root filesystem.",
+  "description": "How the machine protects an unattended session and its disk: chassis, screen lock of the graphical session (system dconf), idle timeouts of shells (TMOUT) and logind (StopIdleSessionSec), encryption of the root filesystem, and the DNS servers the machine asks (resolv.conf, the upstream ones of systemd-resolved).",
   "type": "object",
   "required": [
     "status",
     "portable",
     "graphical",
-    "root_encrypted"
+    "root_encrypted",
+    "dns_resolvers"
   ],
   "properties": {
     "fact": {
@@ -60,6 +61,12 @@
     },
     "root_encrypted": {
       "type": "boolean"
+    },
+    "dns_resolvers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "allOf": [

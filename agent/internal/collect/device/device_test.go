@@ -21,6 +21,8 @@ func TestCollect(t *testing.T) {
 	collecttest.Write(t, at("/etc/bash.bashrc"), "export TMOUT=3600\n")
 	collecttest.Write(t, at("/etc/systemd/logind.conf.d/idle.conf"), "[Login]\nStopIdleSessionSec=1h\n")
 	collecttest.Write(t, at("/proc/self/mounts"), "/dev/mapper/vg-root / ext4 rw 0 0\n/dev/sda1 /boot ext4 rw 0 0\n")
+	collecttest.Write(t, at("/etc/resolv.conf"), "nameserver 127.0.0.53\noptions edns0\n")
+	collecttest.Write(t, at("/run/systemd/resolve/resolv.conf"), "nameserver 10.0.0.53\nnameserver 10.0.0.54\n")
 	collecttest.Write(t, at("/sys/class/block/dm-1/dm/uuid"), "LVM-abc")
 	collecttest.Write(t, at("/sys/class/block/dm-0/dm/uuid"), "CRYPT-LUKS2-abc-sda3_crypt")
 	if err := os.MkdirAll(at("/sys/class/block/dm-1/slaves/dm-0"), 0o755); err != nil {
@@ -44,6 +46,9 @@ func TestCollect(t *testing.T) {
 	}
 	if f["root_device"] != "dm-1" || f["root_encrypted"] != true {
 		t.Errorf("encryption: %v", f)
+	}
+	if r := f["dns_resolvers"].([]any); len(r) != 2 || r[0] != "10.0.0.53" {
+		t.Errorf("resolvers: %v", f)
 	}
 
 	bare := t.TempDir()

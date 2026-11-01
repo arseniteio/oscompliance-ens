@@ -41,6 +41,9 @@ One per pass, emitted only when it changes:
   drop-ins.
 - `root_device`, `root_encrypted`: the device mounted on `/` and whether it
   or a device under it is dm-crypt (mp.eq.3).
+- `dns_resolvers`: the `nameserver` lines of `/etc/resolv.conf`; for the
+  stub of systemd-resolved, those of `/run/systemd/resolve/resolv.conf`
+  (mp.s.3).
 
 ## 3. Parameters
 

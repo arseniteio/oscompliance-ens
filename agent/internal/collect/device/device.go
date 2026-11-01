@@ -1,6 +1,6 @@
-// Package device reports how the machine protects an unattended session and its disk: its chassis, the
-// screen lock the system dconf databases set for the graphical session, the idle timeouts of shells and
-// logind, and whether the root filesystem sits on dm-crypt.
+// Package device reports how the machine protects an unattended session, its disk and its name resolution:
+// its chassis, the screen lock the system dconf databases set for the graphical session, the idle timeouts of
+// shells and logind, whether the root filesystem sits on dm-crypt, and the DNS servers it asks.
 package device
 
 import (
@@ -45,6 +45,7 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	s.ShellTimeout, s.ShellReadonly = shellTimeout(append([]string{at("/etc/profile"), at("/etc/bash.bashrc")}, glob(at("/etc/profile.d/*.sh"))...))
 	s.LogindIdle = logindIdle(append([]string{at("/etc/systemd/logind.conf")}, glob(at("/etc/systemd/logind.conf.d/*.conf"))...))
 	s.RootDevice, s.RootEncrypted = rootEncryption(cfg.Root)
+	s.Resolvers = resolvers(at("/etc/resolv.conf"), at("/run/systemd/resolve/resolv.conf"))
 
 	return e.Emit(s)
 }
@@ -184,4 +185,28 @@ func crypt(root, name string, depth int) bool {
 	}
 	slaves, _ := os.ReadDir(filepath.Join(block, "slaves"))
 	return slices.ContainsFunc(slaves, func(s os.DirEntry) bool { return crypt(root, s.Name(), depth+1) })
+}
+
+// stub is the local resolver of systemd-resolved, which forwards to the servers of its own resolv.conf.
+const stub = "127.0.0.53"
+
+func resolvers(conf, upstream string) []string {
+	out := nameservers(conf)
+	if slices.Contains(out, stub) {
+		out = append(slices.DeleteFunc(out, func(s string) bool { return s == stub }), nameservers(upstream)...)
+	}
+	if out == nil {
+		out = []string{}
+	}
+	return out
+}
+
+func nameservers(path string) []string {
+	var out []string
+	for _, l := range lines(path) {
+		if f := strings.Fields(l); len(f) >= 2 && f[0] == "nameserver" && !slices.Contains(out, f[1]) {
+			out = append(out, f[1])
+		}
+	}
+	return out
 }
