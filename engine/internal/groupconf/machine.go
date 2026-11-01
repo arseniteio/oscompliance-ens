@@ -31,6 +31,9 @@ type Service struct {
 	Log  string
 }
 
+// The configurations of channels and services whose changes the engine judges against op.exp.5 requests.
+var serviceConfigurations = []struct{ control, param string }{{"mp.com.3", "P-06"}, {"mp.s.1", "P-09"}}
+
 // Paths whose changes op.acc.3 must see on every machine: the Wazuh agent and auditd themselves.
 var securityPaths = []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"}
 
@@ -52,9 +55,11 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 		}
 	}
 
-	for _, p := range cells(policy, agentID, "mp.com.3", "P-06", 0) {
-		if !underAny(p, fimDefaults) {
-			m.FIM = append(m.FIM, p)
+	for _, c := range serviceConfigurations {
+		for _, p := range cells(policy, agentID, c.control, c.param, 0) {
+			if !underAny(p, fimDefaults) {
+				m.FIM = append(m.FIM, p)
+			}
 		}
 	}
 

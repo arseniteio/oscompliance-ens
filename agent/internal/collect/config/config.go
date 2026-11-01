@@ -36,6 +36,7 @@ var DefaultFiles = []string{
 	"/etc/ssh/ssh_config.d/*.conf",
 	"/etc/samba/smb.conf",
 	"/etc/vsftpd.conf",
+	"/etc/postfix/main.cf",
 }
 
 // Only the keys the controls judge leave the machine: configuration files can hold secrets.
@@ -48,6 +49,8 @@ var Keys = map[string][]string{
 	"/etc/ssh/ssh_config":          {"Host", "StrictHostKeyChecking", "UserKnownHostsFile"},
 	"/etc/samba/smb.conf":          {"guest ok", "public"},
 	"/etc/vsftpd.conf":             {"anonymous_enable"},
+	"/etc/postfix/main.cf": {"smtpd_tls_security_level", "smtp_tls_security_level", "smtpd_tls_protocols", "smtpd_tls_mandatory_protocols",
+		"smtp_tls_protocols", "smtp_tls_mandatory_protocols", "smtpd_tls_cert_file"},
 	"sshd -T": {"passwordauthentication", "kbdinteractiveauthentication", "usepam", "pubkeyauthentication",
 		"pubkeyauthoptions", "authenticationmethods", "loglevel", "debianbanner", "versionaddendum", "banner",
 		"permitrootlogin", "permitemptypasswords", "x11forwarding", "hostbasedauthentication", "ignorerhosts",

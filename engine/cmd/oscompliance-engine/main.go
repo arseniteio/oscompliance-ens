@@ -17,6 +17,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpeq3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpeq4"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpinfo6"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc2"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc3"
@@ -168,6 +169,7 @@ func runMain() error {
 		mpeq2.NewEvaluator(facts),
 		mpeq3.NewEvaluator(facts),
 		mpeq4.NewEvaluator(facts),
+		mps1.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,
