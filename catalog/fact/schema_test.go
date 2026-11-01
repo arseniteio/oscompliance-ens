@@ -205,6 +205,8 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &CertificateRecord{}
 		case KeySnapshotFact:
 			v = &KeySnapshot{}
+		case DeviceSecurityFact:
+			v = &DeviceSecurity{}
 		default:
 			t.Fatalf("example %d: no Go type for fact %q", i, probe.Fact)
 		}

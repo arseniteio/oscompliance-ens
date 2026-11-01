@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/device_security.v1.json",
+  "title": "device_security v1",
+  "description": "How the machine protects an unattended session and its disk: chassis, screen lock of the graphical session (system dconf), idle timeouts of shells (TMOUT) and logind (StopIdleSessionSec), and encryption of the root filesystem.",
+  "type": "object",
+  "required": [
+    "status",
+    "portable",
+    "graphical",
+    "root_encrypted"
+  ],
+  "properties": {
+    "fact": {
+      "const": "device_security"
+    },
+    "status": {
+      "enum": [
+        "read",
+        "error"
+      ]
+    },
+    "error": {
+      "type": "string"
+    },
+    "chassis_type": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "portable": {
+      "type": "boolean"
+    },
+    "graphical": {
+      "type": "boolean"
+    },
+    "lock_idle_delay_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lock_enabled": {
+      "type": "boolean"
+    },
+    "lock_delay_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "shell_timeout_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "shell_timeout_readonly": {
+      "type": "boolean"
+    },
+    "logind_idle_seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "root_device": {
+      "type": "string"
+    },
+    "root_encrypted": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}

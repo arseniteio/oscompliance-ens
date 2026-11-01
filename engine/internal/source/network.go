@@ -231,3 +231,34 @@ func (s *Source) RemoteLogins(ctx context.Context, since time.Time) (map[string]
 	})
 	return out, err
 }
+
+// Processes are the processes of every machine whose names are among some names.
+func (s *Source) Processes(ctx context.Context, names []string) (map[string][]string, error) {
+
+	out := map[string][]string{}
+	if len(names) == 0 {
+		return out, nil
+	}
+	values := make([]any, len(names))
+	for i, n := range names {
+		values[i] = n
+	}
+	filter := []any{map[string]any{"terms": map[string]any{"process.name": values}}}
+	err := s.compositeIn(ctx, s.inventoryIndex("processes"), filter, []any{terms("a", "agent.id"), terms("v", "process.name")}, nil, func(key map[string]any, _ json.RawMessage) error {
+		if id, v := keyString(key, "a"), keyString(key, "v"); id != "" && v != "" {
+			out[id] = append(out[id], v)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if s.managerNetwork != nil {
+		n, err := s.managerNetwork(ctx, names)
+		if err != nil {
+			return nil, fmt.Errorf("manager processes: %w", err)
+		}
+		out[ManagerID] = n.Tunnels
+	}
+	return out, nil
+}

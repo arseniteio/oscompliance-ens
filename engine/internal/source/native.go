@@ -264,3 +264,7 @@ func (s *Source) FirewallSnapshots(ctx context.Context, since time.Time) (map[st
 func (s *Source) AgentPasses(ctx context.Context, since time.Time) (map[string]fact.AgentPass, error) {
 	return newest[fact.AgentPass](ctx, s, fact.AgentPassFact, since)
 }
+
+func (s *Source) DeviceSecurities(ctx context.Context, since time.Time) (map[string]fact.DeviceSecurity, error) {
+	return newest[fact.DeviceSecurity](ctx, s, fact.DeviceSecurityFact, since)
+}
