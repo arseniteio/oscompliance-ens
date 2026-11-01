@@ -71,7 +71,9 @@ var Indicators = map[string]func(opexp7.Incident) bool{
 	"tiempo_medio_contencion":  func(in opexp7.Incident) bool { return in.Has("intermedio") || in.Has("final") },
 	"tiempo_medio_resolucion":  func(in opexp7.Incident) bool { return in.Has("inicial") },
 	"notificados_ccn_cert":     func(in opexp7.Incident) bool { return in.Field(func(p opexp7.Phase) string { return p.CCNCERT }) != "" },
-	"notificados_aepd":         func(in opexp7.Incident) bool { return in.Field(func(p opexp7.Phase) string { return p.Personal }) != "" },
+	"notificados_aepd": func(in opexp7.Incident) bool {
+		return in.Field(func(p opexp7.Phase) string { return p.Personal }) != ""
+	},
 }
 
 // JudgeEV03 needs every incident of the period with the data each indicator of P-04 needs. Resolution
