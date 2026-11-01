@@ -28,6 +28,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp8"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp9"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/groupconf"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
@@ -143,6 +144,7 @@ func runMain() error {
 		opexp10.NewEvaluator(facts),
 		mpinfo6.NewEvaluator(facts),
 		opmon1.NewEvaluator(facts),
+		opmon3.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

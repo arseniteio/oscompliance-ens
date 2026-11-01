@@ -79,3 +79,32 @@ func detectionOf(b json.RawMessage) (Detection, error) {
 	}
 	return d, nil
 }
+
+// LocationDetections are the newest alert of every machine for each log location since a time.
+func (s *Source) LocationDetections(ctx context.Context, since time.Time) (map[string]map[string]time.Time, error) {
+
+	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
+	sub := map[string]any{"last": map[string]any{"max": map[string]any{"field": "timestamp"}}}
+
+	out := map[string]map[string]time.Time{}
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id"), terms("l", "location")}, sub, func(key map[string]any, b json.RawMessage) error {
+		d, err := detectionOf(b)
+		id, location := keyString(key, "a"), keyString(key, "l")
+		if err != nil || id == "" || location == "" {
+			return err
+		}
+		if out[id] == nil {
+			out[id] = map[string]time.Time{}
+		}
+		out[id][location] = d.Last
+		return nil
+	})
+	return out, err
+}
+
+// PackageCounts are how many packages Wazuh's inventory holds of every machine.
+func (s *Source) PackageCounts(ctx context.Context) (map[string]int, error) {
+	out := map[string]int{}
+	err := s.inventoryCount(ctx, "packages", nil, nil, func(id string, _ map[string]any, n int) { out[id] += n })
+	return out, err
+}
