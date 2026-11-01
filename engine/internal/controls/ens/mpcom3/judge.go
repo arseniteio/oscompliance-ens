@@ -63,9 +63,9 @@ var Attacks = []string{"alteracion", "inyeccion", "secuestro"}
 
 // Indicator is a row of P-02 (`ataque | indicador | fuente | reglas`) and the rules it names.
 type Indicator struct {
-	Name, Rules string
-	Ranges      []opmon1.Range
-	Err         error
+	Kind, Name, Rules string
+	Ranges            []opmon1.Range
+	Err               error
 }
 
 // Detection are the indicators of P-02 for one attack.
@@ -77,7 +77,7 @@ func Detection(rows []string, attack string) []Indicator {
 			continue
 		}
 		ranges, err := opmon1.ParseRules(c[3])
-		out = append(out, Indicator{Name: c[1], Rules: c[3], Ranges: ranges, Err: err})
+		out = append(out, Indicator{Kind: c[0], Name: c[1], Rules: c[3], Ranges: ranges, Err: err})
 	}
 	return out
 }
@@ -87,8 +87,10 @@ func JudgeAttack(m *source.Manager, rows []string, attack string) verdict.Judgem
 
 	indicators := Detection(rows, attack)
 	if len(indicators) == 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom3.attack_undeclared", "attack", attack))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom3.attack_undeclared", "attack", strings.ReplaceAll(attack, "_", " ")))
 	}
+	// Named as the parameter writes it, accents and all.
+	name := indicators[0].Kind
 	var blind, covered []catalog.Message
 	for _, in := range indicators {
 		if in.Err != nil || len(in.Ranges) == 0 {
@@ -102,9 +104,9 @@ func JudgeAttack(m *source.Manager, rows []string, attack string) verdict.Judgem
 		}
 	}
 	if len(blind) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom3.attack_blind", "attack", attack, "list", blind))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom3.attack_blind", "attack", name, "list", blind))
 	}
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.attack_detected", "attack", attack, "list", covered))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.attack_detected", "attack", name, "list", covered))
 }
 
 // RuleIDs are the loaded rules P-02 names for every attack.

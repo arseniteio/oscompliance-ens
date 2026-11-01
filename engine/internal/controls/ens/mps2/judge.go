@@ -91,9 +91,9 @@ func JudgeEV11(apps []string, audits []string, modality string, days int, now ti
 		}
 	}
 	if len(lacking) > 0 {
-		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mps2.audits_missing", "modality", modality, "days", days, "list", lacking))
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mps2.audits_missing", "modality", strings.ReplaceAll(modality, "_", " "), "days", days, "list", lacking))
 	}
-	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps2.audited", "count", len(apps), "modality", modality, "days", days))
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps2.audited", "count", len(apps), "modality", strings.ReplaceAll(modality, "_", " "), "days", days))
 }
 
 // JudgeEV12 needs every finding of P-09 (`hallazgo | aplicacion | severidad | responsable | plazo |
