@@ -41,7 +41,8 @@ machine checks its integrity when it comes back from an outage.
 
 Judges are in `engine/internal/controls/ens/opcont2`.
 
-- **EV-01 plan.** The newest `fecha_aprobacion` of P-01 within P-08 months.
+- **EV-01 plan.** The newest `fecha_aprobacion` of P-01, not in the future,
+  within P-08 months.
 - **EV-04 contracts.** Every means of P-04 with a `contrato` and
   `vigencia_hasta` not past.
 - **EV-06 training.** Every `responsable` and `suplente` of P-03 with a row

@@ -41,19 +41,25 @@ func Person(v string) string {
 	return strings.Join(strings.Fields(v), " ")
 }
 
-// MonthsInDays turns a period in months into the days passes.Review takes.
-func MonthsInDays(months int) int { return months * 365 / 12 }
-
 // JudgeEV01 needs the newest approval of the plan in P-01 (`referencia | version | fecha_aprobacion |
 // aprobado_por | responsable`) within the months of P-08.
-func JudgeEV01(rows []string, rowsProblem catalog.Message, months int, monthsProblem catalog.Message, now time.Time) verdict.Judgement {
-	approvals := make([]string, 0, len(rows))
+func JudgeEV01(rows []string, months int, now time.Time) verdict.Judgement {
+
+	var newest time.Time
+	var plan string
 	for _, r := range rows {
-		c := Cells(r, 5)
-		approvals = append(approvals, strings.Join([]string{c[2], c[0], c[1], c[3]}, " | "))
+		c := Cells(r, 3)
+		if t, ok := Date(c[2]); ok && !t.After(now) && t.After(newest) {
+			newest, plan = t, strings.TrimSpace(c[0]+" "+c[1])
+		}
 	}
-	j, _ := passes.Review(approvals, rowsProblem, "P-01", MonthsInDays(months), monthsProblem, "P-08", now)
-	return j
+	switch {
+	case newest.IsZero():
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opcont2.no_approval"))
+	case newest.AddDate(0, months, 0).Before(now):
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opcont2.plan_outdated", "plan", plan, "date", newest.Format("2006-01-02"), "months", months))
+	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont2.plan_current", "plan", plan, "date", newest.Format("2006-01-02"), "months", months))
 }
 
 // JudgeEV04 needs every alternative means of P-04 (`medio | proveedor | contrato | vigencia_hasta |

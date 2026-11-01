@@ -56,9 +56,17 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return rows, catalog.Message{}
 	}
 
-	plans, plansProblem := list("P-01")
-	months, monthsProblem := opmon1.Whole(policy, agent.ID, control, "P-08", "param.not_months")
-	put("EV-01", JudgeEV01(plans, plansProblem, months, monthsProblem, now))
+	put("EV-01", func() verdict.Judgement {
+		plans, problem := list("P-01")
+		if !problem.IsZero() {
+			return passes.Gap(verdict.CauseConfiguration, problem)
+		}
+		months, problem := opmon1.Whole(policy, agent.ID, control, "P-08", "param.not_months")
+		if !problem.IsZero() {
+			return passes.Gap(verdict.CauseConfiguration, problem)
+		}
+		return JudgeEV01(plans, months, now)
+	}())
 
 	put("EV-04", func() verdict.Judgement {
 		rows, problem := list("P-04")

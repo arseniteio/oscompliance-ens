@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
@@ -22,8 +21,9 @@ func check(t *testing.T, name string, got verdict.Judgement, status verdict.Stat
 func TestJudges(t *testing.T) {
 
 	plans := []string{"Plan de Continuidad | v2 | 2025-01-10 | Comité | RSEG", "Plan de Continuidad | v3 | 2026-01-15 | Comité | RSEG"}
-	check(t, "plan current", JudgeEV01(plans, catalog.Message{}, 12, catalog.Message{}, now), verdict.Compliant, "", "v3")
-	check(t, "plan old", JudgeEV01(plans[:1], catalog.Message{}, 12, catalog.Message{}, now), verdict.NonCompliant, "", "v2")
+	check(t, "plan current", JudgeEV01(plans, 12, now), verdict.Compliant, "", "v3")
+	check(t, "plan old", JudgeEV01(plans[:1], 12, now), verdict.NonCompliant, "", "v2")
+	check(t, "no approval", JudgeEV01([]string{"Plan | v1 | pendiente"}, 12, now), verdict.NonCompliant, "", "")
 
 	means := []string{"CPD alternativo | Proveedor X | CT-2025-014 | 2027-06-30 | 48 h", "línea de respaldo | Operadora | | 2027-01-01 | 4 h", "portátiles | Tienda | CT-1 | 2026-10-01 | 24 h"}
 	check(t, "means", JudgeEV04(means, now), verdict.NonCompliant, "", "línea de respaldo")
