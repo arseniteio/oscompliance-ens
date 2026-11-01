@@ -7,6 +7,7 @@ import (
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
@@ -78,4 +79,15 @@ func TestInspections(t *testing.T) {
 	check(t, "pentest", JudgeInspection(false, catalog.Message{}, register, catalog.Message{}, KindPentest, plan, now), verdict.Compliant, "", "")
 	check(t, "pentest overdue", JudgeInspection(false, catalog.Message{}, register[1:], catalog.Message{}, KindPentest, plan, now), verdict.NonCompliant, "", "")
 	check(t, "no plan", JudgeInspection(false, catalog.Message{}, register, catalog.Message{}, KindVulnerabilities, plan, now), verdict.NotEvaluable, verdict.CauseConfiguration, "")
+}
+
+func TestThreats(t *testing.T) {
+
+	m := &source.Manager{Rules: []source.Rule{{ID: 100700, Level: 8}}}
+	check(t, "anomaly", mpcom3.JudgeAttack(m, []string{"comportamiento anómalo | acceso fuera de horario | sshd | 100700"}, Anomaly), verdict.Compliant, "", "")
+
+	manager := &fact.WazuhAgentConfig{Status: fact.SourceRead, Lists: []fact.CDBList{{Name: "malicious-ioc/malicious-domains", Modified: "2026-10-30T00:00:00Z"}, {Name: "old", Modified: "2026-01-01T00:00:00Z"}}}
+	check(t, "fresh", JudgeEV07(manager, []string{"cibervigilancia | P | dominios | malicious-domains"}, 7, now), verdict.Compliant, "", "1")
+	check(t, "stale", JudgeEV07(manager, []string{"cibervigilancia | P | dominios | malicious-domains, old"}, 7, now), verdict.NonCompliant, "", "old")
+	check(t, "no lists", JudgeEV07(manager, []string{"cibervigilancia | P | dominios | "}, 7, now), verdict.NonCompliant, "", "")
 }

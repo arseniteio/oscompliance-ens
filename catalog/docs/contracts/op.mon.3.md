@@ -13,9 +13,9 @@ periodic inspections.
 | 3.1 automatic collection | B/M/A | EV-01, EV-02 |
 | r1.1 correlation | M/A | EV-03 |
 | r2.1 exposure | M/A | EV-04 |
-| r3.1 anomalous behaviour | A | attestation (P-ATT) |
+| r3.1 anomalous behaviour | A | EV-05 |
 | r3.2 network APT | A | EV-06 |
-| r4.1 digital observatories | A | attestation (P-ATT) |
+| r4.1 digital observatories | A | EV-07 |
 | r5.1 query limits | A | EV-08 |
 | r5.2 real-time alerts | A | EV-09 |
 | r6.1 configuration checks | A | EV-10 |
@@ -33,6 +33,7 @@ periodic inspections.
 | alerts by `location` | newest event of each log of each machine, a week back | EV-02 |
 | alerts in network detection groups (op.mon.1 contract) | | EV-06 |
 | SCA summary alerts (op.exp.2 contract) | policies with a result | EV-04, EV-10 |
+| `wazuh_agent_config` fact of the manager (op.exp.8 contract) | CDB lists and when they changed | EV-07 |
 | `wazuh-states-inventory-packages-*` | packages inventoried | EV-04, EV-11 |
 
 Wazuh leaves the manager's own inventory out of the state indices: the
@@ -45,13 +46,15 @@ packages of agent 000 are read through the API (op.exp.1 contract).
 | P-01 event sources `fuente \| sistema \| ubicacion \| max_horas` | `sistema` an agent name or `*` | EV-02 |
 | P-02 correlation rules `conjunto \| minimo_reglas_correlacion` | | EV-03 |
 | P-03 hours without events | | EV-01 |
-| P-04 behaviour baseline, P-06 observatory | documentary | |
+| P-04 anomalous behaviours `tipo \| indicador \| fuente \| reglas` | | EV-05 |
+| P-06 observatory `servicio \| proveedor \| alcance \| listas` | CDB list names | EV-07 |
 | P-05 network probe `producto \| ubicacion \| dias_maximos_sin_alerta` | | EV-06 |
 | P-07 query limits `sistema \| perfil \| umbral \| ventana \| reglas` | | EV-08 |
 | P-08 real-time recipients `destinatario \| canal \| nivel` | `correo` or an integration name | EV-09 |
 | P-09 inspection plan `tipo \| periodicidad_dias \| ejecutor` | | EV-10 to EV-12 |
 | P-10 inspection register `fecha \| tipo \| alcance \| ejecutor \| hallazgos \| estado` | | EV-10 to EV-12 |
-| P-ATT documentary attestations | r3.1, r4.1 | |
+| P-11 days a CDB list of the observatory may go without update | | EV-07 |
+| P-ATT documentary attestations | | |
 
 ## 4. Evidence judgement
 
@@ -67,8 +70,12 @@ Judges are in `engine/internal/controls/ens/opmon3`.
   least its number of them.
 - **EV-04 exposure.** The vulnerability detector enabled, packages of the
   machine inventoried, SCA enabled and with a result for it.
+- **EV-05 anomalous behaviour.** As mp.com.3 EV-04 for the behaviours of
+  P-04.
 - **EV-06 network APT.** A probe in P-05 whose network intrusion alerts are
   within its days (7 when empty).
+- **EV-07 cyber surveillance.** Every CDB list of P-06 present on the
+  manager and changed within P-11 days.
 - **EV-08 query limits.** Every row of P-07 has a loaded rule with
   `frequency` and level 1 or more among its rules.
 - **EV-09 real-time alerts.** `correo`: email notification on, recipients
@@ -91,7 +98,8 @@ Changed on purpose:
 - The manager is read through its API; the logcollector state files and
   the agent databases are not read. A source is collected when its events
   reach the alerts index.
-- EV-05, EV-07 and EV-13 gave no verdict in v1 and are out: r3.1 and r4.1
-  are attestations.
+- EV-05 and EV-07 gave no verdict in v1: anomalous behaviour is judged by
+  the rules that watch it, and the observatory by the freshness of the CDB
+  lists its indicators land in. EV-13 is out.
 - The registers of inspections are parameters (P-10); v1 read a file on the
   manager.

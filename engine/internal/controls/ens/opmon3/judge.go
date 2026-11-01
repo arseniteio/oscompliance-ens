@@ -285,3 +285,39 @@ func JudgeInspection(continuous bool, continuousWhy catalog.Message, register []
 }
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
+
+// JudgeEV07 needs every CDB list P-06 (`servicio | proveedor | alcance | listas`) feeds with indicators
+// updated on the manager within the days of P-11.
+func JudgeEV07(manager *fact.WazuhAgentConfig, rows []string, days int, now time.Time) verdict.Judgement {
+
+	var wanted []string
+	for _, r := range rows {
+		for _, l := range strings.Split(cells(r, 4)[3], ",") {
+			if l = strings.TrimSpace(l); l != "" {
+				wanted = append(wanted, l)
+			}
+		}
+	}
+	switch {
+	case len(wanted) == 0:
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opmon3.no_lists"))
+	case manager == nil:
+		return passes.Gap(verdict.CauseCollection, catalog.Says("gap.no_fact", "fact", fact.WazuhAgentConfigFact))
+	}
+	var stale []string
+	for _, name := range wanted {
+		i := slices.IndexFunc(manager.Lists, func(l fact.CDBList) bool { return l.Name == name || strings.HasSuffix(l.Name, "/"+name) })
+		if i < 0 {
+			stale = append(stale, name)
+			continue
+		}
+		t, err := time.Parse(time.RFC3339, manager.Lists[i].Modified)
+		if err != nil || now.Sub(t) > time.Duration(days)*24*time.Hour {
+			stale = append(stale, name)
+		}
+	}
+	if len(stale) > 0 {
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opmon3.lists_stale", "days", days, "list", stale))
+	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.lists_fresh", "count", len(wanted), "days", days))
+}

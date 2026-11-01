@@ -8,6 +8,7 @@ import (
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
@@ -27,6 +28,9 @@ type Facts interface {
 }
 
 const control = "op.mon.3"
+
+// Anomaly is how P-04 names its indicators: each row is an anomalous behaviour.
+const Anomaly = "comportamiento_anomalo"
 
 // Sources are read back a week: P-01 hours stop there.
 const sourcesHorizon = 7 * 24 * time.Hour
@@ -144,6 +148,29 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	put("EV-04", fromManager(func(*source.Manager) verdict.Judgement { return JudgeEV04(surface) }))
+
+	put("EV-05", fromManager(func(m *source.Manager) verdict.Judgement {
+		rows, problem := list("P-04", false)
+		if !problem.IsZero() {
+			return passes.Gap(verdict.CauseConfiguration, problem)
+		}
+		return mpcom3.JudgeAttack(m, rows, Anomaly)
+	}))
+
+	put("EV-07", func() verdict.Judgement {
+		rows, problem := list("P-06", false)
+		days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-11", "param.not_days")
+		for _, p := range []catalog.Message{problem, daysProblem} {
+			if !p.IsZero() {
+				return passes.Gap(verdict.CauseConfiguration, p)
+			}
+		}
+		var manager *fact.WazuhAgentConfig
+		if c, ok := e.wazuh[source.ManagerID]; ok {
+			manager = &c
+		}
+		return JudgeEV07(manager, rows, days, now)
+	}())
 
 	put("EV-06", func() verdict.Judgement {
 		probes, problem := list("P-05", true)
