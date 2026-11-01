@@ -16,7 +16,9 @@ type CloudOperation struct {
 }
 
 // cloudAdmin says, for each cloud module whose records name the actor, what makes an alert a successful
-// administrative operation and which fields name its actor and operation.
+// administrative operation and which fields name its actor and operation: CloudTrail write events, Office
+// 365 Exchange and Entra ID admin records, Azure activity log administrative entries, Entra ID directory
+// audits through Microsoft Graph, and Google's Admin Activity audit log.
 var cloudAdmin = []struct {
 	module, actor, operation string
 	filter                   []any
@@ -29,6 +31,21 @@ var cloudAdmin = []struct {
 		map[string]any{"terms": map[string]any{"data.office365.RecordType": []any{"1", "8"}}},
 		map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"terms": map[string]any{"data.office365.ResultStatus": []any{"Failed", "Failure"}}}}}},
 	}},
+	{"azure-logs", "data.Caller", "data.OperationNameValue", []any{
+		map[string]any{"term": map[string]any{"data.CategoryValue": "Administrative"}},
+		map[string]any{"term": map[string]any{"data.ActivityStatusValue": "Succeeded"}},
+	}},
+	{"ms-graph", "data.ms-graph.initiatedBy.user.userPrincipalName", "data.ms-graph.activityDisplayName", []any{
+		map[string]any{"term": map[string]any{"data.ms-graph.result": "success"}},
+	}},
+	{"gcp-pubsub", "data.gcp.protoPayload.authenticationInfo.principalEmail", "data.gcp.protoPayload.methodName", gcpAdminActivity},
+	{"gcp-bucket", "data.gcp.protoPayload.authenticationInfo.principalEmail", "data.gcp.protoPayload.methodName", gcpAdminActivity},
+}
+
+// gcpAdminActivity are the entries of Google's Admin Activity audit log that did not fail.
+var gcpAdminActivity = []any{
+	map[string]any{"wildcard": map[string]any{"data.gcp.logName": "*cloudaudit.googleapis.com%2Factivity"}},
+	map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"exists": map[string]any{"field": "data.gcp.protoPayload.status.code"}}}}},
 }
 
 // CloudAdminModules are the modules whose administrative operations the engine reads.
@@ -61,4 +78,38 @@ func (s *Source) CloudAdminOperations(ctx context.Context, since time.Time) ([]C
 		}
 	}
 	return out, nil
+}
+
+// GroupFindings are the alerts of some rule groups since a time, and how many of them reached a level.
+func (s *Source) GroupFindings(ctx context.Context, groups []string, level int, since time.Time) (all, serious Detection, err error) {
+	if all, err = s.GroupDetections(ctx, groups, since); err != nil {
+		return all, serious, err
+	}
+	names := make([]any, len(groups))
+	for i, g := range groups {
+		names[i] = g
+	}
+	query := map[string]any{
+		"size": 0, "track_total_hits": true,
+		"query": map[string]any{"bool": map[string]any{"filter": []any{
+			map[string]any{"terms": map[string]any{"rule.groups": names}},
+			map[string]any{"range": map[string]any{"rule.level": map[string]any{"gte": level}}},
+			map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+		}}},
+		"aggs": map[string]any{"last": map[string]any{"max": map[string]any{"field": "timestamp"}}},
+	}
+	var resp struct {
+		Hits struct {
+			Total struct {
+				Value int `json:"value"`
+			} `json:"total"`
+		} `json:"hits"`
+		Aggregations json.RawMessage `json:"aggregations"`
+	}
+	if err = s.client.Search(ctx, s.index, query, &resp); err != nil {
+		return all, serious, err
+	}
+	serious, err = detectionOf(resp.Aggregations)
+	serious.Count = resp.Hits.Total.Value
+	return all, serious, err
 }

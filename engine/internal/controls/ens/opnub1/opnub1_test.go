@@ -40,7 +40,7 @@ func TestAdmins(t *testing.T) {
 	admins := []string{"AWS producción | arn:aws:iam::123:role/Admin", "M365 | admin@example.org"}
 	check(t, "unknown admin", JudgeEV04(integrations, ops, admins), verdict.NonCompliant, "", "intruso@example.org")
 	check(t, "known", JudgeEV04(integrations, ops[:1], admins), verdict.Compliant, "", "3")
-	check(t, "unread module", JudgeEV04([]Integration{{"Azure", "azure-logs"}}, ops, admins), verdict.NotEvaluable, verdict.CauseEvidence, "Azure")
+	check(t, "unread module", JudgeEV04([]Integration{{"GitHub", "github"}}, ops, admins), verdict.NotEvaluable, verdict.CauseEvidence, "GitHub")
 }
 
 func TestRecord(t *testing.T) {
@@ -74,4 +74,12 @@ func TestDecisions(t *testing.T) {
 	if d := Decisions("ambos", ids); len(d) != 0 {
 		t.Errorf("both: %v", d)
 	}
+}
+
+func TestPosture(t *testing.T) {
+	week := source.Detection{Last: now.Add(-time.Hour), Count: 40}
+	check(t, "clean", JudgeEV02([]Posture{{Service: "AWS", Group: "aws_securityhub", All: week}}, 12, now), verdict.Compliant, "", "1")
+	check(t, "serious", JudgeEV02([]Posture{{Service: "AWS", Group: "aws_securityhub", All: week, Serious: source.Detection{Count: 3}}}, 12, now), verdict.NonCompliant, "", "AWS")
+	check(t, "silent", JudgeEV02([]Posture{{Service: "Azure", Group: "ms-graph"}}, 12, now), verdict.NonCompliant, "", "ms-graph")
+	check(t, "none", JudgeEV02(nil, 12, now), verdict.NonCompliant, "", "")
 }

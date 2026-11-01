@@ -235,3 +235,35 @@ func Decisions(position string, requirements []string) map[string]verdict.Judgem
 }
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
+
+// Posture is a row of P-07 (`servicio | guia | estandar | grupo_reglas`) and the findings its provider
+// sent in the last week.
+type Posture struct {
+	Service, Group string
+	All, Serious   source.Detection
+}
+
+// JudgeEV02 needs the posture findings of every service of P-07 reaching Wazuh, none of them at or above
+// the level of P-14.
+func JudgeEV02(postures []Posture, level int, now time.Time) verdict.Judgement {
+
+	if len(postures) == 0 {
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opnub1.no_posture"))
+	}
+	var failing []catalog.Message
+	for _, p := range postures {
+		switch {
+		case p.All.Last.IsZero() || now.Sub(p.All.Last) > postureHorizon:
+			failing = append(failing, catalog.Says("opnub1.item_posture_silent", "name", p.Service, "group", p.Group))
+		case p.Serious.Count > 0:
+			failing = append(failing, catalog.Says("opnub1.item_posture_findings", "name", p.Service, "count", p.Serious.Count, "level", level))
+		}
+	}
+	if len(failing) > 0 {
+		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opnub1.posture_failing", "list", failing))
+	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opnub1.posture", "count", len(postures), "level", level))
+}
+
+// Posture findings are read a week back.
+const postureHorizon = 7 * 24 * time.Hour

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
@@ -18,6 +19,7 @@ import (
 type Facts interface {
 	GroupDetections(ctx context.Context, groups []string, since time.Time) (source.Detection, error)
 	CloudAdminOperations(ctx context.Context, since time.Time) ([]source.CloudOperation, error)
+	GroupFindings(ctx context.Context, groups []string, level int, since time.Time) (all, serious source.Detection, err error)
 }
 
 const control = "op.nub.1"
@@ -31,6 +33,7 @@ type Evaluator struct {
 	pass       evaluator.Pass
 	logs       map[string]source.Detection
 	operations []source.CloudOperation
+	postures   map[string]Posture
 	decisions  map[string]map[string]verdict.Judgement
 }
 
@@ -45,6 +48,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	e.pass = pass
 	e.decisions = map[string]map[string]verdict.Judgement{}
 	e.logs = map[string]source.Detection{}
+	e.postures = map[string]Posture{}
 
 	for module, groups := range ModuleGroups {
 		d, err := e.facts.GroupDetections(ctx, groups, pass.Now.Add(-logsHorizon))
@@ -87,7 +91,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	position, problem := list("P-01", false)
 	if j, bad := gap(problem); bad {
-		for _, id := range []string{"EV-01", "EV-04", "EV-08", "EV-09"} {
+		for _, id := range []string{"EV-01", "EV-02", "EV-04", "EV-08", "EV-09"} {
 			put(id, j)
 		}
 		return results, nil
@@ -101,7 +105,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 	if p := key(position[0]); p != User && p != Both {
 		out := verdict.Explain(verdict.NotApplicable, "", catalog.Says("opnub1.position", "position", p))
-		for _, id := range []string{"EV-01", "EV-04", "EV-08", "EV-09"} {
+		for _, id := range []string{"EV-01", "EV-02", "EV-04", "EV-08", "EV-09"} {
 			put(id, out)
 		}
 		return results, nil
@@ -118,6 +122,27 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return j
 		}
 		return JudgeEV01(integrations, e.logs, hours, now)
+	}())
+
+	put("EV-02", func() verdict.Judgement {
+		rows, problem := list("P-07", false)
+		level, levelProblem := opmon1.Whole(policy, agent.ID, control, "P-14", "param.not_level")
+		if j, bad := gap(problem, levelProblem); bad {
+			return j
+		}
+		var postures []Posture
+		for _, r := range rows {
+			c := cells(r, 4)
+			if c[3] == "" {
+				continue
+			}
+			p, err := e.posture(ctx, c[0], c[3], level)
+			if err != nil {
+				return passes.Gap(verdict.CauseCollection, catalog.Says("gap.query", "error", err.Error()))
+			}
+			postures = append(postures, p)
+		}
+		return JudgeEV02(postures, level, now)
 	}())
 
 	put("EV-04", func() verdict.Judgement {
@@ -156,4 +181,20 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}())
 
 	return results, nil
+}
+
+// posture reads the findings of a rule group once a pass.
+func (e *Evaluator) posture(ctx context.Context, service, group string, level int) (Posture, error) {
+	key := group + "|" + strconv.Itoa(level)
+	p, ok := e.postures[key]
+	if !ok {
+		var err error
+		p.All, p.Serious, err = e.facts.GroupFindings(ctx, []string{group}, level, e.pass.Now.Add(-postureHorizon))
+		if err != nil {
+			return p, err
+		}
+		e.postures[key] = p
+	}
+	p.Service, p.Group = service, group
+	return p, nil
 }
