@@ -44,6 +44,10 @@ One per pass, emitted only when it changes:
 - `dns_resolvers`: the `nameserver` lines of `/etc/resolv.conf`; for the
   stub of systemd-resolved, those of `/run/systemd/resolve/resolv.conf`
   (mp.s.3).
+- `cpu_count`, `load_percent`, `memory_used_percent`, `syn_cookies`: the
+  15-minute load average against the CPUs and the memory in use, both
+  rounded down to tens so the fact changes only when a step is crossed,
+  and `net.ipv4.tcp_syncookies` (mp.s.4).
 
 ## 3. Parameters
 

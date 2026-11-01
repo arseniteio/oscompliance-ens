@@ -1,6 +1,6 @@
 // Package device reports how the machine protects an unattended session, its disk and its name resolution:
 // its chassis, the screen lock the system dconf databases set for the graphical session, the idle timeouts of
-// shells and logind, whether the root filesystem sits on dm-crypt, and the DNS servers it asks.
+// shells and logind, whether the root filesystem sits on dm-crypt, the DNS servers it asks, and its load.
 package device
 
 import (
@@ -46,6 +46,11 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	s.LogindIdle = logindIdle(append([]string{at("/etc/systemd/logind.conf")}, glob(at("/etc/systemd/logind.conf.d/*.conf"))...))
 	s.RootDevice, s.RootEncrypted = rootEncryption(cfg.Root)
 	s.Resolvers = resolvers(at("/etc/resolv.conf"), at("/run/systemd/resolve/resolv.conf"))
+	s.CPUs, s.LoadPercent = load(at("/proc/loadavg"), at("/proc/cpuinfo"))
+	s.MemoryPercent = memory(at("/proc/meminfo"))
+	if raw, err := fsread.ReadFile(at("/proc/sys/net/ipv4/tcp_syncookies")); err == nil {
+		s.SynCookies = strings.TrimSpace(string(raw)) != "0"
+	}
 
 	return e.Emit(s)
 }
@@ -209,4 +214,34 @@ func nameservers(path string) []string {
 		}
 	}
 	return out
+}
+
+// tens rounds a percentage down to tens: the load changes every pass, the fact only when a step is crossed.
+func tens(p float64) int { return int(p/10) * 10 }
+
+func load(loadavg, cpuinfo string) (cpus, percent int) {
+	for _, l := range lines(cpuinfo) {
+		if strings.HasPrefix(l, "processor") {
+			cpus++
+		}
+	}
+	f := strings.Fields(strings.Join(lines(loadavg), " "))
+	if cpus == 0 || len(f) < 3 {
+		return cpus, 0
+	}
+	avg, _ := strconv.ParseFloat(f[2], 64)
+	return cpus, tens(avg / float64(cpus) * 100)
+}
+
+func memory(meminfo string) int {
+	values := map[string]float64{}
+	for _, l := range lines(meminfo) {
+		if f := strings.Fields(l); len(f) >= 2 {
+			values[strings.TrimSuffix(f[0], ":")], _ = strconv.ParseFloat(f[1], 64)
+		}
+	}
+	if values["MemTotal"] == 0 {
+		return 0
+	}
+	return tens((values["MemTotal"] - values["MemAvailable"]) / values["MemTotal"] * 100)
 }

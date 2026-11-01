@@ -20,6 +20,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps2"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps3"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps4"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc2"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc3"
@@ -174,6 +175,7 @@ func runMain() error {
 		mps1.NewEvaluator(facts),
 		mps2.NewEvaluator(facts),
 		mps3.NewEvaluator(facts),
+		mps4.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

@@ -21,6 +21,10 @@ func TestCollect(t *testing.T) {
 	collecttest.Write(t, at("/etc/bash.bashrc"), "export TMOUT=3600\n")
 	collecttest.Write(t, at("/etc/systemd/logind.conf.d/idle.conf"), "[Login]\nStopIdleSessionSec=1h\n")
 	collecttest.Write(t, at("/proc/self/mounts"), "/dev/mapper/vg-root / ext4 rw 0 0\n/dev/sda1 /boot ext4 rw 0 0\n")
+	collecttest.Write(t, at("/proc/loadavg"), "0.50 0.80 1.70 1/200 999\n")
+	collecttest.Write(t, at("/proc/cpuinfo"), "processor\t: 0\nmodel name\t: x\n\nprocessor\t: 1\n\nprocessor\t: 2\n\nprocessor\t: 3\n")
+	collecttest.Write(t, at("/proc/meminfo"), "MemTotal:       16000000 kB\nMemFree:  1000 kB\nMemAvailable:    6000000 kB\n")
+	collecttest.Write(t, at("/proc/sys/net/ipv4/tcp_syncookies"), "1\n")
 	collecttest.Write(t, at("/etc/resolv.conf"), "nameserver 127.0.0.53\noptions edns0\n")
 	collecttest.Write(t, at("/run/systemd/resolve/resolv.conf"), "nameserver 10.0.0.53\nnameserver 10.0.0.54\n")
 	collecttest.Write(t, at("/sys/class/block/dm-1/dm/uuid"), "LVM-abc")
@@ -49,6 +53,9 @@ func TestCollect(t *testing.T) {
 	}
 	if r := f["dns_resolvers"].([]any); len(r) != 2 || r[0] != "10.0.0.53" {
 		t.Errorf("resolvers: %v", f)
+	}
+	if f["cpu_count"] != 4.0 || f["load_percent"] != 40.0 || f["memory_used_percent"] != 60.0 || f["syn_cookies"] != true {
+		t.Errorf("load: %v", f)
 	}
 
 	bare := t.TempDir()

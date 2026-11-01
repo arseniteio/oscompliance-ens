@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/device_security.v1.json",
   "title": "device_security v1",
-  "description": "How the machine protects an unattended session and its disk: chassis, screen lock of the graphical session (system dconf), idle timeouts of shells (TMOUT) and logind (StopIdleSessionSec), encryption of the root filesystem, and the DNS servers the machine asks (resolv.conf, the upstream ones of systemd-resolved).",
+  "description": "How the machine protects an unattended session and its disk: chassis, screen lock of the graphical session (system dconf), idle timeouts of shells (TMOUT) and logind (StopIdleSessionSec), encryption of the root filesystem, and the DNS servers the machine asks (resolv.conf, the upstream ones of systemd-resolved), and its load: the 15-minute load average against its CPUs and the memory in use, in steps of ten per cent, and whether SYN cookies are on.",
   "type": "object",
   "required": [
     "status",
@@ -67,6 +67,22 @@
       "items": {
         "type": "string"
       }
+    },
+    "cpu_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "load_percent": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "memory_used_percent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "syn_cookies": {
+      "type": "boolean"
     }
   },
   "allOf": [

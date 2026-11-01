@@ -6,7 +6,8 @@ const (
 
 // DeviceSecurity is how the machine protects an unattended session, its disk and its name resolution: its
 // chassis, the screen lock of the graphical session, the idle timeouts of shells and logind, whether its root
-// filesystem is encrypted, and the DNS servers it asks.
+// filesystem is encrypted, the DNS servers it asks, and its load: CPU and memory in steps of ten per cent, and
+// SYN cookies.
 type DeviceSecurity struct {
 	Envelope
 	Status        string   `json:"status"`
@@ -23,4 +24,8 @@ type DeviceSecurity struct {
 	RootDevice    string   `json:"root_device,omitempty"`
 	RootEncrypted bool     `json:"root_encrypted"`
 	Resolvers     []string `json:"dns_resolvers"`
+	CPUs          int      `json:"cpu_count,omitempty"`
+	LoadPercent   int      `json:"load_percent"`
+	MemoryPercent int      `json:"memory_used_percent"`
+	SynCookies    bool     `json:"syn_cookies"`
 }
