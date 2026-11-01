@@ -21,7 +21,8 @@ segment.
 | r4.2 interconnection point monitored | A | EV-05 |
 
 P-03 picks one way of segmenting: the reinforcements of the other two are
-NOT_APPLICABLE.
+NOT_APPLICABLE. VLAN alone is no option at ALTO: there EV-07 is
+NON_COMPLIANT and r2.1 and r3.1 stay.
 
 ## 2. Sources
 

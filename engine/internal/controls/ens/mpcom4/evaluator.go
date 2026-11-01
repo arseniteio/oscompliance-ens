@@ -110,11 +110,14 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	modalityRows, modalityProblem := list(control, "P-03", false)
 	modality := ""
+	// VLAN alone is no option at ALTO: the reinforcements of the other two stay to be met.
+	vlanAtHigh := false
 	if modalityProblem.IsZero() {
 		modality = Modality(modalityRows[0])
+		vlanAtHigh = modality == VLAN && policy.Level() == "ALTO"
 		e.decisions[agent.ID] = map[string]verdict.Judgement{}
 		for m, req := range modalityRequirement {
-			if m != modality {
+			if m != modality && !vlanAtHigh {
 				e.decisions[agent.ID][req] = verdict.Explain(verdict.NotApplicable, "", catalog.Says("mpcom4.modality", "modality", modalityRows[0]))
 			}
 		}
@@ -162,6 +165,9 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-07", withSegments(func() verdict.Judgement {
 		if !modalityProblem.IsZero() {
 			return gap(modalityProblem)
+		}
+		if vlanAtHigh {
+			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom4.vlan_at_high"))
 		}
 		return JudgeEV07(modality, segments, network)
 	}))
