@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"slices"
+	"strings"
 )
 
 func (c *Client) ManagerStatus(ctx context.Context) (map[string]string, error) {
@@ -82,4 +84,65 @@ func (c *Client) AgentPackage(ctx context.Context, agentID, name string) (*Packa
 		return nil, nil
 	}
 	return &found[0], nil
+}
+
+// Network is what the manager holds of an agent's interfaces, addresses, gateways and tunnelling tools.
+type Network struct {
+	Interfaces []struct {
+		Name  string `json:"name"`
+		Type  string `json:"type"`
+		State string `json:"state"`
+	}
+	Addresses []string
+	Gateways  []string
+	Tools     []string
+}
+
+func (c *Client) AgentNetwork(ctx context.Context, agentID string, tools []string) (*Network, error) {
+
+	base := "/syscollector/" + url.PathEscape(agentID)
+	out := &Network{}
+
+	if _, err := c.items(ctx, base+"/netiface?select=name,type,state", inventoryPage, 0, &out.Interfaces); err != nil {
+		return nil, err
+	}
+	var addresses []struct {
+		Address string `json:"address"`
+	}
+	if _, err := c.items(ctx, base+"/netaddr?select=address", inventoryPage, 0, &addresses); err != nil {
+		return nil, err
+	}
+	for _, a := range addresses {
+		out.Addresses = append(out.Addresses, a.Address)
+	}
+	var protocols []struct {
+		Gateway string `json:"gateway"`
+	}
+	if _, err := c.items(ctx, base+"/netproto?select=gateway", inventoryPage, 0, &protocols); err != nil {
+		return nil, err
+	}
+	for _, p := range protocols {
+		if g := strings.TrimSpace(p.Gateway); g != "" {
+			out.Gateways = append(out.Gateways, g)
+		}
+	}
+
+	if len(tools) > 0 {
+		q := make([]string, len(tools))
+		for i, t := range tools {
+			q[i] = "name=" + t
+		}
+		var processes []struct {
+			Name string `json:"name"`
+		}
+		if _, err := c.items(ctx, base+"/processes?select=name&q="+url.QueryEscape(strings.Join(q, ",")), inventoryPage, 0, &processes); err != nil {
+			return nil, err
+		}
+		for _, p := range processes {
+			if !slices.Contains(out.Tools, p.Name) {
+				out.Tools = append(out.Tools, p.Name)
+			}
+		}
+	}
+	return out, nil
 }
