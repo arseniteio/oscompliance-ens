@@ -138,7 +138,7 @@ func managerNetwork(ctx context.Context, api *wazuhapi.Client, tools []string) (
 	if err != nil {
 		return nil, err
 	}
-	out := &source.Network{Addresses: n.Addresses, Gateways: n.Gateways, Tunnels: n.Tools}
+	out := &source.Network{Addresses: n.Addresses, ByInterface: n.ByInterface, Gateways: n.Gateways, Tunnels: n.Tools}
 	for _, i := range n.Interfaces {
 		out.Interfaces = append(out.Interfaces, source.Interface{Name: i.Name, Type: i.Type, State: i.State})
 	}

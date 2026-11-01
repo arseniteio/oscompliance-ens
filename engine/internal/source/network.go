@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,10 +19,11 @@ type Interface struct {
 // Network is what Wazuh's inventory holds of a machine's connections: its interfaces, addresses and
 // gateways, and the processes of tunnelling tools it runs.
 type Network struct {
-	Interfaces []Interface
-	Addresses  []string
-	Gateways   []string
-	Tunnels    []string
+	Interfaces  []Interface
+	Addresses   []string
+	ByInterface map[string][]string
+	Gateways    []string
+	Tunnels     []string
 }
 
 // UseManagerNetwork sets where the manager's own network inventory is read, since Wazuh leaves it out of
@@ -29,8 +32,34 @@ func (s *Source) UseManagerNetwork(read func(ctx context.Context, tools []string
 	s.managerNetwork = read
 }
 
+type networkCache struct {
+	mu    sync.Mutex
+	at    time.Time
+	tools string
+	value map[string]*Network
+}
+
 // Networks reads the network inventory of every machine; tools are the process names of tunnelling tools.
+// Several controls of a pass read it: it is read once while it stays fresh.
 func (s *Source) Networks(ctx context.Context, tools []string) (map[string]*Network, error) {
+
+	c := &s.networks
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	key := strings.Join(tools, ",")
+	if c.value != nil && c.tools == key && time.Since(c.at) < managerFresh {
+		return c.value, nil
+	}
+	n, err := s.readNetworks(ctx, tools)
+	if err != nil {
+		return nil, err
+	}
+	c.value, c.tools, c.at = n, key, time.Now()
+	return n, nil
+}
+
+func (s *Source) readNetworks(ctx context.Context, tools []string) (map[string]*Network, error) {
 
 	out := map[string]*Network{}
 	of := func(id string) *Network {
@@ -53,9 +82,14 @@ func (s *Source) Networks(ctx context.Context, tools []string) (map[string]*Netw
 		{"interfaces", nil, []any{terms("n", "interface.name"), terms("t", "interface.type"), terms("s", "interface.state")}, func(id string, key map[string]any) {
 			of(id).Interfaces = append(of(id).Interfaces, Interface{Name: keyString(key, "n"), Type: keyString(key, "t"), State: keyString(key, "s")})
 		}},
-		{"networks", nil, []any{terms("v", "network.ip")}, func(id string, key map[string]any) {
+		{"networks", nil, []any{terms("n", "interface.name"), terms("v", "network.ip")}, func(id string, key map[string]any) {
+			n := of(id)
 			if v := keyString(key, "v"); v != "" {
-				of(id).Addresses = append(of(id).Addresses, v)
+				n.Addresses = append(n.Addresses, v)
+				if n.ByInterface == nil {
+					n.ByInterface = map[string][]string{}
+				}
+				n.ByInterface[keyString(key, "n")] = append(n.ByInterface[keyString(key, "n")], v)
 			}
 		}},
 		{"protocols", nil, []any{terms("v", "network.gateway")}, func(id string, key map[string]any) {
@@ -71,6 +105,9 @@ func (s *Source) Networks(ctx context.Context, tools []string) (map[string]*Netw
 	}
 
 	for _, step := range steps {
+		if step.kind == "processes" && len(tools) == 0 {
+			continue
+		}
 		filter := step.filter
 		if filter == nil {
 			filter = []any{}

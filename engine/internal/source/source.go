@@ -28,6 +28,7 @@ type Source struct {
 	managerInventory func(ctx context.Context) (*Inventory, error)
 	manager          managerCache
 	managerNetwork   func(ctx context.Context, tools []string) (*Network, error)
+	networks         networkCache
 }
 
 // New reads facts and alerts from index, the agents from monitoring, and Wazuh's inventory from the state

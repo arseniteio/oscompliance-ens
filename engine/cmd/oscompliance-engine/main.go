@@ -12,6 +12,7 @@ import (
 
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom4"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpinfo6"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc2"
@@ -160,6 +161,7 @@ func runMain() error {
 		opnub1.NewEvaluator(facts),
 		mpcom1.NewEvaluator(facts),
 		mpcom3.NewEvaluator(facts),
+		mpcom4.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

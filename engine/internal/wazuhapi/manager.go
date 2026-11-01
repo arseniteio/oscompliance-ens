@@ -93,9 +93,10 @@ type Network struct {
 		Type  string `json:"type"`
 		State string `json:"state"`
 	}
-	Addresses []string
-	Gateways  []string
-	Tools     []string
+	Addresses   []string
+	ByInterface map[string][]string
+	Gateways    []string
+	Tools       []string
 }
 
 func (c *Client) AgentNetwork(ctx context.Context, agentID string, tools []string) (*Network, error) {
@@ -108,12 +109,15 @@ func (c *Client) AgentNetwork(ctx context.Context, agentID string, tools []strin
 	}
 	var addresses []struct {
 		Address string `json:"address"`
+		Iface   string `json:"iface"`
 	}
-	if _, err := c.items(ctx, base+"/netaddr?select=address", inventoryPage, 0, &addresses); err != nil {
+	if _, err := c.items(ctx, base+"/netaddr?select=address,iface", inventoryPage, 0, &addresses); err != nil {
 		return nil, err
 	}
+	out.ByInterface = map[string][]string{}
 	for _, a := range addresses {
 		out.Addresses = append(out.Addresses, a.Address)
+		out.ByInterface[a.Iface] = append(out.ByInterface[a.Iface], a.Address)
 	}
 	var protocols []struct {
 		Gateway string `json:"gateway"`
