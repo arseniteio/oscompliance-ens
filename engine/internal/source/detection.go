@@ -1,0 +1,81 @@
+package source
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+)
+
+// Detection is the newest alert of a machine and how many it had since a time.
+type Detection struct {
+	Last  time.Time
+	Count int
+}
+
+// Detections are the alerts of every machine since a time, OSCompliance's own facts left out.
+func (s *Source) Detections(ctx context.Context, since time.Time) (map[string]Detection, error) {
+
+	filter := []any{
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+		map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"term": map[string]any{"rule.groups": "oscompliance"}}}}},
+	}
+	sub := map[string]any{"last": map[string]any{"max": map[string]any{"field": "timestamp"}}}
+
+	out := map[string]Detection{}
+	err := s.composite(ctx, filter, []any{terms("a", "agent.id")}, sub, func(key map[string]any, b json.RawMessage) error {
+		d, err := detectionOf(b)
+		if id := keyString(key, "a"); err == nil && id != "" {
+			out[id] = d
+		}
+		return err
+	})
+	return out, err
+}
+
+// GroupDetections are the alerts of the whole fleet in any of some rule groups since a time.
+func (s *Source) GroupDetections(ctx context.Context, groups []string, since time.Time) (Detection, error) {
+
+	names := make([]any, len(groups))
+	for i, g := range groups {
+		names[i] = g
+	}
+	query := map[string]any{
+		"size": 0, "track_total_hits": true,
+		"query": map[string]any{"bool": map[string]any{"filter": []any{
+			map[string]any{"terms": map[string]any{"rule.groups": names}},
+			map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+		}}},
+		"aggs": map[string]any{"last": map[string]any{"max": map[string]any{"field": "timestamp"}}},
+	}
+	var resp struct {
+		Hits struct {
+			Total struct {
+				Value int `json:"value"`
+			} `json:"total"`
+		} `json:"hits"`
+		Aggregations json.RawMessage `json:"aggregations"`
+	}
+	if err := s.client.Search(ctx, s.index, query, &resp); err != nil {
+		return Detection{}, err
+	}
+	d, err := detectionOf(resp.Aggregations)
+	d.Count = resp.Hits.Total.Value
+	return d, err
+}
+
+func detectionOf(b json.RawMessage) (Detection, error) {
+	var c struct {
+		Count int `json:"doc_count"`
+		Last  struct {
+			Value *float64 `json:"value"`
+		} `json:"last"`
+	}
+	if err := json.Unmarshal(b, &c); err != nil {
+		return Detection{}, err
+	}
+	d := Detection{Count: c.Count}
+	if c.Last.Value != nil {
+		d.Last = time.UnixMilli(int64(*c.Last.Value)).UTC()
+	}
+	return d, nil
+}

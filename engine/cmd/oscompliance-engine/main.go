@@ -27,6 +27,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp7"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp8"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp9"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/groupconf"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
@@ -120,6 +121,7 @@ func runMain() error {
 		}
 		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply}
 		facts.UseManagerInventory(func(ctx context.Context) (*source.Inventory, error) { return managerInventory(ctx, api) })
+		facts.UseManager(func(ctx context.Context) (*source.Manager, error) { return managerState(ctx, api) })
 	}
 
 	controls := []evaluator.Evaluator{
@@ -140,6 +142,7 @@ func runMain() error {
 		opexp9.NewEvaluator(facts),
 		opexp10.NewEvaluator(facts),
 		mpinfo6.NewEvaluator(facts),
+		opmon1.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

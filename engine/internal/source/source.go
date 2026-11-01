@@ -26,6 +26,7 @@ type Source struct {
 	pass       passState
 
 	managerInventory func(ctx context.Context) (*Inventory, error)
+	manager          managerCache
 }
 
 // New reads facts and alerts from index, the agents from monitoring, and Wazuh's inventory from the state
