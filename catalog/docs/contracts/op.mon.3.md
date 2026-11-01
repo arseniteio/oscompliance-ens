@@ -35,8 +35,8 @@ periodic inspections.
 | SCA summary alerts (op.exp.2 contract) | policies with a result | EV-04, EV-10 |
 | `wazuh-states-inventory-packages-*` | packages inventoried | EV-04, EV-11 |
 
-Wazuh leaves the manager's own inventory out of the state indices: for
-agent 000 the `wazuh-manager` package read through the API stands for it.
+Wazuh leaves the manager's own inventory out of the state indices: the
+packages of agent 000 are read through the API (op.exp.1 contract).
 
 ## 3. Parameters
 

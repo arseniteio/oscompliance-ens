@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -102,9 +103,23 @@ func (s *Source) LocationDetections(ctx context.Context, since time.Time) (map[s
 	return out, err
 }
 
-// PackageCounts are how many packages Wazuh's inventory holds of every machine.
+// PackageCounts are how many packages Wazuh's inventory holds of every machine; the manager's come from its
+// API when the engine has one.
 func (s *Source) PackageCounts(ctx context.Context) (map[string]int, error) {
+
 	out := map[string]int{}
-	err := s.inventoryCount(ctx, "packages", nil, nil, func(id string, _ map[string]any, n int) { out[id] += n })
-	return out, err
+	if err := s.inventoryCount(ctx, "packages", nil, nil, func(id string, _ map[string]any, n int) { out[id] += n }); err != nil {
+		return nil, err
+	}
+
+	if s.managerInventory != nil {
+		inv, err := s.managerInventory(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("manager inventory: %w", err)
+		}
+		for _, n := range inv.Packages {
+			out[ManagerID] += n
+		}
+	}
+	return out, nil
 }

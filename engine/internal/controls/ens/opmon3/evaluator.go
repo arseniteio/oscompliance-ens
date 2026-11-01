@@ -141,10 +141,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 	if e.managerErr == nil {
 		surface.Detector = e.manager.Vulnerability
-		// Wazuh leaves the manager's own inventory out of the state indices; its API holds it.
-		if agent.ID == source.ManagerID && e.manager.Version != "" {
-			surface.Packages = max(surface.Packages, 1)
-		}
 	}
 
 	put("EV-04", fromManager(func(*source.Manager) verdict.Judgement { return JudgeEV04(surface) }))
