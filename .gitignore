@@ -1,4 +1,5 @@
 # Build output
+/dist/
 /agent/bin/
 /engine/bin/
 *.test

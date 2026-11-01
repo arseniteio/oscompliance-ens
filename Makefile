@@ -1,6 +1,6 @@
 MODULES := catalog agent engine
 
-.PHONY: check test
+.PHONY: check test dist
 
 check:  ## gofmt, go vet and go test on every module
 	@for m in $(MODULES); do \
@@ -12,3 +12,6 @@ check:  ## gofmt, go vet and go test on every module
 
 test:   ## go test on every module
 	@for m in $(MODULES); do (cd $$m && go test -count=1 ./...) || exit 1; done
+
+dist:   ## release packages in dist/: make dist VERSION=1.0.0
+	@bash ci/package.sh $(VERSION)
