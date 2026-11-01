@@ -18,7 +18,9 @@ machine, and the restore tests the organisation records.
 | r2.1 a copy kept apart | A | EV-06 |
 
 A machine without rows in P-04 makes and keeps no copies: every requirement
-is NOT_APPLICABLE there.
+is NOT_APPLICABLE there. The regulation asks the system for backups: when no
+machine of the fleet declares copies, the manager carries the control and
+every evidence is NON_COMPLIANT there.
 
 ## 2. Sources
 

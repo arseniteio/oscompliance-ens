@@ -14,6 +14,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/scope"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
@@ -68,6 +69,19 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
+// anyReported tells whether a machine of some application of P-01 reports to Wazuh; when none does, the
+// manager carries the applications for the organisation.
+func (e *Evaluator) anyReported(rows []string) bool {
+	for _, r := range rows {
+		for _, m := range names(cells(r, 2)[1]) {
+			if _, ok := e.ids[strings.ToLower(m)]; ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
@@ -98,7 +112,13 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 	apps := AppsOf(rows, agent.Name)
 	if len(apps) == 0 {
-		return mps1.OutOfScope(control, catalog.Says("mpsw2.no_apps"), e.decisions, agent.ID), nil
+		if e.anyReported(rows) || !scope.Carrier(agent.ID) {
+			return mps1.OutOfScope(control, catalog.Says("mpsw2.no_apps"), e.decisions, agent.ID), nil
+		}
+		for _, id := range []string{"EV-01", "EV-02", "EV-03", "EV-04", "EV-05", "EV-07"} {
+			put(id, verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpsw2.no_app_machine")))
+		}
+		return results, nil
 	}
 
 	since := now.Add(-Horizon)

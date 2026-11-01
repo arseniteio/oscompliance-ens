@@ -17,7 +17,8 @@ episodes with their reaction.
 | r2.1 attacks from the own premises | none | EV-09 |
 
 A machine that is not a `maquina` of P-01: every evidence and requirement
-NOT_APPLICABLE.
+NOT_APPLICABLE. When no machine of P-01 reports to Wazuh, the manager carries
+the control: EV-01, EV-02 and EV-09 are NON_COMPLIANT there.
 
 ## 2. Sources
 

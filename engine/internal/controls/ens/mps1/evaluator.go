@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
@@ -17,6 +18,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/scope"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
@@ -28,6 +30,7 @@ type Facts interface {
 	SourceActivity(ctx context.Context, name string, since time.Time) ([]time.Time, error)
 	FIMChanges(ctx context.Context, agentID string, since time.Time) ([]source.FIMChange, error)
 	TXT(ctx context.Context, name string) ([]string, error)
+	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 }
 
 const control = "mp.s.1"
@@ -48,6 +51,7 @@ type Evaluator struct {
 	configs    map[string]fact.ConfigSnapshot
 	hours      map[string][]time.Time
 	domains    map[string]Domain
+	fleet      scope.Fleet
 	decisions  map[string]map[string]verdict.Judgement
 }
 
@@ -65,6 +69,11 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.configs, err = e.facts.ConfigSnapshots(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("config: %w", err)
 	}
+	reporting, err := e.facts.Reporting(ctx, pass.LookbackStart)
+	if err != nil {
+		return fmt.Errorf("reporting: %w", err)
+	}
+	e.fleet = scope.FleetOf(reporting)
 	return nil
 }
 
@@ -126,8 +135,18 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return results, nil
 	}
 	platform := ParsePlatform(rows)
+	carrier := false
 	if !platform.Runs(agent.Name) {
-		return OutOfScope(control, catalog.Says("mps1.not_platform"), e.decisions, agent.ID), nil
+		if slices.ContainsFunc(platform.Machines, e.fleet.Has) || !scope.Carrier(agent.ID) {
+			return OutOfScope(control, catalog.Says("mps1.not_platform"), e.decisions, agent.ID), nil
+		}
+		carrier = true
+	}
+	onPlatform := func(judge func() verdict.Judgement) verdict.Judgement {
+		if carrier {
+			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mps1.no_platform_machine"))
+		}
+		return judge()
 	}
 
 	put("EV-01", func() verdict.Judgement {
@@ -162,7 +181,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		settings = opacc6.Settings{Snapshot: &s, Files: files}
 	}
-	put("EV-06", JudgeEV06(settings))
+	put("EV-06", onPlatform(func() verdict.Judgement { return JudgeEV06(settings) }))
 
 	put("EV-07", func() verdict.Judgement {
 		rows, problem := list(control, "P-02", false)
@@ -181,7 +200,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV07(domains)
 	}())
 
-	put("EV-09", func() verdict.Judgement {
+	put("EV-09", onPlatform(func() verdict.Judgement {
 		rows, problem := list(control, "P-09", false)
 		if !problem.IsZero() {
 			return gap(problem)
@@ -201,7 +220,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseCollection, catalog.Says("gap.query", "error", err.Error()))
 		}
 		return mpcom3.JudgeEV10(fim, paths, opexp5.ParseRegister(requests), agent.Name, window)
-	}())
+	}))
 
 	put("EV-10", func() verdict.Judgement {
 		rows, problem := list(control, "P-07", false)

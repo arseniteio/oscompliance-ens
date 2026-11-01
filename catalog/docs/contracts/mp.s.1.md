@@ -19,7 +19,9 @@ users.
 | 1.7 awareness and training | B/M/A | EV-10 |
 
 A machine that is not a `maquina` of P-01: every evidence and requirement
-NOT_APPLICABLE.
+NOT_APPLICABLE. When no machine of P-01 reports to Wazuh, the manager carries
+the control: the organisation's evidences are judged there and EV-06 and
+EV-09 are NON_COMPLIANT. A system without e-mail disables the control.
 
 ## 2. Sources
 

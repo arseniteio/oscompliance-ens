@@ -21,7 +21,9 @@ their findings solved.
 | r3.1 proxies and caches | A | attestation (P-ATT) |
 
 A machine that is not a `maquina` of P-01: every evidence and requirement
-NOT_APPLICABLE. P-07 picks black box (r1) or white box (r2) audits: the
+NOT_APPLICABLE. When no machine of P-01 reports to Wazuh, the manager carries
+every application: EV-10 is NON_COMPLIANT there. A system without web
+services disables the control. P-07 picks black box (r1) or white box (r2) audits: the
 reinforcements of the other are NOT_APPLICABLE; at ALTO white box applies
 whatever P-07 says.
 

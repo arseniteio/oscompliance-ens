@@ -15,7 +15,8 @@ critical or high vulnerability in its packages.
 | r2.1 source code audit | none | |
 
 A machine where no application of P-01 is deployed: every evidence and
-requirement NOT_APPLICABLE.
+requirement NOT_APPLICABLE. When no machine of P-01 reports to Wazuh, the
+manager carries the control and every evidence is NON_COMPLIANT there.
 
 ## 2. Sources
 

@@ -13,11 +13,14 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/scope"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 type Facts interface {
 	BackupSnapshots(ctx context.Context, since time.Time) (map[string]fact.BackupSnapshot, error)
+	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 }
 
 const control = "mp.info.6"
@@ -29,6 +32,8 @@ type Evaluator struct {
 
 	pass      evaluator.Pass
 	backups   map[string]fact.BackupSnapshot
+	fleet     scope.Fleet
+	copies    *bool
 	decisions map[string]map[string]verdict.Judgement
 }
 
@@ -45,11 +50,17 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.backups, err = e.facts.BackupSnapshots(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("backups: %w", err)
 	}
+	reporting, err := e.facts.Reporting(ctx, pass.LookbackStart)
+	if err != nil {
+		return fmt.Errorf("reporting: %w", err)
+	}
+	e.fleet, e.copies = scope.FleetOf(reporting), nil
 	return nil
 }
 
 // Decisions leave out the machines that declare no copies: mp.info.6 is measured where copies are made
-// or kept.
+// or kept. The regulation asks for backups, so when no machine declares any the manager fails for the
+// organisation.
 func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
@@ -67,6 +78,10 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	rows, err := policy.List(agent.ID, control, "P-04")
 	if errors.Is(err, params.ErrNotSet) {
+		if !e.anyCopies(policy) && scope.Carrier(agent.ID) {
+			all(verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpinfo6.no_copies_anywhere")))
+			return results, nil
+		}
 		out := verdict.Explain(verdict.NotApplicable, "", catalog.Says("mpinfo6.out_of_scope"))
 		all(out)
 		e.decisions[agent.ID] = map[string]verdict.Judgement{}
@@ -138,6 +153,15 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-06", JudgeEV06(copies, read))
 
 	return results, nil
+}
+
+// anyCopies tells, once a pass, whether some machine of the fleet declares copies.
+func (e *Evaluator) anyCopies(policy params.Lister) bool {
+	if e.copies == nil {
+		found := e.fleet.Any(func(id string) bool { _, err := policy.List(id, control, "P-04"); return err == nil })
+		e.copies = &found
+	}
+	return *e.copies
 }
 
 func keyPaths(rows []string) []string {

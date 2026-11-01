@@ -15,6 +15,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/scope"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
@@ -25,6 +26,7 @@ type Facts interface {
 	FirewallSnapshots(ctx context.Context, since time.Time) (map[string]fact.FirewallSnapshot, error)
 	ListeningSnapshots(ctx context.Context, since time.Time) (map[string]fact.ListeningSnapshot, error)
 	ListeningSockets(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ListeningSocket, error)
+	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 }
 
 const control = "mp.s.4"
@@ -41,6 +43,7 @@ type Evaluator struct {
 	devices    map[string]fact.DeviceSecurity
 	firewalls  map[string]fact.FirewallSnapshot
 	listening  map[string]fact.ListeningSnapshot
+	fleet      scope.Fleet
 	decisions  map[string]map[string]verdict.Judgement
 }
 
@@ -64,6 +67,11 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.listening, err = e.facts.ListeningSnapshots(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("listening: %w", err)
 	}
+	reporting, err := e.facts.Reporting(ctx, pass.LookbackStart)
+	if err != nil {
+		return fmt.Errorf("reporting: %w", err)
+	}
+	e.fleet = scope.FleetOf(reporting)
 	return nil
 }
 
@@ -97,12 +105,22 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		return results, nil
 	}
-	exposed := false
+	exposed, reported := false, false
 	for _, r := range services {
-		exposed = exposed || strings.EqualFold(cells(r, 2)[1], agent.Name)
+		machine := cells(r, 2)[1]
+		exposed = exposed || strings.EqualFold(machine, agent.Name)
+		reported = reported || e.fleet.Has(machine)
 	}
-	if !exposed {
+	// No machine of P-01 reports: the manager carries the services for the organisation.
+	carrier := !exposed
+	if carrier && (reported || !scope.Carrier(agent.ID)) {
 		return mps1.OutOfScope(control, catalog.Says("mps4.not_exposed"), e.decisions, agent.ID), nil
+	}
+	onMachine := func(judge func() verdict.Judgement) verdict.Judgement {
+		if carrier {
+			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mps4.no_service_machine"))
+		}
+		return judge()
 	}
 
 	var device *fact.DeviceSecurity
@@ -110,21 +128,21 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		device = &d
 	}
 
-	put("EV-01", func() verdict.Judgement {
+	put("EV-01", onMachine(func() verdict.Judgement {
 		max, problem := opmon1.Whole(policy, agent.ID, control, "P-02", "param.not_percent")
 		if !problem.IsZero() {
 			return gapOf(problem)
 		}
 		return JudgeEV01(device, max)
-	}())
+	}))
 
-	put("EV-02", func() verdict.Judgement {
+	put("EV-02", onMachine(func() verdict.Judgement {
 		var fw *fact.FirewallSnapshot
 		if f, ok := e.firewalls[agent.ID]; ok {
 			fw = &f
 		}
 		return JudgeEV02(device, fw)
-	}())
+	}))
 
 	indicators, indicatorsProblem := list("P-03", false)
 	put("EV-03", fromManager(func(m *source.Manager) verdict.Judgement {
@@ -154,7 +172,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV10(episodes)
 	}())
 
-	put("EV-09", func() verdict.Judgement {
+	put("EV-09", onMachine(func() verdict.Judgement {
 		allowed, problem := list("P-08", true)
 		if !problem.IsZero() {
 			return gapOf(problem)
@@ -168,7 +186,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseCollection, catalog.Says("gap.query", "error", err.Error()))
 		}
 		return JudgeEV09(sockets, allowed)
-	}())
+	}))
 
 	return results, nil
 }

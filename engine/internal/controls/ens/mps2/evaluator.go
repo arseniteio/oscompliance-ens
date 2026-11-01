@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/scope"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
@@ -23,6 +25,7 @@ type Facts interface {
 	Manager(ctx context.Context) (*source.Manager, error)
 	SourceActivity(ctx context.Context, name string, since time.Time) ([]time.Time, error)
 	Vulnerabilities(ctx context.Context) (map[string][]source.VulnerabilityDay, error)
+	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 }
 
 const control = "mp.s.2"
@@ -41,6 +44,7 @@ type Evaluator struct {
 	managerErr      error
 	vulnerabilities map[string][]source.VulnerabilityDay
 	hours           map[string][]time.Time
+	fleet           scope.Fleet
 	decisions       map[string]map[string]verdict.Judgement
 }
 
@@ -58,6 +62,11 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.vulnerabilities, err = e.facts.Vulnerabilities(ctx); err != nil {
 		return fmt.Errorf("vulnerabilities: %w", err)
 	}
+	reporting, err := e.facts.Reporting(ctx, pass.LookbackStart)
+	if err != nil {
+		return fmt.Errorf("reporting: %w", err)
+	}
+	e.fleet = scope.FleetOf(reporting)
 	return nil
 }
 
@@ -87,12 +96,14 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return results, nil
 	}
 	platform := mps1.ParsePlatform(rows)
-	if !platform.Runs(agent.Name) {
+	// No machine of P-01 reports: the manager carries the applications for the organisation.
+	carrier := !platform.Runs(agent.Name)
+	if carrier && (slices.ContainsFunc(platform.Machines, e.fleet.Has) || !scope.Carrier(agent.ID)) {
 		return mps1.OutOfScope(control, catalog.Says("mps2.not_web"), e.decisions, agent.ID), nil
 	}
 	var apps []string
 	for _, r := range rows {
-		if c := cells(r, 3); strings.EqualFold(c[1], agent.Name) {
+		if c := cells(r, 3); carrier || strings.EqualFold(c[1], agent.Name) {
 			apps = append(apps, c[0])
 		}
 	}
@@ -104,7 +115,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		var mine []mpcom1.Element
 		for _, r := range rows {
-			if c := cells(r, 3); strings.EqualFold(c[1], agent.Name) && c[2] != "" {
+			if c := cells(r, 3); (carrier || strings.EqualFold(c[1], agent.Name)) && c[2] != "" {
 				mine = append(mine, mpcom1.Element{Name: c[0], Source: c[2]})
 			}
 		}
@@ -131,6 +142,9 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		days, problem := opmon1.Whole(policy, agent.ID, control, "P-09", "param.not_days")
 		if !problem.IsZero() {
 			return gap(problem)
+		}
+		if carrier {
+			return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mps2.no_web_machine"))
 		}
 		return JudgeEV10(e.vulnerabilities[agent.ID], days, now)
 	}())
