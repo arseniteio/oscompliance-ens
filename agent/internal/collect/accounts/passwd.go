@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/fsread"
 )
 
 type passwdEntry struct {

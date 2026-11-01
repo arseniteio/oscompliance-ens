@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 )
 
 type Person struct {

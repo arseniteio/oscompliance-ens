@@ -3,8 +3,8 @@ package authprobe
 import (
 	"log/syslog"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 const ProbeTag = "oscompliance-agent"

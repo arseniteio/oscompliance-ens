@@ -3,7 +3,7 @@ package source
 import (
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 func TestDecodeIndexedFacts(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 type EV08Input struct {

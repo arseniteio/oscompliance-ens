@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/identity_record.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/identity_record.v1.json",
   "title": "identity_record v1",
   "description": "One entry of the identity files (passwd joined with shadow), at any UID. Emitted once per entry, before the identity_snapshot of the same run_id. The engine compares the records of two passes to find created, modified and deleted accounts. Never carries a password hash: only its state. Never the keys either: only how many sshd would accept.",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/backup_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/backup_snapshot.v1.json",
   "title": "backup_snapshot v1",
   "description": "The newest copy of each configuration source the group configuration declares (backup_sources): the last commit of a git directory or the newest file of a pattern.",
   "type": "object",

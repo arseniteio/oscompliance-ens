@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/wazuhapi"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
 )
 
 func policyOf(t *testing.T, doc string) *params.Config {

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp5"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp7"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp5"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp7"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 var now = time.Date(2026, 10, 29, 12, 0, 0, 0, time.UTC)

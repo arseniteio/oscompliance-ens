@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/batch"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/batch"
 )
 
 var authGroups = []any{"authentication_success", "authentication_failed", "sudo"}

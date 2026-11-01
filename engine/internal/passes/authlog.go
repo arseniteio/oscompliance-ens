@@ -3,8 +3,8 @@ package passes
 import (
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 const probeDelivery = 10 * time.Minute

@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc4"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opexp5"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc4"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp5"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 // JudgeEV01 needs the lowest score of each assessed baseline policy in the series to reach the op.exp.2

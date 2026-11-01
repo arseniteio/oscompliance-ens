@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/listening_socket.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/listening_socket.v1.json",
   "title": "listening_socket v1",
   "description": "One socket accepting connections from outside the machine (loopback is left out): TCP in LISTEN, or UDP bound without a peer. What service it is, and whether it encrypts, is the engine's decision. Emitted before the listening_snapshot of the same run_id. Field names avoid the objects of the Wazuh alerts template (data.port, data.process).",
   "type": "object",

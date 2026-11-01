@@ -3,7 +3,7 @@ package history
 import (
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 type Account struct {

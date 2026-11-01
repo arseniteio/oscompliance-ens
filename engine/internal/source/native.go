@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 func (s *Source) WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error) {

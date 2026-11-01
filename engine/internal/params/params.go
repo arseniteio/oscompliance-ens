@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/catalog"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
 )
 
 var ErrNotSet = errors.New("not set")

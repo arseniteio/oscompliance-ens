@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/groupconf"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/groupconf"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
 )
 
 var configHistoryMapping = map[string]any{

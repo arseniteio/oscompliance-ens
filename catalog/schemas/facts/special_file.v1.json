@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/special_file.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/special_file.v1.json",
   "title": "special_file v1",
   "description": "One file or directory the filesystem sweep found with at least one property access control cares about: SUID, SGID, world-writable, or no owner or group in the local account database. Emitted before the file_sweep_snapshot of the same run_id. Which ones are allowed (P-10 SUID baseline, P-11 world-writable exceptions, P-02 scope) is decided by the engine.",
   "type": "object",

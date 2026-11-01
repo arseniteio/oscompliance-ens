@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 const ServiceRule = "119003"

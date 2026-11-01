@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/collecttest"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/collect/collecttest"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
 )
 
 func TestParseHexAddress(t *testing.T) {

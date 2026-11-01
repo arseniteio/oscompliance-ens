@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/controls/ens/opacc1"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc1"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 type Accounts struct {

@@ -3,10 +3,10 @@ package opacc5
 import (
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/passes"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 func Reinforcement(factors []string) string {

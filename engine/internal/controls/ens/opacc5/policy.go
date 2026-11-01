@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 )
 
 type Policy struct {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/audit_watch_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/audit_watch_snapshot.v1.json",
   "title": "audit_watch_snapshot v1",
   "description": "The auditd watches the manager asked for (audit_watches of the group configuration the engine writes) and whether they are loaded: four per path, one per permission (r, w, x, a) with keys oscompliance_read, oscompliance_write, oscompliance_exec and oscompliance_attr, so each access carries its kind. The agent loads a missing watch with auditctl and never removes one. Binaries in exec_watches (op.acc.3 P-03) get one execution watch each, key oscompliance_exec.",
   "type": "object",

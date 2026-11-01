@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
 )
 
 func TestEveryCollectorIsWired(t *testing.T) {

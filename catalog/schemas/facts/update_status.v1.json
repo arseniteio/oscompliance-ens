@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/update_status.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/update_status.v1.json",
   "title": "update_status v1",
   "description": "What apt would upgrade now (a simulation, nothing downloaded) and the time of its newest package list.",
   "type": "object",

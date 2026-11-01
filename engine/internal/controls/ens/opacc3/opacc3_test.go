@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 func check(t *testing.T, name string, got verdict.Judgement, status verdict.Status, cause verdict.Cause, reason string) {

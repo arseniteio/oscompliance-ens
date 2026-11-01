@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/collecttest"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/collect/collecttest"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
 )
 
 const table = `IP address       HW type     Flags       HW address            Mask     Device

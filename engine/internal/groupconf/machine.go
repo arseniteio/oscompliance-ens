@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 )
 
 // Machine is what one agent needs from the manager to collect: the paths its collectors read, the

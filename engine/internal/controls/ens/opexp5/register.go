@@ -9,8 +9,8 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 )
 
 // RegisterParam is the change register; op.exp.3 judges its configuration edits against it too.

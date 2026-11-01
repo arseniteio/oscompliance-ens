@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/key_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/key_snapshot.v1.json",
   "title": "key_snapshot v1",
   "description": "The sweep for keys and certificates behind the key_record and certificate_record records of a pass.",
   "type": "object",

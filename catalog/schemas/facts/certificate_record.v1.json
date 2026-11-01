@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/certificate_record.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/certificate_record.v1.json",
   "title": "certificate_record v1",
   "description": "An X.509 certificate found on disk, the system public CAs left out: subject, expiry, public key and signature algorithms.",
   "type": "object",

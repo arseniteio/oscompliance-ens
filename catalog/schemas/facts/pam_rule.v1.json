@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/pam_rule.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/pam_rule.v1.json",
   "title": "pam_rule v1",
   "description": "One rule of a PAM service stack, in evaluation order, with include, substack and @include already resolved: the engine sees the stack PAM runs. Emitted before the pam_snapshot of the same run_id.",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/listening_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/listening_snapshot.v1.json",
   "title": "listening_snapshot v1",
   "description": "Summary of one read of the listening sockets, emitted after their listening_socket records.",
   "type": "object",

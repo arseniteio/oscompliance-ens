@@ -6,9 +6,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/host"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/host"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 type Config struct {

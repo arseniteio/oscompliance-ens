@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/collecttest"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/collect/wazuh"
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/collect/collecttest"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/collect/wazuh"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
 )
 
 func TestCollectACL(t *testing.T) {

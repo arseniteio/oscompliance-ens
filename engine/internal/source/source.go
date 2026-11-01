@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/batch"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/indexer"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/batch"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
 const FactRule = "119001"

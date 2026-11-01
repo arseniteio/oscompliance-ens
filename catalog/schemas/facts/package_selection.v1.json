@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/facts/package_selection.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/package_selection.v1.json",
   "title": "package_selection v1",
   "description": "The packages installed on request (apt-mark showmanual, dnf repoquery --userinstalled), not the dependencies they pulled in.",
   "type": "object",

@@ -4,7 +4,7 @@ import (
 	"net/netip"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens/catalog"
 )
 
 type Zones struct {

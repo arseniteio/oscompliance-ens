@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/OpenSourceCompliance/oscompliance-ens/catalog/schemas/verdicts/verdict.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/verdicts/verdict.v1.json",
   "title": "verdict v1",
   "description": "One document of the oscompliance-verdicts index, written only by the engine: the judgement of one evidence, one requirement or one control on one agent. IDs: evidence agent/control/evidence/run_id ('none' without a pass), requirement agent/control/requirement/day, control agent/control/day.",
   "type": "object",

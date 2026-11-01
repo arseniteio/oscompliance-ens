@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/fsread"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/fsread"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/agent/internal/emit"
-	"github.com/OpenSourceCompliance/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
 type GroupsConfig struct {

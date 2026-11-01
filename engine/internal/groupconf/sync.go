@@ -7,8 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/params"
-	"github.com/OpenSourceCompliance/oscompliance-ens/engine/internal/wazuhapi"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
 )
 
 type API interface {
