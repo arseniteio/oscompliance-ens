@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpinfo6"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc2"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc3"
@@ -138,6 +139,7 @@ func runMain() error {
 		opexp8.NewEvaluator(facts),
 		opexp9.NewEvaluator(facts),
 		opexp10.NewEvaluator(facts),
+		mpinfo6.NewEvaluator(facts),
 	}
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,

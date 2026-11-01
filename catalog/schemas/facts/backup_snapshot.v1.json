@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/backup_snapshot.v1.json",
   "title": "backup_snapshot v1",
-  "description": "The newest copy of each configuration source the group configuration declares (backup_sources): the last commit of a git directory or the newest file of a pattern.",
+  "description": "The copies each source of the group configuration holds (backup_sources): a git directory, a directory or a file pattern, with the dates of its newest and oldest copy, who can read them and their filesystem; and the mode of the keys that encrypt them (backup_keys).",
   "type": "object",
   "required": [
     "status",
@@ -48,6 +48,79 @@
           "newest": {
             "type": "string",
             "format": "date-time"
+          },
+          "oldest": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "files": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "newest_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "pattern": "^[0-7]{4}$"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "group_readable": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "other_readable": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "filesystem": {
+            "type": "string"
+          },
+          "device": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "key_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "status"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "read",
+              "absent",
+              "error"
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "pattern": "^[0-7]{4}$"
+          },
+          "owner": {
+            "type": "string"
           }
         }
       }

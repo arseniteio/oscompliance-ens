@@ -64,7 +64,8 @@ and `units`, the services `systemctl list-units --type=service
 One per pass, `sources` with `source`, `status` (`read`, `absent`,
 `error`) and `newest`, the time of the newest copy. A source is
 `git:<directory>` (time of its last commit, as etckeeper keeps `/etc`) or a
-file pattern (time of the newest file it matches).
+file pattern (time of the newest file it matches). The rest of the fact is
+in the mp.info.6 contract.
 
 ## 3. Parameters
 

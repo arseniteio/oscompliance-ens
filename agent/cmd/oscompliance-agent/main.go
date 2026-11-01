@@ -122,7 +122,7 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"neighbours": func() error { return neighbours.Collect(e, neighbours.Default) },
 		"packages":   func() error { return packages.Collect(e, packages.Default) },
 		"units":      func() error { return units.Collect(e, units.Default) },
-		"backups":    func() error { return backups.Collect(e, backups.Config{Wazuh: wazuhPaths}) },
+		"backups":    func() error { return backups.Collect(e, backups.Config{Wazuh: wazuhPaths, Mounts: backups.Mountinfo}) },
 		"updates":    func() error { return updates.Collect(e, updates.Default) },
 		"transactions": func() error {
 			return transactions.Collect(e, transactions.Default)

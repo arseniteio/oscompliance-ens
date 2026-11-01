@@ -21,8 +21,9 @@ type Paths struct {
 	Audit []string `json:"audit_watches"`
 	Exec  []string `json:"exec_watches"`
 
-	Backup []string `json:"backup_sources,omitempty"`
-	Keys   []string `json:"key_stores,omitempty"`
+	Backup     []string `json:"backup_sources,omitempty"`
+	BackupKeys []string `json:"backup_keys,omitempty"`
+	Keys       []string `json:"key_stores,omitempty"`
 }
 
 type Service struct {
@@ -59,6 +60,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.exp.3", "P-04", 0)...)
 	m.Paths.Audit = append(m.Paths.Audit, securityPaths...)
 	m.Paths.Backup = BackupSources(policy, agentID)
+	m.Paths.BackupKeys = cells(policy, agentID, "mp.info.6", "P-08", 0)
 	m.Paths.Keys = cells(policy, agentID, "op.exp.10", "P-02", 0)
 	m.Paths.Audit = append(m.Paths.Audit, m.Paths.Keys...)
 	if len(m.Paths.Keys) > 0 {
@@ -89,6 +91,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.Audit = sorted(m.Paths.Audit)
 	m.Paths.Exec = sorted(m.Paths.Exec)
 	m.Paths.Backup = sorted(m.Paths.Backup)
+	m.Paths.BackupKeys = sorted(m.Paths.BackupKeys)
 	m.Paths.Keys = sorted(m.Paths.Keys)
 	slices.SortFunc(m.Services, func(a, b Service) int { return strings.Compare(a.Name+a.Log, b.Name+b.Log) })
 
@@ -115,25 +118,38 @@ func indicators(policy params.Lister, agentID string) []string {
 	return out
 }
 
-// BackupSources are the `fuente` of op.exp.3 P-07 (`alcance | fuente | destino`): `git:<directory>` or an
-// absolute file pattern. The engine judges the copies by the same strings it hands the agent.
+// BackupSources are the `fuente` of op.exp.3 P-07 (`alcance | fuente | destino`) and the `ruta` of
+// mp.info.6 P-04 (`copia | ruta | ...`): `git:<directory>`, a directory or an absolute file pattern. The
+// engine judges the copies by the same strings it hands the agent.
 func BackupSources(policy params.Lister, agentID string) []string {
+	return append(Sources(policy, agentID, "op.exp.3", "P-07"), Sources(policy, agentID, "mp.info.6", "P-04")...)
+}
 
-	rows, err := policy.List(agentID, "op.exp.3", "P-07")
+func Sources(policy params.Lister, agentID, controlID, paramID string) []string {
+
+	rows, err := policy.List(agentID, controlID, paramID)
 	if err != nil {
 		return nil
 	}
 
 	var out []string
 	for _, r := range rows {
-		src := split(r, 2)[1]
-		if dir, ok := strings.CutPrefix(src, "git:"); ok && filepath.IsAbs(dir) {
-			out = append(out, "git:"+filepath.Clean(dir))
-		} else if filepath.IsAbs(src) {
-			out = append(out, filepath.Clean(src))
+		if src := Source(split(r, 2)[1]); src != "" {
+			out = append(out, src)
 		}
 	}
 	return out
+}
+
+// Source is a backup source as the agent receives it, or "" when it is not an absolute path.
+func Source(src string) string {
+	if dir, ok := strings.CutPrefix(src, "git:"); ok && filepath.IsAbs(dir) {
+		return "git:" + filepath.Clean(dir)
+	}
+	if filepath.IsAbs(src) {
+		return filepath.Clean(src)
+	}
+	return ""
 }
 
 // A path in a bin or sbin directory is watched for execution; anything else for every access.

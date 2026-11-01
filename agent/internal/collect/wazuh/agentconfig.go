@@ -313,6 +313,7 @@ type SharedPaths struct {
 	ExecWatches []string `json:"exec_watches"`
 
 	BackupSources []string `json:"backup_sources"`
+	BackupKeys    []string `json:"backup_keys"`
 	KeyStores     []string `json:"key_stores"`
 }
 

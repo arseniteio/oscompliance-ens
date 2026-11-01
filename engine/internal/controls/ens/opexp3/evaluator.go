@@ -284,7 +284,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		if problem.IsZero() {
 			problem = hoursProblem
 		}
-		return JudgeEV09(b, groupconf.BackupSources(policy, agent.ID), hours, problem, now)
+		return JudgeEV09(b, groupconf.Sources(policy, agent.ID, control, "P-07"), hours, problem, now)
 	})
 
 	judge("EV-10", nil, func() verdict.Judgement {
