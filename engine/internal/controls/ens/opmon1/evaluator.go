@@ -99,10 +99,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		if !problem.IsZero() {
 			return passes.Gap(verdict.CauseConfiguration, problem)
 		}
-		var r *source.Reporting
-		if v, ok := e.reporting[agent.ID]; ok {
-			r = &v
-		}
+		r := ReportingOf(agent.ID, e.reporting, e.manager, now)
 		var c *fact.WazuhAgentConfig
 		if v, ok := e.wazuh[agent.ID]; ok {
 			c = &v

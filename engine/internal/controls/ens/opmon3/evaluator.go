@@ -105,10 +105,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return rows, catalog.Message{}
 	}
 
-	var reporting *source.Reporting
-	if r, ok := e.reporting[agent.ID]; ok {
-		reporting = &r
-	}
+	reporting := opmon1.ReportingOf(agent.ID, e.reporting, e.manager, now)
 	var config *fact.WazuhAgentConfig
 	if c, ok := e.wazuh[agent.ID]; ok {
 		config = &c

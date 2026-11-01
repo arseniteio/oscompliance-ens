@@ -262,3 +262,15 @@ func JudgeEV08(m *source.Manager, approved []string, maxDays int, now time.Time)
 }
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
+
+// ReportingOf is the newest monitoring record of a machine. Wazuh keeps no keepalive of the manager: it
+// reports while its analysis runs.
+func ReportingOf(agentID string, all map[string]source.Reporting, m *source.Manager, now time.Time) *source.Reporting {
+	if r, ok := all[agentID]; ok {
+		return &r
+	}
+	if agentID == source.ManagerID && m != nil && m.Daemons["wazuh-analysisd"] == "running" {
+		return &source.Reporting{Status: "active", LastKeepAlive: now}
+	}
+	return nil
+}

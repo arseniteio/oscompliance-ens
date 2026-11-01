@@ -74,3 +74,12 @@ func TestJudges(t *testing.T) {
 	check(t, "current", JudgeEV08(manager, []string{"0215-policy_rules.xml | de fábrica | RSI", "5715 | ruido | RSI"}, 180, now), verdict.Compliant, "", "4.14.7")
 	check(t, "old", JudgeEV08(manager, nil, 30, now), verdict.NonCompliant, "", "")
 }
+
+func TestReportingOf(t *testing.T) {
+	if r := ReportingOf("000", nil, manager, now); r == nil || !r.LastKeepAlive.Equal(now) {
+		t.Errorf("manager: %v", r)
+	}
+	if r := ReportingOf("001", nil, manager, now); r != nil {
+		t.Errorf("agent without record: %v", r)
+	}
+}
