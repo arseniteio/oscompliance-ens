@@ -16,7 +16,7 @@ The single definition of the control. Nothing else defines it.
 | File | Holds |
 | --- | --- |
 | `controls/ens/<control>.json` | Requirements, levels, evidences, parameters with their class (`organisation`, `system`, `platform`), types, columns and patterns, and the fields of its report |
-| `docs/contracts/<control>.md` | What each evidence reads and when it passes |
+| `../docs/controls/<control>.md` | What each evidence reads and when it passes |
 | `schemas/facts/` and `fact/` | The facts the agent emits for it |
 | `messages/{en,es}.json` | The text of every reason the engine writes, by code |
 | `templates/*.json` | Built-in values per system type |
@@ -25,7 +25,7 @@ The single definition of the control. Nothing else defines it.
 
 ## 2. Agent (`agent/`)
 
-`oscompliance-agent` runs on the machine, collects what the contract asks and appends facts to
+`oscompliance-agent` runs on the machine, collects what the control documentation lists and appends facts to
 `/var/log/oscompliance/facts.ndjson`. It holds no policy: the paths it reads come from the group
 configuration the engine writes (step 4).
 
@@ -63,7 +63,7 @@ The plugin judges nothing.
 
 ## Adding a control
 
-1. Catalog entry, contract, fact schemas, messages and templates in `catalog/`.
+1. Catalog entry, control documentation, fact schemas, messages and templates in `catalog/`.
 2. Collectors in `agent/`, judge in `engine/internal/controls/ens/<control>`.
 3. `npx tsx config/sync-catalog.ts` in power-ens.
 4. Lab: facts arrive, the engine writes verdicts, the plugin shows them.
