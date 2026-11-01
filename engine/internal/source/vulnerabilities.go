@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 )
 
@@ -15,8 +16,32 @@ type VulnerabilityDay struct {
 	Examples []string
 }
 
+type vulnerabilityCache struct {
+	mu    sync.Mutex
+	at    time.Time
+	value map[string][]VulnerabilityDay
+}
+
 // Vulnerabilities reads the open vulnerabilities of every machine, by severity and day of detection.
+// Several controls of a pass read them: they are read once while they stay fresh.
 func (s *Source) Vulnerabilities(ctx context.Context) (map[string][]VulnerabilityDay, error) {
+
+	c := &s.vulnerabilities
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.value != nil && time.Since(c.at) < managerFresh {
+		return c.value, nil
+	}
+	v, err := s.readVulnerabilities(ctx)
+	if err != nil {
+		return nil, err
+	}
+	c.value, c.at = v, time.Now()
+	return v, nil
+}
+
+func (s *Source) readVulnerabilities(ctx context.Context) (map[string][]VulnerabilityDay, error) {
 
 	sources := []any{
 		terms("a", "agent.id"),
