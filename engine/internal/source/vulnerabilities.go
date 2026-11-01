@@ -154,3 +154,55 @@ func (s *Source) PackageVersions(ctx context.Context, ids []string) (map[string]
 
 	return out, err
 }
+
+// PackageVulnerability is an open vulnerability of a package of a machine.
+type PackageVulnerability struct {
+	Package  string
+	Severity string
+	CVEs     []string
+	Count    int
+}
+
+// PackageVulnerabilities are the open critical and high vulnerabilities of some packages on every machine.
+func (s *Source) PackageVulnerabilities(ctx context.Context, packages []string) (map[string][]PackageVulnerability, error) {
+
+	out := map[string][]PackageVulnerability{}
+	if len(packages) == 0 {
+		return out, nil
+	}
+	names := make([]any, len(packages))
+	for i, p := range packages {
+		names[i] = p
+	}
+	filter := []any{
+		map[string]any{"terms": map[string]any{"package.name": names}},
+		map[string]any{"terms": map[string]any{"vulnerability.severity": []any{"Critical", "High"}}},
+	}
+	sources := []any{terms("a", "agent.id"), terms("p", "package.name"), terms("s", "vulnerability.severity")}
+	sub := map[string]any{"cve": map[string]any{"terms": map[string]any{"field": "vulnerability.id", "size": 3}}}
+
+	err := s.compositeIn(ctx, s.states+"vulnerabilities-*", filter, sources, sub, func(key map[string]any, b json.RawMessage) error {
+		var c struct {
+			Count int `json:"doc_count"`
+			CVE   struct {
+				Buckets []struct {
+					Key string `json:"key"`
+				} `json:"buckets"`
+			} `json:"cve"`
+		}
+		if err := json.Unmarshal(b, &c); err != nil {
+			return err
+		}
+		id := keyString(key, "a")
+		if id == "" {
+			return nil
+		}
+		v := PackageVulnerability{Package: keyString(key, "p"), Severity: keyString(key, "s"), Count: c.Count}
+		for _, e := range c.CVE.Buckets {
+			v.CVEs = append(v.CVEs, e.Key)
+		}
+		out[id] = append(out[id], v)
+		return nil
+	})
+	return out, err
+}
