@@ -5,11 +5,15 @@ oscompliance_engine:
   reserved: false
   cluster_permissions:
     - "cluster_composite_ops_ro"
+    # Retention of the alerts index (op.exp.8 EV-07, mp.s.3 EV-08).
+    - "cluster:admin/opendistro/ism/managedindex/explain"
+    - "cluster:admin/opendistro/ism/policy/get"
   index_permissions:
     - index_patterns:
         - "wazuh-alerts-*"
         - "wazuh-monitoring-*"
         - "wazuh-states-inventory-*"
+        - "wazuh-states-vulnerabilities-*"
         - "wazuh-ens-configuration"
       allowed_actions:
         - "read"
