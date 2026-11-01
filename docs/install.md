@@ -302,13 +302,17 @@ cat > /etc/oscompliance/agent.json <<'EOF'
 EOF
 ```
 
-Add the facts file to `/var/ossec/etc/ossec.conf`, inside `<ossec_config>`,
-and restart the manager:
+Add the facts file and the audit log to `/var/ossec/etc/ossec.conf`, inside
+`<ossec_config>`, and restart the manager:
 
 ```xml
 <localfile>
   <log_format>json</log_format>
   <location>/var/log/oscompliance/facts.ndjson</location>
+</localfile>
+<localfile>
+  <log_format>audit</log_format>
+  <location>/var/log/audit/audit.log</location>
 </localfile>
 ```
 
