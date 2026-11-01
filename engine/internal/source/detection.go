@@ -123,3 +123,29 @@ func (s *Source) PackageCounts(ctx context.Context) (map[string]int, error) {
 	}
 	return out, nil
 }
+
+// RuleHours are the hours every machine had alerts of some rules since a time.
+func (s *Source) RuleHours(ctx context.Context, rules []string, since time.Time) (map[string][]time.Time, error) {
+
+	out := map[string][]time.Time{}
+	if len(rules) == 0 {
+		return out, nil
+	}
+	ids := make([]any, len(rules))
+	for i, r := range rules {
+		ids[i] = r
+	}
+	filter := []any{
+		map[string]any{"terms": map[string]any{"rule.id": ids}},
+		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+	sources := []any{terms("a", "agent.id"), map[string]any{"h": map[string]any{"date_histogram": map[string]any{"field": "timestamp", "fixed_interval": "1h"}}}}
+	err := s.composite(ctx, filter, sources, nil, func(key map[string]any, _ json.RawMessage) error {
+		id := keyString(key, "a")
+		if ms, ok := key["h"].(float64); ok && id != "" {
+			out[id] = append(out[id], time.UnixMilli(int64(ms)).UTC())
+		}
+		return nil
+	})
+	return out, err
+}

@@ -52,6 +52,12 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 		}
 	}
 
+	for _, p := range cells(policy, agentID, "mp.com.3", "P-06", 0) {
+		if !underAny(p, fimDefaults) {
+			m.FIM = append(m.FIM, p)
+		}
+	}
+
 	m.Paths.ACL = cells(policy, agentID, "op.acc.2", "P-08", 0)
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.2", "P-08", 0)...)
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.8", "P-14", 0)...)

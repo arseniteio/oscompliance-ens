@@ -51,8 +51,8 @@ Schemas: `catalog/schemas/facts`. What each collector reads:
   the last password change, the maximum and inactive days, the newest change
   of the key files, and the last login from wtmp, wtmp.1 and lastlog.
 - **config**: login.defs, faillock.conf, pwquality.conf and its drop-ins,
-  pwhistory.conf, sshd_config and its drop-ins (Match lines), `sshd -T` and
-  `ssh -V`. Only the keys the controls judge are sent: configuration files
+  pwhistory.conf, sshd_config and its drop-ins (Match lines), ssh_config and
+  its drop-ins (mp.com.3 contract), `sshd -T` and `ssh -V`. Only the keys the controls judge are sent: configuration files
   can hold secrets.
 - **pam**: the auth and password stacks of sshd, login, the graphical
   greeters, su, su-l, sudo and passwd, with `@include`, `include` and

@@ -32,6 +32,8 @@ var DefaultFiles = []string{
 	"/etc/security/pwhistory.conf",
 	"/etc/ssh/sshd_config",
 	"/etc/ssh/sshd_config.d/*.conf",
+	"/etc/ssh/ssh_config",
+	"/etc/ssh/ssh_config.d/*.conf",
 	"/etc/samba/smb.conf",
 	"/etc/vsftpd.conf",
 }
@@ -43,6 +45,7 @@ var Keys = map[string][]string{
 	"/etc/security/pwquality.conf": {"minlen", "minclass", "dcredit", "ucredit", "lcredit", "ocredit", "dictcheck"},
 	"/etc/security/pwhistory.conf": {"remember"},
 	"/etc/ssh/sshd_config":         {"Match"},
+	"/etc/ssh/ssh_config":          {"Host", "StrictHostKeyChecking", "UserKnownHostsFile"},
 	"/etc/samba/smb.conf":          {"guest ok", "public"},
 	"/etc/vsftpd.conf":             {"anonymous_enable"},
 	"sshd -T": {"passwordauthentication", "kbdinteractiveauthentication", "usepam", "pubkeyauthentication",
