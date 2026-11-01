@@ -206,3 +206,39 @@ func (s *Source) PackageVulnerabilities(ctx context.Context, packages []string) 
 	})
 	return out, err
 }
+
+// InventoryInstalls are the package versions Wazuh's inventory dates since a time on some machines, with
+// their install time. rpm records the install time; dpkg does not, and its installs come from its alerts.
+func (s *Source) InventoryInstalls(ctx context.Context, ids []string, since time.Time) (map[string]map[string]time.Time, error) {
+
+	out := map[string]map[string]time.Time{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	filter := []any{
+		agentFilter(ids),
+		map[string]any{"range": map[string]any{"package.installed": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+	}
+	sub := map[string]any{"first": map[string]any{"min": map[string]any{"field": "package.installed"}}}
+
+	err := s.compositeIn(ctx, s.inventoryIndex("packages"), filter, []any{terms("a", "agent.id"), terms("p", "package.name"), terms("v", "package.version")}, sub, func(key map[string]any, b json.RawMessage) error {
+		var c struct {
+			First struct {
+				Value float64 `json:"value"`
+			} `json:"first"`
+		}
+		if err := json.Unmarshal(b, &c); err != nil {
+			return err
+		}
+		id, p, v := keyString(key, "a"), keyString(key, "p"), keyString(key, "v")
+		if id == "" || p == "" {
+			return nil
+		}
+		if out[id] == nil {
+			out[id] = map[string]time.Time{}
+		}
+		out[id][p+" "+v] = time.UnixMilli(int64(c.First.Value)).UTC()
+		return nil
+	})
+	return out, err
+}

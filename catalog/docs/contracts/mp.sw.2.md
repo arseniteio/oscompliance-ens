@@ -23,6 +23,7 @@ manager carries the control and every evidence is NON_COMPLIANT there.
 | Source | Content | Used by |
 |---|---|---|
 | dpkg alerts, rule 2902 (`data.package`, `data.version`) | installs of the last 90 days, the first time of each version | EV-01, EV-02, EV-03, EV-07 |
+| `wazuh-states-inventory-packages-*` (`package.installed`) | rpm installs of the last 90 days: rpm keeps the install time, dpkg does not | EV-01, EV-02, EV-03, EV-07 |
 | SCA alerts, rule 19007 (op.exp.3 contract) | checks that passed and now fail | EV-03 |
 | `listening_snapshot`, `listening_socket` (op.acc.6 contract) | ports open | EV-04 |
 | `wazuh-states-vulnerabilities-*` | open critical and high vulnerabilities by package | EV-05 |
@@ -65,8 +66,8 @@ Kept: the requirements and EV-01 to EV-05, EV-07.
 
 Changed on purpose:
 
-- Deployments are read from dpkg installs of the application's packages;
-  v1 diffed the software inventory. rpm installs are not read yet.
+- Deployments are read from dpkg installs and from the install time rpm
+  keeps in the inventory; v1 diffed the software inventory.
 - EV-06 (acceptance criteria checked automatically) is EV-03 to EV-05.
 - EV-08 (isolation of pre-production) and EV-09 (stability after a
   deployment) are out: no common source tells them.

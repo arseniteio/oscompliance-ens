@@ -190,3 +190,16 @@ func JudgeEV07(deployments []Deployment, preproduction string, installed map[str
 	}
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.preproduced", "machine", preproduction, "count", len(deployments)))
 }
+
+// Earliest joins installs of several sources, keeping the earliest time of each version.
+func Earliest(sources ...map[string]time.Time) map[string]time.Time {
+	out := map[string]time.Time{}
+	for _, src := range sources {
+		for version, t := range src {
+			if old, ok := out[version]; !ok || t.Before(old) {
+				out[version] = t
+			}
+		}
+	}
+	return out
+}

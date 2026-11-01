@@ -60,3 +60,11 @@ func TestPreproduction(t *testing.T) {
 	check(t, "skipped", JudgeEV07(deployments, "pre-web01", nil), verdict.NonCompliant, "", "portal-app")
 	check(t, "no pair", JudgeEV07(deployments, "", nil), verdict.NonCompliant, "", "")
 }
+
+func TestEarliest(t *testing.T) {
+	a := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	got := Earliest(map[string]time.Time{"nginx 1.24": a.AddDate(0, 0, 1)}, map[string]time.Time{"nginx 1.24": a, "httpd 2.4": a}, nil)
+	if len(got) != 2 || !got["nginx 1.24"].Equal(a) {
+		t.Errorf("got %v", got)
+	}
+}

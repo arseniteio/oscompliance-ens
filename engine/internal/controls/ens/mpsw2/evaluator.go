@@ -22,6 +22,7 @@ import (
 type Facts interface {
 	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 	InstalledVersions(ctx context.Context, ids []string, since time.Time) (map[string]map[string]time.Time, error)
+	InventoryInstalls(ctx context.Context, ids []string, since time.Time) (map[string]map[string]time.Time, error)
 	SCARegressions(ctx context.Context, since time.Time) (map[string][]source.SCARegression, error)
 	ListeningSnapshots(ctx context.Context, since time.Time) (map[string]fact.ListeningSnapshot, error)
 	ListeningSockets(ctx context.Context, agentID, runID string, since time.Time) ([]fact.ListeningSocket, error)
@@ -122,11 +123,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	since := now.Add(-Horizon)
-	installed, err := e.facts.InstalledVersions(ctx, []string{agent.ID}, since)
+	installed, err := e.installs(ctx, agent.ID, since)
 	if err != nil {
 		return nil, fmt.Errorf("installed versions: %w", err)
 	}
-	deployments := Deployments(apps, installed[agent.ID])
+	deployments := Deployments(apps, installed)
 
 	put("EV-01", JudgeEV01(apps, deployments))
 
@@ -190,14 +191,27 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		var there map[string]time.Time
 		if id, ok := e.ids[strings.ToLower(preproduction)]; ok {
-			versions, err := e.facts.InstalledVersions(ctx, []string{id}, since)
-			if err != nil {
+			var err error
+			if there, err = e.installs(ctx, id, since); err != nil {
 				return query(err)
 			}
-			there = versions[id]
 		}
 		return JudgeEV07(deployments, preproduction, there)
 	}())
 
 	return results, nil
+}
+
+// installs are the package versions installed on a machine since a time: dpkg's from its alerts, rpm's from
+// the install time of Wazuh's inventory. The earliest time of a version wins.
+func (e *Evaluator) installs(ctx context.Context, agentID string, since time.Time) (map[string]time.Time, error) {
+	dpkg, err := e.facts.InstalledVersions(ctx, []string{agentID}, since)
+	if err != nil {
+		return nil, err
+	}
+	rpm, err := e.facts.InventoryInstalls(ctx, []string{agentID}, since)
+	if err != nil {
+		return nil, err
+	}
+	return Earliest(dpkg[agentID], rpm[agentID]), nil
 }
