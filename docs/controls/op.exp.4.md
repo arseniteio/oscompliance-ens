@@ -79,32 +79,32 @@ Judges are in `engine/internal/controls/ens/opexp4`. A source missing is
 NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION.
 
-- **EV-01 vulnerability inventory.** The package inventory is current (op.exp.1
+- EV-01 vulnerability inventory. The package inventory is current (op.exp.1
   EV-02): COMPLIANT with the open CVEs by severity. Otherwise the
   freshness judgement of op.exp.1.
-- **EV-02 remediation within deadline.** An open CVE whose age since
+- EV-02 remediation within deadline. An open CVE whose age since
   `detected_at` exceeds the days of its severity: NON_COMPLIANT with the
   count per severity and some CVEs. Wazuh gives the severity from the CVSS
   score; a CVE without one takes the row `Sin puntuación`. A severity
   without days has no deadline. None overdue: COMPLIANT.
-- **EV-03 patch level.** Package lists older than P-10 days: NON_COMPLIANT,
+- EV-03 patch level. Package lists older than P-10 days: NON_COMPLIANT,
   the machine does not learn of new updates. Otherwise COMPLIANT with the
   pending and security upgrades.
-- **EV-04 who patches.** Every transaction of the window must have an actor
+- EV-04 who patches. Every transaction of the window must have an actor
   in P-02: otherwise NON_COMPLIANT.
-- **EV-05 end of support.** The machine's OS matched in P-05 (product and
+- EV-05 end of support. The machine's OS matched in P-05 (product and
   version prefix) with an end date past: NON_COMPLIANT. No row for its OS:
   NOT_EVALUABLE by CONFIGURATION.
-- **EV-06 announcement sources.** Every package vendor of the machine must
+- EV-06 announcement sources. Every package vendor of the machine must
   contain a `fabricante` of P-03: otherwise NON_COMPLIANT with the vendors.
-- **EV-07 maintenance windows.** Every transaction of the window must start
+- EV-07 maintenance windows. Every transaction of the window must start
   inside a window of P-04 for the machine (its row, else `*`): otherwise
   NON_COMPLIANT. Times are the machine's.
-- **EV-08 pre-production.** On a production machine of P-06, every version
+- EV-08 pre-production. On a production machine of P-06, every version
   installed in the window must have been installed on its pre-production
   machine before, or be there now: otherwise NON_COMPLIANT. A machine not
   in P-06 as production: NOT_EVALUABLE by CONFIGURATION.
-- **EV-09 reversion point.** Every transaction of the window needs a
+- EV-09 reversion point. Every transaction of the window needs a
   snapshot created at most `ventana_horas` before it: otherwise
   NON_COMPLIANT.
 

@@ -45,22 +45,22 @@ The incident register is op.exp.7 P-13 ([op.exp.7](op.exp.7.md)). Besides:
 Judges are in `engine/internal/controls/ens/opexp9`; incidents of the last
 90 days that involve the machine.
 
-- **EV-01 originating events.** The alerts of the machine in the 24 hours
+- EV-01 originating events. The alerts of the machine in the 24 hours
   before each initial phase must still be in the index.
-- **EV-02 reports.** A closed incident must have every phase of P-02 its
+- EV-02 reports. A closed incident must have every phase of P-02 its
   duration makes due (`exigible_desde_horas`).
-- **EV-03 emergency actions.** As op.exp.7 EV-06.
-- **EV-04 system changes.** The changes of the machine between the initial
+- EV-03 emergency actions. As op.exp.7 EV-06.
+- EV-04 system changes. The changes of the machine between the initial
   and final phases must be covered by requests of op.exp.5 P-10.
-- **EV-05 sealed evidence.** An incident with `relevancia_juridica` `si`
+- EV-05 sealed evidence. An incident with `relevancia_juridica` `si`
   must carry `referencia` and have every day sealed on the manager.
-- **EV-07 records of the period kept.** Every day of an incident with legal
+- EV-07 records of the period kept. Every day of an incident with legal
   relevance, or still open, must keep alerts of the machine in the index.
-- **EV-08 auditable events reviewed.** A closed incident whose severity has a
+- EV-08 auditable events reviewed. A closed incident whose severity has a
   row in P-07 must fill `revision_eventos` within `plazo_dias` of its close.
-- **EV-09 complete record.** An incident must carry `referencia`, its initial
+- EV-09 complete record. An incident must carry `referencia`, its initial
   phase and, once closed, its final one.
 
 ## Not measured
 
-- **Chain of custody.** Accesses to the custody repository leave no fact. It stays declared in P-05.
+- Chain of custody. Accesses to the custody repository leave no fact. It stays declared in P-05.

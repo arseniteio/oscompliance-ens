@@ -79,26 +79,26 @@ Judges are in `engine/internal/controls/ens/opexp1`. A source missing is
 NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION.
 
-- **EV-01 hardware and OS.** Needs the system document of the machine.
+- EV-01 hardware and OS. Needs the system document of the machine.
   Syscollector off, `os` or `hardware` off, or an interval above P-08:
   NON_COMPLIANT. Last keepalive older than P-08: NON_COMPLIANT. Otherwise
   COMPLIANT, with OS, kernel, architecture, cores and memory in the reason.
-- **EV-02 software.** Same rule over the package documents and the
+- EV-02 software. Same rule over the package documents and the
   `packages` scan; the reason gives the count by package type.
-- **EV-03 network.** Same rule over addresses, listening ports and
+- EV-03 network. Same rule over addresses, listening ports and
   processes, and the `network`, `ports` and `processes` scans.
-- **EV-04 machine reporting.** Status `active` and last keepalive within
+- EV-04 machine reporting. Status `active` and last keepalive within
   P-08: COMPLIANT. Otherwise NON_COMPLIANT with the last keepalive. The
   manager is always reporting.
-- **EV-05 unknown neighbours.** Each neighbour IP must be an IP of P-02 or
+- EV-05 unknown neighbours. Each neighbour IP must be an IP of P-02 or
   an address of any machine with an agent (network inventory, the address
   in monitoring, or the addresses its oscompliance agent reports). Unknown IPs: NON_COMPLIANT. None:
   COMPLIANT. No snapshot, or `unreadable`: NOT_EVALUABLE by COLLECTION.
-- **EV-06 inventory review.** The newest date of P-09 not in the future
+- EV-06 inventory review. The newest date of P-09 not in the future
   must be within P-04 days: otherwise NON_COMPLIANT. No usable date:
   NOT_EVALUABLE by CONFIGURATION. The reason counts the package changes
   since that review.
-- **EV-07 declared owner and nature.** The machine's agent name must be an
+- EV-07 declared owner and nature. The machine's agent name must be an
   `activo` of P-01, and when P-03 is set its `naturaleza` must be one of
   P-03: otherwise NON_COMPLIANT.
 

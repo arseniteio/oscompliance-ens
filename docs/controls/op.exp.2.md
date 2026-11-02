@@ -80,17 +80,17 @@ Judges are in `engine/internal/controls/ens/opexp2`. A source missing is
 NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION.
 
-- **EV-01 baseline assessment.** SCA off, interval above P-09 or no contact
+- EV-01 baseline assessment. SCA off, interval above P-09 or no contact
   within P-09: NON_COMPLIANT. No summary of any P-01 policy: NON_COMPLIANT.
   Otherwise COMPLIANT with each policy and its score.
-- **EV-02 standard accounts.** A P-03 account that exists and is active (the
+- EV-02 standard accounts. A P-03 account that exists and is active (the
   op.acc.1 definition: a usable password or SSH keys with a login shell), or
   that logged in during the window: NON_COMPLIANT. One that exists disabled
   is reported, not failed.
-- **EV-03 justified services.** Each listening socket must match a P-02 row
+- EV-03 justified services. Each listening socket must match a P-02 row
   by process and, when the row has ports, by port: otherwise
   NON_COMPLIANT with process and port.
-- **EV-04 secure defaults.** Deviations: sshd `permitrootlogin` other than
+- EV-04 secure defaults. Deviations: sshd `permitrootlogin` other than
   `no`, `permitemptypasswords`, `x11forwarding` or `hostbasedauthentication`
   `yes`, `ignorerhosts` `no`, weak ciphers, MACs or key exchanges; a P-08
   file more open than its mode or not owned by its owner; an account with an
@@ -98,12 +98,12 @@ NOT_EVALUABLE by CONFIGURATION.
   `<check>[:<subject>]` (`ssh_permitrootlogin`, `permisos:/etc/shadow`,
   `uid0:toor`). A deviation with a P-04 row for this machine and a `vigencia`
   not past is authorised. Any other: NON_COMPLIANT.
-- **EV-05 virtual machines.** A machine that is not virtual: COMPLIANT. A
+- EV-05 virtual machines. A machine that is not virtual: COMPLIANT. A
   virtual machine must be a `maquina` of P-06, and when its `gestion` names
   an agent that agent must be reporting: otherwise NON_COMPLIANT.
-- **EV-06 baseline score.** The newest score of every P-01 policy assessed
+- EV-06 baseline score. The newest score of every P-01 policy assessed
   must be at least P-05: otherwise NON_COMPLIANT with the scores below it.
 
 ## Not measured
 
-- **Conformity before production.** No fact shows the order between hardening and going live. P-07 stays as documentation.
+- Conformity before production. No fact shows the order between hardening and going live. P-07 stays as documentation.

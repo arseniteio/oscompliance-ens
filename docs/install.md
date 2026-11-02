@@ -25,22 +25,24 @@ alerts.
 The binaries are static (Go, `CGO_ENABLED=0`) and have no runtime
 dependencies. Nothing is compiled on the target hosts.
 
-## 0. Get the release
+## 0. Build the packages
 
-Each release publishes one package per architecture and a checksum file:
+There are no published packages yet. Build them from this repository on any
+machine with Go:
+
+```bash
+VERSION=0.10.0
+make dist VERSION="$VERSION"
+tar xzf "dist/oscompliance-ens-$VERSION-linux-amd64.tar.gz"
+cd "oscompliance-ens-$VERSION-linux-amd64"
+```
+
+`make dist` writes one package per architecture and a checksum file to `dist/`:
 
 ```
 oscompliance-ens-<version>-linux-amd64.tar.gz
 oscompliance-ens-<version>-linux-arm64.tar.gz
 SHA256SUMS
-```
-
-```bash
-VERSION=1.0.0
-gh release download "v$VERSION" -R arseniteio/oscompliance-ens
-sha256sum -c --ignore-missing SHA256SUMS
-tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
-cd "oscompliance-ens-$VERSION-linux-amd64"
 ```
 
 The package holds:
@@ -55,8 +57,7 @@ The package holds:
 | `wazuh/engine-api-role.json` | least-privilege Wazuh API policy of the engine |
 | `agent/agent.example.json` | every agent setting with its default |
 
-Releases are built by GitHub Actions from a version tag, only after gofmt,
-`go vet` and the full test suite pass ([`.github/workflows/release.yml`](../.github/workflows/release.yml)).
+Run `make check` first: it runs gofmt, `go vet` and the full test suite.
 
 ## 1. Manager
 
@@ -228,22 +229,22 @@ default Wazuh certificate names `localhost`. Every flag is described in
 
 ## 2. Dashboard
 
-Install the Power ENS plugin from its own release
-(`power-ens-<version>-osd-2.19.5.zip`) with the script that ships with it, and
-grant its administrator role:
+Build the Power ENS plugin from its repository (see its README), install the
+zip with `config/deploy-plugin.sh` and grant its administrator role with
+`config/create-admin-role.sh`:
 
 ```bash
-bash deploy-plugin.sh power-ens-<version>-osd-2.19.5.zip
-bash create-admin-role.sh --mapear <dashboard_user>
+bash deploy-plugin.sh powerEns-2.19.5.zip
+bash create-admin-role.sh --map <dashboard_user>
 ```
 
 `deploy-plugin.sh` validates the zip, keeps a copy of the plugin it replaces in
 `/var/backups/power-ens`, installs and restarts the dashboard, and tells how to
 roll back if anything fails.
 
-In **Power ENS > Configuración**:
+In Power ENS > Configuración:
 
-1. **Alcance**: select the `ens` group, the ENS category (BAJO, MEDIO or
+1. Alcance: select the `ens` group, the ENS category (BAJO, MEDIO or
    ALTO) and the system type of each machine.
 2. Each control: fill its parameters. Each control page in
    [controls](controls/README.md) lists them and says which evidence each one
@@ -334,7 +335,7 @@ most about 75 minutes, or a few minutes with `-full` on the agent.
 
 ## Upgrade
 
-1. Read the release notes for changes to rules or roles.
+1. Check the repository history for changes to rules or roles.
 2. Manager: install the new rules if they changed and restart the manager;
    apply role changes with the commands of 1.3 and 1.4 (`PUT` replaces).
 3. Engine: keep the running binary, install the new one, restart.
@@ -347,7 +348,7 @@ most about 75 minutes, or a few minutes with `-full` on the agent.
 
 4. Agents: install the new binary. The next cron run uses it; nothing needs a
    restart.
-5. Plugin: install the matching Power ENS release.
+5. Plugin: build Power ENS from the matching commit and install it.
 
 The engine reads facts from older agents: fact schemas only grow. Upgrade the
 engine first, then the agents.

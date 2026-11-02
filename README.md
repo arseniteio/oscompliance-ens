@@ -1,18 +1,17 @@
 # OSCompliance ENS
 
-![Go](https://img.shields.io/badge/go-1.27-00ADD8) ![Wazuh](https://img.shields.io/badge/wazuh-4.14-3595F7) ![Controls](https://img.shields.io/badge/ENS%20controls-34-2E7D32)
-
 OSCompliance ENS measures the Esquema Nacional de Seguridad (Real Decreto 311/2022) on your Wazuh deployment. It turns what your machines actually do into a verdict per control, per requirement and per machine, with the reason behind every result, every 15 minutes.
 
 It adds one agent binary to each Linux machine and one engine next to the Wazuh indexer. Wazuh keeps doing the collection. Nothing is judged on the machine being audited, and nothing that cannot be proven counts as compliant.
 
 ## Get started
 
-1. Download the release and check it:
+1. Build the packages and unpack the one for your architecture:
 
 ```bash
-gh release download v1.0.0 -R arseniteio/oscompliance-ens
-sha256sum -c --ignore-missing SHA256SUMS
+make dist VERSION=0.10.0
+tar xzf dist/oscompliance-ens-0.10.0-linux-amd64.tar.gz
+cd oscompliance-ens-0.10.0-linux-amd64
 ```
 
 2. On the Wazuh manager: install the rules and the engine, create its least-privilege users and its service unit ([guide](docs/install.md#1-manager)), and start it.
@@ -37,17 +36,12 @@ The [installation guide](docs/install.md) covers every step, including users, ro
 
 ## How it works
 
-```
-oscompliance-agent ──► Wazuh agent ──► Wazuh manager ──► indexer ◄── oscompliance-engine ──► verdicts ──► Power ENS
-      (facts)          (facts, logs,       (rules         (alerts,       (judges every               (dashboard,
-                        FIM, SCA,           119000-4)      inventory)     15 minutes)                 reports)
-                        inventory)
-```
+The agent writes facts to a local file. The Wazuh agent ships that file with the logs, FIM, SCA and inventory to the manager. The manager indexes the facts through rules 119000-119004. Every 15 minutes the engine reads the indexer and writes verdicts, and Power ENS shows them in the dashboard.
 
-- **The agent reports facts, never verdicts.** Accounts, PAM, sshd, sudoers, listeners, packages, backups, keys: what is there, not whether it is right.
-- **The engine judges.** It reads the facts, Wazuh's own alerts and inventory, the manager through the Wazuh API, and the parameters your organisation declares, and writes one verdict per evidence, requirement and control.
-- **Missing proof fails.** A log that does not reach Wazuh, a parameter nobody set or an agent that stopped reporting shows as not evaluable, with the cause, and the requirement does not comply.
-- **It scales.** 10,000 agents judged in about two minutes per pass on a single indexer node.
+- The agent reports facts, never verdicts. Accounts, PAM, sshd, sudoers, listeners, packages, backups, keys: what is there, not whether it is right.
+- The engine judges. It reads the facts, Wazuh's own alerts and inventory, the manager through the Wazuh API, and the parameters your organisation declares, and writes one verdict per evidence, requirement and control.
+- Missing proof fails. A log that does not reach Wazuh, a parameter nobody set or an agent that stopped reporting shows as not evaluable, with the cause, and the requirement does not comply.
+- It scales. 10,000 agents judged in about two minutes per pass on a single indexer node.
 
 More in [architecture](docs/architecture.md) and [verdicts](docs/verdicts.md).
 
@@ -87,7 +81,7 @@ Each control has a page with what the ENS requires, how every evidence is measur
 
 ```bash
 make check                 # gofmt, go vet and tests
-make dist VERSION=1.0.0    # release packages in dist/
+make dist VERSION=0.10.0   # packages in dist/
 ```
 
 ## Security

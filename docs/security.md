@@ -80,9 +80,8 @@ already observes something, the engine reads Wazuh, not the agent.
 
 - The agent and the engine use only the Go standard library and this
   repository's own catalog. There is no third-party code in either binary.
-- Releases are built by GitHub Actions from a version tag, with
-  `CGO_ENABLED=0` and `-trimpath`, after gofmt, `go vet` and every test pass.
-  Each release publishes `SHA256SUMS`.
+- `make dist` builds with `CGO_ENABLED=0` and `-trimpath` and writes
+  `SHA256SUMS`. `make check` runs gofmt, `go vet` and every test.
 - The binaries are static: no shared library on the host is loaded.
 
 ## Reporting a vulnerability

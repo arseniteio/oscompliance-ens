@@ -62,20 +62,20 @@ Rule groups by module: `aws-s3` amazon or aws, `azure-logs` azure,
 Judges are in `engine/internal/controls/ens/opnub1`. The control is judged
 the same on every machine: its data is the organisation's.
 
-- **EV-01 logs.** Every service of P-06 with a module must have a record of
+- EV-01 logs. Every service of P-06 with a module must have a record of
   that module within P-13 hours; no module at all: NON_COMPLIANT.
-- **EV-02 posture.** Every row of P-07 with a `grupo_reglas` has alerts of
+- EV-02 posture. Every row of P-07 with a `grupo_reglas` has alerts of
   that group in the last week, none of level P-14 or above. No such row:
   NON_COMPLIANT. The provider judges its tenant against its standard (AWS
   Security Hub, Microsoft Defender for Cloud, Google Security Command
   Center); Wazuh brings the findings in and the engine judges them.
-- **EV-04 administrators.** Every actor of a successful administrative
+- EV-04 administrators. Every actor of a successful administrative
   operation of the window in `aws-s3`, `office365`, `azure-logs`,
   `ms-graph`, `gcp-pubsub` or `gcp-bucket` must be in P-11 for the service
   of that module. A service integrated with `github`: NOT_EVALUABLE.
-- **EV-08 certification.** Every used service of P-02 with a `certificado`
+- EV-08 certification. Every used service of P-02 with a `certificado`
   in P-04 whose `vigencia` is not past.
-- **EV-09 record.** Every used service with a conformity of P-03 in force, a
+- EV-09 record. Every used service with a conformity of P-03 in force, a
   pentest of P-10 within P-12 months, a row of P-09 and a row of P-08.
   Services compare without case or accents.
 

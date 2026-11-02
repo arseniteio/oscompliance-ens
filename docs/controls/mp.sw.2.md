@@ -48,20 +48,20 @@ manager carries the control and every evidence is NON_COMPLIANT there.
 Judges are in `engine/internal/controls/ens/mpsw2`. A deployment is an
 install of a package of an application of the machine in the last 90 days.
 
-- **EV-01 deployments seen.** Every application of the machine has its
+- EV-01 deployments seen. Every application of the machine has its
   `paquetes`.
-- **EV-02 acceptance.** Every deployment has an act of its application,
+- EV-02 acceptance. Every deployment has an act of its application,
   `aceptada`, with `aceptado_por`, dated no later, whose `version` is empty
   or a prefix of the deployed one.
-- **EV-03 configuration.** No SCA regression within P-04 days after a
+- EV-03 configuration. No SCA regression within P-04 days after a
   deployment.
-- **EV-04 exposure.** Every port open beyond loopback is in P-05 for an
+- EV-04 exposure. Every port open beyond loopback is in P-05 for an
   application of the machine or for `*`.
-- **EV-05 vulnerabilities.** No open critical or high vulnerability in a
+- EV-05 vulnerabilities. No open critical or high vulnerability in a
   package of the machine's applications.
-- **EV-07 pre-production.** Every deployed version installed earlier on the
+- EV-07 pre-production. Every deployed version installed earlier on the
   machine P-03 pairs with this one.
 
 ## Not measured
 
-- **Code audit findings.** R2.1 applies to no category.
+- Code audit findings. R2.1 applies to no category.

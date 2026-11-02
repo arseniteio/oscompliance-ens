@@ -78,10 +78,10 @@ Judges are in `engine/internal/controls/ens/opacc6`. A source missing or
 incomplete is NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION, never a product default.
 
-- **EV-01 logging.** P-03 without `local`: COMPLIANT, directory sources are
+- EV-01 logging. P-03 without `local`: COMPLIANT, directory sources are
   measured on their own servers. Otherwise NON_COMPLIANT when the probes do
   not come back or sshd `LogLevel` is QUIET, FATAL or ERROR.
-- **EV-02 factors by zone.** Factors: publickey 1 (2 for a `-SK` key with
+- EV-02 factors by zone. Factors: publickey 1 (2 for a `-SK` key with
   `verify-required`), password 1, keyboard-interactive 2 when the sshd auth
   stack requires a second-factor module (google_authenticator, oath, u2f,
   duo, radius_auth, yubico, totp; not optional, not sufficient), the console
@@ -90,53 +90,53 @@ NOT_EVALUABLE by CONFIGURATION, never a product default.
   exposed; a wildcard address is every address of the machine. A one-factor
   result under a `Match` block: NOT_EVALUABLE by EVIDENCE. Judged once per
   requirement (see below).
-- **EV-03 lockout configuration.** Each password path in use (sshd with
+- EV-03 lockout configuration. Each password path in use (sshd with
   password or keyboard-interactive, login and the greeters) needs a
   pam_faillock or pam_tally2 auth rule that is not optional, with `deny` at
   most P-05 and no automatic unlock. pam_faillock settings come from the rule,
   then faillock.conf, then its defaults (3, 600). No path accepting passwords:
   COMPLIANT.
-- **EV-04 failures without lockout.** Per existing account, the most failures
+- EV-04 failures without lockout. Per existing account, the most failures
   within any 15 minutes, all origins together. Above P-05 with no lockout of
   the account in the window: NON_COMPLIANT. No failure: COMPLIANT when the log
   reaches Wazuh.
-- **EV-05 credential age.** Accounts that can log in, any UID. A password
+- EV-05 credential age. Accounts that can log in, any UID. A password
   older than P-04, without a maximum or with a maximum above P-04; key files
   unchanged for more than P-04; login.defs giving new accounts a maximum above
   P-04 or none: NON_COMPLIANT. A forced change at the next login counts as
   fresh.
-- **EV-06 disablement after a notice.** For each P-12 row of an account the
+- EV-06 disablement after a notice. For each P-12 row of an account the
   identity history knows on this machine: the hours from the notice to the
   first pass that saw it disabled or deleted, or, still enabled, the hours so
   far. Above P-06: NON_COMPLIANT. An account already disabled when first seen
   after the notice gives only an upper bound: within P-06 it is on time,
   beyond it NOT_EVALUABLE by EVIDENCE. No row for this machine: COMPLIANT.
-- **EV-07 remote channel used.** Remote logins of the window by channel (sshd
+- EV-07 remote channel used. Remote logins of the window by channel (sshd
   is `ssh`). A channel not in the `canal` column of P-07: NON_COMPLIANT. No
   remote login: COMPLIANT when the log reaches Wazuh.
-- **EV-08 listening channels.** Authentication channels: sshd (ssh), slapd
+- EV-08 listening channels. Authentication channels: sshd (ssh), slapd
   (ldap, ldaps), xrdp (rdp), vnc, telnetd, vsftpd, proftpd and pure-ftpd
   (ftp), cockpit-ws (cockpit), webmin; transport channels: openvpn,
   tailscaled. No P-07 row, not encrypted, or enabled at boot while its row
   says `uso_constante` no: NON_COMPLIANT. Boot state unknown where the row
   needs it: NOT_EVALUABLE by EVIDENCE. No channel listening: COMPLIANT.
-- **EV-09 re-authentication (ALTO).** Point `sudo`: NOPASSWD for ALL,
+- EV-09 re-authentication (ALTO). Point `sudo`: NOPASSWD for ALL,
   `!authenticate`, or `timestamp_timeout` below 0. Point `sudo:<command>`:
   NOPASSWD for that command. Point `su`: pam_wheel with `trust`. root's own
   grants are left out. A finding at a point of P-08: NON_COMPLIANT. An
   undefined Cmnd_Alias under NOPASSWD: NOT_EVALUABLE by COLLECTION.
-- **EV-10 non-use (ALTO).** Accounts that can log in, any UID. Last use is the
+- EV-10 non-use (ALTO). Accounts that can log in, any UID. Last use is the
   newest of wtmp, lastlog and the login alerts (key logins without a terminal
   are not in wtmp); never used, the newest credential date. Idle longer than
   P-09: NON_COMPLIANT. No use and no credential date: NOT_EVALUABLE by
   EVIDENCE.
-- **EV-11 password quality.** The password stack of passwd: pam_pwquality
+- EV-11 password quality. The password stack of passwd: pam_pwquality
   (rule, then pwquality.conf and drop-ins; defaults minlen 8, dictcheck 1),
   else pam_cracklib (minlen 9, dictionary always), else pam_unix (minlen 6
   with obscure, else 1). Classes: minclass or the number of negative credits,
   whichever is larger. History: pam_pwhistory (default 10) or pam_unix
   `remember`. A criterion below its P-10 minimum: NON_COMPLIANT.
-- **EV-12 exposure before authenticating.** From the configuration, no
+- EV-12 exposure before authenticating. From the configuration, no
   connection opened. sshd not installed: COMPLIANT. Exposures:
   `sshd:version_software` always, `sshd:version_distribucion` with
   DebianBanner on, `sshd:version_addendum`, `sshd:banner_previo`. One not in
@@ -148,19 +148,19 @@ op.acc.6 decides some requirements itself, only where the requirement
 applies by level; a decision replaces the aggregation of its evidences and
 any attestation.
 
-- **P-01** not set or not R1 to R4: the seven mechanism requirements are
+- P-01 not set or not R1 to R4: the seven mechanism requirements are
   NOT_EVALUABLE by CONFIGURATION and count against; no attestation proves a
   reinforcement nobody chose. Set: the requirements of the other mechanisms
   are NOT_APPLICABLE.
-- **EV-02 per requirement.** r8.1: a login from outside P-02 with one factor,
+- EV-02 per requirement. r8.1: a login from outside P-02 with one factor,
   or an exposed channel accepting one factor, fails. r1.1: the same for logins
   and channels that use a password. r2.1: any login or channel with one
   factor fails. The EV-02 verdict is the worst of the requirements that apply.
 
 ## Not measured
 
-- **Certificates (R3, R4) and the last access notice (r5.2)** leave no record
+- Certificates (R3, R4) and the last access notice (r5.2) leave no record
   on the machine; they are judged by attestation.
-- **Directory and application authentication.** The control reads each
+- Directory and application authentication. The control reads each
   machine's PAM, sshd and sudo; directory servers are measured as machines of
   their own.

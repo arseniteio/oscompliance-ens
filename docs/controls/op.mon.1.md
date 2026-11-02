@@ -55,23 +55,23 @@ manager is read once and judged for every machine.
 
 Judges are in `engine/internal/controls/ens/opmon1`.
 
-- **EV-01 detection running.** `wazuh-analysisd`, `wazuh-remoted`,
+- EV-01 detection running. `wazuh-analysisd`, `wazuh-remoted`,
   `wazuh-db` and `wazuh-modulesd` running, rules of level 1 or more loaded,
   and every rule set of P-02 with at least `minimo_reglas` of them.
-- **EV-02 coverage.** The machine's last keepalive within P-09 hours, and
+- EV-02 coverage. The machine's last keepalive within P-09 hours, and
   neither FIM nor SCA disabled in its agent configuration. Wazuh keeps no
   keepalive of the manager: it reports while `wazuh-analysisd` runs.
-- **EV-03 detections.** An alert of the machine within P-08 days.
-- **EV-04 risk analysis.** Every situation of P-03 has a loaded rule of
+- EV-03 detections. An alert of the machine within P-08 days.
+- EV-04 risk analysis. Every situation of P-03 has a loaded rule of
   level 1 or more among its rules.
-- **EV-05 network detection.** When P-01 says `sí`, a network intrusion
+- EV-05 network detection. When P-01 says `sí`, a network intrusion
   alert within P-08 days; otherwise COMPLIANT with its justification.
-- **EV-07 automatic responses.** Every action of P-06 configured and not
+- EV-07 automatic responses. Every action of P-06 configured and not
   disabled in the manager's active response.
-- **EV-08 rules current.** The `wazuh-manager` package installed within
+- EV-08 rules current. The `wazuh-manager` package installed within
   P-07 days, and every excluded rule file and every Wazuh rule rewritten to
   level 0 in `etc/rules` (id under 100000) in P-05 with reason and approver.
 
 ## Not measured
 
-- **Procedures applied.** Op.exp.7 judges the handling of each alert; r2.1 stays an attestation.
+- Procedures applied. Op.exp.7 judges the handling of each alert; r2.1 stays an attestation.

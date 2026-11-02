@@ -42,15 +42,15 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 5.3.4. Definition: [`catalog/control
 
 Judges are in `engine/internal/controls/ens/mpeq4`.
 
-- **EV-01 discovery.** The machine's neighbour table read.
-- **EV-02 inventory.** Every neighbour matches a device of P-01 by MAC or
+- EV-01 discovery. The machine's neighbour table read.
+- EV-02 inventory. Every neighbour matches a device of P-01 by MAC or
   address, or is an address of a machine of the fleet.
-- **EV-03 flows.** Every accepted flow of the sources of P-03 with a device
+- EV-03 flows. Every accepted flow of the sources of P-03 with a device
   of P-01 at either end is allowed for its `tipo` towards the other end.
   No source: NOT_EVALUABLE.
-- **EV-04 device logs.** As mp.com.1 EV-01 over the devices of P-04 and
+- EV-04 device logs. As mp.com.1 EV-01 over the devices of P-04 and
   P-06; no device in P-04: NON_COMPLIANT.
-- **EV-08 wipe.** Every device of P-01 with `almacenamiento` sí has a
+- EV-08 wipe. Every device of P-01 with `almacenamiento` sí has a
   `metodo` in P-05.
 
 ## Not measured

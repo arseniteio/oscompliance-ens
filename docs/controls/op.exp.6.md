@@ -79,28 +79,28 @@ Judges are in `engine/internal/controls/ens/opexp6`. A source missing is
 NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION.
 
-- **EV-01 antimalware present.** Every product of P-02 must run: otherwise
+- EV-01 antimalware present. Every product of P-02 must run: otherwise
   NON_COMPLIANT. No antimalware at all: NON_COMPLIANT.
-- **EV-02 signatures.** ClamAV's daily database must be built within P-03
+- EV-02 signatures. ClamAV's daily database must be built within P-03
   hours. Another product: NOT_EVALUABLE by COLLECTION, its signatures are
   not read.
-- **EV-03 settings.** Each row of P-04 must match what is observed.
-- **EV-04 detections.** A detection repeated (rule 52511) in the window:
+- EV-03 settings. Each row of P-04 must match what is observed.
+- EV-04 detections. A detection repeated (rule 52511) in the window:
   NON_COMPLIANT, the infection was not resolved. Other detections are
   listed. ClamAV not logging to syslog: NOT_EVALUABLE by COLLECTION.
-- **EV-05 full scan.** The last full scan must have ended within P-06 days.
-- **EV-06 checks at start.** FIM must scan on start and cover every path of
+- EV-05 full scan. The last full scan must have ended within P-06 days.
+- EV-06 checks at start. FIM must scan on start and cover every path of
   P-07, and rootcheck must run.
-- **EV-07 allowlist.** fapolicyd must be enforcing.
-- **EV-08 reputation.** When P-09 activates `virustotal`, the manager must
+- EV-07 allowlist. fapolicyd must be enforcing.
+- EV-08 reputation. When P-09 activates `virustotal`, the manager must
   have the VirusTotal integration and the machine FIM on. Flagged files of
   the window are listed.
-- **EV-09 content rules.** When P-09 activates `yara`, its script and binary
+- EV-09 content rules. When P-09 activates `yara`, its script and binary
   must be on the machine.
-- **EV-10 suspicious activity.** When P-09 activates `rootcheck`, it must run.
-- **EV-11 containment.** When P-09 activates `active_response`, the manager
+- EV-10 suspicious activity. When P-09 activates `rootcheck`, it must run.
+- EV-11 containment. When P-09 activates `active_response`, the manager
   must send at least one and each script must be on the machine.
-- **EV-12 external files.** USB storage attached in the window with P-10
+- EV-12 external files. USB storage attached in the window with P-10
   `bloqueados`: NON_COMPLIANT. With `analisis`, real-time protection must be
   on. Otherwise COMPLIANT.
 

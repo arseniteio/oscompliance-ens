@@ -47,16 +47,16 @@ evidence and requirement NOT_APPLICABLE.
 
 Judges are in `engine/internal/controls/ens/mpeq3`.
 
-- **EV-01 inventory.** The machine in P-01 with a `responsable`.
-- **EV-02 custody.** A keepalive within P-02 days and the newest check of
+- EV-01 inventory. The machine in P-01 with a `responsable`.
+- EV-02 custody. A keepalive within P-02 days and the newest check of
   the device in P-09 within P-02 days.
-- **EV-03 remote access keys.** No private key under `/home` or `/root`
+- EV-03 remote access keys. No private key under `/home` or `/root`
   outside P-05.
-- **EV-04 encryption.** With `nivel_confidencialidad` MEDIO or ALTO, the
+- EV-04 encryption. With `nivel_confidencialidad` MEDIO or ALTO, the
   root filesystem on dm-crypt.
-- **EV-06 losses.** Every loss of the device in P-10 with its `incidente`
+- EV-06 losses. Every loss of the device in P-10 with its `incidente`
   and `acciones_completadas` within P-08 hours.
 
 ## Not measured
 
-- **Secure boot, firmware password.** No source reads it.
+- Secure boot, firmware password. No source reads it.

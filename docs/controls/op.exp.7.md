@@ -69,33 +69,33 @@ Judges are in `engine/internal/controls/ens/opexp7`. An incident is the rows
 that share `incidente`; it involves the machine when `sistemas` names it.
 Incidents of the last 90 days are judged.
 
-- **EV-01 detection.** Alerts of the machine at or above the lowest level of
+- EV-01 detection. Alerts of the machine at or above the lowest level of
   P-01 in the window, by severity: COMPLIANT. P-01 empty: NOT_EVALUABLE. No
   alerts from a machine that has not reported in the window: NOT_EVALUABLE,
   cause COLLECTION.
-- **EV-02 reconciliation.** Every hour with an alert at or above a severity's
+- EV-02 reconciliation. Every hour with an alert at or above a severity's
   level, outside P-12, needs an incident of the machine opened within that
   severity's `plazo_horas` of P-02: otherwise NON_COMPLIANT.
-- **EV-03 times.** The intermediate phase within `contencion_horas` and the
+- EV-03 times. The intermediate phase within `contencion_horas` and the
   final within `resolucion_horas` of the initial one, per severity of P-05;
   an open incident past them fails too.
-- **EV-04 escalation and information.** `escalado_a` must hold the recipient
+- EV-04 escalation and information. `escalado_a` must hold the recipient
   of P-02 for the severity, and `notificado_a` the owners of P-04 of every
   system.
-- **EV-05 evidence preserved.** Every day of an incident of the machine must
+- EV-05 evidence preserved. Every day of an incident of the machine must
   have its alert log sealed on the manager.
-- **EV-06 urgent measures.** A high or critical incident needs an active
+- EV-06 urgent measures. A high or critical incident needs an active
   response on the machine between its initial and final phases, or an
   intermediate phase.
-- **EV-07 personal data.** P-07 empty: NOT_EVALUABLE; an organisation with no
+- EV-07 personal data. P-07 empty: NOT_EVALUABLE; an organisation with no
   such system declares a row `ninguno`. An incident on a system of P-07 must fill
   `datos_personales`; when `si`, `notificado_a` must be filled within 72
   hours of the initial phase.
-- **EV-08 CCN-CERT.** An incident whose classification P-01 marks
+- EV-08 CCN-CERT. An incident whose classification P-01 marks
   notifiable must carry a `notificacion_ccn_cert` date.
-- **EV-09 dynamic reconfiguration.** A critical incident needs an active
+- EV-09 dynamic reconfiguration. A critical incident needs an active
   response on the machine between its initial and final phases.
-- **EV-10 advisories.** The CDB list of P-11 must exist on the manager and be
+- EV-10 advisories. The CDB list of P-11 must exist on the manager and be
   modified within `plazo_dias`.
-- **EV-11 automatic response.** As op.exp.6 EV-11.
-- **EV-12 improvement.** A closed incident must fill `medidas_mejora`.
+- EV-11 automatic response. As op.exp.6 EV-11.
+- EV-12 improvement. A closed incident must fill `medidas_mejora`.

@@ -40,17 +40,17 @@ Judges are in `engine/internal/controls/ens/opcont3`. A partial test or a
 full drill (`parcial`, `simulacro`) is one that exercises the alternative
 means.
 
-- **EV-01 tests recorded.** P-02 plans a partial test or a drill, and one
+- EV-01 tests recorded. P-02 plans a partial test or a drill, and one
   took place within P-01 months.
-- **EV-02 periodicity.** The newest test, the newest of each kind of P-02
+- EV-02 periodicity. The newest test, the newest of each kind of P-02
   (its own months or P-01) and of each scenario of P-03 within P-01 months.
-- **EV-03 measured.** Monitoring records of the machine in every partial
+- EV-03 measured. Monitoring records of the machine in every partial
   test or drill of the period it took part in; none: NOT_EVALUABLE.
-- **EV-04 RTO.** In those tests, the longest span the machine was not
+- EV-04 RTO. In those tests, the longest span the machine was not
   `active`, from `inicio` to a day after `fin`, within `rto_horas` plus
   `tolerancia_min`, and the machine active at the end. A machine no test
   involved: COMPLIANT.
-- **EV-05 deficiencies.** No open deficiency past its `plazo` or older than
+- EV-05 deficiencies. No open deficiency past its `plazo` or older than
   the newest test, and every test with at least its `deficiencias` in P-05.
 
 ## Not measured

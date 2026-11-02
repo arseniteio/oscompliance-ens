@@ -62,33 +62,33 @@ packages of agent 000 are read through the API ([op.exp.1](op.exp.1.md)).
 
 Judges are in `engine/internal/controls/ens/opmon3`.
 
-- **EV-01 collection.** `wazuh-remoted`, `wazuh-analysisd` and `wazuh-db`
+- EV-01 collection. `wazuh-remoted`, `wazuh-analysisd` and `wazuh-db`
   running, and the machine's last keepalive within P-03 hours.
-- **EV-02 sources.** Every source of P-01 for the machine (or `*`) must be a
+- EV-02 sources. Every source of P-01 for the machine (or `*`) must be a
   localfile of its agent with an event from that location within
   `max_horas` (24 when empty). No source for the machine: NOT_EVALUABLE.
-- **EV-03 correlation.** Rules of level 1 or more with `frequency`,
+- EV-03 correlation. Rules of level 1 or more with `frequency`,
   `if_matched_sid` or `if_matched_group` loaded; every set of P-02 with at
   least its number of them.
-- **EV-04 exposure.** The vulnerability detector enabled, packages of the
+- EV-04 exposure. The vulnerability detector enabled, packages of the
   machine inventoried, SCA enabled and with a result for it.
-- **EV-05 anomalous behaviour.** As mp.com.3 EV-04 for the behaviours of
+- EV-05 anomalous behaviour. As mp.com.3 EV-04 for the behaviours of
   P-04.
-- **EV-06 network APT.** A probe in P-05 whose network intrusion alerts are
+- EV-06 network APT. A probe in P-05 whose network intrusion alerts are
   within its days (7 when empty).
-- **EV-07 cyber surveillance.** Every CDB list of P-06 present on the
+- EV-07 cyber surveillance. Every CDB list of P-06 present on the
   manager and changed within P-11 days.
-- **EV-08 query limits.** Every row of P-07 has a loaded rule with
+- EV-08 query limits. Every row of P-07 has a loaded rule with
   `frequency` and level 1 or more among its rules.
-- **EV-09 real-time alerts.** `correo`: email notification on, recipients
+- EV-09 real-time alerts. `correo`: email notification on, recipients
   set and the email alert level at or under `nivel`; any other channel: an
   integration of that name at or under `nivel`.
-- **EV-10 configuration checks.** COMPLIANT when SCA checks the machine
+- EV-10 configuration checks. COMPLIANT when SCA checks the machine
   continuously (EV-04's SCA and the machine reporting); else the newest
   `configuración` row of P-10 within its days of P-09.
-- **EV-11 vulnerability analysis.** As EV-10, with the vulnerability
+- EV-11 vulnerability analysis. As EV-10, with the vulnerability
   detector over the machine's packages, or a `vulnerabilidades` row.
-- **EV-12 penetration tests.** The newest `pentest` row of P-10 within its
+- EV-12 penetration tests. The newest `pentest` row of P-10 within its
   days of P-09.
 
 ## Not measured

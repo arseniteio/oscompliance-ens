@@ -53,21 +53,21 @@ in the group configuration as FIM directories.
 
 Judges are in `engine/internal/controls/ens/mpcom3`.
 
-- **EV-01 the other end.** No `StrictHostKeyChecking no` (or `off`) and no
+- EV-01 the other end. No `StrictHostKeyChecking no` (or `off`) and no
   `UserKnownHostsFile /dev/null` in the SSH client configuration.
-- **EV-02, EV-03 algorithms.** As op.exp.10 EV-03 and EV-04.
-- **EV-04 to EV-06 active attacks.** Alteration, injection and hijacking each
+- EV-02, EV-03 algorithms. As op.exp.10 EV-03 and EV-04.
+- EV-04 to EV-06 active attacks. Alteration, injection and hijacking each
   have rows in P-02, and every row a loaded rule of level 1 or more.
-- **EV-07 incidents.** Every hour of the window with an alert of those rules
+- EV-07 incidents. Every hour of the window with an alert of those rules
   on the machine has an incident of op.exp.7 involving it opened from an
   hour before to a day after.
-- **EV-08 tunnels.** Every row of P-05 for the machine has its `tunel` up as
+- EV-08 tunnels. Every row of P-05 for the machine has its `tunel` up as
   an interface or running as a process.
-- **EV-10 configuration changes.** Every FIM change of the window under P-06
+- EV-10 configuration changes. Every FIM change of the window under P-06
   covered by a request of op.exp.5 P-10.
-- **EV-11 products.** Every product of P-07 with a `referencia` and a
+- EV-11 products. Every product of P-07 with a `referencia` and a
   `vigencia` not past.
 
 ## Not measured
 
-- **Mechanisms not refused.** No log tells a refused legal mechanism; 3.3 is an attestation.
+- Mechanisms not refused. No log tells a refused legal mechanism; 3.3 is an attestation.

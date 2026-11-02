@@ -2,11 +2,11 @@
 
 Every control has one page with the same sections:
 
-- **Requirements**: what Annex II of the ENS demands, at which levels, and the evidences that prove each requirement.
-- **Sources**: what is read to judge it: agent facts, Wazuh alerts, inventory, the Wazuh API.
-- **Parameters**: what the organisation declares in Power ENS.
-- **How each evidence is judged**: when an evidence is COMPLIANT, NON_COMPLIANT, NOT_EVALUABLE or NOT_APPLICABLE.
-- **Not measured**: what the control deliberately leaves to attestation, and why.
+- Requirements: what Annex II of the ENS demands, at which levels, and the evidences that prove each requirement.
+- Sources: what is read to judge it: agent facts, Wazuh alerts, inventory, the Wazuh API.
+- Parameters: what the organisation declares in Power ENS.
+- How each evidence is judged: when an evidence is COMPLIANT, NON_COMPLIANT, NOT_EVALUABLE or NOT_APPLICABLE.
+- Not measured: what the control deliberately leaves to attestation, and why.
 
 How evidences add up to requirements and controls is in [verdicts](../verdicts.md).
 

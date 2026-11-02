@@ -55,23 +55,23 @@ Judges are in `engine/internal/controls/ens/mpcom4`. An address belongs to
 the narrowest range of P-01 holding it; loopback and link-local addresses
 belong to none.
 
-- **EV-01 declared segment.** Every address of the machine in a segment.
-- **EV-02 flows.** Every accepted flow of the points of P-05 between two
+- EV-01 declared segment. Every address of the machine in a segment.
+- EV-02 flows. Every accepted flow of the points of P-05 between two
   segments matches a row of P-02. No point: NOT_EVALUABLE.
-- **EV-03 bridges.** The machine in one segment, or named as `equipo` of a
+- EV-03 bridges. The machine in one segment, or named as `equipo` of a
   point of P-05.
-- **EV-04 wireless.** Every wireless interface up (type wireless or a name
+- EV-04 wireless. Every wireless interface up (type wireless or a name
   starting `wl`) with its addresses in an `inalámbrico` segment.
-- **EV-05 interconnection logs.** As mp.com.1 EV-01 over the points of P-05
+- EV-05 interconnection logs. As mp.com.1 EV-01 over the points of P-05
   and P-09.
-- **EV-07 way of segmenting.** VLAN: every segment with its `vlan`; VPN: a
+- EV-07 way of segmenting. VLAN: every segment with its `vlan`; VPN: a
   tunnel interface up on the machine.
-- **EV-08 minimum segments.** Segments for users, services and
+- EV-08 minimum segments. Segments for users, services and
   administration.
-- **EV-09 incidents contained.** No incident of the last 90 days whose
+- EV-09 incidents contained. No incident of the last 90 days whose
   machines are in more than one segment.
-- **EV-10 matrix reviewed.** The newest review of P-08 within P-07 days.
+- EV-10 matrix reviewed. The newest review of P-08 within P-07 days.
 
 ## Not measured
 
-- **Users matched to their segment.** No network access control log reaches Wazuh in a form the engine can read; P-06 stays documentary.
+- Users matched to their segment. No network access control log reaches Wazuh in a form the engine can read; P-06 stays documentary.

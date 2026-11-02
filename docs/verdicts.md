@@ -4,7 +4,7 @@ Every pass of the engine writes three kinds of verdict to
 `oscompliance-verdicts`, one per machine: evidence, requirement and control.
 Schema: [`catalog/schemas/verdicts/verdict.v1.json`](../catalog/schemas/verdicts/verdict.v1.json).
 
-The rule behind every status: **what cannot be proven does not comply.**
+The rule behind every status: what cannot be proven does not comply.
 
 ## Evidence
 

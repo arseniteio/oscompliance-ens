@@ -43,14 +43,14 @@ Levels: ALTO. Annex II section 4.6.2. Definition: [`catalog/controls/ens/op.cont
 
 Judges are in `engine/internal/controls/ens/opcont2`.
 
-- **EV-01 plan.** The newest `fecha_aprobacion` of P-01, not in the future,
+- EV-01 plan. The newest `fecha_aprobacion` of P-01, not in the future,
   within P-08 months.
-- **EV-04 contracts.** Every means of P-04 with a `contrato` and
+- EV-04 contracts. Every means of P-04 with a `contrato` and
   `vigencia_hasta` not past.
-- **EV-06 training.** Every `responsable` and `suplente` of P-03 with a row
+- EV-06 training. Every `responsable` and `suplente` of P-03 with a row
   of P-05 whose `vigente_hasta` is not past; names compared without case or
   accents.
-- **EV-03 integrity after an outage.** FIM enabled with `scan_on_start`, and
+- EV-03 integrity after an outage. FIM enabled with `scan_on_start`, and
   every path of P-07 under a FIM directory.
 
 ## Not measured

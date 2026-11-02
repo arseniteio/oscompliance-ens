@@ -92,38 +92,38 @@ NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION. The audit chain is op.acc.4's: auditd
 running, every P-04 path watched and the audit log read by Wazuh.
 
-- **EV-01 baseline kept.** Every summary of the op.exp.2 P-01 policies in
+- EV-01 baseline kept. Every summary of the op.exp.2 P-01 policies in
   the last P-12 days, and the newest, must be at least op.exp.2 P-05;
   otherwise NON_COMPLIANT with the lowest. The SCA freshness of op.exp.2
   EV-01 applies.
-- **EV-02 who edits.** Every successful write of the window under P-04 must
+- EV-02 who edits. Every successful write of the window under P-04 must
   be by an account of P-03: otherwise NON_COMPLIANT. Writes whose account
   cannot be named: NOT_EVALUABLE by EVIDENCE. None, with the chain
   complete: COMPLIANT.
-- **EV-03 unauthorised software.** Each package newly installed in the
+- EV-03 unauthorised software. Each package newly installed in the
   window that the machine keeps on request must be in P-01: otherwise
   NON_COMPLIANT. Dependencies are not judged. On a machine with dnf:
   NOT_EVALUABLE by COLLECTION, since Wazuh does not decode the package of a
   yum or dnf line.
-- **EV-04 authorised services.** Every running unit, and every listening
+- EV-04 authorised services. Every running unit, and every listening
   process outside a unit, must be in P-02 (`getty@.service` covers every
   `getty@tty1.service`): otherwise NON_COMPLIANT. Without systemd only the
   listening processes are judged.
-- **EV-05 authorised edits.** Every FIM change of the window under P-04
+- EV-05 authorised edits. Every FIM change of the window under P-04
   must be covered by an approved request of op.exp.5 P-10
   ([op.exp.5](op.exp.5.md)): otherwise NON_COMPLIANT.
-- **EV-06 reaction to vulnerabilities.** op.exp.4 EV-02 with the deadlines of
+- EV-06 reaction to vulnerabilities. op.exp.4 EV-02 with the deadlines of
   op.exp.4 P-01 ([op.exp.4](op.exp.4.md)).
-- **EV-07 reaction to incidents.** op.exp.7 EV-12 over the register of
+- EV-07 reaction to incidents. op.exp.7 EV-12 over the register of
   op.exp.7 P-13: every closed incident of the machine records its measures.
-- **EV-08 administrators.** The accounts that wrote under P-04 in the
+- EV-08 administrators. The accounts that wrote under P-04 in the
   window must be at most P-09: otherwise NON_COMPLIANT.
-- **EV-09 configuration copies.** The newest copy of every source of P-07
+- EV-09 configuration copies. The newest copy of every source of P-07
   must be within P-10 hours: otherwise NON_COMPLIANT. A source with no
   copy: NON_COMPLIANT.
-- **EV-10 regressions.** A check that went from passed to failed in the
+- EV-10 regressions. A check that went from passed to failed in the
   last P-12 days: NON_COMPLIANT with the checks. None: COMPLIANT.
-- **EV-11 periodic verification.** The newest date of P-11 not in the
+- EV-11 periodic verification. The newest date of P-11 not in the
   future must be within P-05 days.
 
 ## Not measured

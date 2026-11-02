@@ -53,18 +53,18 @@ EV-09 are NON_COMPLIANT. A system without e-mail disables the control.
 
 Judges are in `engine/internal/controls/ens/mps1`.
 
-- **EV-01 logs.** As mp.com.1 EV-01 over the sources of P-01 and P-10.
-- **EV-02, EV-03, EV-05 filters.** As mp.com.3 EV-04 for the indicators of
+- EV-01 logs. As mp.com.1 EV-01 over the sources of P-01 and P-10.
+- EV-02, EV-03, EV-05 filters. As mp.com.3 EV-04 for the indicators of
   `antispam`, `antimalware` and `código móvil` of P-03.
-- **EV-06 TLS.** `smtpd_tls_security_level` may or encrypt,
+- EV-06 TLS. `smtpd_tls_security_level` may or encrypt,
   `smtp_tls_security_level` set and not none, and every protocol list
   excluding SSLv2, SSLv3, TLSv1 and TLSv1.1 (by `!` or a `>=TLSv1.2`
   floor). No Postfix on the machine: NON_COMPLIANT.
-- **EV-07 domains.** Every domain of P-02 with an SPF record ending in an
+- EV-07 domains. Every domain of P-02 with an SPF record ending in an
   `all` that is not `+all` or `?all`, a TXT record under its DKIM selector,
   and a DMARC record with `p=quarantine` or `p=reject`.
-- **EV-09 configuration.** As mp.com.3 EV-10 over P-09.
-- **EV-10 awareness.** The newest activity of P-07 within P-08 days.
+- EV-09 configuration. As mp.com.3 EV-10 over P-09.
+- EV-10 awareness. The newest activity of P-07 within P-08 days.
 
 ## Not measured
 

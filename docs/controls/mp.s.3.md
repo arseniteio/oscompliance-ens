@@ -54,16 +54,16 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 5.8.3. Definition: [`catalog/control
 Judges are in `engine/internal/controls/ens/mps3`. The filter and the
 registers are the organisation's: they are judged the same on every machine.
 
-- **EV-01 logs.** As mp.com.1 EV-01 over the sources of P-02 and P-12.
-- **EV-02 to EV-04, EV-10, EV-11 filter functions.** As mp.com.3 EV-04 for
+- EV-01 logs. As mp.com.1 EV-01 over the sources of P-02 and P-12.
+- EV-02 to EV-04, EV-10, EV-11 filter functions. As mp.com.3 EV-04 for
   categories, downloads and active content, reputation, blacklist and
   evasion.
-- **EV-05 DNS.** Every server of `dns_resolvers` within an entry of P-04;
+- EV-05 DNS. Every server of `dns_resolvers` within an entry of P-04;
   `*` is no entry. No server: NON_COMPLIANT.
-- **EV-06 workstation.** As op.exp.6 EV-01.
-- **EV-08 retention.** The retention of the alerts index at least P-08
+- EV-06 workstation. As op.exp.6 EV-01.
+- EV-08 retention. The retention of the alerts index at least P-08
   days; no retention policy: NON_COMPLIANT.
-- **EV-12, EV-13.** The newest row of P-06 within P-09 days, of P-07 within
+- EV-12, EV-13. The newest row of P-06 within P-09 days, of P-07 within
   P-10 days.
 
 ## Not measured

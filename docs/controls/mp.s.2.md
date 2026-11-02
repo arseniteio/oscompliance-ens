@@ -57,20 +57,20 @@ whatever P-07 says.
 
 Judges are in `engine/internal/controls/ens/mps2`.
 
-- **EV-01 logs.** As mp.com.1 EV-01 over the sources of the machine's
+- EV-01 logs. As mp.com.1 EV-01 over the sources of the machine's
   applications.
-- **EV-02 to EV-08 attacks.** As mp.com.3 EV-04 for access without
+- EV-02 to EV-08 attacks. As mp.com.3 EV-04 for access without
   authentication, alternative ways, URL manipulation, cookie manipulation,
   injection, privilege escalation and XSS.
-- **EV-10 vulnerabilities.** No critical or high vulnerability of the
+- EV-10 vulnerabilities. No critical or high vulnerability of the
   machine detected more than P-09 days ago and still open.
-- **EV-11 audits.** Every application of the machine with an audit of the
+- EV-11 audits. Every application of the machine with an audit of the
   modality in force within P-10 days; a white box one with `metodologia`
   and `herramientas`.
-- **EV-12 findings.** Every finding of the machine's applications
+- EV-12 findings. Every finding of the machine's applications
   `resuelto`, `cerrado` or within its `plazo`.
 
 ## Not measured
 
-- **Attempt against success.** The web logs Wazuh decodes do not tell a successful attack apart.
-- **Proxies and caches.** R3.1 is an attestation.
+- Attempt against success. The web logs Wazuh decodes do not tell a successful attack apart.
+- Proxies and caches. R3.1 is an attestation.

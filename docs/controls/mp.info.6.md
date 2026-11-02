@@ -73,21 +73,21 @@ Judges are in `engine/internal/controls/ens/mpinfo6`. A source of P-04 the
 agent has not read yet, or could not read, leaves EV-01 to EV-04 and EV-06
 NOT_EVALUABLE.
 
-- **EV-01 last copy.** Every copy must have a newest copy, and outside git
+- EV-01 last copy. Every copy must have a newest copy, and outside git
   it must not be empty.
-- **EV-02 interval.** The newest copy of every copy must be younger than its
+- EV-02 interval. The newest copy of every copy must be younger than its
   `frecuencia_horas`, or P-01, plus P-02.
-- **EV-03 retention.** The oldest copy kept must be at least `retencion_dias`
+- EV-03 retention. The oldest copy kept must be at least `retencion_dias`
   old, or P-03. A truncated source is NOT_EVALUABLE.
-- **EV-04 access.** No copy readable by anyone; the owner of each source, and
+- EV-04 access. No copy readable by anyone; the owner of each source, and
   its group when copies are group readable, in P-07. Every key of P-08 must
   exist, be readable by its owner only and belong to an account of P-07.
-- **EV-05 restore tests.** The newest `correcta` row of P-06 for the machine
+- EV-05 restore tests. The newest `correcta` row of P-06 for the machine
   must be within P-05 days.
-- **EV-06 copy apart.** At least one copy must live on a filesystem of
+- EV-06 copy apart. At least one copy must live on a filesystem of
   another machine: NFS, SMB, SSHFS, S3 and other network or FUSE remote
   filesystems, or a device named `host:path` or `//host/share`.
 
 ## Not measured
 
-- **Collector heartbeat.** A missing fact already leaves every evidence NOT_EVALUABLE.
+- Collector heartbeat. A missing fact already leaves every evidence NOT_EVALUABLE.

@@ -45,9 +45,9 @@ A pass is usable when passwd and shadow were read and every record of its
 `run_id` arrived. Otherwise the evidences that need it are NOT_EVALUABLE by
 COLLECTION.
 
-**Disabled account**: no-login shell, expired, or no usable password
+Disabled account: no-login shell, expired, or no usable password
 (`locked` or `missing`) and no SSH key. A locked password with keys is not
-disabled: sshd still accepts the key. **Active account**: UID at least P-10
+disabled: sshd still accepts the key. Active account: UID at least P-10
 and not disabled.
 
 ## Parameters
@@ -78,33 +78,33 @@ Judges are in `engine/internal/controls/ens/opacc1`. A source missing is
 NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION.
 
-- **EV-01 account inventory.** A UID held by more than one entry, at any UID:
+- EV-01 account inventory. A UID held by more than one entry, at any UID:
   NON_COMPLIANT, naming every account. Otherwise COMPLIANT.
-- **EV-02 identity changes recorded.** Compared with the newest complete
+- EV-02 identity changes recorded. Compared with the newest complete
   earlier pass (up to ten are tried): accounts created, deleted and modified
   in any field are listed in the verdict. COMPLIANT whenever the pass is
   usable; the first pass is the baseline. It fails only when collection
   fails.
-- **EV-03 generic accounts.** A login in the window by an account that
+- EV-03 generic accounts. A login in the window by an account that
   matches P-04: NON_COMPLIANT, with each account and its count. No
   authentication event in the lookback: NOT_EVALUABLE by COLLECTION, because
   silence from a log that does not reach Wazuh is not compliance.
-- **EV-04 departures disabled in time.** An account with UID at least P-10
+- EV-04 departures disabled in time. An account with UID at least P-10
   and a departure date (its P-09 row, else its expiry) not disabled within
   P-05 days of it: NON_COMPLIANT. When only its keys could tell and they are
   unknown: NOT_EVALUABLE by EVIDENCE. No date anywhere and P-09 empty:
   NOT_EVALUABLE by CONFIGURATION. A declared account that no longer exists
   counts as handled.
-- **EV-05 service accounts.** As EV-03, against P-03.
-- **EV-06 one identity per role.** A member of a P-11 group (primary group
+- EV-05 service accounts. As EV-03, against P-03.
+- EV-06 one identity per role. A member of a P-11 group (primary group
   included) that is not itself an administrative account `<x><P-12>` and has
   no `<member><P-12>` account, or a login by such a member: NON_COMPLIANT. No
   finding and no authentication event in the lookback: NOT_EVALUABLE by
   COLLECTION.
-- **EV-07 active accounts authorised.** An active account not in the
+- EV-07 active accounts authorised. An active account not in the
   `usuario` column of P-07: NON_COMPLIANT. Not listed and state unknown:
   NOT_EVALUABLE by EVIDENCE.
-- **EV-08 retention before deletion.** From the identity history. An account
+- EV-08 retention before deletion. From the identity history. An account
   with UID at least P-10 deleted in the window less than P-06 days after its
   start date (P-09 row, else last expiry, else the day it was seen disabled),
   or deleted while still enabled: NON_COMPLIANT. Deleted with no start date or
@@ -112,8 +112,8 @@ NOT_EVALUABLE by CONFIGURATION.
 
 ## Not measured
 
-- **eIDAS identification (1.5) and the person behind each identifier
-  (r1.1).** No machine records them. They are judged by attestation.
-- **Directory accounts.** Accounts that exist only in LDAP, Active Directory
+- eIDAS identification (1.5) and the person behind each identifier
+  (r1.1). No machine records them. They are judged by attestation.
+- Directory accounts. Accounts that exist only in LDAP, Active Directory
   or another directory are not read: the control judges the local identity
   table of each machine.

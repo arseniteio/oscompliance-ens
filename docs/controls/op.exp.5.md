@@ -74,26 +74,26 @@ NOT_EVALUABLE by CONFIGURATION. A request covers a change when its
 or `revertida`, it was approved before the change, and its window contains
 the change.
 
-- **EV-01 real changes.** FIM enabled and the apt history read: COMPLIANT
+- EV-01 real changes. FIM enabled and the apt history read: COMPLIANT
   with the changes of the window. FIM disabled: NON_COMPLIANT.
-- **EV-02 changes without a request.** A change no request covers:
+- EV-02 changes without a request. A change no request covers:
   NON_COMPLIANT with the changes.
-- **EV-03 request information.** Every authorised request of the machine
+- EV-03 request information. Every authorised request of the machine
   whose window touches the last 90 days must fill the columns of P-02, its
   `peticion` must start with the prefix of P-01 when it has one, and at ALTA
   it must fill `impacto_seguridad`: otherwise NON_COMPLIANT.
-- **EV-04 high-risk approval.** Every high-risk request of the machine
+- EV-04 high-risk approval. Every high-risk request of the machine
   implanted in the last 90 days must be approved by the account of P-04
   before its window opens: otherwise NON_COMPLIANT.
-- **EV-05 pre-production.** As op.exp.4 EV-08 over the software of the
+- EV-05 pre-production. As op.exp.4 EV-08 over the software of the
   window, with the pairs of op.exp.4 P-06.
-- **EV-06 documentation.** Every request implanted more than its document's
+- EV-06 documentation. Every request implanted more than its document's
   `plazo_dias` ago must name in `documentacion` the documents of P-06 it
   updated: otherwise NON_COMPLIANT.
-- **EV-07 stability.** A service failed now, with a change in the P-09 hours
+- EV-07 stability. A service failed now, with a change in the P-09 hours
   before, whose covering request is not `revertida`: NON_COMPLIANT. Without
   systemd: NOT_EVALUABLE by COLLECTION.
-- **EV-09 reversion point.** As op.exp.4 EV-09, over every change of the
+- EV-09 reversion point. As op.exp.4 EV-09, over every change of the
   window, with op.exp.4 P-07.
 
 op.exp.3 EV-05 judges the edits of the security configuration (FIM changes
@@ -101,4 +101,4 @@ under op.exp.3 P-04) against the same register.
 
 ## Not measured
 
-- **Failures reported to the security manager.** The communication leaves no fact. r1.2 is accredited by attestation.
+- Failures reported to the security manager. The communication leaves no fact. r1.2 is accredited by attestation.

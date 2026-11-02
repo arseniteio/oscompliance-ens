@@ -51,22 +51,22 @@ iodine, ptunnel, dns2tcp, gost, tmate, teamviewerd, anydesk, rustdesk.
 
 Judges are in `engine/internal/controls/ens/mpcom1`.
 
-- **EV-01 perimeter logs.** Every device of P-01 with an alert within P-10
+- EV-01 perimeter logs. Every device of P-01 with an alert within P-10
   hours.
-- **EV-02 flows.** Every accepted flow of the window matches a row of P-02
+- EV-02 flows. Every accepted flow of the window matches a row of P-02
   with `autorizado_por`.
-- **EV-03 interfaces.** Every interface `up` matches a pattern of P-07.
-- **EV-04 exits.** Every gateway of the machine is a `pasarela` of P-03.
-- **EV-05 tunnels.** No tunnel interface up (type tunnel, ppp, tun, tap,
+- EV-03 interfaces. Every interface `up` matches a pattern of P-07.
+- EV-04 exits. Every gateway of the machine is a `pasarela` of P-03.
+- EV-05 tunnels. No tunnel interface up (type tunnel, ppp, tun, tap,
   wireguard; names tun, tap, wg, ppp, ipsec, vti, gre, tailscale, zt) and no
   tunnelling tool running, outside P-08.
-- **EV-06 rules.** No row of P-02 open to any origin on every port or an
+- EV-06 rules. No row of P-02 open to any origin on every port or an
   administration port (22, 23, 139, 161, 445, 1433, 1521, 2375, 3306, 3389,
   5432, 5900, 5985, 5986, 6379, 9200, 27017), and the newest review of P-11
   within P-04 days.
-- **EV-07 administration from the internet.** No authentication of the
+- EV-07 administration from the internet. No authentication of the
   window from a public address outside P-09.
-- **EV-08 continuity.** No device of P-01 more than P-10 hours without
+- EV-08 continuity. No device of P-01 more than P-10 hours without
   alerts in the last week.
 
 ## Not measured

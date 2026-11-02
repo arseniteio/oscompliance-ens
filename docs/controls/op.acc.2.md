@@ -72,42 +72,42 @@ Judges are in `engine/internal/controls/ens/opacc2`. A source missing is
 NOT_EVALUABLE by COLLECTION; a parameter missing or unusable is
 NOT_EVALUABLE by CONFIGURATION.
 
-- **EV-01 world-writable and umask.** A world-writable entry under a P-02 path
+- EV-01 world-writable and umask. A world-writable entry under a P-02 path
   that is not a P-11 exception (nor, with P-03, a sticky directory), or a
   declared umask that does not cover every bit of P-07: NON_COMPLIANT. A
   partial sweep, an unreadable umask source or no umask declared:
   NOT_EVALUABLE by COLLECTION. The umask is never assumed.
-- **EV-02 critical files.** A FIM alert of the window on or under a P-02 path:
+- EV-02 critical files. A FIM alert of the window on or under a P-02 path:
   NON_COMPLIANT; every change is reported. A P-02 path FIM does not watch in
   time (not covered, ignored, FIM off, or scans further apart than the window
   without real time): NOT_EVALUABLE by COLLECTION.
-- **EV-03 escalations.** Privileged accounts are UID 0, members of a P-12
+- EV-03 escalations. Privileged accounts are UID 0, members of a P-12
   group and accounts a sudo grant names. A sudo run or su session that makes
   an unprivileged account a privileged one: NON_COMPLIANT. Becoming an
   ordinary account is lateral and accepted; refusals are the control working
   and are only reported. An elevation by a non-local account or with sudoers
   blind spots, or no elevation while the probe does not come back:
   NOT_EVALUABLE by COLLECTION.
-- **EV-04 declared rights.** For each P-08 row: mode compared as octal, owner
+- EV-04 declared rights. For each P-08 row: mode compared as octal, owner
   when declared, every declared ACL entry present and every applied named
   entry declared. A difference: NON_COMPLIANT. A path missing or unreadable:
   NOT_EVALUABLE by COLLECTION.
-- **EV-05 individual privileges (ALTO).** A privileged account (as EV-03,
+- EV-05 individual privileges (ALTO). A privileged account (as EV-03,
   without UID 0) not in P-09: NON_COMPLIANT. Sudoers blind spots or grants to
   groups or UIDs that do not exist: NOT_EVALUABLE by COLLECTION.
-- **EV-06 type of access (ALTO).** For each successful audited access, the
+- EV-06 type of access (ALTO). For each successful audited access, the
   person (audit UID, else UID) gives a profile through P-09; the profile and
   the longest P-06 path containing the resource give the permitted types. A
   type not permitted: NON_COMPLIANT. An account without a profile is counted,
   not judged. An access with no person or no row: NOT_EVALUABLE by EVIDENCE.
   Silence needs auditd running, every P-06 path watched and the audit log
   read by Wazuh; otherwise NOT_EVALUABLE by COLLECTION.
-- **EV-07 SUID, SGID and ownerless files.** An entry without owner or group,
+- EV-07 SUID, SGID and ownerless files. An entry without owner or group,
   or a SUID or SGID file not in P-10: NON_COMPLIANT. A partial sweep with
   nothing found: NOT_EVALUABLE by COLLECTION.
 
 ## Not measured
 
-- **Machines without auditd**, such as most containers: EV-06 is
+- Machines without auditd, such as most containers: EV-06 is
   NOT_EVALUABLE by COLLECTION there.
-- **auditd refusals** are not read; refused sudo runs are reported only.
+- auditd refusals are not read; refused sudo runs are reported only.

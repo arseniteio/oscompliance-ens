@@ -2,7 +2,7 @@ MODULES := catalog agent engine
 
 .PHONY: check test dist
 
-check:  ## gofmt, go vet and go test on every module
+check:
 	@for m in $(MODULES); do \
 	  echo "==> $$m"; \
 	  unformatted="$$(cd $$m && gofmt -l .)"; \
@@ -10,8 +10,8 @@ check:  ## gofmt, go vet and go test on every module
 	  (cd $$m && go vet ./... && go test -count=1 ./...) || exit 1; \
 	done
 
-test:   ## go test on every module
+test:
 	@for m in $(MODULES); do (cd $$m && go test -count=1 ./...) || exit 1; done
 
-dist:   ## release packages in dist/: make dist VERSION=1.0.0
+dist:
 	@bash ci/package.sh $(VERSION)

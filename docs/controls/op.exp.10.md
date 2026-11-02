@@ -62,23 +62,23 @@ part, from the `.pub` of an OpenSSH key), `mode`, `owner`.
 
 Judges are in `engine/internal/controls/ens/opexp10`.
 
-- **EV-01 audited accesses.** Every successful access of the window under a
+- EV-01 audited accesses. Every successful access of the window under a
   store of P-02 by an account outside P-08: NON_COMPLIANT. Silence needs the
   audit chain (op.acc.4): auditd running and every store watched.
-- **EV-02 keys outside the stores.** A private key whose directory is not
+- EV-02 keys outside the stores. A private key whose directory is not
   under a store of P-02: NON_COMPLIANT.
-- **EV-03 algorithms configured.** Every cipher, MAC, key exchange and host
+- EV-03 algorithms configured. Every cipher, MAC, key exchange and host
   key algorithm sshd accepts must contain an `algoritmo` of P-03.
-- **EV-04 algorithms used.** The key type of every public key login of the
+- EV-04 algorithms used. The key type of every public key login of the
   window must be named in an `algoritmo` of P-03.
-- **EV-05 generation.** On a machine P-05 calls `explotacion`, an execution
+- EV-05 generation. On a machine P-05 calls `explotacion`, an execution
   of ssh-keygen or openssl in the window: NON_COMPLIANT.
-- **EV-06 retired keys.** A key of P-01 `retirada` found on the machine by
+- EV-06 retired keys. A key of P-01 `retirada` found on the machine by
   fingerprint or by location: NON_COMPLIANT.
-- **EV-07 certificates.** An expired certificate, an RSA key under 2048 bits,
+- EV-07 certificates. An expired certificate, an RSA key under 2048 bits,
   or a signature with MD5 or SHA-1: NON_COMPLIANT. Those expiring within
   P-10 days are named.
-- **EV-08 key files.** A private key more open than `modo_maximo` of its
+- EV-08 key files. A private key more open than `modo_maximo` of its
   store, or with another owner: NON_COMPLIANT. A key outside every store
   must be readable by its owner only.
 

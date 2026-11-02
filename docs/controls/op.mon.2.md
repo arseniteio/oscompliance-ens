@@ -41,13 +41,13 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.7.2. Definition: [`catalog/control
 
 Judges are in `engine/internal/controls/ens/opmon2`.
 
-- **EV-02 cycles.** The newest row of P-06 validated by a person of P-05
+- EV-02 cycles. The newest row of P-06 validated by a person of P-05
   for `metricas` must be within P-02 plus P-03 days.
-- **EV-03 incident data.** Every incident of op.exp.7 opened within P-02
+- EV-03 incident data. Every incident of op.exp.7 opened within P-02
   days must carry what each indicator of P-04 needs: `clasificacion`,
   `severidad`, an intermediate or final phase, its initial phase,
   `notificacion_ccn_cert` or `datos_personales`.
-- **EV-04 reliable measurement.** The machine's agent active (the manager
+- EV-04 reliable measurement. The machine's agent active (the manager
   while its analysis runs) and an `agent_pass` within the window.
-- **EV-06 resources.** As EV-02, for a validator of `recursos` and a row
+- EV-06 resources. As EV-02, for a validator of `recursos` and a row
   with the three resource columns filled.

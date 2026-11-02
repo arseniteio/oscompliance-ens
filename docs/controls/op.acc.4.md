@@ -55,40 +55,40 @@ NOT_EVALUABLE by CONFIGURATION. Silence on a machine whose audit chain is
 incomplete (auditd not running, rules not loaded, audit log not read) is
 NOT_EVALUABLE by COLLECTION; a breach found stands.
 
-- **EV-01 deny by default.** Openings are a packet filter chain that accepts
+- EV-01 deny by default. Openings are a packet filter chain that accepts
   by default, no input chain, no packet filter at all, a Samba share with
   `guest ok` or `public`, and vsftpd with `anonymous_enable`. An opening whose
   resource is not in the `recurso` column of P-01: NON_COMPLIANT. A packet
   filter with no rules is an opening.
-- **EV-02 sudo against the matrix.** Each grant is looked up as `subject |
+- EV-02 sudo against the matrix. Each grant is looked up as `subject |
   sudo` in P-01, and every part of what it grants must be among the row's
   accesses. A grant without a row or beyond its accesses: NON_COMPLIANT. A row
   without accesses: NOT_EVALUABLE by CONFIGURATION. sudo not installed:
   COMPLIANT. Grants to subjects the agent cannot name leave silence
   NOT_EVALUABLE by COLLECTION.
-- **EV-03 privileged groups.** Every member of a P-06 group, primary group
+- EV-03 privileged groups. Every member of a P-06 group, primary group
   included, must be a role of P-01; otherwise NON_COMPLIANT.
-- **EV-04 who changes rights.** Every successful `oscompliance_perm` change of
+- EV-04 who changes rights. Every successful `oscompliance_perm` change of
   the window must be by an account of P-02; otherwise NON_COMPLIANT. Changes
   whose account cannot be named: NOT_EVALUABLE by EVIDENCE.
-- **EV-05 periodic review.** The newest date of P-08 not in the future must
+- EV-05 periodic review. The newest date of P-08 not in the future must
   be within P-03 days; otherwise NON_COMPLIANT. No usable date: NOT_EVALUABLE
   by CONFIGURATION.
-- **EV-06 remote access.** Every sshd login of the window must be by an
+- EV-06 remote access. Every sshd login of the window must be by an
   account of P-05; otherwise NON_COMPLIANT. No login is COMPLIANT only when
   the probe proves the log reaches Wazuh.
-- **EV-07 need to know.** Each audited access under a P-07 resource (the
+- EV-07 need to know. Each audited access under a P-07 resource (the
   longest that contains it) must be by an account with one of its profiles
   among its groups; otherwise NON_COMPLIANT. Silence needs every P-07
   resource watched by auditd.
-- **EV-08 privileges above the minimum.** Sudo grants of every command, and
+- EV-08 privileges above the minimum. Sudo grants of every command, and
   system accounts (UID below `UID_MIN` of login.defs, not root) with a login
   shell, must be roles of P-01; otherwise NON_COMPLIANT.
 
 ## Not measured
 
-- **Rights inside applications and directories.** The control reads the
+- Rights inside applications and directories. The control reads the
   operating system: packet filter, file sharing, sudo, groups and audited
   file accesses.
-- **Remote access by channels other than sshd** for EV-06; the channels
+- Remote access by channels other than sshd for EV-06; the channels
   themselves are judged by [op.acc.6](op.acc.6.md) EV-07 and EV-08.

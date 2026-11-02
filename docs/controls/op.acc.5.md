@@ -93,41 +93,41 @@ Judges are in `engine/internal/controls/ens/opacc5`. A machine with no
 service leaves every evidence NOT_EVALUABLE by CONFIGURATION, unless P-DA
 excludes the control there.
 
-- **EV-01 retention.** Per service, the log reaches back to the older of its
+- EV-01 retention. Per service, the log reaches back to the older of its
   oldest event in Wazuh and its oldest line on disk. Less than P-08 days:
   NON_COMPLIANT, so a new service fails until it has logged for P-08 days.
-- **EV-02 lockout.** The newest `politica` of each service: lockout off,
+- EV-02 lockout. The newest `politica` of each service: lockout off,
   `max_intentos` 0 or above P-03, or automatic reactivation: NON_COMPLIANT. A
   run of failures of one account longer than P-03 in the window, not cut by a
   success, a lockout or an unlock: NON_COMPLIANT. Failures while the account
   is locked do not count. No policy declared: NOT_EVALUABLE by EVIDENCE.
-- **EV-03 failures by origin.** Per service and origin, the most failures
+- EV-03 failures by origin. Per service and origin, the most failures
   within any 15 minutes; above P-03: NON_COMPLIANT. No failure from a service
   whose newest line is not in Wazuh: NOT_EVALUABLE by COLLECTION.
-- **EV-04 credential age.** Accounts that logged in or changed their
+- EV-04 credential age. Accounts that logged in or changed their
   credential and were not disabled afterwards. A last change older than P-05:
   NON_COMPLIANT. No change recorded: the credential is at least as old as the
   oldest event of the service; beyond P-05 that is NON_COMPLIANT, otherwise
   NOT_EVALUABLE by EVIDENCE.
-- **EV-05 disablement delay.** Each `notificacion_compromiso` or
+- EV-05 disablement delay. Each `notificacion_compromiso` or
   `fin_relacion` closes with the next `inhabilitacion` of the same account and
   service; an open one counts the hours so far. Above P-06: NON_COMPLIANT. No
   notice ever: NOT_EVALUABLE by EVIDENCE, since a service that does not log
   notices would otherwise pass.
-- **EV-06 rejection messages.** A message that says the account does not
+- EV-06 rejection messages. A message that says the account does not
   exist, that only the password was wrong, the state of the account, or
   technical detail (exceptions, SQL states, server versions): NON_COMPLIANT.
   "Usuario o contraseña incorrectos" reveals nothing. A service that never
   logged a message: NOT_EVALUABLE by EVIDENCE.
-- **EV-07 mechanism used.** Each successful login is classed by its factors:
+- EV-07 mechanism used. Each successful login is classed by its factors:
   R4 card with PIN or biometrics, R3 certificate with PIN or biometrics, R2
   password with OTP, R1 password alone. One that is not P-01: NON_COMPLIANT.
   Logins without factors: NOT_EVALUABLE by EVIDENCE; no login in the window:
   NOT_EVALUABLE by COLLECTION.
-- **EV-08 certificate validation.** Only with R3 or R4, otherwise
+- EV-08 certificate validation. Only with R3 or R4, otherwise
   NOT_APPLICABLE. An issuer not in P-07, or a revocation check its row does
   not admit: NON_COMPLIANT. None in the window: NOT_EVALUABLE by COLLECTION.
-- **EV-09 continuity.** Each read of the logs against the one before: the log
+- EV-09 continuity. Each read of the logs against the one before: the log
   disappeared, was replaced with no rotated copy keeping the old inode, or
   shrank without rotating; the file was written after the newest event Wazuh
   has of it; or a P-02 service the agent does not read. Any of them:
@@ -138,24 +138,24 @@ excludes the control there.
 op.acc.5 decides some requirements itself, only where the requirement
 applies by level:
 
-- **P-DA** with a reason, a reference and a usable link, on a machine with no
+- P-DA with a reason, a reference and a usable link, on a machine with no
   service: every requirement NOT_APPLICABLE. On a machine with a service the
   declaration is contradicted and ignored.
-- **P-01** unusable: the nine mechanism requirements are NOT_EVALUABLE by
+- P-01 unusable: the nine mechanism requirements are NOT_EVALUABLE by
   CONFIGURATION, and no attestation proves r3.3 or r4.3. The requirements of
   the mechanisms not chosen: NOT_APPLICABLE. R1 above BAJO: r1.1 and r1.2
   NON_COMPLIANT; the ENS allows a password alone only at BAJO.
-- **r1.2** under R1: a declared policy with complexity off or no minimum
+- r1.2 under R1: a declared policy with complexity off or no minimum
   length is NON_COMPLIANT; none declared is NOT_EVALUABLE; otherwise EV-02.
-- **5.8**: P-04 not set is NOT_EVALUABLE, unless EV-02 or EV-03 already
+- 5.8: P-04 not set is NOT_EVALUABLE, unless EV-02 or EV-03 already
   failed.
-- **r5.2**: P-09 no is NON_COMPLIANT; not set NOT_EVALUABLE; yes leaves it to
+- r5.2: P-09 no is NON_COMPLIANT; not set NOT_EVALUABLE; yes leaves it to
   P-ATT.
 
 ## Not measured
 
-- **Services that do not write the contract.** The control cannot see inside
+- Services that do not write the contract. The control cannot see inside
   an application. A service without the log is NOT_EVALUABLE, never
   COMPLIANT.
-- **Failures without an origin** count for EV-03 only as an upper bound and
+- Failures without an origin count for EV-03 only as an upper bound and
   never accuse.

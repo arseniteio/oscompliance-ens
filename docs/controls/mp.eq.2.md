@@ -66,15 +66,15 @@ One per pass, emitted only when it changes:
 
 Judges are in `engine/internal/controls/ens/mpeq2`.
 
-- **EV-01 lock.** With a graphical session: lock enabled, idle delay set and
+- EV-01 lock. With a graphical session: lock enabled, idle delay set and
   not 0, idle plus lock delay within P-01 minutes. Without one: a read-only
   `TMOUT` within P-01 minutes.
-- **EV-02 cancellation.** `StopIdleSessionSec`, or the `TMOUT` without a
+- EV-02 cancellation. `StopIdleSessionSec`, or the `TMOUT` without a
   graphical session, longer than P-01 and within P-02 minutes.
-- **EV-05 inhibitors.** No process named in P-05 (by default caffeine,
+- EV-05 inhibitors. No process named in P-05 (by default caffeine,
   caffeine-ng, caffeinate, jiggler, mousejiggler, keepawake, nosleep,
   insomnia, stay-awake).
 
 ## Not measured
 
-- **Lock events and long sessions without a lock.** The lock of a Linux session leaves no event Wazuh decodes.
+- Lock events and long sessions without a lock. The lock of a Linux session leaves no event Wazuh decodes.

@@ -74,30 +74,30 @@ P-13 and P-14 are new.
 
 Judges are in `engine/internal/controls/ens/opexp8`.
 
-- **EV-01 audit log.** auditd running, and Wazuh reading the audit log and a
+- EV-01 audit log. auditd running, and Wazuh reading the audit log and a
   system log (journald, syslog or auth.log): otherwise NON_COMPLIANT.
-- **EV-02 coverage.** As op.exp.1 EV-04 with P-12.
-- **EV-03 fields.** The audit alerts of the window must carry user (`auid`
+- EV-02 coverage. As op.exp.1 EV-04 with P-12.
+- EV-03 fields. The audit alerts of the window must carry user (`auid`
   or `uid`), time, object (`file.name` or `exe`), type and result
   (`success`). No audit alert: NOT_EVALUABLE by COLLECTION.
-- **EV-04 continuity.** A monitoring record of the window with the agent not
+- EV-04 continuity. A monitoring record of the window with the agent not
   active, or two records further apart than P-12: NON_COMPLIANT with the
   gaps.
-- **EV-05 review.** P-13 against P-04 (`passes.Review`).
-- **EV-06 time.** Synchronised, `|offset|` within P-06, a source among P-05,
+- EV-05 review. P-13 against P-04 (`passes.Review`).
+- EV-06 time. Synchronised, `|offset|` within P-06, a source among P-05,
   and authenticated when P-05 asks NTS or a key: otherwise NON_COMPLIANT.
   No synchronisation service: NON_COMPLIANT.
-- **EV-07 retention.** The ISM policy of the alerts indices must not delete
+- EV-07 retention. The ISM policy of the alerts indices must not delete
   them before the longest retention of P-07. No policy: COMPLIANT, nothing is
   deleted.
-- **EV-08 log access.** No log path of P-14 readable by everyone, and every
+- EV-08 log access. No log path of P-14 readable by everyone, and every
   account an ACL entry names in P-08: otherwise NON_COMPLIANT.
-- **EV-09 log backups.** The newest successful snapshot of the indexer must be
+- EV-09 log backups. The newest successful snapshot of the indexer must be
   within the shortest `frecuencia` of P-09.
-- **EV-10 analysis.** `wazuh` in P-10 needs the ruleset on the manager;
+- EV-10 analysis. `wazuh` in P-10 needs the ruleset on the manager;
   `propias`, custom rule files beyond `local_rules.xml`.
-- **EV-11 automatic response.** Every `accion` of P-11 must be an active
+- EV-11 automatic response. Every `accion` of P-11 must be an active
   response the manager sends the machine, with its script there.
-- **EV-12 responses executed.** The active responses of the window are listed.
-- **EV-13 integrity of the logging system.** The agent reporting and FIM
+- EV-12 responses executed. The active responses of the window are listed.
+- EV-13 integrity of the logging system. The agent reporting and FIM
   watching `/var/ossec/etc`: otherwise NON_COMPLIANT.

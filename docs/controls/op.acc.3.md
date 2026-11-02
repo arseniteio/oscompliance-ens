@@ -69,27 +69,27 @@ unusable: every evidence NOT_EVALUABLE by CONFIGURATION. Silence on a machine
 with an incomplete audit chain is NOT_EVALUABLE by COLLECTION; a breach found
 stands.
 
-- **EV-01, EV-02, EV-04 incompatible pairs.** A person who acted on this
+- EV-01, EV-02, EV-04 incompatible pairs. A person who acted on this
   machine and holds both functions of the pair, here or on any other machine:
   NON_COMPLIANT, with one action of each function. The pair not in P-02:
   NOT_EVALUABLE by CONFIGURATION.
-- **EV-03 critical tasks.** A task run on this machine by fewer different
+- EV-03 critical tasks. A task run on this machine by fewer different
   people than P-04 requires, over the window: NON_COMPLIANT. A task not run
   is not a failure. A row without a number of people (2 or more) or a
   command: NOT_EVALUABLE by CONFIGURATION.
-- **EV-05 audit accounts.** With `auditoria | *` in P-02, a person holding
+- EV-05 audit accounts. With `auditoria | *` in P-02, a person holding
   auditoria and anything else; for each P-05 account, any function other than
   auditoria or supervision: NON_COMPLIANT. Neither declared: NOT_EVALUABLE by
   CONFIGURATION.
-- **EV-06 actions per account.** The accounts that acted on this machine and
+- EV-06 actions per account. The accounts that acted on this machine and
   their functions. Actions whose account cannot be named: NOT_EVALUABLE by
   EVIDENCE.
-- **EV-07 security information.** Who read or changed the security paths.
+- EV-07 security information. Who read or changed the security paths.
   Reported only: r3.1 applies at no level.
 
 ## Not measured
 
-- **Functions held on paper (P-01).** The control judges what people did,
+- Functions held on paper (P-01). The control judges what people did,
   not what the organisation chart says; P-01 stays as documentation.
-- **Actions outside auditd and sudo**, such as work done through an
+- Actions outside auditd and sudo, such as work done through an
   application's own interface.
