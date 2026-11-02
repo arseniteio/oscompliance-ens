@@ -79,8 +79,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		}
 	}
 
-	// The indexer's own settings: a user without the right to read them leaves those evidences unproven,
-	// not the whole control.
 	e.retention, e.managed, e.retentionErr = e.facts.Retention(ctx)
 	e.snapshot, e.snapshotErr = e.facts.NewestSnapshot(ctx)
 	return nil
@@ -107,7 +105,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-01", JudgeEV01(watches, c))
 
-	hours, hoursProblem := whole(policy, agent.ID, "P-12", "param.not_hours")
+	hours, hoursProblem := passes.Whole(policy, agent.ID, control, "P-12", "param.not_hours")
 	var reporting *source.Reporting
 	if r, ok := e.reporting[agent.ID]; ok {
 		reporting = &r
@@ -131,8 +129,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-05", func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, control, "P-13")
-		days, daysProblem := whole(policy, agent.ID, "P-04", "param.not_days")
-		j, _ := passes.Review(rows, problemOf("P-13", err), "P-13", days, daysProblem, "P-04", now)
+		days, daysProblem := passes.Whole(policy, agent.ID, control, "P-04", "param.not_days")
+		j, _ := passes.Review(rows, passes.ParamProblem("P-13", err), "P-13", days, daysProblem, "P-04", now)
 		return j
 	}())
 
@@ -146,9 +144,9 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			err = nil
 		}
 		offset, offsetErr := policy.Number(agent.ID, control, "P-06")
-		problem := problemOf("P-05", err)
+		problem := passes.ParamProblem("P-05", err)
 		if problem.IsZero() {
-			problem = problemOf("P-06", offsetErr)
+			problem = passes.ParamProblem("P-06", offsetErr)
 		}
 		return JudgeEV06(t, sources, offset, problem)
 	}())
@@ -158,15 +156,15 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseCollection, catalog.Says("opexp8.indexer_unread", "error", e.retentionErr.Error()))
 		}
 		rows, err := policy.List(agent.ID, control, "P-07")
-		return JudgeEV07(e.retention, e.managed, LongestRetention(rows), problemOf("P-07", err))
+		return JudgeEV07(e.retention, e.managed, LongestRetention(rows), passes.ParamProblem("P-07", err))
 	}())
 
 	put("EV-08", func() verdict.Judgement {
 		paths, err := policy.List(agent.ID, control, "P-14")
-		problem := problemOf("P-14", err)
+		problem := passes.ParamProblem("P-14", err)
 		accounts, accErr := policy.ListColumn(agent.ID, control, "P-08", 0)
 		if problem.IsZero() {
-			problem = problemOf("P-08", accErr)
+			problem = passes.ParamProblem("P-08", accErr)
 		}
 		var s *fact.ACLSnapshot
 		var records []fact.ACLRecord
@@ -184,38 +182,20 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseCollection, catalog.Says("opexp8.indexer_unread", "error", e.snapshotErr.Error()))
 		}
 		rows, err := policy.List(agent.ID, control, "P-09")
-		return JudgeEV09(e.snapshot, ShortestFrequency(rows), problemOf("P-09", err), now)
+		return JudgeEV09(e.snapshot, ShortestFrequency(rows), passes.ParamProblem("P-09", err), now)
 	}())
 
 	sets, err := policy.ListColumn(agent.ID, control, "P-10", 0)
-	put("EV-10", JudgeEV10(managerConfig, sets, problemOf("P-10", err)))
+	put("EV-10", JudgeEV10(managerConfig, sets, passes.ParamProblem("P-10", err)))
 
 	actions, err := policy.ListColumn(agent.ID, control, "P-11", 0)
 	var p *fact.MalwareProtection
 	if x, ok := e.protection[agent.ID]; ok {
 		p = &x
 	}
-	put("EV-11", JudgeEV11(actions, c, p, problemOf("P-11", err)))
+	put("EV-11", JudgeEV11(actions, c, p, passes.ParamProblem("P-11", err)))
 	put("EV-12", JudgeEV12(e.responses[agent.ID], window))
 	put("EV-13", JudgeEV13(coverage, c))
 
 	return results, nil
-}
-
-func whole(policy params.Lister, agentID, id, notWhole string) (int, catalog.Message) {
-	v, err := policy.Number(agentID, control, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

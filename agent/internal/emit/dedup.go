@@ -102,7 +102,6 @@ func (s *State) Reduce(collector string, lines []byte, now time.Time, full, quie
 
 	last, known := s.Collectors[collector]
 
-	// A clock that went backwards proves nothing about the age: send in full.
 	recent := !full && known && last.Hash == hash && last.RunID != "" && !now.Before(last.At) && now.Sub(last.At) < FullEvery
 
 	sentSnapshot := func(c Sent) Sent {

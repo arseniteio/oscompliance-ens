@@ -1,6 +1,3 @@
-// Package mps3 judges mp.s.3, protection of web browsing: the logs of the browsing filter in Wazuh, its
-// filters backed by loaded rules, the DNS servers each machine asks, the protection of the workstation, the
-// retention of the browsing records, and the awareness and training of users and administrators.
 package mps3
 
 import (
@@ -13,7 +10,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Filters of mp.s.3 as P-03 names them, and the evidence that judges each.
 var Filters = []struct{ Name, Evidence string }{
 	{"categorias", "EV-02"},
 	{"descargas_y_contenido_activo", "EV-03"},
@@ -22,7 +18,6 @@ var Filters = []struct{ Name, Evidence string }{
 	{"evasion", "EV-11"},
 }
 
-// JudgeEV05 needs every DNS server the machine asks among the authorised resolvers of P-04.
 func JudgeEV05(d *fact.DeviceSecurity, authorised []string) verdict.Judgement {
 	switch {
 	case d == nil:
@@ -44,7 +39,6 @@ func JudgeEV05(d *fact.DeviceSecurity, authorised []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps3.resolvers", "list", d.Resolvers))
 }
 
-// JudgeEV08 needs the alerts, where the browsing records live, kept at least the days of P-08.
 func JudgeEV08(days int, found bool, want int) verdict.Judgement {
 	switch {
 	case !found:

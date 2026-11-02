@@ -1,5 +1,3 @@
-// Package keys finds the private keys and certificates on disk under a set of roots: what they are, their
-// fingerprint, who can read them and, for certificates, when they expire and with what algorithms.
 package keys
 
 import (
@@ -29,7 +27,6 @@ import (
 
 type Config struct {
 	Roots []string
-	// Never walked: the system's public CAs, and trees too large to hold keys of the machine.
 	Skip  []string
 	Wazuh wazuh.AgentConfigPaths
 }
@@ -47,7 +44,6 @@ const (
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	roots := slices.Clone(cfg.Roots)
-	// The key stores the manager declares are walked too, wherever they are.
 	if paths, ok, err := wazuh.ReadSharedPaths(cfg.Wazuh); err == nil && ok {
 		for _, p := range paths.KeyStores {
 			if !slices.ContainsFunc(roots, func(r string) bool { return under(p, r) }) {
@@ -113,7 +109,6 @@ func under(path, root string) bool {
 	return path == root || strings.HasPrefix(path, root+"/")
 }
 
-// records reads every PEM block of a file: private keys and certificates.
 func records(e *emit.Emitter, path string, data []byte, info fs.FileInfo) []any {
 
 	var out []any
@@ -154,8 +149,6 @@ func kind(blockType string) string {
 	return "pkcs8"
 }
 
-// fingerprint is the SHA256 of the public part, written as OpenSSH writes it: for an OpenSSH key, of the
-// blob of its .pub file; for a PEM key, of its public key in DER.
 func fingerprint(path string, block *pem.Block) string {
 	if block.Type == "OPENSSH PRIVATE KEY" {
 		pub, err := fsread.ReadFile(path + ".pub")

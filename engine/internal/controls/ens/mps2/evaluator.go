@@ -12,7 +12,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps1"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -30,7 +29,6 @@ type Facts interface {
 
 const control = "mp.s.2"
 
-// The requirements each modality of audit of P-07 answers.
 var modalityRequirements = map[string][]string{
 	BlackBox: {"mp.s.2.r1.1", "mp.s.2.r1.2"},
 	WhiteBox: {"mp.s.2.r2.1", "mp.s.2.r2.2", "mp.s.2.r2.3"},
@@ -96,7 +94,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return results, nil
 	}
 	platform := mps1.ParsePlatform(rows)
-	// No machine of P-01 reports: the manager carries the applications for the organisation.
 	carrier := !platform.Runs(agent.Name)
 	if carrier && (slices.ContainsFunc(platform.Machines, e.fleet.Has) || !scope.Carrier(agent.ID)) {
 		return mps1.OutOfScope(control, catalog.Says("mps2.not_web"), e.decisions, agent.ID), nil
@@ -109,7 +106,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	put("EV-01", func() verdict.Judgement {
-		hours, problem := opmon1.Whole(policy, agent.ID, control, "P-11", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, control, "P-11", "param.not_hours")
 		if !problem.IsZero() {
 			return gap(problem)
 		}
@@ -139,7 +136,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	put("EV-10", func() verdict.Judgement {
-		days, problem := opmon1.Whole(policy, agent.ID, control, "P-09", "param.not_days")
+		days, problem := passes.Whole(policy, agent.ID, control, "P-09", "param.not_days")
 		if !problem.IsZero() {
 			return gap(problem)
 		}
@@ -153,7 +150,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	modality := ""
 	if modalityProblem.IsZero() {
 		modality = Modality(modalityRows[0])
-		// Black box audits alone are no option at ALTO: the white box reinforcements stay to be met.
 		if modality == BlackBox && policy.Level() == "ALTO" {
 			modality = WhiteBox
 		}
@@ -170,7 +166,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-11", func() verdict.Judgement {
 		audits, problem := list("P-08", false)
-		days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-10", "param.not_days")
+		days, daysProblem := passes.Whole(policy, agent.ID, control, "P-10", "param.not_days")
 		for _, p := range []catalog.Message{modalityProblem, problem, daysProblem} {
 			if !p.IsZero() {
 				return gap(p)

@@ -28,14 +28,12 @@ type options struct {
 }
 
 type paths struct {
-	Passwd  string `json:"passwd"`
-	Shadow  string `json:"shadow"`
-	Group   string `json:"group"`
-	SSHD    string `json:"sshd"`
-	Sudoers string `json:"sudoers"`
-	PAMDir  string `json:"pam_dir"`
-	// The group configuration the engine writes, and the agent's own key that names this machine in it.
-	// On the Wazuh manager: the agent.conf of one ENS group, and no key (its client.keys lists every agent).
+	Passwd          string `json:"passwd"`
+	Shadow          string `json:"shadow"`
+	Group           string `json:"group"`
+	SSHD            string `json:"sshd"`
+	Sudoers         string `json:"sudoers"`
+	PAMDir          string `json:"pam_dir"`
 	WazuhSharedConf string `json:"wazuh_shared_conf"`
 	WazuhClientKeys string `json:"wazuh_client_keys"`
 }

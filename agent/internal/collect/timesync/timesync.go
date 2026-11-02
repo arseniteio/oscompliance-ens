@@ -1,4 +1,3 @@
-// Package timesync reports how the machine keeps its clock: chrony when it runs, else systemd-timesyncd.
 package timesync
 
 import (
@@ -49,7 +48,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// parseTracking reads `Leap status : Normal` and `System time : 0.000012 seconds fast of NTP time`.
 func parseTracking(out string) (synchronised bool, offset float64) {
 	for _, line := range strings.Split(out, "\n") {
 		key, value, ok := strings.Cut(line, ":")
@@ -73,7 +71,6 @@ func parseTracking(out string) (synchronised bool, offset float64) {
 	return synchronised, offset
 }
 
-// parseSources keeps the address of each `^*` (selected) or `^+` (combined) source.
 func parseSources(out string) []string {
 	sources := []string{}
 	for _, line := range strings.Split(out, "\n") {
@@ -85,7 +82,6 @@ func parseSources(out string) []string {
 	return sources
 }
 
-// authenticated says whether a chrony source asks NTS or a symmetric key.
 func authenticated(patterns []string) bool {
 	for _, pattern := range patterns {
 		files, _ := filepath.Glob(pattern)

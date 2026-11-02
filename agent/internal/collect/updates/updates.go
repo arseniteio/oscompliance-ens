@@ -1,5 +1,3 @@
-// Package updates tells what the package manager would upgrade now, without downloading anything, and how
-// old the package lists it decides from are.
 package updates
 
 import (
@@ -44,7 +42,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// count reads the `Inst` lines of a simulated upgrade: `Inst pkg [old] (new pocket [arch])`.
 func count(out string) (pending, security int) {
 	for _, line := range strings.Split(out, "\n") {
 		if !strings.HasPrefix(line, "Inst ") {

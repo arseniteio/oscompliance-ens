@@ -16,8 +16,6 @@ type Interface struct {
 	State string
 }
 
-// Network is what Wazuh's inventory holds of a machine's connections: its interfaces, addresses and
-// gateways, and the processes of tunnelling tools it runs.
 type Network struct {
 	Interfaces  []Interface
 	Addresses   []string
@@ -26,8 +24,6 @@ type Network struct {
 	Tunnels     []string
 }
 
-// UseManagerNetwork sets where the manager's own network inventory is read, since Wazuh leaves it out of
-// the state indices.
 func (s *Source) UseManagerNetwork(read func(ctx context.Context, tools []string) (*Network, error)) {
 	s.managerNetwork = read
 }
@@ -39,8 +35,6 @@ type networkCache struct {
 	value map[string]*Network
 }
 
-// Networks reads the network inventory of every machine; tools are the process names of tunnelling tools.
-// Several controls of a pass read it: it is read once while it stays fresh.
 func (s *Source) Networks(ctx context.Context, tools []string) (map[string]*Network, error) {
 
 	c := &s.networks
@@ -134,8 +128,6 @@ func (s *Source) readNetworks(ctx context.Context, tools []string) (map[string]*
 	return out, nil
 }
 
-// SourceActivity are the hours with alerts from a source since a time: an agent, a hostname as Wazuh
-// decodes it, or a log location.
 func (s *Source) SourceActivity(ctx context.Context, name string, since time.Time) ([]time.Time, error) {
 
 	filter := []any{
@@ -161,16 +153,13 @@ func sourceIs(name string) any {
 	}}}
 }
 
-// Flow is a connection a perimeter device let through, as its logs decode in Wazuh.
 type Flow struct {
 	Source, Destination, Protocol, Port string
 	Count                               int
 }
 
-// acceptedActions are the values Wazuh's firewall decoders give data.action for a connection let through.
 var acceptedActions = []any{"accept", "accepted", "allow", "allowed", "pass", "permit", "permitted", "ACCEPT", "Accept"}
 
-// AcceptedFlows are the connections the named sources let through since a time.
 func (s *Source) AcceptedFlows(ctx context.Context, names []string, since time.Time) ([]Flow, error) {
 
 	if len(names) == 0 {
@@ -201,7 +190,6 @@ func (s *Source) AcceptedFlows(ctx context.Context, names []string, since time.T
 	return out, err
 }
 
-// RemoteLogin is an authentication event of a machine from an address.
 type RemoteLogin struct {
 	Address string
 	Count   int
@@ -210,7 +198,6 @@ type RemoteLogin struct {
 
 var remoteAccessGroups = []any{"sshd", "authentication_success", "authentication_failed", "authentication_failures"}
 
-// RemoteLogins are the source addresses of the authentication events of every machine since a time.
 func (s *Source) RemoteLogins(ctx context.Context, since time.Time) (map[string][]RemoteLogin, error) {
 
 	filter := []any{
@@ -232,7 +219,6 @@ func (s *Source) RemoteLogins(ctx context.Context, since time.Time) (map[string]
 	return out, err
 }
 
-// Processes are the processes of every machine whose names are among some names.
 func (s *Source) Processes(ctx context.Context, names []string) (map[string][]string, error) {
 
 	out := map[string][]string{}

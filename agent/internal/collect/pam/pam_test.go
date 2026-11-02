@@ -28,10 +28,7 @@ auth required /lib/security/pam_faillock.so authfail \
 		return Collect(e, Config{Dir: dir, Services: []string{"sshd", "login", "su", "sudo"}})
 	})
 
-	var rules []map[string]any
-	for _, f := range facts[:len(facts)-1] {
-		rules = append(rules, f)
-	}
+	rules := facts[:len(facts)-1]
 	snapshot := facts[len(facts)-1]
 
 	type rule struct{ service, kind, control, module string }

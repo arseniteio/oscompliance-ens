@@ -1,5 +1,3 @@
-// Package virtualization tells whether the machine is a virtual machine: what systemd-detect-virt says,
-// else what the firmware (DMI) or the CPU flags say. A container is not a virtual machine.
 package virtualization
 
 import (
@@ -21,7 +19,6 @@ type Config struct {
 
 var Default = Config{DetectVirt: "/usr/bin/systemd-detect-virt", DMI: "/sys/class/dmi/id", CPUInfo: "/proc/cpuinfo"}
 
-// Firmware vendors and products of the common hypervisors.
 var hypervisors = []string{"QEMU", "KVM", "VMware", "VirtualBox", "innotek", "Xen", "Virtual Machine", "Bochs", "Parallels", "Amazon EC2", "Google Compute Engine"}
 
 func Collect(e *emit.Emitter, cfg Config) error {
@@ -30,7 +27,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	v.Vendor = firstLine(cfg.DMI + "/sys_vendor")
 	v.Product = firstLine(cfg.DMI + "/product_name")
 
-	// It exits 1 when it finds none, and then the firmware and the CPU are asked too.
 	if host.Exists(cfg.DetectVirt) {
 		if out, err := host.Run(cfg.DetectVirt, "--vm"); err == nil {
 			if p := strings.TrimSpace(out); p != "" && p != "none" {

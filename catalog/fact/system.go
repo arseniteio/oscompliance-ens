@@ -6,7 +6,6 @@ const (
 	BackupSnapshotFact   = "backup_snapshot"
 )
 
-// PackageSelection is the packages installed on request, not pulled in as dependencies.
 type PackageSelection struct {
 	Envelope
 	Manager  string   `json:"manager"`
@@ -23,8 +22,6 @@ type UnitSnapshot struct {
 	Failed []string `json:"failed"`
 }
 
-// BackupSource is the copies one source holds: their dates and size, who can read them and the
-// filesystem they live on.
 type BackupSource struct {
 	Source        string `json:"source"`
 	Status        string `json:"status"`

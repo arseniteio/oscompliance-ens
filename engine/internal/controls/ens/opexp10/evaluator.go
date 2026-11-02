@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc4"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc6"
@@ -113,7 +112,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	storeRows, err := policy.List(agent.ID, control, "P-02")
-	stores, storesProblem := ParseStores(storeRows), problemOf("P-02", err)
+	stores, storesProblem := ParseStores(storeRows), passes.ParamProblem("P-02", err)
 	var paths []string
 	for _, s := range stores {
 		paths = append(paths, s.Path)
@@ -130,13 +129,13 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	allowed, err := policy.ListColumn(agent.ID, control, "P-08", 0)
 	problem := storesProblem
 	if problem.IsZero() {
-		problem = problemOf("P-08", err)
+		problem = passes.ParamProblem("P-08", err)
 	}
 	put("EV-01", JudgeEV01(accesses, accounts, stores, allowed, problem, opacc4.AuditChain(watches, wazuh, false, paths)))
 	put("EV-02", JudgeEV02(keys, stores, storesProblem))
 
 	algorithms, err := policy.List(agent.ID, control, "P-03")
-	algorithmsProblem := problemOf("P-03", err)
+	algorithmsProblem := passes.ParamProblem("P-03", err)
 	put("EV-03", JudgeEV03(settings, Algorithms(algorithms), algorithmsProblem))
 	put("EV-04", JudgeEV04(logins, Algorithms(algorithms), algorithmsProblem))
 
@@ -152,18 +151,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}())
 
 	inventory, err := policy.List(agent.ID, control, "P-01")
-	put("EV-06", JudgeEV06(keys, inventory, agent.Name, problemOf("P-01", err)))
+	put("EV-06", JudgeEV06(keys, inventory, agent.Name, passes.ParamProblem("P-01", err)))
 
 	notice, err := policy.Number(agent.ID, control, "P-10")
-	put("EV-07", JudgeEV07(keys, int(notice), problemOf("P-10", err), now))
+	put("EV-07", JudgeEV07(keys, int(notice), passes.ParamProblem("P-10", err), now))
 	put("EV-08", JudgeEV08(keys, stores, storesProblem))
 
 	return results, nil
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

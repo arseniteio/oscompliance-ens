@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// TXT reads the TXT records of a name; a name without them is not an error.
 func (s *Source) TXT(ctx context.Context, name string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

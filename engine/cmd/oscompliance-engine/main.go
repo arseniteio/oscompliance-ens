@@ -259,8 +259,6 @@ type groupSync struct {
 	last    time.Time
 }
 
-// run keeps the group configuration in step with the parameters. A failed sync never stops the
-// pass: the verdicts still come out, and the next sync tries again.
 func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Time) {
 
 	if g == nil || now.Sub(g.last) < g.every {

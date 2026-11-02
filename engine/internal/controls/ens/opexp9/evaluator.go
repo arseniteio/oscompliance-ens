@@ -77,7 +77,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-01", JudgeEV01(incidents, count))
 
 	phases, err := policy.List(agent.ID, control, "P-02")
-	put("EV-02", JudgeEV02(incidents, Due(phases), problemOf("P-02", err)))
+	put("EV-02", JudgeEV02(incidents, Due(phases), passes.ParamProblem("P-02", err)))
 
 	put("EV-03", opexp7.JudgeEV06(incidents, e.responses[agent.ID], now))
 
@@ -97,7 +97,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			}
 		}
 		requests, err := policy.List(agent.ID, opexp5.Control, opexp5.RegisterParam)
-		return JudgeEV04(incidents, opexp5.Changes(fim, records, since), opexp5.ParseRegister(requests), agent.Name, problemOf("op.exp.5 P-10", err), now)
+		return JudgeEV04(incidents, opexp5.Changes(fim, records, since), opexp5.ParseRegister(requests), agent.Name, passes.ParamProblem("op.exp.5 P-10", err), now)
 	}())
 
 	var manager *fact.WazuhAgentConfig
@@ -108,15 +108,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-07", JudgeEV07(incidents, count, now))
 
 	review, err := policy.List(agent.ID, control, "P-07")
-	put("EV-08", JudgeEV08(incidents, review, problemOf("P-07", err), now))
+	put("EV-08", JudgeEV08(incidents, review, passes.ParamProblem("P-07", err), now))
 	put("EV-09", JudgeEV09(incidents))
 
 	return results, nil
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

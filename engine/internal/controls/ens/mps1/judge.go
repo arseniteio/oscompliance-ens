@@ -1,6 +1,3 @@
-// Package mps1 judges mp.s.1, protection of e-mail, on the machines of the mail platform: its logs in
-// Wazuh, its filters backed by loaded rules, TLS in transit, the authentication of the own domains, its
-// configuration under change control and the awareness of its users.
 package mps1
 
 import (
@@ -17,8 +14,6 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// Platform is the rows of a platform parameter (`plataforma | maquina | fuente`): the machines that run it
-// and the sources of its logs in Wazuh.
 type Platform struct {
 	Machines []string
 	Sources  []mpcom1.Element
@@ -38,7 +33,6 @@ func ParsePlatform(rows []string) Platform {
 	return p
 }
 
-// Runs tells whether a machine is part of the platform.
 func (p Platform) Runs(machine string) bool {
 	for _, m := range p.Machines {
 		if m == strings.ToLower(machine) {
@@ -52,7 +46,6 @@ const postfix = "/etc/postfix/main.cf"
 
 var weakProtocols = []string{"SSLv2", "SSLv3", "TLSv1", "TLSv1.1"}
 
-// excluded tells whether a Postfix protocol list leaves out a protocol: `!TLSv1` or a floor above it.
 func excluded(list, protocol string) bool {
 	if strings.Contains(list, "!"+protocol+",") || strings.Contains(list, "!"+protocol+" ") || strings.HasSuffix(list, "!"+protocol) {
 		return true
@@ -60,7 +53,6 @@ func excluded(list, protocol string) bool {
 	return strings.Contains(list, ">=TLSv1.2") || strings.Contains(list, ">=TLSv1.3")
 }
 
-// JudgeEV06 needs Postfix to offer and use TLS and refuse the protocols older than TLS 1.2.
 func JudgeEV06(settings opacc6.Settings) verdict.Judgement {
 
 	if gap, found := settings.Gap(); found {
@@ -105,14 +97,11 @@ func JudgeEV06(settings opacc6.Settings) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps1.tls"))
 }
 
-// Domain is what DNS publishes of an own domain of P-02 (`dominio | selector_dkim | politica_dmarc`).
 type Domain struct {
 	Name, Selector   string
 	SPF, DMARC, DKIM []string
 }
 
-// JudgeEV07 needs every own domain with an SPF record that does not allow anyone, a DKIM key under its
-// selector, and a DMARC policy of quarantine or reject.
 func JudgeEV07(domains []Domain) verdict.Judgement {
 
 	if len(domains) == 0 {

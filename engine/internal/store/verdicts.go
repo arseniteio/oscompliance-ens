@@ -63,7 +63,6 @@ func NewVerdicts(ctx context.Context, client *indexer.Client, index string) (*Ve
 	if err := client.EnsureIndex(ctx, index, mapping); err != nil {
 		return nil, err
 	}
-	// An index created by an older engine gets the new fields; existing ones are left as they are.
 	if err := client.Do(ctx, http.MethodPut, "/"+url.PathEscape(index)+"/_mapping", mapping["mappings"], nil); err != nil {
 		return nil, err
 	}

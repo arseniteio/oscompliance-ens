@@ -1,5 +1,3 @@
-// Package opmon1 judges op.mon.1, intrusion detection, over the Wazuh manager's own state and the alerts
-// of each machine.
 package opmon1
 
 import (
@@ -16,23 +14,12 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Daemons are the manager processes without which nothing is detected.
 var Daemons = []string{"wazuh-analysisd", "wazuh-remoted", "wazuh-db", "wazuh-modulesd"}
 
-// NetworkGroups are the rule groups of network intrusion detection Wazuh decodes.
 var NetworkGroups = []string{"ids", "suricata", "snort", "zeek", "nids"}
 
-// Range is an inclusive span of rule ids.
 type Range struct{ From, To int }
 
-func (r Range) String() string {
-	if r.From == r.To {
-		return strconv.Itoa(r.From)
-	}
-	return fmt.Sprintf("%d-%d", r.From, r.To)
-}
-
-// ParseRules reads rule ids and ranges such as `5710, 5712, 80700-80799`.
 func ParseRules(s string) ([]Range, error) {
 	var out []Range
 	for _, part := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' || r == ';' }) {
@@ -52,7 +39,6 @@ func ParseRules(s string) ([]Range, error) {
 	return out, nil
 }
 
-// Alerting are the loaded rules that can raise an alert: level 1 or more.
 func Alerting(rules []source.Rule, ranges []Range) []source.Rule {
 	var out []source.Rule
 	for _, r := range rules {
@@ -63,8 +49,6 @@ func Alerting(rules []source.Rule, ranges []Range) []source.Rule {
 	return out
 }
 
-// InSet tells whether a rule belongs to a rule set of P-02: `wazuh` for the shipped ruleset, `propias`
-// for etc/rules, or the name of a rule file.
 func InSet(r source.Rule, set string) bool {
 	switch strings.ToLower(set) {
 	case "wazuh":
@@ -75,19 +59,6 @@ func InSet(r source.Rule, set string) bool {
 	return r.File == set
 }
 
-func cells(row string, n int) []string {
-	c := strings.Split(row, "|")
-	for len(c) < n {
-		c = append(c, "")
-	}
-	for i := range c {
-		c[i] = strings.TrimSpace(c[i])
-	}
-	return c
-}
-
-// JudgeEV01 needs the manager's detection processes running and rules loaded, each rule set of P-02
-// (`conjunto | descripcion | minimo_reglas`) with at least its rules.
 func JudgeEV01(m *source.Manager, sets []string) verdict.Judgement {
 
 	var stopped []string
@@ -112,7 +83,7 @@ func JudgeEV01(m *source.Manager, sets []string) verdict.Judgement {
 
 	var short []catalog.Message
 	for _, row := range sets {
-		c := cells(row, 3)
+		c := passes.Cells(row, 3)
 		want, _ := strconv.Atoi(c[2])
 		got := 0
 		for _, r := range m.Rules {
@@ -130,7 +101,6 @@ func JudgeEV01(m *source.Manager, sets []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.detecting", "rules", alerting, "sets", len(sets)))
 }
 
-// JudgeEV02 needs the machine reporting to the manager within maxHours and its FIM and SCA enabled.
 func JudgeEV02(reporting *source.Reporting, config *fact.WazuhAgentConfig, maxHours int, now time.Time) verdict.Judgement {
 
 	switch {
@@ -157,7 +127,6 @@ func JudgeEV02(reporting *source.Reporting, config *fact.WazuhAgentConfig, maxHo
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.covered", "date", day(reporting.LastKeepAlive)))
 }
 
-// JudgeEV03 needs an alert of the machine, OSCompliance's own facts left out, within maxDays.
 func JudgeEV03(d source.Detection, maxDays int, now time.Time) verdict.Judgement {
 	if d.Last.IsZero() || now.Sub(d.Last) > time.Duration(maxDays)*24*time.Hour {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opmon1.no_detections", "days", maxDays))
@@ -165,13 +134,11 @@ func JudgeEV03(d source.Detection, maxDays int, now time.Time) verdict.Judgement
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.detections", "count", d.Count, "date", day(d.Last)))
 }
 
-// JudgeEV04 needs every compromise situation of P-03 (`situacion | ambito | reglas`) covered by a loaded
-// rule that can alert.
 func JudgeEV04(m *source.Manager, rows []string) verdict.Judgement {
 
 	var blind, covered []catalog.Message
 	for _, row := range rows {
-		c := cells(row, 3)
+		c := passes.Cells(row, 3)
 		ranges, err := ParseRules(c[2])
 		if err != nil || len(ranges) == 0 {
 			return passes.Gap(verdict.CauseConfiguration, catalog.Says("opmon1.bad_rules", "name", c[0], "rules", c[2]))
@@ -189,10 +156,8 @@ func JudgeEV04(m *source.Manager, rows []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.situations_covered", "list", covered))
 }
 
-// JudgeEV05 needs, when P-01 (`necesaria | producto | justificacion`) says the risk analysis asks for
-// network detection, network intrusion alerts within maxDays.
 func JudgeEV05(row string, network source.Detection, maxDays int, now time.Time) verdict.Judgement {
-	c := cells(row, 3)
+	c := passes.Cells(row, 3)
 	if strings.ToLower(c[0]) != "si" && strings.ToLower(c[0]) != "sí" {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.network_not_needed", "why", c[2]))
 	}
@@ -202,13 +167,11 @@ func JudgeEV05(row string, network source.Detection, maxDays int, now time.Time)
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.network_alerts", "product", c[1], "count", network.Count, "date", day(network.Last)))
 }
 
-// JudgeEV07 needs every automatic action of P-06 (`accion | reglas | alcance | timeout`) configured and
-// enabled in the manager.
 func JudgeEV07(m *source.Manager, rows []string, runs int) verdict.Judgement {
 
 	var missing []string
 	for _, row := range rows {
-		action := cells(row, 1)[0]
+		action := passes.Cells(row, 1)[0]
 		if !slices.ContainsFunc(m.Responses, func(r source.Response) bool { return r.Command == action && !r.Disabled }) {
 			missing = append(missing, action)
 		}
@@ -219,7 +182,6 @@ func JudgeEV07(m *source.Manager, rows []string, runs int) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.responses", "count", len(rows), "runs", runs))
 }
 
-// Silenced are the rule files the manager excludes and the stock rules it rewrites to level 0.
 func Silenced(m *source.Manager) []string {
 	out := slices.Clone(m.RuleExclude)
 	for _, r := range m.Rules {
@@ -230,8 +192,6 @@ func Silenced(m *source.Manager) []string {
 	return out
 }
 
-// JudgeEV08 needs the ruleset installed within maxDays and every silenced rule or file in P-05
-// (`regla | motivo | aprobador`).
 func JudgeEV08(m *source.Manager, approved []string, maxDays int, now time.Time) verdict.Judgement {
 
 	if m.Installed.IsZero() {
@@ -244,7 +204,7 @@ func JudgeEV08(m *source.Manager, approved []string, maxDays int, now time.Time)
 
 	known := map[string]bool{}
 	for _, row := range approved {
-		c := cells(row, 3)
+		c := passes.Cells(row, 3)
 		if c[0] != "" && c[1] != "" && c[2] != "" {
 			known[c[0]] = true
 		}
@@ -263,8 +223,6 @@ func JudgeEV08(m *source.Manager, approved []string, maxDays int, now time.Time)
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
 
-// ReportingOf is the newest monitoring record of a machine. Wazuh keeps no keepalive of the manager: it
-// reports while its analysis runs.
 func ReportingOf(agentID string, all map[string]source.Reporting, m *source.Manager, now time.Time) *source.Reporting {
 	if r, ok := all[agentID]; ok {
 		return &r

@@ -1,6 +1,3 @@
-// Package mpcom3 judges mp.com.3, integrity and authenticity of communications: peers authenticated before
-// exchanging, active attacks detected and handled as incidents, encrypted tunnels outside the domain, the
-// configuration of the channels kept under change control, and certified products.
 package mpcom3
 
 import (
@@ -25,8 +22,6 @@ func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
 const sshClient = "/etc/ssh/ssh_config"
 
-// JudgeEV01 needs the SSH client to refuse peers whose host key it does not know: no StrictHostKeyChecking
-// no and no known hosts thrown away.
 func JudgeEV01(settings opacc6.Settings) verdict.Judgement {
 
 	if gap, found := settings.Gap(); found {
@@ -58,17 +53,14 @@ func JudgeEV01(settings opacc6.Settings) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.peers_verified"))
 }
 
-// Attacks of mp.com.3.2 as P-02 names them.
 var Attacks = []string{"alteracion", "inyeccion", "secuestro"}
 
-// Indicator is a row of P-02 (`ataque | indicador | fuente | reglas`) and the rules it names.
 type Indicator struct {
 	Kind, Name, Rules string
 	Ranges            []opmon1.Range
 	Err               error
 }
 
-// Detection are the indicators of P-02 for one attack.
 func Detection(rows []string, attack string) []Indicator {
 	var out []Indicator
 	for _, r := range rows {
@@ -82,14 +74,12 @@ func Detection(rows []string, attack string) []Indicator {
 	return out
 }
 
-// JudgeAttack needs every indicator of an attack in P-02 with a loaded rule that can alert.
 func JudgeAttack(m *source.Manager, rows []string, attack string) verdict.Judgement {
 
 	indicators := Detection(rows, attack)
 	if len(indicators) == 0 {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom3.attack_undeclared", "attack", strings.ReplaceAll(attack, "_", " ")))
 	}
-	// Named as the parameter writes it, accents and all.
 	name := indicators[0].Kind
 	var blind, covered []catalog.Message
 	for _, in := range indicators {
@@ -109,7 +99,6 @@ func JudgeAttack(m *source.Manager, rows []string, attack string) verdict.Judgem
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.attack_detected", "attack", name, "list", covered))
 }
 
-// RuleIDs are the loaded rules P-02 names for every attack.
 func RuleIDs(m *source.Manager, rows []string) []string {
 	var out []string
 	for _, attack := range Attacks {
@@ -124,8 +113,6 @@ func RuleIDs(m *source.Manager, rows []string) []string {
 	return out
 }
 
-// JudgeEV07 needs an incident of op.exp.7 for the machine opened within a day of every hour it detected an
-// active attack.
 func JudgeEV07(hours []time.Time, incidents []opexp7.Incident) verdict.Judgement {
 	var unhandled []string
 	for _, h := range hours {
@@ -142,8 +129,6 @@ func JudgeEV07(hours []time.Time, incidents []opexp7.Incident) verdict.Judgement
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.attacks_handled", "count", len(hours)))
 }
 
-// JudgeEV08 needs every channel of P-05 (`canal | sistema | tunel | protocolo | cifrado`) of the machine
-// running through its tunnel: the interface up, or the tunnelling process.
 func JudgeEV08(rows []string, machine string, network *source.Network) verdict.Judgement {
 
 	var mine [][]string
@@ -172,8 +157,6 @@ func JudgeEV08(rows []string, machine string, network *source.Network) verdict.J
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.tunnels_up", "count", len(mine)))
 }
 
-// JudgeEV11 needs every product of P-07 (`producto | certificacion | referencia | vigencia`) certified in
-// force.
 func JudgeEV11(rows []string, now time.Time) verdict.Judgement {
 	var expired []string
 	for _, r := range rows {
@@ -189,8 +172,6 @@ func JudgeEV11(rows []string, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom3.products_certified", "count", len(rows)))
 }
 
-// JudgeEV10 needs every change FIM saw under the channel configurations of P-06 covered by a request of
-// op.exp.5.
 func JudgeEV10(fim []source.FIMChange, paths []string, requests []opexp5.Request, machine string, since time.Time) verdict.Judgement {
 
 	var mine []source.FIMChange

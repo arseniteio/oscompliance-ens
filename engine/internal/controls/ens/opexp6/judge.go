@@ -1,5 +1,3 @@
-// Package opexp6 judges op.exp.6, protection against malicious code: the machine's antimalware, and the
-// allowlist and EDR layer Wazuh provides.
 package opexp6
 
 import (
@@ -34,7 +32,6 @@ func running(p *fact.MalwareProtection) []string {
 	return out
 }
 
-// Settings are the ClamAV settings the agent reports; one it does not list is off.
 var Settings = []string{"proteccion_tiempo_real", "actualizacion_automatica_firmas", "analisis_comprimidos", "registro_syslog"}
 
 func hasClam(p *fact.MalwareProtection) bool {
@@ -88,8 +85,6 @@ func JudgeEV02(p *fact.MalwareProtection, maxHours int, problem catalog.Message,
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp6.signatures_current", "built", built.UTC().Format("2006-01-02 15:04"), "max", maxHours))
 }
 
-// unread stands for what only ClamAV lets the agent read: nothing to judge without an antimalware, and
-// nothing to read with another one.
 func unread(p *fact.MalwareProtection) (verdict.Judgement, bool) {
 	switch {
 	case hasClam(p):
@@ -260,7 +255,6 @@ func JudgeEV07(p *fact.MalwareProtection) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp6.allowlist_enforcing"))
 }
 
-// Capabilities are the EDR rows of P-09 that are switched on.
 func Capabilities(rows []string) map[string]bool {
 	out := map[string]bool{}
 	for _, r := range rows {

@@ -1,4 +1,3 @@
-// Package mpinfo6 judges mp.info.6, backups, over the copies each machine declares in P-04.
 package mpinfo6
 
 import (
@@ -14,8 +13,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Copy is a row of P-04 (`copia | ruta | frecuencia_horas | retencion_dias`); a zero Hours or Days takes
-// P-01 or P-03.
 type Copy struct {
 	Name   string
 	Source string
@@ -48,7 +45,6 @@ func ParseCopies(rows []string) []Copy {
 	return out
 }
 
-// Read pairs every copy with what the agent read of its source; a copy the agent did not read is a gap.
 func Read(b *fact.BackupSnapshot, copies []Copy) (map[string]fact.BackupSource, verdict.Judgement, bool) {
 
 	switch {
@@ -86,7 +82,6 @@ func oldest(s fact.BackupSource) time.Time {
 
 func isGit(source string) bool { return strings.HasPrefix(source, "git:") }
 
-// JudgeEV01 needs a newest copy of every copy, not empty.
 func JudgeEV01(copies []Copy, read map[string]fact.BackupSource) verdict.Judgement {
 
 	var failed, done []catalog.Message
@@ -107,7 +102,6 @@ func JudgeEV01(copies []Copy, read map[string]fact.BackupSource) verdict.Judgeme
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpinfo6.copies_done", "count", len(done), "list", done))
 }
 
-// JudgeEV02 needs the newest copy of every copy within its interval plus the margin of P-02.
 func JudgeEV02(copies []Copy, read map[string]fact.BackupSource, hours, margin int, now time.Time) verdict.Judgement {
 
 	var late, fresh []catalog.Message
@@ -140,7 +134,6 @@ func JudgeEV02(copies []Copy, read map[string]fact.BackupSource, hours, margin i
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpinfo6.copies_fresh", "list", fresh))
 }
 
-// JudgeEV03 needs every copy kept at least its retention: its oldest copy that old.
 func JudgeEV03(copies []Copy, read map[string]fact.BackupSource, days int, now time.Time) verdict.Judgement {
 
 	var short, kept []catalog.Message
@@ -176,8 +169,6 @@ func JudgeEV03(copies []Copy, read map[string]fact.BackupSource, days int, now t
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpinfo6.retention_kept", "list", kept))
 }
 
-// JudgeEV04 needs the copies and their keys readable only by accounts of P-07: the owner, and the group
-// when it can read; nobody else. A key must be readable by its owner only.
 func JudgeEV04(copies []Copy, read map[string]fact.BackupSource, keys []fact.BackupKey, wanted []string, allowed []string) verdict.Judgement {
 
 	ok := func(name string) bool { return slices.Contains(allowed, name) }
@@ -227,8 +218,6 @@ func JudgeEV04(copies []Copy, read map[string]fact.BackupSource, keys []fact.Bac
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpinfo6.access_closed", "copies", len(copies), "keys", len(wanted)))
 }
 
-// Restores are the rows of P-06 (`fecha | maquina | copia | resultado | verificacion`) of this machine that
-// restored correctly.
 func Restores(rows []string, machine string) []string {
 	var out []string
 	for _, r := range rows {
@@ -243,7 +232,6 @@ func Restores(rows []string, machine string) []string {
 	return out
 }
 
-// remoteFilesystems hold data on another machine.
 var remoteFilesystems = []string{"nfs", "nfs4", "cifs", "smb3", "smbfs", "9p", "ceph", "glusterfs", "lustre", "davfs", "afs",
 	"fuse.sshfs", "fuse.s3fs", "fuse.rclone", "fuse.gcsfuse", "fuse.glusterfs", "fuse.cephfs", "fuse.davfs2", "fuse.goofys", "fuse.mountpoint-s3"}
 
@@ -251,7 +239,6 @@ func Remote(s fact.BackupSource) bool {
 	return slices.Contains(remoteFilesystems, s.Filesystem) || strings.Contains(s.Device, ":") || strings.HasPrefix(s.Device, "//")
 }
 
-// JudgeEV06 needs at least one copy with copies on a filesystem of another machine.
 func JudgeEV06(copies []Copy, read map[string]fact.BackupSource) verdict.Judgement {
 
 	var local []catalog.Message

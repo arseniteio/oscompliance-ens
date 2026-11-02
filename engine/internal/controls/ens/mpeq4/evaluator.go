@@ -9,7 +9,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom1"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -124,7 +123,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}())
 
 	put("EV-04", func() verdict.Judgement {
-		hours, problem := opmon1.Whole(policy, agent.ID, control, "P-06", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, control, "P-06", "param.not_hours")
 		for _, p := range []catalog.Message{loggingProblem, problem} {
 			if !p.IsZero() {
 				return gap(p)
@@ -149,7 +148,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// activity reads the devices' logs and flows once a pass: they are the organisation's, not the machine's.
 func (e *Evaluator) activity(ctx context.Context, elements []mpcom1.Element, flowSources []string) ([]mpcom1.Element, []source.Flow, error) {
 	for i, el := range elements {
 		h, ok := e.hours[el.Source]

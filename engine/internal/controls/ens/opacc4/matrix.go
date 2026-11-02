@@ -26,9 +26,7 @@ func ParseMatrix(rows []string) []Row {
 			c = append(c, "")
 		}
 		row := Row{Role: strings.TrimSpace(c[0]), Resource: strings.TrimSpace(c[1])}
-		for _, a := range splitAccess(c[2]) {
-			row.Access = append(row.Access, a)
-		}
+		row.Access = append(row.Access, splitAccess(c[2])...)
 		if row.Role != "" {
 			out = append(out, row)
 		}

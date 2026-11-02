@@ -20,8 +20,6 @@ func (c *Client) ManagerStatus(ctx context.Context) (map[string]string, error) {
 	return status[0], nil
 }
 
-// ManagerSection decodes one section of the manager's ossec.conf into v; a section the file lacks leaves
-// v untouched and returns false.
 func (c *Client) ManagerSection(ctx context.Context, section string, v any) (bool, error) {
 	var items []map[string]json.RawMessage
 	if _, err := c.items(ctx, "/manager/configuration?section="+url.QueryEscape(section), 0, 0, &items); err != nil {
@@ -52,7 +50,6 @@ type Rule struct {
 
 const rulesPage = 1000
 
-// Rules are the rules the manager loads, the excluded files left out.
 func (c *Client) Rules(ctx context.Context) ([]Rule, error) {
 	var out []Rule
 	for offset := 0; ; offset += rulesPage {
@@ -86,7 +83,6 @@ func (c *Client) AgentPackage(ctx context.Context, agentID, name string) (*Packa
 	return &found[0], nil
 }
 
-// Network is what the manager holds of an agent's interfaces, addresses, gateways and tunnelling tools.
 type Network struct {
 	Interfaces []struct {
 		Name  string `json:"name"`

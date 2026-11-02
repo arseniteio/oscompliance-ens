@@ -1,5 +1,3 @@
-// Package opexp1 judges op.exp.1, asset inventory: the technical inventory is Wazuh's Syscollector, the
-// declared one (owners, nature, assets without agent, reviews) is the organisation's.
 package opexp1
 
 import (
@@ -15,8 +13,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Freshness is what proves an inventory with no date is current: Syscollector scanning often enough and
-// the agent still in contact.
 type Freshness struct {
 	Config       *fact.WazuhAgentConfig
 	Reporting    *source.Reporting
@@ -26,7 +22,6 @@ type Freshness struct {
 	Now          time.Time
 }
 
-// Stale is the judgement that stands for an inventory that cannot be shown current, if any.
 func (f Freshness) Stale(scans []string) (verdict.Judgement, bool) {
 
 	if !f.HoursProblem.IsZero() {
@@ -77,7 +72,6 @@ func hours(seconds int) string {
 
 func stamp(t time.Time) string { return t.UTC().Format("2006-01-02 15:04 UTC") }
 
-// missing names the inventory Wazuh lacks by the code of its kind.
 func missing(kind string) verdict.Judgement {
 	return passes.Gap(verdict.CauseCollection, catalog.Says("opexp1.no_inventory", "kind", catalog.Says(kind)))
 }
@@ -161,7 +155,6 @@ func JudgeEV04(r *source.Reporting, manager bool, maxHours int, hoursProblem cat
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp1.reporting", "since", stamp(r.LastKeepAlive)))
 }
 
-// JudgeEV05 needs every neighbour to be known: an asset of P-02 or an address of a machine with an agent.
 func JudgeEV05(s *fact.NeighbourSnapshot, declared []string, declaredProblem catalog.Message, agents map[string]bool) verdict.Judgement {
 
 	if s == nil {
@@ -194,7 +187,6 @@ func JudgeEV05(s *fact.NeighbourSnapshot, declared []string, declaredProblem cat
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp1.neighbours_known", "count", len(s.Neighbours)))
 }
 
-// JudgeEV06 is the review register of P-09 against P-04, with the package changes Wazuh saw since that review.
 func JudgeEV06(rows []string, rowsProblem catalog.Message, maxDays int, daysProblem catalog.Message, changes map[time.Time]int, now time.Time) verdict.Judgement {
 
 	j, last := passes.Review(rows, rowsProblem, ReviewParam, maxDays, daysProblem, "P-04", now)
@@ -213,7 +205,6 @@ func JudgeEV06(rows []string, rowsProblem catalog.Message, maxDays int, daysProb
 
 const ReviewParam = "P-09"
 
-// JudgeEV07 looks the machine up in P-01 by its agent name: it needs an owner and a nature of P-03.
 func JudgeEV07(name string, rows []string, rowsProblem catalog.Message, natures []string, naturesProblem catalog.Message) verdict.Judgement {
 
 	if !rowsProblem.IsZero() {

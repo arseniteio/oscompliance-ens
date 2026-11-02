@@ -26,7 +26,6 @@ type Facts interface {
 
 const control = "op.exp.1"
 
-// Package changes are counted back to the oldest review a register may reasonably hold.
 const changesHorizon = 366 * 24 * time.Hour
 
 type Evaluator struct {
@@ -74,8 +73,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		}
 	}
 
-	// Every address of a machine with an agent, from any source that names it: Syscollector does not
-	// index the manager, the oscompliance agent does report its addresses.
 	e.agentIPs = map[string]bool{}
 	for _, inv := range e.inventories {
 		for _, ip := range inv.Addresses {
@@ -101,7 +98,7 @@ func (e *Evaluator) Agent(_ context.Context, agent verdict.Agent, policy params.
 	now := e.pass.Now
 	manager := agent.ID == source.ManagerID
 
-	maxHours, hoursProblem := whole(policy, agent.ID, "P-08", "param.not_hours")
+	maxHours, hoursProblem := passes.Whole(policy, agent.ID, control, "P-08", "param.not_hours")
 
 	var reporting *source.Reporting
 	if r, ok := e.reporting[agent.ID]; ok {
@@ -125,11 +122,11 @@ func (e *Evaluator) Agent(_ context.Context, agent verdict.Agent, policy params.
 		neighbours = &n
 	}
 	declared, err := policy.ListColumn(agent.ID, control, "P-02", 2)
-	results["EV-05"] = evaluator.Result{Judgement: JudgeEV05(neighbours, declared, problemOf("P-02", err), e.agentIPs)}
+	results["EV-05"] = evaluator.Result{Judgement: JudgeEV05(neighbours, declared, passes.ParamProblem("P-02", err), e.agentIPs)}
 
 	reviews, err := policy.List(agent.ID, control, ReviewParam)
-	days, daysProblem := whole(policy, agent.ID, "P-04", "param.not_days")
-	results["EV-06"] = evaluator.Result{Judgement: JudgeEV06(reviews, problemOf(ReviewParam, err), days, daysProblem, e.changes[agent.ID], now)}
+	days, daysProblem := passes.Whole(policy, agent.ID, control, "P-04", "param.not_days")
+	results["EV-06"] = evaluator.Result{Judgement: JudgeEV06(reviews, passes.ParamProblem(ReviewParam, err), days, daysProblem, e.changes[agent.ID], now)}
 
 	assets, err := policy.List(agent.ID, control, "P-01")
 	natures, naturesErr := policy.List(agent.ID, control, "P-03")
@@ -137,27 +134,7 @@ func (e *Evaluator) Agent(_ context.Context, agent verdict.Agent, policy params.
 	if naturesErr != nil && !errors.Is(naturesErr, params.ErrNotSet) {
 		naturesProblem = passes.Param("P-03", naturesErr)
 	}
-	results["EV-07"] = evaluator.Result{Judgement: JudgeEV07(agent.Name, assets, problemOf("P-01", err), natures, naturesProblem)}
+	results["EV-07"] = evaluator.Result{Judgement: JudgeEV07(agent.Name, assets, passes.ParamProblem("P-01", err), natures, naturesProblem)}
 
 	return results, nil
-}
-
-// whole reads a parameter that must be a whole number of at least one.
-func whole(policy params.Lister, agentID, id, notWhole string) (int, catalog.Message) {
-
-	v, err := policy.Number(agentID, control, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

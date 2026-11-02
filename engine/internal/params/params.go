@@ -17,7 +17,6 @@ import (
 
 var ErrNotSet = errors.New("not set")
 
-// ValueError says why a parameter value cannot be used, in words the reasons can translate.
 type ValueError struct{ Message catalog.Message }
 
 func (e ValueError) Error() string { return e.Message.Render("en") }
@@ -29,11 +28,10 @@ type Config struct {
 		EnsLevel string `json:"ensLevel"`
 	} `json:"global"`
 	Scope struct {
-		Mode     string   `json:"mode"`
-		AgentIDs []string `json:"agentIds"`
-		GroupIDs []string `json:"groupIds"`
-		// ControlGroups turns on the groups that take a machine out of one control.
-		ControlGroups bool `json:"controlGroups"`
+		Mode          string   `json:"mode"`
+		AgentIDs      []string `json:"agentIds"`
+		GroupIDs      []string `json:"groupIds"`
+		ControlGroups bool     `json:"controlGroups"`
 	} `json:"scope"`
 	Controls []struct {
 		ControlID  string `json:"controlId"`
@@ -65,8 +63,6 @@ type Config struct {
 
 const NoTemplate = "none"
 
-// UseInventoryTypes gives each machine the system type its inventory platform says. It wins over the type
-// the configuration stored, so a new machine gets the template of its type without anyone saving it.
 func (c *Config) UseInventoryTypes(platforms map[string]string) {
 	c.inventoryTypes = map[string]string{}
 	for agentID, platform := range platforms {
@@ -85,7 +81,6 @@ func (c *Config) systemType(agentID, stored string) string {
 
 var systemTypes = map[string]bool{"linux": true, "windows": true, "manager": true}
 
-// Groups are the Wazuh groups of the ENS scope; a scope by agent or the whole fleet names none.
 func (c *Config) Groups() []string {
 	if c.Scope.Mode != "group" {
 		return nil
@@ -93,8 +88,6 @@ func (c *Config) Groups() []string {
 	return c.Scope.GroupIDs
 }
 
-// Evaluates tells whether a machine is in the ENS scope, as the plugin resolves it. The manager is in no group
-// and is always in.
 func (c *Config) Evaluates(agentID string, groups []string) bool {
 	if agentID == "000" {
 		return true
@@ -112,7 +105,6 @@ func (c *Config) Evaluates(agentID string, groups []string) bool {
 	return true
 }
 
-// Excludes tells whether the groups of a machine take it out of a control.
 func (c *Config) Excludes(controlID string, groups []string) bool {
 	if !c.Scope.ControlGroups {
 		return false

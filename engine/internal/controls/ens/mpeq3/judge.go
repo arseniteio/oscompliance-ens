@@ -1,5 +1,3 @@
-// Package mpeq3 judges mp.eq.3, portable devices: each one inventoried with its responsible and its custody
-// checked, losses handled, no dispensable remote access keys on it and, at ALTO, its disk encrypted.
 package mpeq3
 
 import (
@@ -18,7 +16,6 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// Entry is the row of P-01 (`dispositivo | tipo | responsable | nivel_confidencialidad`) of a machine.
 func Entry(rows []string, machine string) ([]string, bool) {
 	for _, r := range rows {
 		if c := cells(r, 4); strings.EqualFold(c[0], machine) {
@@ -28,7 +25,6 @@ func Entry(rows []string, machine string) ([]string, bool) {
 	return nil, false
 }
 
-// JudgeEV01 needs the portable machine in the inventory of P-01 with its responsible.
 func JudgeEV01(entry []string, inventoried bool) verdict.Judgement {
 	switch {
 	case !inventoried:
@@ -39,8 +35,6 @@ func JudgeEV01(entry []string, inventoried bool) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpeq3.inventoried", "responsible", entry[2]))
 }
 
-// JudgeEV02 needs the device reporting and its custody checked in P-09 (`fecha | dispositivo | responsable |
-// resultado`) within the days of P-02.
 func JudgeEV02(reporting *source.Reporting, checks []string, machine string, days int, now time.Time) verdict.Judgement {
 
 	if reporting == nil || reporting.LastKeepAlive.IsZero() || now.Sub(reporting.LastKeepAlive) > time.Duration(days)*24*time.Hour {
@@ -56,7 +50,6 @@ func JudgeEV02(reporting *source.Reporting, checks []string, machine string, day
 	return j
 }
 
-// JudgeEV03 needs no private key in the users' homes outside the paths of P-05.
 func JudgeEV03(snapshot *fact.KeySnapshot, keys []fact.KeyRecord, allowed []string) verdict.Judgement {
 
 	switch {
@@ -78,13 +71,11 @@ func JudgeEV03(snapshot *fact.KeySnapshot, keys []fact.KeyRecord, allowed []stri
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpeq3.no_remote_keys"))
 }
 
-// Confidential tells whether the level of P-01 asks for an encrypted disk: MEDIO or above.
 func Confidential(level string) bool {
 	l := strings.ToUpper(strings.TrimSpace(level))
 	return l == "MEDIO" || l == "ALTO"
 }
 
-// JudgeEV04 needs the root filesystem encrypted when the device holds information of MEDIO or above.
 func JudgeEV04(d *fact.DeviceSecurity, level string) verdict.Judgement {
 	switch {
 	case !Confidential(level):
@@ -99,8 +90,6 @@ func JudgeEV04(d *fact.DeviceSecurity, level string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpeq3.encrypted", "device", d.RootDevice))
 }
 
-// JudgeEV06 needs every loss of the device in P-10 (`fecha | dispositivo | incidente | acciones_completadas`)
-// with its incident and its actions completed within the hours of P-08.
 func JudgeEV06(losses []string, machine string, hours int) verdict.Judgement {
 	var late []string
 	count := 0

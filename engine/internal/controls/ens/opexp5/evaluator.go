@@ -105,7 +105,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	changes := Changes(fim, records, window)
 
 	rows, err := policy.List(agent.ID, Control, RegisterParam)
-	requests, registerProblem := ParseRegister(rows), problemOf(RegisterParam, err)
+	requests, registerProblem := ParseRegister(rows), passes.ParamProblem(RegisterParam, err)
 
 	var config *fact.WazuhAgentConfig
 	if c, ok := e.wazuh[agent.ID]; ok {
@@ -177,7 +177,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		if u, ok := e.units[agent.ID]; ok {
 			units = &u
 		}
-		hours, problem := whole(policy, agent.ID, Control, "P-09", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, Control, "P-09", "param.not_hours")
 		if problem.IsZero() {
 			problem = registerProblem
 		}
@@ -219,22 +219,4 @@ func documents(rows []string) []Document {
 		}
 	}
 	return out
-}
-
-func whole(policy params.Lister, agentID, controlID, id, notWhole string) (int, catalog.Message) {
-	v, err := policy.Number(agentID, controlID, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

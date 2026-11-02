@@ -1,5 +1,3 @@
-// Package packages lists the packages installed on request: the package manager keeps them apart from
-// the dependencies it pulled in.
 package packages
 
 import (

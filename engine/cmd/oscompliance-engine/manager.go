@@ -11,8 +11,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
 )
 
-// managerState reads what op.mon judges of the manager. Integrations are read without their hook URL or
-// API key.
 func managerState(ctx context.Context, api *wazuhapi.Client) (*source.Manager, error) {
 
 	m := &source.Manager{}
@@ -121,7 +119,6 @@ func list(v any) []string {
 	return nil
 }
 
-// Wazuh writes the install time of a package as its package manager does.
 var installLayouts = []string{time.ANSIC, "2006/01/02 15:04:05", time.RFC3339, "2006-01-02 15:04:05"}
 
 func installTime(v string) time.Time {

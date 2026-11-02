@@ -4,7 +4,6 @@ const (
 	TimeSyncFact = "time_sync"
 )
 
-// TimeSync is how the machine keeps its clock: the service, whether it is synchronised and against what.
 type TimeSync struct {
 	Envelope
 	Tool          string   `json:"tool"`

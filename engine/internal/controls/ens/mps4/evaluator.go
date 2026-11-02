@@ -11,7 +11,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps1"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -31,7 +30,6 @@ type Facts interface {
 
 const control = "mp.s.4"
 
-// The indicators of P-03 for denial of service.
 const dos = "denegacion_de_servicio"
 
 type Evaluator struct {
@@ -111,7 +109,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		exposed = exposed || strings.EqualFold(machine, agent.Name)
 		reported = reported || e.fleet.Has(machine)
 	}
-	// No machine of P-01 reports: the manager carries the services for the organisation.
 	carrier := !exposed
 	if carrier && (reported || !scope.Carrier(agent.ID)) {
 		return mps1.OutOfScope(control, catalog.Says("mps4.not_exposed"), e.decisions, agent.ID), nil
@@ -129,7 +126,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	put("EV-01", onMachine(func() verdict.Judgement {
-		max, problem := opmon1.Whole(policy, agent.ID, control, "P-02", "param.not_percent")
+		max, problem := passes.Whole(policy, agent.ID, control, "P-02", "param.not_percent")
 		if !problem.IsZero() {
 			return gapOf(problem)
 		}

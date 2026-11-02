@@ -33,7 +33,6 @@ type Facts interface {
 
 const control = "mp.com.3"
 
-// The algorithms authorised by the CCN are those of op.exp.10 P-03.
 const algorithmsControl, algorithmsParam = "op.exp.10", "P-03"
 
 type Evaluator struct {
@@ -67,7 +66,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// attackHours reads, once a pass for each set of rules, the hours every machine raised them.
 func (e *Evaluator) attackHours(ctx context.Context, rules []string) (map[string][]time.Time, error) {
 	key := fmt.Sprint(rules)
 	if h, ok := e.attacks[key]; ok {

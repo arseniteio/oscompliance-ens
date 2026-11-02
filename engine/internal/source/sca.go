@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// SCASummary is the newest result of one SCA policy on a machine.
 type SCASummary struct {
 	PolicyID string
 	Policy   string
@@ -17,8 +16,6 @@ type SCASummary struct {
 	Time     time.Time
 }
 
-// SCASummaries reads the newest summary of each policy and machine. Wazuh raises one only when the result
-// changes, so the newest is the current one however old it is.
 func (s *Source) SCASummaries(ctx context.Context, since time.Time) (map[string][]SCASummary, error) {
 
 	filter := []any{
@@ -73,7 +70,6 @@ func (s *Source) SCASummaries(ctx context.Context, since time.Time) (map[string]
 	return out, err
 }
 
-// whole reads a number Wazuh may send as text.
 func whole(v any) int {
 	switch n := v.(type) {
 	case float64:
@@ -85,7 +81,6 @@ func whole(v any) int {
 	return 0
 }
 
-// SCALowest is the lowest score of each policy and machine since a time: the series of op.exp.3.
 func (s *Source) SCALowest(ctx context.Context, since time.Time) (map[string]map[string]int, error) {
 
 	filter := []any{
@@ -120,7 +115,6 @@ func (s *Source) SCALowest(ctx context.Context, since time.Time) (map[string]map
 	return out, err
 }
 
-// SCARegression is a check that went from passed to failed.
 type SCARegression struct {
 	PolicyID string
 	CheckID  string

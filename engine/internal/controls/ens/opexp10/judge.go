@@ -1,5 +1,3 @@
-// Package opexp10 judges op.exp.10, protection of cryptographic keys: what of their life cycle lives on the
-// machine.
 package opexp10
 
 import (
@@ -18,7 +16,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Store is a row of P-02: a directory of keys, its most open mode and its owner.
 type Store struct {
 	Path  string
 	Mode  uint64
@@ -55,7 +52,6 @@ func storeOf(stores []Store, path string) (Store, bool) {
 	return best, found
 }
 
-// Keys are the machine's keys and certificates, as of its sweep.
 type Keys struct {
 	Snapshot     *fact.KeySnapshot
 	Keys         []fact.KeyRecord
@@ -138,7 +134,6 @@ func authorised(name string, algorithms []string) bool {
 	})
 }
 
-// Algorithms are the `algoritmo` column of P-03.
 func Algorithms(rows []string) []string {
 	var out []string
 	for _, r := range rows {
@@ -207,7 +202,6 @@ func JudgeEV04(logins []source.Login, algorithms []string, problem catalog.Messa
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp10.keys_used", "count", checked))
 }
 
-// Operation says whether P-05 calls the machine a means of operation.
 func Operation(rows []string, machine string) bool {
 	for _, r := range rows {
 		c := strings.Split(r, "|")

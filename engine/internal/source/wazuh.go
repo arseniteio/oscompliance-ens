@@ -319,7 +319,6 @@ func (s *Source) lockouts(ctx context.Context, ids []string, since time.Time) (m
 }
 
 func alertTime(s string) (time.Time, error) {
-	// Wazuh writes the offset without a colon.
 	return time.Parse("2006-01-02T15:04:05.000-0700", s)
 }
 

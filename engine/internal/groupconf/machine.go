@@ -8,8 +8,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 )
 
-// Machine is what one agent needs from the manager to collect: the paths its collectors read, the
-// FIM directories Wazuh does not watch by default and the logs of its external-user services.
 type Machine struct {
 	Paths    Paths
 	FIM      []string
@@ -31,18 +29,14 @@ type Service struct {
 	Log  string
 }
 
-// The configurations of channels and services whose changes the engine judges against op.exp.5 requests.
 var serviceConfigurations = []struct{ control, param string }{{"mp.com.3", "P-06"}, {"mp.s.1", "P-09"}}
 
-// Paths whose changes op.acc.3 must see on every machine: the Wazuh agent and auditd themselves.
 var securityPaths = []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"}
 
 const agentConfiguration = "/var/ossec/etc"
 
-// op.exp.10 EV-05: the tools that generate keys, watched once the machine has key stores to protect.
 var keyTools = []string{"/usr/bin/ssh-keygen", "/usr/bin/openssl"}
 
-// Wazuh FIM watches these by default; a critical path elsewhere needs its own directory entry.
 var fimDefaults = []string{"/etc", "/usr/bin", "/usr/sbin", "/bin", "/sbin", "/boot"}
 
 func ForAgent(policy params.Lister, agentID, agentName string) Machine {
@@ -95,7 +89,6 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 		}
 	}
 
-	// op.exp.8 EV-13: the agent's own configuration is part of the logging system it protects.
 	m.FIM = append(m.FIM, agentConfiguration)
 	m.FIM = sorted(m.FIM)
 	m.Paths.ACL = sorted(m.Paths.ACL)
@@ -109,8 +102,6 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	return m
 }
 
-// indicators are the absolute paths of op.acc.3 P-03 (`funcion | indicador | ...`): what auditd must
-// watch for the engine to see each function exercised.
 func indicators(policy params.Lister, agentID string) []string {
 
 	rows, err := policy.List(agentID, "op.acc.3", "P-03")
@@ -129,9 +120,6 @@ func indicators(policy params.Lister, agentID string) []string {
 	return out
 }
 
-// BackupSources are the `fuente` of op.exp.3 P-07 (`alcance | fuente | destino`) and the `ruta` of
-// mp.info.6 P-04 (`copia | ruta | ...`): `git:<directory>`, a directory or an absolute file pattern. The
-// engine judges the copies by the same strings it hands the agent.
 func BackupSources(policy params.Lister, agentID string) []string {
 	return append(Sources(policy, agentID, "op.exp.3", "P-07"), Sources(policy, agentID, "mp.info.6", "P-04")...)
 }
@@ -152,7 +140,6 @@ func Sources(policy params.Lister, agentID, controlID, paramID string) []string 
 	return out
 }
 
-// Source is a backup source as the agent receives it, or "" when it is not an absolute path.
 func Source(src string) string {
 	if dir, ok := strings.CutPrefix(src, "git:"); ok && filepath.IsAbs(dir) {
 		return "git:" + filepath.Clean(dir)
@@ -163,7 +150,6 @@ func Source(src string) string {
 	return ""
 }
 
-// A path in a bin or sbin directory is watched for execution; anything else for every access.
 func isBinary(path string) bool {
 	dir := filepath.Base(filepath.Dir(path))
 	return dir == "bin" || dir == "sbin"

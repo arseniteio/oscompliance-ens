@@ -1,6 +1,3 @@
-// Package mps2 judges mp.s.2, protection of web services and applications, on the machines that serve them:
-// their logs in Wazuh, the attacks the requirement lists watched by loaded rules, the vulnerabilities of the
-// platform, and the audits of the applications with their findings solved.
 package mps2
 
 import (
@@ -17,7 +14,6 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// Attacks of mp.s.2 as P-03 names them, and the evidence that watches each.
 var Attacks = []struct{ Name, Evidence string }{
 	{"acceso_sin_autenticacion", "EV-02"},
 	{"via_alternativa", "EV-03"},
@@ -28,7 +24,6 @@ var Attacks = []struct{ Name, Evidence string }{
 	{"xss", "EV-08"},
 }
 
-// JudgeEV10 needs no critical or high vulnerability of the machine open longer than the days of P-09.
 func JudgeEV10(vulnerabilities []source.VulnerabilityDay, days int, now time.Time) verdict.Judgement {
 	var old []string
 	open := 0
@@ -48,13 +43,11 @@ func JudgeEV10(vulnerabilities []source.VulnerabilityDay, days int, now time.Tim
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps2.vulnerabilities", "count", open, "days", days))
 }
 
-// Modalities of audit of P-07.
 const (
 	BlackBox = "caja_negra"
 	WhiteBox = "caja_blanca"
 )
 
-// Modality normalises P-07 and the modality column of P-08: R1 or caja negra, R2 or caja blanca.
 func Modality(v string) string {
 	switch m := strings.ReplaceAll(opcont2.Person(v), " ", "_"); {
 	case m == "r1" || strings.Contains(m, "negra"):
@@ -66,9 +59,6 @@ func Modality(v string) string {
 	}
 }
 
-// JudgeEV11 needs, for every application of the machine, an audit of the chosen modality in P-08 (`fecha |
-// aplicacion | modalidad | metodologia | herramientas | hallazgos`) within the days of P-10; a white box
-// audit names its methodology and its automatic tools.
 func JudgeEV11(apps []string, audits []string, modality string, days int, now time.Time) verdict.Judgement {
 
 	var lacking []catalog.Message
@@ -96,8 +86,6 @@ func JudgeEV11(apps []string, audits []string, modality string, days int, now ti
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps2.audited", "count", len(apps), "modality", strings.ReplaceAll(modality, "_", " "), "days", days))
 }
 
-// JudgeEV12 needs every finding of P-09 (`hallazgo | aplicacion | severidad | responsable | plazo |
-// estado`) of the machine's applications solved or within its deadline.
 func JudgeEV12(apps []string, findings []string, now time.Time) verdict.Judgement {
 	var late []string
 	checked := 0

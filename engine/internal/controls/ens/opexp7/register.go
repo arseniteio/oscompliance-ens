@@ -1,5 +1,3 @@
-// Package opexp7 judges op.exp.7, incident management: Wazuh's detections against the incident register of
-// P-13. op.exp.9 judges the records of the same register.
 package opexp7
 
 import (
@@ -15,10 +13,8 @@ const (
 	RegisterParam = "P-13"
 )
 
-// Incidents of the register are judged back this far.
 const Horizon = 90 * 24 * time.Hour
 
-// Phase is one row of the register.
 type Phase struct {
 	Name       string
 	Date       time.Time
@@ -36,7 +32,6 @@ type Phase struct {
 	ReviewText string
 }
 
-// Incident is the phases that share an identifier, in order.
 type Incident struct {
 	ID     string
 	Phases []Phase
@@ -46,12 +41,10 @@ var columns = []string{"incidente", "fase", "fecha", "severidad", "sistemas", "c
 
 func empty(v string) bool { v = strings.TrimSpace(v); return v == "" || v == "-" }
 
-// Severity names a severity the same way whatever its case or accent: «Crítica» and «critica» match.
 func Severity(v string) string {
 	return strings.NewReplacer("á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u").Replace(strings.ToLower(strings.TrimSpace(v)))
 }
 
-// ParseRegister groups the rows of P-13 by incident.
 func ParseRegister(rows []string) []Incident {
 
 	by := map[string]*Incident{}
@@ -105,7 +98,6 @@ func (in Incident) phase(name string) (Phase, bool) {
 	return Phase{}, false
 }
 
-// Opened is the date of the initial phase, else of the first one.
 func (in Incident) Opened() time.Time {
 	if p, ok := in.phase("inicial"); ok && !p.Date.IsZero() {
 		return p.Date
@@ -116,7 +108,6 @@ func (in Incident) Opened() time.Time {
 	return time.Time{}
 }
 
-// Closed is the date of the final phase; zero while the incident is open.
 func (in Incident) Closed() time.Time {
 	p, _ := in.phase("final")
 	return p.Date
@@ -124,7 +115,6 @@ func (in Incident) Closed() time.Time {
 
 func (in Incident) Has(phase string) bool { _, ok := in.phase(phase); return ok }
 
-// Severity is the last severity the register gives the incident.
 func (in Incident) Severity() string {
 	for i := len(in.Phases) - 1; i >= 0; i-- {
 		if s := in.Phases[i].Severity; !empty(s) {
@@ -134,7 +124,6 @@ func (in Incident) Severity() string {
 	return ""
 }
 
-// Any says whether some phase satisfies f.
 func (in Incident) Any(f func(Phase) bool) bool { return slices.ContainsFunc(in.Phases, f) }
 
 func (in Incident) Involves(machine string) bool {
@@ -155,7 +144,6 @@ func (in Incident) Systems() []string {
 	return out
 }
 
-// Field is the last value a column takes in the incident's phases.
 func (in Incident) Field(get func(Phase) string) string {
 	for i := len(in.Phases) - 1; i >= 0; i-- {
 		if v := get(in.Phases[i]); !empty(v) {
@@ -165,7 +153,6 @@ func (in Incident) Field(get func(Phase) string) string {
 	return ""
 }
 
-// Of are the incidents that involve the machine and were open at some point of the horizon.
 func Of(incidents []Incident, machine string, now time.Time) []Incident {
 	var out []Incident
 	for _, in := range incidents {
@@ -177,7 +164,6 @@ func Of(incidents []Incident, machine string, now time.Time) []Incident {
 	return out
 }
 
-// End is the close of the incident, or now while it is open.
 func (in Incident) End(now time.Time) time.Time {
 	if c := in.Closed(); !c.IsZero() {
 		return c

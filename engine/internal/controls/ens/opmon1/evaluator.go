@@ -26,7 +26,6 @@ type Facts interface {
 
 const Control = "op.mon.1"
 
-// Detections are read back this far: P-08 cannot ask for more.
 const Horizon = 90 * 24 * time.Hour
 
 type Evaluator struct {
@@ -95,7 +94,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}))
 
 	put("EV-02", func() verdict.Judgement {
-		hours, problem := Whole(policy, agent.ID, Control, "P-09", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, Control, "P-09", "param.not_hours")
 		if !problem.IsZero() {
 			return passes.Gap(verdict.CauseConfiguration, problem)
 		}
@@ -107,7 +106,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return JudgeEV02(r, c, hours, now)
 	}())
 
-	days, daysProblem := Whole(policy, agent.ID, Control, "P-08", "param.not_days")
+	days, daysProblem := passes.Whole(policy, agent.ID, Control, "P-08", "param.not_days")
 
 	put("EV-03", func() verdict.Judgement {
 		if !daysProblem.IsZero() {
@@ -144,7 +143,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}))
 
 	put("EV-08", fromManager(func(m *source.Manager) verdict.Judgement {
-		maxDays, problem := Whole(policy, agent.ID, Control, "P-07", "param.not_days")
+		maxDays, problem := passes.Whole(policy, agent.ID, Control, "P-07", "param.not_days")
 		if !problem.IsZero() {
 			return passes.Gap(verdict.CauseConfiguration, problem)
 		}
@@ -156,16 +155,4 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}))
 
 	return results, nil
-}
-
-// Whole reads a parameter that must be a whole number of 1 or more.
-func Whole(policy params.Lister, agentID, controlID, id, notWhole string) (int, catalog.Message) {
-	v, err := policy.Number(agentID, controlID, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
 }

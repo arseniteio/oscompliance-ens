@@ -1,5 +1,3 @@
-// Package opexp4 judges op.exp.4, security maintenance and updates: Wazuh's vulnerability detection against
-// the deadlines of each severity, the vendor's updates and support, and who patches, when and how.
 package opexp4
 
 import (
@@ -16,7 +14,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Wazuh's severities and the names P-01 gives them.
 var severities = map[string]string{"critical": "Crítica", "high": "Alta", "medium": "Media", "low": "Baja"}
 
 const unscored = "Sin puntuación"
@@ -42,7 +39,6 @@ func counts(days []source.VulnerabilityDay) []string {
 	return out
 }
 
-// JudgeEV01 holds the vulnerability inventory current when the package inventory is (op.exp.1 EV-02).
 func JudgeEV01(packages verdict.Judgement, manager bool, days []source.VulnerabilityDay) verdict.Judgement {
 
 	if manager {
@@ -57,7 +53,6 @@ func JudgeEV01(packages verdict.Judgement, manager bool, days []source.Vulnerabi
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp4.vulnerabilities", "counts", counts(days)))
 }
 
-// Deadlines are the days of P-01 by severity name; a severity without days has no deadline.
 func Deadlines(rows []string) (map[string]int, catalog.Message) {
 	out := map[string]int{}
 	for _, r := range rows {
@@ -75,7 +70,6 @@ func Deadlines(rows []string) (map[string]int, catalog.Message) {
 	return out, catalog.Message{}
 }
 
-// JudgeEV02 fails the open vulnerabilities detected longer ago than the deadline of their severity.
 func JudgeEV02(manager bool, days []source.VulnerabilityDay, deadlines map[string]int, problem catalog.Message, now time.Time) verdict.Judgement {
 
 	if manager {
@@ -143,7 +137,6 @@ func JudgeEV03(u *fact.UpdateStatus, maxDays int, problem catalog.Message, now t
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp4.updates", "pending", u.Pending, "security", u.Security, "since", lists.UTC().Format("2006-01-02")))
 }
 
-// Transactions are the apt transactions a machine reported, as of its snapshot.
 type Transactions struct {
 	Snapshot *fact.TransactionSnapshot
 	Records  []fact.PackageTransaction
@@ -163,7 +156,6 @@ func (t Transactions) gap() (verdict.Judgement, bool) {
 	return verdict.Judgement{}, false
 }
 
-// since keeps the transactions that started at or after a time, in order.
 func (t Transactions) since(from time.Time) []fact.PackageTransaction {
 	var out []fact.PackageTransaction
 	for _, r := range t.Records {
@@ -267,8 +259,6 @@ func JudgeEV06(vendors []string, sources []string, problem catalog.Message) verd
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp4.vendors_followed", "count", len(vendors)))
 }
 
-// Window is a span of a day of the week (0 Sunday; -1 every day) in minutes from midnight; an end before
-// its start runs past midnight.
 type Window struct {
 	Day        int
 	Start, End int
@@ -276,7 +266,6 @@ type Window struct {
 
 var weekdays = map[string]int{"dom": 0, "lun": 1, "mar": 2, "mie": 3, "mié": 3, "jue": 4, "vie": 5, "sab": 6, "sáb": 6, "*": -1}
 
-// ParseWindows reads `sab 22:00-02:00; * 06:00-07:30`.
 func ParseWindows(spec string) ([]Window, error) {
 	var out []Window
 	for _, part := range strings.Split(spec, ";") {
@@ -307,7 +296,6 @@ func minutes(hhmm string) (int, error) {
 	return t.Hour()*60 + t.Minute(), nil
 }
 
-// Contains says whether t, in its own zone, falls inside the window.
 func (w Window) Contains(t time.Time) bool {
 	m := t.Hour()*60 + t.Minute()
 	day := int(t.Weekday())
@@ -318,7 +306,6 @@ func (w Window) Contains(t time.Time) bool {
 	return ((w.Day < 0 || w.Day == day) && m >= w.Start) || ((w.Day < 0 || w.Day == previous) && m < w.End)
 }
 
-// WindowsFor are the windows of P-04 for a machine: its own row, else the `*` row.
 func WindowsFor(rows []string, machine string) (string, bool) {
 	general, found := "", false
 	for _, r := range rows {
@@ -366,8 +353,6 @@ func JudgeEV07(t Transactions, from time.Time, rows []string, machine string, pr
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp4.inside_windows", "count", len(window), "windows", spec))
 }
 
-// JudgeEV08 needs every version a production machine installed in the window on its pre-production
-// machine first, or there now.
 func JudgeEV08(machine string, rows []string, problem catalog.Message, installed map[string]time.Time, preprodInstalled map[string]time.Time, preprodNow map[string]bool, from time.Time) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -398,7 +383,6 @@ func JudgeEV08(machine string, rows []string, problem catalog.Message, installed
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp4.tested", "count", checked, "preprod", preprod))
 }
 
-// PreproductionOf is the pre-production machine P-06 pairs with a production one.
 func PreproductionOf(rows []string, machine string) string {
 	for _, r := range rows {
 		c := strings.Split(r, "|")
@@ -409,7 +393,6 @@ func PreproductionOf(rows []string, machine string) string {
 	return ""
 }
 
-// JudgeEV09 needs a snapshot taken at most the hours of P-07 before each transaction of the window.
 func JudgeEV09(t Transactions, from time.Time, s *fact.SnapshotList, hours int, problem catalog.Message) verdict.Judgement {
 
 	switch {
@@ -448,7 +431,6 @@ func JudgeEV09(t Transactions, from time.Time, s *fact.SnapshotList, hours int, 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp4.reversion_points", "count", len(window), "hours", hours))
 }
 
-// ReversionHours are the hours of P-07 for a machine: its row, else the `*` row.
 func ReversionHours(rows []string, machine string) (int, bool) {
 	general, found := 0, false
 	for _, r := range rows {

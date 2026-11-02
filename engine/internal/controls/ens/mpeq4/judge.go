@@ -1,6 +1,3 @@
-// Package mpeq4 judges mp.eq.4, other devices on the network: the devices each machine sees next to it
-// inventoried, their flows within what their type may do, their own logs reaching Wazuh, and a way to wipe
-// the storage of those that keep information.
 package mpeq4
 
 import (
@@ -18,7 +15,6 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// Device is a row of P-01 (`dispositivo | tipo | direccion | mac | responsable | almacenamiento`).
 type Device struct {
 	Name, Type, Address, MAC string
 	Storage                  bool
@@ -36,14 +32,12 @@ func ParseDevices(rows []string) []Device {
 	return out
 }
 
-// Known tells whether a neighbour is an inventoried device or a machine of the fleet.
 func Known(n fact.Neighbour, devices []Device, fleet map[string]bool) bool {
 	return fleet[n.IP] || slices.ContainsFunc(devices, func(d Device) bool {
 		return (d.MAC != "" && d.MAC == strings.ToLower(n.MAC)) || (d.Address != "" && d.Address == n.IP)
 	})
 }
 
-// JudgeEV01 needs the machine to see its network: a neighbour table read.
 func JudgeEV01(s *fact.NeighbourSnapshot) verdict.Judgement {
 	switch {
 	case s == nil:
@@ -54,7 +48,6 @@ func JudgeEV01(s *fact.NeighbourSnapshot) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpeq4.seen", "count", len(s.Neighbours)))
 }
 
-// JudgeEV02 needs every device the machine sees next to it in P-01 or among the machines of the fleet.
 func JudgeEV02(s *fact.NeighbourSnapshot, devices []Device, fleet map[string]bool) verdict.Judgement {
 	if j := JudgeEV01(s); j.Status != verdict.Compliant {
 		return j
@@ -71,8 +64,6 @@ func JudgeEV02(s *fact.NeighbourSnapshot, devices []Device, fleet map[string]boo
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpeq4.all_known", "count", len(s.Neighbours)))
 }
 
-// JudgeEV03 needs every flow of an inventoried device allowed for its type by P-02 (`tipo | destino |
-// protocolo | puerto`), whichever end the device is.
 func JudgeEV03(flows []source.Flow, devices []Device, rules []string) verdict.Judgement {
 
 	byAddress := map[string]Device{}
@@ -110,8 +101,6 @@ func JudgeEV03(flows []source.Flow, devices []Device, rules []string) verdict.Ju
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpeq4.flows_allowed", "count", checked))
 }
 
-// JudgeEV08 needs every device of P-01 with storage to have its wipe in P-05 (`dispositivo | almacenamiento
-// | metodo | cuando`).
 func JudgeEV08(devices []Device, wipes []string) verdict.Judgement {
 	var missing []string
 	with := 0

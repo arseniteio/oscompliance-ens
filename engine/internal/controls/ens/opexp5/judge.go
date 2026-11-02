@@ -11,7 +11,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// How far back the register is checked for complete and approved requests.
 const RegisterHorizon = 90 * 24 * time.Hour
 
 func list(changes []Change) []string {
@@ -25,7 +24,6 @@ func list(changes []Change) []string {
 	return out
 }
 
-// JudgeEV01 is the change detection itself: FIM watching and the apt history read.
 func JudgeEV01(config *fact.WazuhAgentConfig, history *fact.TransactionSnapshot, changes []Change) verdict.Judgement {
 
 	switch {
@@ -54,8 +52,6 @@ func JudgeEV02(changes []Change, requests []Request, problem catalog.Message, ma
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp5.covered", "count", len(changes)))
 }
 
-// JudgeEV03 needs the columns of P-02, the prefix of P-01 and, at ALTA, the security impact in every
-// authorised request of the machine.
 func JudgeEV03(requests []Request, machine string, required []string, prefix string, high bool, problem catalog.Message, now time.Time) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -119,7 +115,6 @@ func JudgeEV04(requests []Request, machine string, accounts []string, problem ca
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp5.high_risk_approved", "count", checked))
 }
 
-// Document is a row of P-06: a configuration document and the days it may take to follow a change.
 type Document struct {
 	Name string
 	Days int
@@ -157,7 +152,6 @@ func JudgeEV06(requests []Request, machine string, documents []Document, problem
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp5.documented", "count", checked))
 }
 
-// JudgeEV07 fails a service down now after a change in the hours before, unless the change was reverted.
 func JudgeEV07(units *fact.UnitSnapshot, changes []Change, requests []Request, machine string, hours int, problem catalog.Message, now time.Time) verdict.Judgement {
 
 	switch {
@@ -191,7 +185,6 @@ func JudgeEV07(units *fact.UnitSnapshot, changes []Change, requests []Request, m
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp5.failed_unrelated", "services", units.Failed, "hours", hours))
 }
 
-// JudgeEV09 needs a snapshot taken at most hours before every change.
 func JudgeEV09(changes []Change, s *fact.SnapshotList, hours int, problem catalog.Message) verdict.Judgement {
 
 	switch {

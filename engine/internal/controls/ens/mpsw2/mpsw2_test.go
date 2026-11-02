@@ -10,8 +10,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-var now = time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)
-
 func check(t *testing.T, name string, got verdict.Judgement, status verdict.Status, cause verdict.Cause, reason string) {
 	t.Helper()
 	if got.Status != status || got.Cause != cause || !strings.Contains(got.Reason, reason) {

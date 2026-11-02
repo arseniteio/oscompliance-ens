@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -55,7 +54,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return rows, catalog.Message{}
 	}
 
-	months, problem := opmon1.Whole(policy, agent.ID, control, "P-01", "param.not_months")
+	months, problem := passes.Whole(policy, agent.ID, control, "P-01", "param.not_months")
 	if !problem.IsZero() {
 		all(passes.Gap(verdict.CauseConfiguration, problem))
 		return results, nil

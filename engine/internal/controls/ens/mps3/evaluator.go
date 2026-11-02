@@ -12,7 +12,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp6"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -82,7 +81,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-01", func() verdict.Judgement {
 		rows, problem := list(control, "P-02", false)
-		hours, hoursProblem := opmon1.Whole(policy, agent.ID, control, "P-12", "param.not_hours")
+		hours, hoursProblem := passes.Whole(policy, agent.ID, control, "P-12", "param.not_hours")
 		for _, p := range []catalog.Message{problem, hoursProblem} {
 			if !p.IsZero() {
 				return gap(p)
@@ -133,7 +132,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}())
 
 	put("EV-08", func() verdict.Judgement {
-		days, problem := opmon1.Whole(policy, agent.ID, control, "P-08", "param.not_days")
+		days, problem := passes.Whole(policy, agent.ID, control, "P-08", "param.not_days")
 		if !problem.IsZero() {
 			return gap(problem)
 		}
@@ -142,7 +141,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	review := func(register, period string) verdict.Judgement {
 		rows, problem := list(control, register, false)
-		days, daysProblem := opmon1.Whole(policy, agent.ID, control, period, "param.not_days")
+		days, daysProblem := passes.Whole(policy, agent.ID, control, period, "param.not_days")
 		j, _ := passes.Review(rows, problem, register, days, daysProblem, period, now)
 		return j
 	}

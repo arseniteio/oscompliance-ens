@@ -6,7 +6,6 @@ const (
 	KeySnapshotFact       = "key_snapshot"
 )
 
-// KeyRecord is a private key found on disk, by its header.
 type KeyRecord struct {
 	Envelope
 	Path        string `json:"path"`
@@ -16,7 +15,6 @@ type KeyRecord struct {
 	Owner       string `json:"owner"`
 }
 
-// CertificateRecord is an X.509 certificate found on disk, the system's public CAs left out.
 type CertificateRecord struct {
 	Envelope
 	Path      string `json:"path"`

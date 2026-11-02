@@ -33,7 +33,6 @@ type Facts interface {
 
 const control = "op.exp.4"
 
-// A version reached pre-production at most this long before it reached production.
 const preproductionHorizon = 90 * 24 * time.Hour
 
 type Evaluator struct {
@@ -93,7 +92,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// versions reads, once per pass, the versions installed on a machine and present there now.
 func (e *Evaluator) versions(ctx context.Context, id string) (map[string]time.Time, map[string]bool, error) {
 	if _, ok := e.installed[id]; !ok {
 		installed, err := e.facts.InstalledVersions(ctx, []string{id}, e.pass.Now.Add(-preproductionHorizon))
@@ -119,7 +117,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	inv := e.inventories[agent.ID]
 
 	freshness := opexp1.Freshness{Manager: manager, Now: now}
-	freshness.MaxHours, freshness.HoursProblem = whole(policy, agent.ID, "op.exp.1", "P-08", "param.not_hours")
+	freshness.MaxHours, freshness.HoursProblem = passes.Whole(policy, agent.ID, "op.exp.1", "P-08", "param.not_hours")
 	if c, ok := e.wazuh[agent.ID]; ok {
 		freshness.Config = &c
 	}
@@ -139,7 +137,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	if u, ok := e.updates[agent.ID]; ok {
 		updates = &u
 	}
-	listDays, listProblem := whole(policy, agent.ID, control, "P-10", "param.not_days")
+	listDays, listProblem := passes.Whole(policy, agent.ID, control, "P-10", "param.not_days")
 	put("EV-03", JudgeEV03(updates, listDays, listProblem, now))
 
 	transactions := Transactions{}
@@ -153,24 +151,24 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	authorised, err := policy.List(agent.ID, control, "P-02")
-	put("EV-04", JudgeEV04(transactions, window, authorised, problemOf("P-02", err)))
+	put("EV-04", JudgeEV04(transactions, window, authorised, passes.ParamProblem("P-02", err)))
 
 	var system *source.System
 	if inv != nil {
 		system = inv.System
 	}
 	eol, err := policy.List(agent.ID, control, "P-05")
-	put("EV-05", JudgeEV05(system, eol, problemOf("P-05", err), now))
+	put("EV-05", JudgeEV05(system, eol, passes.ParamProblem("P-05", err), now))
 
 	sources, err := policy.List(agent.ID, control, "P-03")
 	vendors := e.vendors[agent.ID]
 	if len(vendors) == 0 && inv != nil {
 		vendors = inv.Vendors
 	}
-	put("EV-06", JudgeEV06(vendors, sources, problemOf("P-03", err)))
+	put("EV-06", JudgeEV06(vendors, sources, passes.ParamProblem("P-03", err)))
 
 	windows, err := policy.List(agent.ID, control, "P-04")
-	put("EV-07", JudgeEV07(transactions, window, windows, agent.Name, problemOf("P-04", err)))
+	put("EV-07", JudgeEV07(transactions, window, windows, agent.Name, passes.ParamProblem("P-04", err)))
 
 	pairs, err := policy.List(agent.ID, control, "P-06")
 	ev08 := func() verdict.Judgement {
@@ -216,22 +214,4 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-09", ev09())
 
 	return results, errors.Join(errs...)
-}
-
-func whole(policy params.Lister, agentID, controlID, id, notWhole string) (int, catalog.Message) {
-	v, err := policy.Number(agentID, controlID, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

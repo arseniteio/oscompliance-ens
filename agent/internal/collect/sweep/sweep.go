@@ -145,7 +145,6 @@ func (sw *sweeper) walk(root string) error {
 			return fs.SkipDir
 		}
 
-		// Symlinks always show 0777 and point elsewhere.
 		if d.Type()&fs.ModeSymlink != 0 || !(d.Type().IsRegular() || d.IsDir()) {
 			return nil
 		}

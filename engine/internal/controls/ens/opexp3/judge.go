@@ -1,5 +1,3 @@
-// Package opexp3 judges op.exp.3, management of the security configuration: the op.exp.2 baseline held over
-// time, who edits the security configuration, what is installed and runs, copies and verifications.
 package opexp3
 
 import (
@@ -17,8 +15,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// JudgeEV01 needs the lowest score of each assessed baseline policy in the series to reach the op.exp.2
-// minimum. assessed is the op.exp.2 judgement of the same baseline: when it fails, so does the series.
 func JudgeEV01(assessed verdict.Judgement, policies []string, lowest map[string]int, minScore int, days int, problem catalog.Message) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -47,11 +43,9 @@ func JudgeEV01(assessed verdict.Judgement, policies []string, lowest map[string]
 	if len(low) > 0 {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp3.series_below", "policies", low, "min", minScore, "days", days))
 	}
-	// No summary in the series: the result has not changed in it, and the newest one (op.exp.2) holds.
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp3.series_kept", "policies", kept, "min", minScore, "days", days, "baseline", assessed.Message))
 }
 
-// Edits are the successful audited writes of the window under the security configuration paths.
 func Edits(accesses []source.AuditAccess, paths []string) []source.AuditAccess {
 	var out []source.AuditAccess
 	for _, a := range accesses {
@@ -70,7 +64,6 @@ func under(path, root string) bool {
 	return root != "" && (path == root || strings.HasPrefix(path, root+"/"))
 }
 
-// editors are the accounts behind the edits, and the paths whose account cannot be named.
 func editors(edits []source.AuditAccess, accounts opacc4.Accounts) (map[string][]string, []string) {
 	who := map[string][]string{}
 	var unnamed []string
@@ -137,7 +130,6 @@ func JudgeEV08(edits []source.AuditAccess, accounts opacc4.Accounts, max int, pr
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp3.admins", "count", len(names), "max", max, "accounts", names))
 }
 
-// JudgeEV03 fails a package newly installed on request that P-01 does not authorise; dependencies pass.
 func JudgeEV03(installed []string, selection *fact.PackageSelection, authorised []string, problem catalog.Message) verdict.Judgement {
 
 	switch {
@@ -170,8 +162,6 @@ func JudgeEV03(installed []string, selection *fact.PackageSelection, authorised 
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp3.software_authorised", "installed", len(installed), "requested", requested))
 }
 
-// JudgeEV04 needs every running unit, and every listening process outside a unit, in P-02. A template
-// unit (`getty@.service`) covers its instances.
 func JudgeEV04(units *fact.UnitSnapshot, listening *fact.ListeningSnapshot, sockets []fact.ListeningSocket, authorised []string, problem catalog.Message) verdict.Judgement {
 
 	switch {
@@ -226,7 +216,6 @@ func JudgeEV04(units *fact.UnitSnapshot, listening *fact.ListeningSnapshot, sock
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp3.services_authorised", "units", len(running), "processes", processes))
 }
 
-// JudgeEV09 needs the newest copy of every source of P-07 within maxHours.
 func JudgeEV09(b *fact.BackupSnapshot, sources []string, maxHours int, problem catalog.Message, now time.Time) verdict.Judgement {
 
 	switch {
@@ -275,7 +264,6 @@ func JudgeEV09(b *fact.BackupSnapshot, sources []string, maxHours int, problem c
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp3.backups_fresh", "list", fresh, "max", maxHours))
 }
 
-// JudgeEV10 fails any check that went from passed to failed since cut.
 func JudgeEV10(regressions []source.SCARegression, cut time.Time, days int) verdict.Judgement {
 
 	var list []string
@@ -291,8 +279,6 @@ func JudgeEV10(regressions []source.SCARegression, cut time.Time, days int) verd
 	return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp3.regressions", "list", list, "days", days))
 }
 
-// JudgeEV05 needs every edit of the security configuration covered by an approved request of the change
-// register (op.exp.5 P-10).
 func JudgeEV05(fim []source.FIMChange, paths []string, requests []opexp5.Request, machine string, problem catalog.Message, since time.Time) verdict.Judgement {
 
 	if !problem.IsZero() {

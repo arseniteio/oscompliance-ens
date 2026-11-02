@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
@@ -90,21 +89,21 @@ func (e *Evaluator) Agent(_ context.Context, agent verdict.Agent, policy params.
 	}
 
 	expected, err := policy.List(agent.ID, control, "P-02")
-	put("EV-01", JudgeEV01(p, expected, problemOf("P-02", err)))
+	put("EV-01", JudgeEV01(p, expected, passes.ParamProblem("P-02", err)))
 
-	hours, problem := whole(policy, agent.ID, "P-03", "param.not_hours")
+	hours, problem := passes.Whole(policy, agent.ID, control, "P-03", "param.not_hours")
 	put("EV-02", JudgeEV02(p, hours, problem, now))
 
 	settings, err := policy.List(agent.ID, control, "P-04")
-	put("EV-03", JudgeEV03(p, settings, problemOf("P-04", err)))
+	put("EV-03", JudgeEV03(p, settings, passes.ParamProblem("P-04", err)))
 
 	put("EV-04", JudgeEV04(p, e.clamav[agent.ID]))
 
-	days, problem := whole(policy, agent.ID, "P-06", "param.not_days")
+	days, problem := passes.Whole(policy, agent.ID, control, "P-06", "param.not_days")
 	put("EV-05", JudgeEV05(p, days, problem, now))
 
 	paths, err := policy.List(agent.ID, control, "P-07")
-	put("EV-06", JudgeEV06(c, paths, problemOf("P-07", err)))
+	put("EV-06", JudgeEV06(c, paths, passes.ParamProblem("P-07", err)))
 
 	put("EV-07", JudgeEV07(p))
 
@@ -127,25 +126,7 @@ func (e *Evaluator) Agent(_ context.Context, agent verdict.Agent, policy params.
 	if len(usb) > 0 {
 		value = usb[0]
 	}
-	put("EV-12", JudgeEV12(value, problemOf("P-10", err), e.usb[agent.ID], p))
+	put("EV-12", JudgeEV12(value, passes.ParamProblem("P-10", err), e.usb[agent.ID], p))
 
 	return results, nil
-}
-
-func whole(policy params.Lister, agentID, id, notWhole string) (int, catalog.Message) {
-	v, err := policy.Number(agentID, control, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

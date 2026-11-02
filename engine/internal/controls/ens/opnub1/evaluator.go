@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -24,7 +23,6 @@ type Facts interface {
 
 const control = "op.nub.1"
 
-// Cloud logs are read back a week: P-13 stops there.
 const logsHorizon = 7 * 24 * time.Hour
 
 type Evaluator struct {
@@ -117,7 +115,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	integrations := Integrations(integrationRows)
 
 	put("EV-01", func() verdict.Judgement {
-		hours, hoursProblem := opmon1.Whole(policy, agent.ID, control, "P-13", "param.not_hours")
+		hours, hoursProblem := passes.Whole(policy, agent.ID, control, "P-13", "param.not_hours")
 		if j, bad := gap(integrationsProblem, hoursProblem); bad {
 			return j
 		}
@@ -126,7 +124,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-02", func() verdict.Judgement {
 		rows, problem := list("P-07", false)
-		level, levelProblem := opmon1.Whole(policy, agent.ID, control, "P-14", "param.not_level")
+		level, levelProblem := passes.Whole(policy, agent.ID, control, "P-14", "param.not_level")
 		if j, bad := gap(problem, levelProblem); bad {
 			return j
 		}
@@ -172,7 +170,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			*p.rows, problem = list(p.id, true)
 			problems = append(problems, problem)
 		}
-		months, monthsProblem := opmon1.Whole(policy, agent.ID, control, "P-12", "param.not_months")
+		months, monthsProblem := passes.Whole(policy, agent.ID, control, "P-12", "param.not_months")
 		r.PentestMonths = months
 		if j, bad := gap(append(problems, inventoryProblem, monthsProblem)...); bad {
 			return j
@@ -183,7 +181,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// posture reads the findings of a rule group once a pass.
 func (e *Evaluator) posture(ctx context.Context, service, group string, level int) (Posture, error) {
 	key := group + "|" + strconv.Itoa(level)
 	p, ok := e.postures[key]

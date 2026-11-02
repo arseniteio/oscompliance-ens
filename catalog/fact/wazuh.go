@@ -48,7 +48,6 @@ type WazuhAgentConfig struct {
 	CustomRules  []string `json:"custom_rules"`
 }
 
-// CDBList is a list of the manager's etc/lists and when it last changed.
 type CDBList struct {
 	Name     string `json:"name"`
 	Modified string `json:"modified"`

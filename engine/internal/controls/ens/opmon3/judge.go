@@ -1,5 +1,3 @@
-// Package opmon3 judges op.mon.3, security monitoring, over the Wazuh manager's state, the logs each machine
-// sends and the inspections the organisation records.
 package opmon3
 
 import (
@@ -16,21 +14,8 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Collectors are the manager processes that receive and store events.
 var Collectors = []string{"wazuh-remoted", "wazuh-analysisd", "wazuh-db"}
 
-func cells(row string, n int) []string {
-	c := strings.Split(row, "|")
-	for len(c) < n {
-		c = append(c, "")
-	}
-	for i := range c {
-		c[i] = strings.TrimSpace(c[i])
-	}
-	return c
-}
-
-// JudgeEV01 needs the manager receiving events and the machine sending them within maxHours.
 func JudgeEV01(m *source.Manager, reporting *source.Reporting, maxHours int, now time.Time) verdict.Judgement {
 
 	var stopped []string
@@ -50,11 +35,10 @@ func JudgeEV01(m *source.Manager, reporting *source.Reporting, maxHours int, now
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.collecting", "date", day(reporting.LastKeepAlive)))
 }
 
-// Sources are the rows of P-01 (`fuente | sistema | ubicacion | max_horas`) of a machine: its name or `*`.
 func Sources(rows []string, machine string) [][]string {
 	var out [][]string
 	for _, r := range rows {
-		c := cells(r, 4)
+		c := passes.Cells(r, 4)
 		if c[1] == "*" || strings.EqualFold(c[1], machine) {
 			out = append(out, c)
 		}
@@ -62,7 +46,6 @@ func Sources(rows []string, machine string) [][]string {
 	return out
 }
 
-// JudgeEV02 needs every source of the machine read by its agent and sending events within its hours.
 func JudgeEV02(sources [][]string, config *fact.WazuhAgentConfig, seen map[string]time.Time, now time.Time) verdict.Judgement {
 
 	if len(sources) == 0 {
@@ -99,8 +82,6 @@ func JudgeEV02(sources [][]string, config *fact.WazuhAgentConfig, seen map[strin
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.sources_flowing", "list", flowing))
 }
 
-// JudgeEV03 needs correlation rules loaded, each rule set of P-02 (`conjunto | minimo_reglas_correlacion`)
-// with at least its own.
 func JudgeEV03(m *source.Manager, sets []string) verdict.Judgement {
 
 	total := 0
@@ -115,7 +96,7 @@ func JudgeEV03(m *source.Manager, sets []string) verdict.Judgement {
 
 	var short []catalog.Message
 	for _, row := range sets {
-		c := cells(row, 2)
+		c := passes.Cells(row, 2)
 		want, _ := strconv.Atoi(c[1])
 		got := 0
 		for _, r := range m.Rules {
@@ -133,8 +114,6 @@ func JudgeEV03(m *source.Manager, sets []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.correlating", "count", total))
 }
 
-// Surface is what Wazuh knows of the machine's exposure: its SCA enabled with a result, and its packages
-// inventoried for the vulnerability detector.
 type Surface struct {
 	SCAEnabled bool
 	SCAResults int
@@ -142,7 +121,6 @@ type Surface struct {
 	Detector   bool
 }
 
-// JudgeEV04 needs the vulnerability detector enabled over the machine's packages and SCA results of it.
 func JudgeEV04(s Surface) verdict.Judgement {
 	var missing []string
 	if !s.Detector {
@@ -160,13 +138,11 @@ func JudgeEV04(s Surface) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.surface", "packages", s.Packages, "policies", s.SCAResults))
 }
 
-// JudgeEV06 needs a network probe in P-05 (`producto | ubicacion | dias_maximos_sin_alerta`) whose alerts
-// reach the manager within its days.
 func JudgeEV06(probes []string, network source.Detection, now time.Time) verdict.Judgement {
 	if len(probes) == 0 {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opmon3.no_probe"))
 	}
-	c := cells(probes[0], 3)
+	c := passes.Cells(probes[0], 3)
 	days, _ := strconv.Atoi(c[2])
 	if days == 0 {
 		days = 7
@@ -177,13 +153,11 @@ func JudgeEV06(probes []string, network source.Detection, now time.Time) verdict
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon1.network_alerts", "product", c[0], "count", network.Count, "date", day(network.Last)))
 }
 
-// JudgeEV08 needs every query limit of P-07 (`sistema | perfil | umbral | ventana | reglas`) watched by a
-// loaded threshold rule.
 func JudgeEV08(m *source.Manager, rows []string) verdict.Judgement {
 
 	var unwatched, watched []catalog.Message
 	for _, row := range rows {
-		c := cells(row, 5)
+		c := passes.Cells(row, 5)
 		ranges, err := opmon1.ParseRules(c[4])
 		if err != nil || len(ranges) == 0 {
 			return passes.Gap(verdict.CauseConfiguration, catalog.Says("opmon1.bad_rules", "name", c[0], "rules", c[4]))
@@ -207,13 +181,11 @@ func JudgeEV08(m *source.Manager, rows []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.queries_watched", "list", watched))
 }
 
-// JudgeEV09 needs every recipient of P-08 (`destinatario | canal | nivel`) reached by its channel: `correo`
-// through the manager's email notification, anything else by an integration of that name, at the level.
 func JudgeEV09(m *source.Manager, rows []string) verdict.Judgement {
 
 	var unreached []catalog.Message
 	for _, row := range rows {
-		c := cells(row, 3)
+		c := passes.Cells(row, 3)
 		level, _ := strconv.Atoi(c[2])
 		ok := false
 		if strings.EqualFold(c[1], "correo") {
@@ -233,23 +205,20 @@ func JudgeEV09(m *source.Manager, rows []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon3.recipients_reached", "count", len(rows)))
 }
 
-// Inspection kinds of P-09 and P-10.
 const (
 	KindConfiguration   = "configuracion"
 	KindVulnerabilities = "vulnerabilidades"
 	KindPentest         = "pentest"
 )
 
-// Kind normalises an inspection kind: `configuración` and `configuracion` are one.
 func Kind(s string) string {
 	return strings.NewReplacer("á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u").Replace(strings.ToLower(strings.TrimSpace(s)))
 }
 
-// Plan is the periodicity in days of each inspection kind of P-09 (`tipo | periodicidad_dias | ejecutor`).
 func Plan(rows []string) map[string]int {
 	out := map[string]int{}
 	for _, r := range rows {
-		c := cells(r, 2)
+		c := passes.Cells(r, 2)
 		if d, err := strconv.Atoi(c[1]); err == nil && d > 0 {
 			out[Kind(c[0])] = d
 		}
@@ -257,20 +226,16 @@ func Plan(rows []string) map[string]int {
 	return out
 }
 
-// Done are the rows of P-10 (`fecha | tipo | alcance | ejecutor | hallazgos | estado`) of one kind, as
-// passes.Review reads them.
 func Done(rows []string, kind string) []string {
 	var out []string
 	for _, r := range rows {
-		if Kind(cells(r, 2)[1]) == kind {
+		if Kind(passes.Cells(r, 2)[1]) == kind {
 			out = append(out, r)
 		}
 	}
 	return out
 }
 
-// JudgeInspection judges one kind of inspection: continuous when Wazuh does it on the machine, else the
-// newest row of its kind within the days of P-09.
 func JudgeInspection(continuous bool, continuousWhy catalog.Message, register []string, registerProblem catalog.Message, kind string, plan map[string]int, now time.Time) verdict.Judgement {
 
 	if continuous {
@@ -286,13 +251,11 @@ func JudgeInspection(continuous bool, continuousWhy catalog.Message, register []
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
 
-// JudgeEV07 needs every CDB list P-06 (`servicio | proveedor | alcance | listas`) feeds with indicators
-// updated on the manager within the days of P-11.
 func JudgeEV07(manager *fact.WazuhAgentConfig, rows []string, days int, now time.Time) verdict.Judgement {
 
 	var wanted []string
 	for _, r := range rows {
-		for _, l := range strings.Split(cells(r, 4)[3], ",") {
+		for _, l := range strings.Split(passes.Cells(r, 4)[3], ",") {
 			if l = strings.TrimSpace(l); l != "" {
 				wanted = append(wanted, l)
 			}

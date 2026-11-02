@@ -101,7 +101,6 @@ func JudgeEV04(in EV04Input) verdict.Judgement {
 	if len(gaps) > 0 {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("findings", "list", gaps))
 	}
-	// A declared resource the machine does not have is a P-08 that does not match it, not a gap in what was read.
 	if len(missing) > 0 {
 		return passes.Gap(verdict.CauseConfiguration, catalog.Says("opacc2.declared_missing", "paths", missing, "verified", verified))
 	}

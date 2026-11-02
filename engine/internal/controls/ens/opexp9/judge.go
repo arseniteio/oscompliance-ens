@@ -1,4 +1,3 @@
-// Package opexp9 judges op.exp.9, the record of incident management, over op.exp.7's incident register.
 package opexp9
 
 import (
@@ -15,7 +14,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Counter counts the alerts of the machine between two times.
 type Counter func(from, to time.Time) (int, error)
 
 func JudgeEV01(incidents []opexp7.Incident, count Counter) verdict.Judgement {
@@ -37,8 +35,6 @@ func JudgeEV01(incidents []opexp7.Incident, count Counter) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp9.events_kept", "count", len(incidents)))
 }
 
-// Due are the phases of P-02 (`fase | contenido | exigible_desde_horas`) and from how many hours of
-// duration each is due.
 func Due(rows []string) map[string]int {
 	out := map[string]int{}
 	for _, r := range rows {
@@ -88,7 +84,6 @@ func JudgeEV02(incidents []opexp7.Incident, due map[string]int, problem catalog.
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp9.reports", "count", checked))
 }
 
-// JudgeEV04 needs the changes of the machine during each incident covered by requests of op.exp.5.
 func JudgeEV04(incidents []opexp7.Incident, changes []opexp5.Change, requests []opexp5.Request, machine string, problem catalog.Message, now time.Time) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -137,7 +132,6 @@ func JudgeEV05(incidents []opexp7.Incident, manager *fact.WazuhAgentConfig, now 
 	return opexp7.JudgeEV05(legalOnes, manager, now)
 }
 
-// JudgeEV07 needs alerts of the machine kept for every day of the incidents still open or legally relevant.
 func JudgeEV07(incidents []opexp7.Incident, count Counter, now time.Time) verdict.Judgement {
 
 	var lost []string
@@ -163,7 +157,6 @@ func JudgeEV07(incidents []opexp7.Incident, count Counter, now time.Time) verdic
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp9.period_kept", "count", checked))
 }
 
-// JudgeEV08 needs, after a closed incident whose severity P-07 lists, the review of auditable events in time.
 func JudgeEV08(incidents []opexp7.Incident, rows []string, problem catalog.Message, now time.Time) verdict.Judgement {
 
 	if !problem.IsZero() {

@@ -34,7 +34,6 @@ type Facts interface {
 
 const control = "op.exp.2"
 
-// SCA summaries are read back this far: Wazuh only raises one when the result changes.
 const summariesHorizon = 366 * 24 * time.Hour
 
 type Evaluator struct {
@@ -85,7 +84,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		}
 	}
 
-	// A host of P-06 is named as its agent is: whether each agent reports, by name.
 	e.reportingNames = map[string]bool{}
 	for id, r := range e.reporting {
 		if r.Name != "" {
@@ -149,7 +147,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	read("logins", err)
 
 	baseline := Baseline{Manager: agent.ID == source.ManagerID, Summaries: e.summaries[agent.ID], Now: now}
-	baseline.MaxHours, baseline.HoursProblem = whole(policy, agent.ID, "P-09", "param.not_hours")
+	baseline.MaxHours, baseline.HoursProblem = passes.Whole(policy, agent.ID, control, "P-09", "param.not_hours")
 	if c, ok := e.wazuh[agent.ID]; ok {
 		baseline.Config = &c
 	}
@@ -157,13 +155,13 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		baseline.Reporting = &r
 	}
 	policies, err := policy.List(agent.ID, control, "P-01")
-	baseline.Policies, baseline.PolicyProblem = policies, problemOf("P-01", err)
+	baseline.Policies, baseline.PolicyProblem = policies, passes.ParamProblem("P-01", err)
 
 	judge("EV-01", nil, func() verdict.Judgement { return JudgeEV01(baseline) })
 
 	judge("EV-06", nil, func() verdict.Judgement {
 		v, err := policy.Number(agent.ID, control, "P-05")
-		problem := problemOf("P-05", err)
+		problem := passes.ParamProblem("P-05", err)
 		if err == nil && (v < 0 || v > 100) {
 			problem = catalog.Says("opexp2.not_percent", "param", "P-05", "value", v)
 		}
@@ -172,12 +170,12 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	judge("EV-02", []string{"accounts", "logins"}, func() verdict.Judgement {
 		standard, err := policy.List(agent.ID, control, "P-03")
-		return JudgeEV02(accounts, standard, problemOf("P-03", err), logins, today)
+		return JudgeEV02(accounts, standard, passes.ParamProblem("P-03", err), logins, today)
 	})
 
 	judge("EV-03", []string{"listening"}, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, control, "P-02")
-		return JudgeEV03(listening, rows, problemOf("P-02", err))
+		return JudgeEV03(listening, rows, passes.ParamProblem("P-02", err))
 	})
 
 	judge("EV-04", []string{"accounts", "config", "acl"}, func() verdict.Judgement {
@@ -198,27 +196,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			v = &x
 		}
 		rows, err := policy.List(agent.ID, control, "P-06")
-		return JudgeEV05(v, agent.Name, rows, problemOf("P-06", err), e.reportingNames)
+		return JudgeEV05(v, agent.Name, rows, passes.ParamProblem("P-06", err), e.reportingNames)
 	})
 
 	return results, errors.Join(errs...)
-}
-
-func whole(policy params.Lister, agentID, id, notWhole string) (int, catalog.Message) {
-
-	v, err := policy.Number(agentID, control, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

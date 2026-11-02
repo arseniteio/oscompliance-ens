@@ -26,9 +26,6 @@ type Change struct {
 	Agents  int       `json:"agents"`
 }
 
-// Sync writes the region of every group whose configuration differs from what the parameters ask.
-// With apply false it only reports the changes it would make. An agent in several of the groups is
-// configured by the first one only: two regions would make Wazuh read its facts twice.
 func Sync(ctx context.Context, api API, policy params.Lister, groups []string, apply bool, now time.Time) ([]Change, error) {
 
 	var changes []Change

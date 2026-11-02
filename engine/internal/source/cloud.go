@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// CloudOperation is a successful administrative operation a cloud module brought into Wazuh, by actor.
 type CloudOperation struct {
 	Module    string
 	Actor     string
@@ -15,10 +14,6 @@ type CloudOperation struct {
 	Last      time.Time
 }
 
-// cloudAdmin says, for each cloud module whose records name the actor, what makes an alert a successful
-// administrative operation and which fields name its actor and operation: CloudTrail write events, Office
-// 365 Exchange and Entra ID admin records, Azure activity log administrative entries, Entra ID directory
-// audits through Microsoft Graph, and Google's Admin Activity audit log.
 var cloudAdmin = []struct {
 	module, actor, operation string
 	filter                   []any
@@ -42,13 +37,11 @@ var cloudAdmin = []struct {
 	{"gcp-bucket", "data.gcp.protoPayload.authenticationInfo.principalEmail", "data.gcp.protoPayload.methodName", gcpAdminActivity},
 }
 
-// gcpAdminActivity are the entries of Google's Admin Activity audit log that did not fail.
 var gcpAdminActivity = []any{
 	map[string]any{"wildcard": map[string]any{"data.gcp.logName": "*cloudaudit.googleapis.com%2Factivity"}},
 	map[string]any{"bool": map[string]any{"must_not": []any{map[string]any{"exists": map[string]any{"field": "data.gcp.protoPayload.status.code"}}}}},
 }
 
-// CloudAdminModules are the modules whose administrative operations the engine reads.
 func CloudAdminModules() []string {
 	out := make([]string, len(cloudAdmin))
 	for i, c := range cloudAdmin {
@@ -57,7 +50,6 @@ func CloudAdminModules() []string {
 	return out
 }
 
-// CloudAdminOperations are the successful administrative operations of the cloud modules since a time.
 func (s *Source) CloudAdminOperations(ctx context.Context, since time.Time) ([]CloudOperation, error) {
 
 	var out []CloudOperation
@@ -80,7 +72,6 @@ func (s *Source) CloudAdminOperations(ctx context.Context, since time.Time) ([]C
 	return out, nil
 }
 
-// GroupFindings are the alerts of some rule groups since a time, and how many of them reached a level.
 func (s *Source) GroupFindings(ctx context.Context, groups []string, level int, since time.Time) (all, serious Detection, err error) {
 	if all, err = s.GroupDetections(ctx, groups, since); err != nil {
 		return all, serious, err

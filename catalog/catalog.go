@@ -34,7 +34,6 @@ type Control struct {
 	Report            []ReportField        `json:"report"`
 }
 
-// ReportField is one field of the control report: what it shows and the evidences and parameters behind it.
 type ReportField struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
@@ -84,7 +83,6 @@ const (
 	ClassPlatform = "platform"
 )
 
-// Parameter carries the whole definition the configuration screen shows; the engine reads only Class.
 type Parameter struct {
 	Class           string              `json:"class"`
 	Name            string              `json:"name,omitempty"`
@@ -198,7 +196,6 @@ func Controls() []Control {
 	return out
 }
 
-// ExclusionGroup is the Wazuh group that takes a machine out of a control.
 func ExclusionGroup(controlID string) string {
 	return "ens-excluir-" + controlID
 }
@@ -248,7 +245,6 @@ func TypeDefaultTemplate(controlID, systemType string) (Template, bool) {
 	return Template{}, false
 }
 
-// Platforms of the Wazuh inventory (`os.platform`) behind each system type.
 var platformTypes = map[string]string{}
 
 func loadSystemTypes() {
@@ -267,8 +263,6 @@ func loadSystemTypes() {
 	}
 }
 
-// SystemTypeOf is the type of a machine from the inventory: the manager by its id, the rest by platform.
-// Empty when the platform says nothing.
 func SystemTypeOf(agentID, platform string) string {
 	if agentID == "000" {
 		return "manager"

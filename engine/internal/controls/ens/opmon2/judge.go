@@ -1,5 +1,3 @@
-// Package opmon2 judges op.mon.2, the metrics system: the cycles the organisation consolidates, the data of
-// its incident indicators, the resources it records and how reliable the measurement of each machine is.
 package opmon2
 
 import (
@@ -15,29 +13,15 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Scopes of a validator in P-05.
 const (
 	ScopeMetrics   = "metricas"
 	ScopeResources = "recursos"
 )
 
-func cells(row string, n int) []string {
-	c := strings.Split(row, "|")
-	for len(c) < n {
-		c = append(c, "")
-	}
-	for i := range c {
-		c[i] = strings.TrimSpace(c[i])
-	}
-	return c
-}
-
-// Validators are the people of P-05 (`responsable | rol | ambito`) who validate a scope: `ambos` or an empty
-// scope validates both.
 func Validators(rows []string, scope string) []string {
 	var out []string
 	for _, r := range rows {
-		c := cells(r, 3)
+		c := passes.Cells(r, 3)
 		s := strings.ToLower(c[2])
 		if c[0] != "" && (s == scope || s == "ambos" || s == "") {
 			out = append(out, strings.ToLower(c[0]))
@@ -46,13 +30,10 @@ func Validators(rows []string, scope string) []string {
 	return out
 }
 
-// Cycles are the rows of P-06 (`fecha_consolidacion | periodo | implantacion_global | validado_por |
-// horas_internas | horas_externas | presupuesto`) validated by one of the validators, and for resources with
-// the three resource columns filled.
 func Cycles(rows []string, validators []string, resources bool) []string {
 	var out []string
 	for _, r := range rows {
-		c := cells(r, 7)
+		c := passes.Cells(r, 7)
 		if !slices.Contains(validators, strings.ToLower(c[3])) {
 			continue
 		}
@@ -64,7 +45,6 @@ func Cycles(rows []string, validators []string, resources bool) []string {
 	return out
 }
 
-// Indicators of P-04 and the data of the incident register each one needs.
 var Indicators = map[string]func(opexp7.Incident) bool{
 	"incidentes_por_tipo":      func(in opexp7.Incident) bool { return in.Field(func(p opexp7.Phase) string { return p.Class }) != "" },
 	"incidentes_por_severidad": func(in opexp7.Incident) bool { return in.Severity() != "" },
@@ -76,8 +56,6 @@ var Indicators = map[string]func(opexp7.Incident) bool{
 	},
 }
 
-// JudgeEV03 needs every incident of the period with the data each indicator of P-04 needs. Resolution
-// times are measured on closed incidents only.
 func JudgeEV03(incidents []opexp7.Incident, indicators []string) verdict.Judgement {
 
 	var unknown []string
@@ -108,8 +86,6 @@ func JudgeEV03(incidents []opexp7.Incident, indicators []string) verdict.Judgeme
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon2.incidents_measured", "count", len(incidents), "indicators", len(indicators)))
 }
 
-// JudgeEV04 needs the machine's measurement reliable: its agent reporting and an OSCompliance pass within
-// the window.
 func JudgeEV04(reporting *source.Reporting, pass *fact.AgentPass, windowStart time.Time) verdict.Judgement {
 
 	switch {

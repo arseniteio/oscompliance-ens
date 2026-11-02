@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// Inventory is what Syscollector keeps of a machine in the state indices: one document per item, with no date.
 type Inventory struct {
 	System    *System
 	Hardware  *Hardware
@@ -32,8 +31,6 @@ type Hardware struct {
 	MemoryMB int
 }
 
-// Inventories reads the inventory of every machine at once: a handful of aggregations per pass, whatever
-// the size of the fleet.
 func (s *Source) Inventories(ctx context.Context) (map[string]*Inventory, error) {
 
 	out := map[string]*Inventory{}
@@ -116,7 +113,6 @@ func (s *Source) Inventories(ctx context.Context) (map[string]*Inventory, error)
 	}
 
 	if s.managerInventory != nil {
-		// A manager the API cannot read is left without inventory; the rest of the fleet is still judged.
 		inv, err := s.managerInventory(ctx)
 		if err != nil {
 			slog.Warn("manager inventory", "error", err)
@@ -128,8 +124,6 @@ func (s *Source) Inventories(ctx context.Context) (map[string]*Inventory, error)
 	return out, nil
 }
 
-// UseManagerInventory sets where the manager's own inventory is read, since Wazuh leaves it out of the
-// state indices.
 func (s *Source) UseManagerInventory(read func(ctx context.Context) (*Inventory, error)) {
 	s.managerInventory = read
 }
@@ -138,7 +132,6 @@ func (s *Source) inventoryIndex(kind string) string {
 	return s.states + "inventory-" + kind + "-*"
 }
 
-// firstDocs hands one document of each machine in an inventory index: system and hardware hold one.
 func (s *Source) firstDocs(ctx context.Context, kind string, fields []string, fn func(id string, src json.RawMessage) error) error {
 
 	sub := map[string]any{"doc": map[string]any{"top_hits": map[string]any{"size": 1, "_source": fields}}}
@@ -164,7 +157,6 @@ func (s *Source) firstDocs(ctx context.Context, kind string, fields []string, fn
 	})
 }
 
-// inventoryCount counts the documents of each machine, split by a second key when one is given.
 func (s *Source) inventoryCount(ctx context.Context, kind string, filter []any, by any, fn func(id string, key map[string]any, n int)) error {
 
 	if filter == nil {
@@ -189,7 +181,6 @@ func (s *Source) inventoryCount(ctx context.Context, kind string, filter []any, 
 	})
 }
 
-// Reporting is the newest monitoring record of a machine.
 type Reporting struct {
 	Name          string
 	Status        string
@@ -198,8 +189,6 @@ type Reporting struct {
 	Groups        []string
 }
 
-// Reporting are the machines judged in this pass for the control reading: a machine outside the scope, or
-// excluded from the control, counts for nothing.
 func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Reporting, error) {
 
 	fleet, err := s.FleetReporting(ctx, since)
@@ -207,8 +196,6 @@ func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Rep
 	return fleet, err
 }
 
-// FleetReporting are all the registered machines, inside the scope or not: for finding out whom a name or
-// an address belongs to, never for judging them.
 func (s *Source) FleetReporting(ctx context.Context, since time.Time) (map[string]Reporting, error) {
 
 	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
@@ -255,7 +242,6 @@ func (s *Source) FleetReporting(ctx context.Context, since time.Time) (map[strin
 
 var packageChangeRules = []any{"2902", "2903", "2932", "2933", "2934"}
 
-// PackageChanges counts, per machine and day, the packages Wazuh saw installed, updated or removed.
 func (s *Source) PackageChanges(ctx context.Context, since time.Time) (map[string]map[time.Time]int, error) {
 
 	filter := []any{
@@ -288,10 +274,8 @@ func (s *Source) PackageChanges(ctx context.Context, since time.Time) (map[strin
 	return out, err
 }
 
-// Only dpkg: Wazuh decodes the package of a dpkg log line, not of a yum one.
 var installRules = []any{"2901"}
 
-// NewPackages are the packages Wazuh saw newly installed (not updated) on each machine since a time.
 func (s *Source) NewPackages(ctx context.Context, since time.Time) (map[string][]string, error) {
 
 	filter := []any{
@@ -311,14 +295,12 @@ func (s *Source) NewPackages(ctx context.Context, since time.Time) (map[string][
 	return out, err
 }
 
-// AlertCount is how many times a rule fired on a machine, with some examples of what it was about.
 type AlertCount struct {
 	Rule     string
 	Count    int
 	Examples []string
 }
 
-// RuleCounts counts the alerts of some rules per machine since a time, with examples taken from a field.
 func (s *Source) RuleCounts(ctx context.Context, rules []string, field string, since time.Time) (map[string][]AlertCount, error) {
 
 	ids := make([]any, len(rules))

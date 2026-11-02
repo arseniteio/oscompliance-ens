@@ -1,5 +1,3 @@
-// Package opexp2 judges op.exp.2, security configuration: the SCA baseline of Wazuh, standard accounts,
-// justified services, secure defaults and virtual machines.
 package opexp2
 
 import (
@@ -18,8 +16,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Baseline is what proves the SCA results of a machine are current: SCA assessing often enough, the agent
-// still in contact, and the summaries of the policies of P-01.
 type Baseline struct {
 	Config        *fact.WazuhAgentConfig
 	Reporting     *source.Reporting
@@ -32,7 +28,6 @@ type Baseline struct {
 	Now           time.Time
 }
 
-// assessed are the newest summaries of the P-01 policies, or the judgement that stands in their place.
 func (b Baseline) assessed() ([]source.SCASummary, verdict.Judgement, bool) {
 
 	switch {
@@ -119,13 +114,11 @@ func JudgeEV06(b Baseline, minScore int, scoreProblem catalog.Message) verdict.J
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp2.score_reached", "policies", scores(found), "min", minScore))
 }
 
-// Accounts are the machine's accounts as op.acc.1 reads them.
 type Accounts struct {
 	Snapshot *fact.IdentitySnapshot
 	Records  []fact.IdentityRecord
 }
 
-// JudgeEV02 fails a standard account of P-03 that is still active, or that logged in during the window.
 func JudgeEV02(a Accounts, standard []string, problem catalog.Message, logins []source.Login, today time.Time) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -172,14 +165,11 @@ func JudgeEV02(a Accounts, standard []string, problem catalog.Message, logins []
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp2.no_standard_accounts", "count", len(listed)))
 }
 
-// Listening is the machine's listening sockets, as op.acc.6 reads them.
 type Listening struct {
 	Snapshot *fact.ListeningSnapshot
 	Sockets  []fact.ListeningSocket
 }
 
-// JudgeEV03 needs every listening socket justified by a P-02 row: its process, and its port when the row
-// lists ports. A socket whose process the agent could not name is matched by port only.
 func JudgeEV03(l Listening, rows []string, problem catalog.Message) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -237,7 +227,6 @@ func JudgeEV03(l Listening, rows []string, problem catalog.Message) verdict.Judg
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp2.services_justified", "count", len(l.Sockets)))
 }
 
-// Defaults is what EV-04 reads: sshd's effective settings, the accounts, and the files of P-08.
 type Defaults struct {
 	Settings opacc6.Settings
 	Accounts Accounts
@@ -251,7 +240,6 @@ var weakMACs = []string{"hmac-md5", "hmac-md5-96", "hmac-ripemd160", "hmac-sha1"
 
 var weakKex = []string{"diffie-hellman-group1-sha1", "diffie-hellman-group14-sha1", "diffie-hellman-group-exchange-sha1"}
 
-// sshdDeviations are sshd settings that weaken it, each with the value found.
 func sshdDeviations(d opacc6.SSHD) map[string]string {
 
 	out := map[string]string{}
@@ -286,7 +274,6 @@ func sshdDeviations(d opacc6.SSHD) map[string]string {
 	return out
 }
 
-// Exception is a P-04 row: a deviation of one machine authorised until a date.
 type Exception struct {
 	Asset, Check string
 	Until        time.Time
@@ -308,7 +295,6 @@ func ParseExceptions(rows []string) []Exception {
 	return out
 }
 
-// JudgeEV04 lists every deviation from a secure default not covered by a current exception of P-04.
 func JudgeEV04(d Defaults, machine string, files []string, exceptions []Exception, today time.Time) verdict.Judgement {
 
 	if gap, found := d.Settings.Gap(); found {
@@ -394,7 +380,6 @@ func JudgeEV04(d Defaults, machine string, files []string, exceptions []Exceptio
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp2.secure_defaults", "allowed", allowed))
 }
 
-// JudgeEV05 needs a virtual machine to be in P-06, with a host that reports when the host is an agent.
 func JudgeEV05(v *fact.Virtualization, machine string, rows []string, problem catalog.Message, reporting map[string]bool) verdict.Judgement {
 
 	if v == nil {
@@ -428,7 +413,6 @@ func JudgeEV05(v *fact.Virtualization, machine string, rows []string, problem ca
 	return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp2.virtual_not_declared", "platform", v.Platform, "machine", machine))
 }
 
-// reportingOf says whether host is the name of an agent and whether that agent reports.
 func reportingOf(reporting map[string]bool, host string) (known, up bool) {
 	for name, ok := range reporting {
 		if strings.EqualFold(name, host) {

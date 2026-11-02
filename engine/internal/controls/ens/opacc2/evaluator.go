@@ -297,14 +297,3 @@ func ev05Params(policy params.Lister, agentID string) (groups, declared []string
 
 	return groups, declared, passes.Problems(problems)
 }
-
-func joinProblems(problems []string) string {
-	out := ""
-	for i, p := range problems {
-		if i > 0 {
-			out += "; "
-		}
-		out += p
-	}
-	return out
-}

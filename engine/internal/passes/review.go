@@ -8,8 +8,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Review judges a register of reviews (`fecha | ...` rows of register) against the days of period: the
-// newest date not in the future must be within them. A date in the future is set aside, not trusted.
 func Review(rows []string, rowsProblem catalog.Message, register string, maxDays int, daysProblem catalog.Message, period string, now time.Time) (verdict.Judgement, time.Time) {
 
 	if !daysProblem.IsZero() {

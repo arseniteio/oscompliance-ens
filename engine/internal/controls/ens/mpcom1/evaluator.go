@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -24,7 +23,6 @@ type Facts interface {
 
 const control = "mp.com.1"
 
-// The perimeter logs are followed a week back.
 const continuity = 7 * 24 * time.Hour
 
 type Evaluator struct {
@@ -57,7 +55,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// activity reads the perimeter devices once a pass: they are the organisation's, not the machine's.
 func (e *Evaluator) activity(ctx context.Context, elements []Element) ([]Element, []source.Flow, error) {
 
 	var names []string
@@ -101,7 +98,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	gap := func(m catalog.Message) verdict.Judgement { return passes.Gap(verdict.CauseConfiguration, m) }
 
 	rows, elementsProblem := list("P-01", false)
-	hours, hoursProblem := opmon1.Whole(policy, agent.ID, control, "P-10", "param.not_hours")
+	hours, hoursProblem := passes.Whole(policy, agent.ID, control, "P-10", "param.not_hours")
 	authorised, flowsProblem := list("P-02", false)
 
 	elements, flows, err := e.activity(ctx, Sources(rows))
@@ -161,7 +158,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return gap(flowsProblem)
 		}
 		reviews, reviewsProblem := list("P-11", false)
-		days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-04", "param.not_days")
+		days, daysProblem := passes.Whole(policy, agent.ID, control, "P-04", "param.not_days")
 		return JudgeEV06(authorised, reviews, reviewsProblem, days, daysProblem, now)
 	}())
 

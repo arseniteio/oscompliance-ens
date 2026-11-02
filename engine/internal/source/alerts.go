@@ -6,14 +6,11 @@ import (
 	"time"
 )
 
-// AlertHour is an hour of a machine with alerts, and the highest level among them.
 type AlertHour struct {
 	Hour  time.Time
 	Level int
 }
 
-// AlertHours are the hours of every machine with alerts at or above a level since a time, leaving out some
-// rules and OSCompliance's own facts.
 func (s *Source) AlertHours(ctx context.Context, minLevel int, excluded []string, since time.Time) (map[string][]AlertHour, error) {
 
 	not := []any{map[string]any{"term": map[string]any{"rule.groups": "oscompliance"}}}
@@ -55,7 +52,6 @@ func (s *Source) AlertHours(ctx context.Context, minLevel int, excluded []string
 	return out, err
 }
 
-// ActiveResponseTimes are the times active responses ran on every machine since a time, by hour.
 func (s *Source) ActiveResponseTimes(ctx context.Context, since time.Time) (map[string][]time.Time, error) {
 
 	filter := []any{
@@ -75,7 +71,6 @@ func (s *Source) ActiveResponseTimes(ctx context.Context, since time.Time) (map[
 	return out, err
 }
 
-// AlertsBetween counts the alerts of a machine between two times.
 func (s *Source) AlertsBetween(ctx context.Context, agentID string, from, to time.Time) (int, error) {
 
 	query := map[string]any{

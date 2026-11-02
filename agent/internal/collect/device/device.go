@@ -1,6 +1,3 @@
-// Package device reports how the machine protects an unattended session, its disk and its name resolution:
-// its chassis, the screen lock the system dconf databases set for the graphical session, the idle timeouts of
-// shells and logind, whether the root filesystem sits on dm-crypt, the DNS servers it asks, and its load.
 package device
 
 import (
@@ -17,15 +14,12 @@ import (
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 )
 
-// Config holds the root every path is read under: / on a machine, a directory in tests.
 type Config struct {
 	Root string
 }
 
 var Default = Config{Root: "/"}
 
-// Chassis types of SMBIOS that are carried around: portable, laptop, notebook, hand held, sub notebook,
-// tablet, convertible, detachable.
 var portable = []int{8, 9, 10, 11, 14, 30, 31, 32}
 
 var displayManagers = []string{"/etc/systemd/system/display-manager.service", "/usr/sbin/gdm3", "/usr/sbin/gdm", "/usr/sbin/lightdm", "/usr/bin/sddm"}
@@ -74,8 +68,6 @@ func lines(path string) []string {
 	return out
 }
 
-// screenLock reads GNOME's keys in the system dconf keyfiles; a later file overrides an earlier one, as dconf
-// compiles them.
 func screenLock(files []string) (idle *int, enabled *bool, delay *int) {
 	for _, f := range files {
 		if strings.Contains(f, "/locks/") {
@@ -114,7 +106,6 @@ var tmout = regexp.MustCompile(`^(?:(?:export|readonly|declare\s+-\w+|typeset\s+
 
 var readonlyTmout = regexp.MustCompile(`^(?:readonly|declare\s+-\w*r\w*|typeset\s+-\w*r\w*)\s+(?:\w+=\S*\s+)*TMOUT\b`)
 
-// shellTimeout is the shortest TMOUT the login shells set, and whether a user can undo it.
 func shellTimeout(files []string) (seconds int, readonly bool) {
 	for _, f := range files {
 		for _, l := range lines(f) {
@@ -129,7 +120,6 @@ func shellTimeout(files []string) (seconds int, readonly bool) {
 	return seconds, readonly
 }
 
-// logindIdle is StopIdleSessionSec, the last file that sets it winning.
 func logindIdle(files []string) int {
 	seconds := 0
 	for _, f := range files {
@@ -142,7 +132,6 @@ func logindIdle(files []string) int {
 	return seconds
 }
 
-// duration reads a systemd time span such as 900, 15min or 1h; infinity is no limit.
 func duration(v string) int {
 	v = strings.TrimSpace(v)
 	units := []struct {
@@ -160,7 +149,6 @@ func duration(v string) int {
 	return n
 }
 
-// rootEncryption finds the device mounted on / and whether it, or any device under it, is dm-crypt.
 func rootEncryption(root string) (string, bool) {
 
 	var device string
@@ -192,7 +180,6 @@ func crypt(root, name string, depth int) bool {
 	return slices.ContainsFunc(slaves, func(s os.DirEntry) bool { return crypt(root, s.Name(), depth+1) })
 }
 
-// stub is the local resolver of systemd-resolved, which forwards to the servers of its own resolv.conf.
 const stub = "127.0.0.53"
 
 func resolvers(conf, upstream string) []string {
@@ -216,7 +203,6 @@ func nameservers(path string) []string {
 	return out
 }
 
-// tens rounds a percentage down to tens: the load changes every pass, the fact only when a step is crossed.
 func tens(p float64) int { return int(p/10) * 10 }
 
 func load(loadavg, cpuinfo string) (cpus, percent int) {

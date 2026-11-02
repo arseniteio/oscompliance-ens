@@ -32,12 +32,10 @@ func (s *Source) Plan(agents []verdict.Agent) {
 	s.pass.mu.Unlock()
 }
 
-// UseExclusions says which machines each control leaves out.
 func (s *Source) UseExclusions(excluded func(controlID, agentID string) bool) {
 	s.pass.excluded = excluded
 }
 
-// counts tells whether a machine counts for the control reading: in the plan, and not excluded from it.
 func (s *Source) counts(ctx context.Context, agentID string) bool {
 	if !s.pass.plan.Has(agentID) {
 		return false

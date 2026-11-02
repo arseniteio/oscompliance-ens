@@ -11,7 +11,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opcont2"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp7"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -28,7 +27,6 @@ type Facts interface {
 
 const control = "mp.com.4"
 
-// The requirement each way of segmenting of P-03 answers.
 var modalityRequirement = map[string]string{VLAN: "mp.com.4.r1.1", VPN: "mp.com.4.r2.1", Physical: "mp.com.4.r3.1"}
 
 type Evaluator struct {
@@ -70,7 +68,6 @@ func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// Modality normalises P-03: VLAN, VPN or física.
 func Modality(v string) string {
 	switch m := strings.ReplaceAll(opcont2.Person(v), " ", "_"); {
 	case strings.HasPrefix(m, "vlan") || m == "r1":
@@ -110,7 +107,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	modalityRows, modalityProblem := list(control, "P-03", false)
 	modality := ""
-	// VLAN alone is no option at ALTO: the reinforcements of the other two stay to be met.
 	vlanAtHigh := false
 	if modalityProblem.IsZero() {
 		modality = Modality(modalityRows[0])
@@ -155,7 +151,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-04", withSegments(func() verdict.Judgement { return JudgeEV04(segments, network) }))
 
 	put("EV-05", func() verdict.Judgement {
-		hours, problem := opmon1.Whole(policy, agent.ID, control, "P-09", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, control, "P-09", "param.not_hours")
 		if !problem.IsZero() {
 			return gap(problem)
 		}
@@ -193,7 +189,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-10", func() verdict.Judgement {
 		reviews, problem := list(control, "P-08", false)
-		days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-07", "param.not_days")
+		days, daysProblem := passes.Whole(policy, agent.ID, control, "P-07", "param.not_days")
 		j, _ := passes.Review(reviews, problem, "P-08", days, daysProblem, "P-07", now)
 		return j
 	}())
@@ -201,7 +197,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// activity reads the interconnection points once a pass: they are the organisation's, not the machine's.
 func (e *Evaluator) activity(ctx context.Context, elements []mpcom1.Element) ([]mpcom1.Element, []source.Flow, error) {
 
 	var names []string

@@ -1,6 +1,3 @@
-// Package mpcom4 judges mp.com.4, segregation of networks: every machine in a declared segment, flows between
-// segments authorised, no machine bridging segments, wireless kept apart, the chosen way of segmenting in
-// place and incidents contained in their segment.
 package mpcom4
 
 import (
@@ -19,7 +16,6 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// Purposes of a segment in P-01.
 const (
 	Users    = "usuarios"
 	Services = "servicios"
@@ -27,7 +23,6 @@ const (
 	Wireless = "inalambrico"
 )
 
-// Segment is a row of P-01 (`segmento | proposito | rango | vlan`).
 type Segment struct {
 	Name, Purpose, VLAN string
 	Range               netip.Prefix
@@ -46,7 +41,6 @@ func ParseSegments(rows []string) []Segment {
 	return out
 }
 
-// Of is the segment of an address: the narrowest range holding it.
 func Of(segments []Segment, address string) (Segment, bool) {
 	ip, err := netip.ParseAddr(strings.TrimSpace(address))
 	if err != nil {
@@ -61,13 +55,11 @@ func Of(segments []Segment, address string) (Segment, bool) {
 	return best, found
 }
 
-// routable leaves out loopback and link-local addresses, which are in no segment.
 func routable(address string) bool {
 	ip, err := netip.ParseAddr(address)
 	return err == nil && !ip.IsLoopback() && !ip.IsLinkLocalUnicast()
 }
 
-// SegmentsOf are the segments a machine has addresses in, and its addresses in none.
 func SegmentsOf(segments []Segment, network *source.Network) (in []string, outside []string) {
 	if network == nil {
 		return nil, nil
@@ -87,7 +79,6 @@ func SegmentsOf(segments []Segment, network *source.Network) (in []string, outsi
 	return in, outside
 }
 
-// JudgeEV01 needs every address of the machine in a segment of P-01.
 func JudgeEV01(segments []Segment, network *source.Network) verdict.Judgement {
 	if network == nil {
 		return verdictGap("mpcom1.no_inventory")
@@ -99,8 +90,6 @@ func JudgeEV01(segments []Segment, network *source.Network) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom4.in_segments", "list", in))
 }
 
-// Allowed tells whether a flow between two segments is in P-02 (`origen | destino | protocolo | puerto`):
-// segments by name or `*`.
 func Allowed(from, to Segment, f source.Flow, matrix []string) bool {
 	if from.Name == to.Name {
 		return true
@@ -114,7 +103,6 @@ func Allowed(from, to Segment, f source.Flow, matrix []string) bool {
 	})
 }
 
-// JudgeEV02 needs every flow the interconnection points let through between two segments allowed by P-02.
 func JudgeEV02(flows []source.Flow, segments []Segment, matrix []string) verdict.Judgement {
 	var leaks []string
 	between := 0
@@ -135,7 +123,6 @@ func JudgeEV02(flows []source.Flow, segments []Segment, matrix []string) verdict
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom4.flows_allowed", "count", between))
 }
 
-// JudgeEV03 needs the machine in one segment, unless P-05 names it as an interconnection point.
 func JudgeEV03(segments []Segment, network *source.Network, machine string, points []string) verdict.Judgement {
 	if network == nil {
 		return verdictGap("mpcom1.no_inventory")
@@ -150,7 +137,6 @@ func JudgeEV03(segments []Segment, network *source.Network, machine string, poin
 	return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpcom4.bridge", "list", in))
 }
 
-// JudgeEV04 needs every wireless interface of the machine up with its addresses in a wireless segment.
 func JudgeEV04(segments []Segment, network *source.Network) verdict.Judgement {
 	if network == nil {
 		return verdictGap("mpcom1.no_inventory")
@@ -174,15 +160,12 @@ func JudgeEV04(segments []Segment, network *source.Network) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom4.wireless_apart", "count", wireless))
 }
 
-// Modalities of P-03.
 const (
 	VLAN     = "vlan"
 	VPN      = "vpn"
 	Physical = "fisica"
 )
 
-// JudgeEV07 needs the way of segmenting of P-03 in place: every segment with its VLAN, or the machine
-// reaching its segment through a tunnel.
 func JudgeEV07(modality string, segments []Segment, network *source.Network) verdict.Judgement {
 	switch modality {
 	case VLAN:
@@ -208,7 +191,6 @@ func JudgeEV07(modality string, segments []Segment, network *source.Network) ver
 	return verdict.Explain(verdict.NotApplicable, "", catalog.Says("mpcom4.modality", "modality", modality))
 }
 
-// JudgeEV08 needs segments for users, services and administration in P-01.
 func JudgeEV08(segments []Segment) verdict.Judgement {
 	var missing []string
 	for _, p := range []string{Users, Services, Admin} {
@@ -222,7 +204,6 @@ func JudgeEV08(segments []Segment) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom4.purposes"))
 }
 
-// JudgeEV09 needs every incident of op.exp.7 kept in one segment: the machines it involves in the same one.
 func JudgeEV09(incidents []opexp7.Incident, segmentOf func(machine string) []string) verdict.Judgement {
 	var spread []catalog.Message
 	for _, in := range incidents {

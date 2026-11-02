@@ -23,8 +23,6 @@ type Agent struct {
 	Machine Machine
 }
 
-// Region renders the block of a group: what most of its machines share goes to every agent, and a
-// machine that needs other paths, or has services of its own, gets a block with its name.
 func Region(agents []Agent) string {
 
 	common := mostShared(agents)
@@ -62,8 +60,6 @@ func Region(agents []Agent) string {
 	return b.String()
 }
 
-// Merge replaces the region in a group configuration, or appends it; whatever the administrator
-// wrote outside it is kept as it is.
 func Merge(current, region string) string {
 
 	i := strings.Index(current, begin)
@@ -81,7 +77,6 @@ func Merge(current, region string) string {
 	return current + "\n" + region
 }
 
-// Current returns the region a configuration holds, empty if none.
 func Current(conf string) string {
 	i := strings.Index(conf, begin)
 	j := strings.Index(conf, end)
@@ -91,7 +86,6 @@ func Current(conf string) string {
 	return conf[i:j+len(end)] + "\n"
 }
 
-// Same compares two regions line by line: the manager stores the file indented its own way.
 func Same(a, b string) bool {
 	return strings.Join(lines(a), "\n") == strings.Join(lines(b), "\n")
 }
@@ -143,7 +137,6 @@ func nonNil(p Paths) Paths {
 	return p
 }
 
-// An XML comment cannot hold "--"; JSON can spell the second hyphen as an escape instead.
 func writePaths(b *strings.Builder, p Paths) {
 	data, _ := json.Marshal(nonNil(p))
 	b.WriteString("  <!-- " + pathsMarker + strings.ReplaceAll(string(data), "--", `-\u002d`) + " -->\n")

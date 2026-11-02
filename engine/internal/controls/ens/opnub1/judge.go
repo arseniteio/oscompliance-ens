@@ -1,6 +1,3 @@
-// Package opnub1 judges op.nub.1, cloud services: the logs of the services the organisation uses reaching
-// Wazuh, who administers them, and the record of their certification, conformity, tests, encryption and
-// jurisdiction.
 package opnub1
 
 import (
@@ -15,7 +12,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Positions of P-01.
 const (
 	User     = "usuario"
 	Provider = "prestador"
@@ -23,7 +19,6 @@ const (
 	Neither  = "ninguna"
 )
 
-// ModuleGroups are the rule groups Wazuh gives the alerts of each cloud module.
 var ModuleGroups = map[string][]string{
 	"aws-s3":     {"amazon", "aws"},
 	"azure-logs": {"azure"},
@@ -38,8 +33,6 @@ func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
 func key(v string) string { return opcont2.Person(v) }
 
-// Used are the services of P-02 (`servicio | modelo | proveedor | informacion | criticidad | uso`) used from
-// a third party.
 func Used(rows []string) []string {
 	var out []string
 	for _, r := range rows {
@@ -51,7 +44,6 @@ func Used(rows []string) []string {
 	return out
 }
 
-// Integration is a row of P-06 (`servicio | modulo | ambito`) with a Wazuh module.
 type Integration struct {
 	Service, Module string
 }
@@ -67,7 +59,6 @@ func Integrations(rows []string) []Integration {
 	return out
 }
 
-// JudgeEV01 needs the logs of every integrated service in Wazuh within maxHours.
 func JudgeEV01(integrations []Integration, last map[string]source.Detection, maxHours int, now time.Time) verdict.Judgement {
 
 	if len(integrations) == 0 {
@@ -91,8 +82,6 @@ func JudgeEV01(integrations []Integration, last map[string]source.Detection, max
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opnub1.logs_flowing", "list", flowing))
 }
 
-// JudgeEV04 needs every actor of a successful administrative operation of an integrated service in P-11
-// (`servicio | identidad`).
 func JudgeEV04(integrations []Integration, operations []source.CloudOperation, admins []string) verdict.Judgement {
 
 	readable := source.CloudAdminModules()
@@ -133,7 +122,6 @@ func JudgeEV04(integrations []Integration, operations []source.CloudOperation, a
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opnub1.admins_known", "count", checked))
 }
 
-// rowsOf indexes rows by their first column.
 func rowsOf(rows []string, n int) map[string][]string {
 	out := map[string][]string{}
 	for _, r := range rows {
@@ -143,14 +131,11 @@ func rowsOf(rows []string, n int) map[string][]string {
 	return out
 }
 
-// valid tells whether a date column holds a date not past.
 func valid(c []string, col int, now time.Time) bool {
 	t, ok := opcont2.Date(c[col])
 	return ok && !t.Before(now)
 }
 
-// JudgeEV08 needs every used service certified in P-04 (`servicio | metodologia | certificado | vigencia`)
-// and the certification in force.
 func JudgeEV08(used, certifications []string, now time.Time) verdict.Judgement {
 	certified := rowsOf(certifications, 4)
 	var lacking []string
@@ -166,15 +151,11 @@ func JudgeEV08(used, certifications []string, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opnub1.certified", "count", len(used)))
 }
 
-// Record is what P-03, P-08, P-09 and P-10 say of the used services.
 type Record struct {
 	Conformity, Jurisdiction, Encryption, Pentests []string
 	PentestMonths                                  int
 }
 
-// JudgeEV09 needs, for every used service, its ENS conformity in force (P-03 `servicio | conformidad |
-// alcance | vigencia | referencia`), a pentest within the months (P-10 `servicio | informe | fecha |
-// alcance`), its encryption (P-09) and its data location (P-08).
 func JudgeEV09(used []string, r Record, now time.Time) verdict.Judgement {
 
 	conformity, jurisdiction, encryption := rowsOf(r.Conformity, 5), rowsOf(r.Jurisdiction, 2), rowsOf(r.Encryption, 2)
@@ -211,7 +192,6 @@ func JudgeEV09(used []string, r Record, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opnub1.record_complete", "count", len(used)))
 }
 
-// Decisions leave out the requirements of the position P-01 does not take.
 func Decisions(position string, requirements []string) map[string]verdict.Judgement {
 
 	position = key(position)
@@ -236,15 +216,11 @@ func Decisions(position string, requirements []string) map[string]verdict.Judgem
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
 
-// Posture is a row of P-07 (`servicio | guia | estandar | grupo_reglas`) and the findings its provider
-// sent in the last week.
 type Posture struct {
 	Service, Group string
 	All, Serious   source.Detection
 }
 
-// JudgeEV02 needs the posture findings of every service of P-07 reaching Wazuh, none of them at or above
-// the level of P-14.
 func JudgeEV02(postures []Posture, level int, now time.Time) verdict.Judgement {
 
 	if len(postures) == 0 {
@@ -265,5 +241,4 @@ func JudgeEV02(postures []Posture, level int, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opnub1.posture", "count", len(postures), "level", level))
 }
 
-// Posture findings are read a week back.
 const postureHorizon = 7 * 24 * time.Hour

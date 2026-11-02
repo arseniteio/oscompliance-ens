@@ -1,6 +1,3 @@
-// Package opcont3 judges op.cont.3, periodic tests of the continuity plan: the tests recorded, how often each
-// kind and scenario is tested, the downtime each machine had in them against its RTO, and the deficiencies
-// they found.
 package opcont3
 
 import (
@@ -16,7 +13,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Test is a row of P-04 (`inicio | fin | tipo | escenario | sistemas | resultado | deficiencias | informe`).
 type Test struct {
 	Start, End   time.Time
 	Kind         string
@@ -26,7 +22,6 @@ type Test struct {
 	Deficiencies int
 }
 
-// Exercised tests switch to the alternative means: partial tests and full drills.
 func (t Test) Exercised() bool { return t.Kind == "parcial" || t.Kind == "simulacro" }
 
 func (t Test) Involves(machine string) bool {
@@ -60,7 +55,6 @@ func ParseTests(rows []string) []Test {
 
 func kind(v string) string { return strings.ReplaceAll(opcont2.Person(v), " ", "_") }
 
-// Since are the tests that started after a time.
 func Since(tests []Test, from time.Time) []Test {
 	var out []Test
 	for _, t := range tests {
@@ -71,7 +65,6 @@ func Since(tests []Test, from time.Time) []Test {
 	return out
 }
 
-// JudgeEV01 needs a test of the period that exercised the alternative means, and P-02 planning one.
 func JudgeEV01(period []Test, kinds []string) verdict.Judgement {
 
 	planned := slices.ContainsFunc(kinds, func(r string) bool {
@@ -88,8 +81,6 @@ func JudgeEV01(period []Test, kinds []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont3.exercised", "count", len(period), "date", period[i].Start.Format("2006-01-02"), "kind", period[i].Kind))
 }
 
-// JudgeEV02 needs the newest test within months, each kind of P-02 (`tipo | descripcion |
-// periodicidad_meses`) within its own months and each scenario of P-03 (`escenario | sistemas`) within months.
 func JudgeEV02(tests []Test, kinds, scenarios []string, months int, now time.Time) verdict.Judgement {
 
 	last := func(match func(Test) bool) time.Time {
@@ -130,8 +121,6 @@ func JudgeEV02(tests []Test, kinds, scenarios []string, months int, now time.Tim
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont3.periodic", "kinds", len(kinds), "scenarios", len(scenarios), "months", months))
 }
 
-// Downtime is the longest span a machine was not active between two times, and whether it was active at
-// the end; ok is false without records of the span.
 func Downtime(records []source.MonitoringRecord, from, to time.Time) (longest time.Duration, restored, ok bool) {
 
 	active := map[time.Time]bool{}
@@ -166,10 +155,8 @@ func Downtime(records []source.MonitoringRecord, from, to time.Time) (longest ti
 	return longest, active[times[len(times)-1]], true
 }
 
-// After a test the machine is followed one more day.
 const followUp = 24 * time.Hour
 
-// Measured is one test of a machine with what monitoring saw of it.
 type Measured struct {
 	Test     Test
 	Down     time.Duration
@@ -177,7 +164,6 @@ type Measured struct {
 	Seen     bool
 }
 
-// JudgeEV03 needs monitoring records of the machine for every exercised test it took part in.
 func JudgeEV03(measured []Measured) verdict.Judgement {
 	var unseen []string
 	for _, m := range measured {
@@ -191,8 +177,6 @@ func JudgeEV03(measured []Measured) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont3.measured", "count", len(measured)))
 }
 
-// JudgeEV04 needs, in every exercised test the machine took part in, its longest downtime within the RTO of
-// P-07 (`sistema | rto_horas | tolerancia_min`) and the machine active again.
 func JudgeEV04(measured []Measured, rto []string, machine string) verdict.Judgement {
 
 	if len(measured) == 0 {
@@ -225,8 +209,6 @@ func JudgeEV04(measured []Measured, rto []string, machine string) verdict.Judgem
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont3.rto_met", "count", len(measured), "rto", limit.String()))
 }
 
-// JudgeEV05 needs every deficiency of P-05 (`deficiencia | prueba | responsable | plazo | estado | cierre |
-// version_plan`) closed in time and before the next test, and every test's deficiencies followed.
 func JudgeEV05(tests []Test, rows []string, now time.Time) verdict.Judgement {
 
 	var newest time.Time

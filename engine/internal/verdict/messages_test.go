@@ -13,7 +13,6 @@ import (
 
 var says = regexp.MustCompile(`Says\("([a-z0-9_.]+)"`)
 
-// Every message the engine says has its English and Spanish text in the catalog.
 func TestEveryCodeHasItsTexts(t *testing.T) {
 
 	err := filepath.WalkDir("..", func(p string, d fs.DirEntry, err error) error {

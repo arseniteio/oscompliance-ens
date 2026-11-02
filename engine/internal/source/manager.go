@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-// Manager is the state of the Wazuh manager the engine reads through its API: what runs, the rules it
-// loads and how it responds and notifies.
 type Manager struct {
 	Daemons       map[string]string
 	Rules         []Rule
@@ -32,7 +30,6 @@ type Rule struct {
 	Correlates bool
 }
 
-// Custom rules live in etc/rules; the rest ship with Wazuh.
 func (r Rule) Custom() bool { return r.Dir == "etc/rules" }
 
 type Response struct {
@@ -66,10 +63,8 @@ type managerCache struct {
 	err   error
 }
 
-// The manager is read once for every control of a pass.
 const managerFresh = 5 * time.Minute
 
-// UseManager sets how the manager is read.
 func (s *Source) UseManager(read func(ctx context.Context) (*Manager, error)) {
 	s.manager.read = read
 }

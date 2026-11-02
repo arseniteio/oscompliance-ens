@@ -1,7 +1,3 @@
-// Package backups reads the copies of each source the manager declares: the commits of a git directory
-// (as etckeeper keeps /etc), the files of a directory or the files a pattern matches. It dates the newest
-// and oldest copy, sizes them, tells who can read them and the filesystem they live on, and reads the
-// mode of the keys that encrypt them.
 package backups
 
 import (
@@ -34,8 +30,6 @@ type Config struct {
 	Mounts string
 }
 
-// Collect reads the sources and keys from the group configuration the engine writes (`backup_sources`,
-// `backup_keys`).
 func Collect(e *emit.Emitter, cfg Config) error {
 	paths, ok, err := wazuh.ReadSharedPaths(cfg.Wazuh)
 	if err != nil {
@@ -140,7 +134,6 @@ func (c *copies) add(info fs.FileInfo) {
 	}
 }
 
-// commits dates the first and last entries of the HEAD reflog, without running git.
 func commits(dir string) (copies, error) {
 
 	data, err := fsread.ReadFile(filepath.Join(dir, ".git", "logs", "HEAD"))
@@ -151,7 +144,6 @@ func commits(dir string) (copies, error) {
 	var c copies
 	lines := bufio.NewScanner(strings.NewReader(string(data)))
 	for lines.Scan() {
-		// <old> <new> <name> <email> <epoch> <zone>\t<message>
 		head, _, _ := strings.Cut(strings.TrimSpace(lines.Text()), "\t")
 		f := strings.Fields(head)
 		if len(f) < 2 {
@@ -174,7 +166,6 @@ func commits(dir string) (copies, error) {
 	return c, nil
 }
 
-// files reads every regular file a pattern matches, walking the directories it matches.
 func files(pattern string) (copies, error) {
 
 	matches, err := filepath.Glob(pattern)
@@ -207,7 +198,6 @@ func files(pattern string) (copies, error) {
 	return c, nil
 }
 
-// fixedPart is the directory a pattern starts from: its path up to the first element with a wildcard.
 func fixedPart(pattern string) string {
 	parts := strings.Split(filepath.Clean(pattern), string(filepath.Separator))
 	for i, p := range parts {
@@ -245,7 +235,6 @@ type mount struct {
 	point, fstype, device string
 }
 
-// readMounts reads /proc/self/mountinfo: `id parent dev root point options [optional...] - fstype device super`.
 func readMounts(path string) []mount {
 
 	data, err := fsread.ReadFile(path)
@@ -266,7 +255,6 @@ func readMounts(path string) []mount {
 	return out
 }
 
-// mountOf is the mount holding path: the longest mount point it lies under; the last one mounted wins.
 func mountOf(path string, mounts []mount) (mount, bool) {
 	var best mount
 	found := false

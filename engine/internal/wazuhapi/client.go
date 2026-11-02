@@ -32,8 +32,6 @@ type Agent struct {
 	Name string `json:"name"`
 }
 
-// New trusts caFile when given; serverName overrides the name checked in the API certificate, whose
-// default one only names localhost.
 func New(baseURL, user, password, caFile, serverName string) (*Client, error) {
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -132,7 +130,6 @@ func (c *Client) do(ctx context.Context, method, path, contentType string, body 
 		out, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
-		// Tokens expire after 15 minutes by default: one new token, then give up.
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 {
 			c.forget(token)
 			continue
@@ -220,15 +217,12 @@ func (c *Client) GroupConfiguration(ctx context.Context, group string) (string, 
 	return string(body), nil
 }
 
-// PutGroupConfiguration makes the manager validate the file before storing it; a rejected file
-// changes nothing.
 func (c *Client) PutGroupConfiguration(ctx context.Context, group, conf string) error {
 
 	_, err := c.do(ctx, http.MethodPut, "/groups/"+url.PathEscape(group)+"/configuration", "application/xml", []byte(conf))
 	return err
 }
 
-// Syscollector is the inventory the manager holds of one agent, as its API serves it.
 type Syscollector struct {
 	OS           string
 	Version      string
@@ -247,8 +241,6 @@ type Syscollector struct {
 
 const inventoryPage = 500
 
-// AgentSyscollector reads an agent's inventory from the manager: Wazuh does not index the manager's own
-// (agent 000) in the state indices.
 func (c *Client) AgentSyscollector(ctx context.Context, agentID string) (*Syscollector, error) {
 
 	base := "/syscollector/" + url.PathEscape(agentID)
@@ -328,8 +320,6 @@ func (c *Client) AgentSyscollector(ctx context.Context, agentID string) (*Syscol
 	return out, nil
 }
 
-// items reads one page of an API listing into v and returns how many items the listing has in all. A
-// limit of 0 reads a listing that takes no paging (os and hardware hold one item).
 func (c *Client) items(ctx context.Context, path string, limit, offset int, v any) (int, error) {
 
 	if limit > 0 {

@@ -32,12 +32,10 @@ func (r *Requirement) says(m catalog.Message) {
 	r.Message, r.Reason = m, m.Render("en")
 }
 
-// Cause renders as its own message, so the reader sees it named in their language.
 func Cause(c verdict.Cause) catalog.Message {
 	return catalog.Says("cause." + string(c))
 }
 
-// reasonOf is the message of a judgement or, for one not given a code yet, its English text.
 func reasonOf(j verdict.Judgement) any {
 	if j.Message.IsZero() {
 		return j.Reason

@@ -29,13 +29,10 @@ type Facts interface {
 
 const control = "op.mon.3"
 
-// Anomaly is how P-04 names its indicators: each row is an anomalous behaviour.
 const Anomaly = "comportamiento_anomalo"
 
-// Sources are read back a week: P-01 hours stop there.
 const sourcesHorizon = 7 * 24 * time.Hour
 
-// SCA results are raised only when they change: the newest is current however old.
 const scaHorizon = 366 * 24 * time.Hour
 
 type Evaluator struct {
@@ -116,7 +113,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	put("EV-01", fromManager(func(m *source.Manager) verdict.Judgement {
-		hours, problem := opmon1.Whole(policy, agent.ID, control, "P-03", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, control, "P-03", "param.not_hours")
 		if !problem.IsZero() {
 			return passes.Gap(verdict.CauseConfiguration, problem)
 		}
@@ -159,7 +156,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-07", func() verdict.Judgement {
 		rows, problem := list("P-06", false)
-		days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-11", "param.not_days")
+		days, daysProblem := passes.Whole(policy, agent.ID, control, "P-11", "param.not_days")
 		for _, p := range []catalog.Message{problem, daysProblem} {
 			if !p.IsZero() {
 				return passes.Gap(verdict.CauseConfiguration, p)

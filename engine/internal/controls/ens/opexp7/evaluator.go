@@ -64,7 +64,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// hoursFor reads the alert hours of the fleet once per pass for each level and exclusion asked.
 func (e *Evaluator) hoursFor(ctx context.Context, level int, excluded []string) (map[string][]source.AlertHour, error) {
 	key := fmt.Sprint(level, excluded)
 	if h, ok := e.alerts[key]; ok {
@@ -84,7 +83,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put := func(id string, j verdict.Judgement) { results[id] = evaluator.Result{Judgement: j} }
 
 	rows, err := policy.List(agent.ID, Control, RegisterParam)
-	registerProblem := problemOf(RegisterParam, err)
+	registerProblem := passes.ParamProblem(RegisterParam, err)
 	incidents := Of(ParseRegister(rows), agent.Name, now)
 
 	classRows, err := policy.List(agent.ID, Control, "P-01")
@@ -103,20 +102,19 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		hours = fleet[agent.ID]
 	}
 
-	// The manager is not an agent of the monitoring index: it reports by being the one that judges.
 	reporting := agent.ID == source.ManagerID || ReportedSince(e.reporting[agent.ID], e.pass.WindowStart)
 	put("EV-01", JudgeEV01(hours, classes, reporting, classProblem))
 
 	escalation, err := policy.List(agent.ID, Control, "P-02")
-	escalationProblem := first(registerProblem, classProblem, problemOf("P-02", err))
+	escalationProblem := first(registerProblem, classProblem, passes.ParamProblem("P-02", err))
 	_, err = policy.List(agent.ID, Control, "P-03")
-	put("EV-02", JudgeEV02(hours, classes, escalation, incidents, agent.Name, first(escalationProblem, problemOf("P-03", err))))
+	put("EV-02", JudgeEV02(hours, classes, escalation, incidents, agent.Name, first(escalationProblem, passes.ParamProblem("P-03", err))))
 
 	deadlines, err := policy.List(agent.ID, Control, "P-05")
-	put("EV-03", JudgeEV03(incidents, deadlines, first(registerProblem, problemOf("P-05", err)), now))
+	put("EV-03", JudgeEV03(incidents, deadlines, first(registerProblem, passes.ParamProblem("P-05", err)), now))
 
 	owners, err := policy.List(agent.ID, Control, "P-04")
-	put("EV-04", JudgeEV04(incidents, escalation, owners, first(escalationProblem, problemOf("P-04", err))))
+	put("EV-04", JudgeEV04(incidents, escalation, owners, first(escalationProblem, passes.ParamProblem("P-04", err))))
 
 	var manager *fact.WazuhAgentConfig
 	if m, ok := e.wazuh[source.ManagerID]; ok {
@@ -126,16 +124,16 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-06", gated(registerProblem, func() verdict.Judgement { return JudgeEV06(incidents, e.responses[agent.ID], now) }))
 
 	personal, err := policy.List(agent.ID, Control, "P-07")
-	put("EV-07", JudgeEV07(incidents, personal, first(registerProblem, problemOf("P-07", err))))
+	put("EV-07", JudgeEV07(incidents, personal, first(registerProblem, passes.ParamProblem("P-07", err))))
 
 	_, err = policy.List(agent.ID, Control, "P-06")
-	put("EV-08", JudgeEV08(incidents, classes, first(registerProblem, classProblem, problemOf("P-06", err))))
+	put("EV-08", JudgeEV08(incidents, classes, first(registerProblem, classProblem, passes.ParamProblem("P-06", err))))
 
 	_, err = policy.List(agent.ID, Control, "P-10")
-	put("EV-09", gated(first(registerProblem, problemOf("P-10", err)), func() verdict.Judgement { return JudgeEV09(incidents, e.responses[agent.ID], now) }))
+	put("EV-09", gated(first(registerProblem, passes.ParamProblem("P-10", err)), func() verdict.Judgement { return JudgeEV09(incidents, e.responses[agent.ID], now) }))
 
 	advisories, err := policy.List(agent.ID, Control, "P-11")
-	put("EV-10", JudgeEV10(manager, advisories, problemOf("P-11", err), now))
+	put("EV-10", JudgeEV10(manager, advisories, passes.ParamProblem("P-11", err), now))
 
 	var c *fact.WazuhAgentConfig
 	if x, ok := e.wazuh[agent.ID]; ok {
@@ -152,7 +150,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// ReportedSince looks at the last contact: the monitoring index keeps writing records of a disconnected agent.
 func ReportedSince(r source.Reporting, since time.Time) bool {
 	return r.LastKeepAlive.After(since)
 }
@@ -169,13 +166,6 @@ func first(problems ...catalog.Message) catalog.Message {
 		if !p.IsZero() {
 			return p
 		}
-	}
-	return catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
 	}
 	return catalog.Message{}
 }

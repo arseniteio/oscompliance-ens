@@ -14,7 +14,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc6"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp5"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -35,7 +34,6 @@ type Facts interface {
 
 const control = "mp.s.1"
 
-// Filters of mp.s.1 as P-03 names them.
 const (
 	Antispam    = "antispam"
 	Antimalware = "antimalware"
@@ -81,7 +79,6 @@ func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// OutOfScope makes a control NOT_APPLICABLE on a machine, evidences and requirements.
 func OutOfScope(controlID string, why catalog.Message, decisions map[string]map[string]verdict.Judgement, agentID string) map[string]evaluator.Result {
 	out := verdict.Explain(verdict.NotApplicable, "", why)
 	results := map[string]evaluator.Result{}
@@ -97,7 +94,6 @@ func OutOfScope(controlID string, why catalog.Message, decisions map[string]map[
 	return results
 }
 
-// Activity reads the hours with logs of each source once, into a cache kept for the pass.
 func Activity(ctx context.Context, read func(ctx context.Context, name string, since time.Time) ([]time.Time, error), cache map[string][]time.Time, elements []mpcom1.Element, since time.Time) ([]mpcom1.Element, error) {
 	for i, el := range elements {
 		h, ok := cache[el.Source]
@@ -150,7 +146,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 
 	put("EV-01", func() verdict.Judgement {
-		hours, problem := opmon1.Whole(policy, agent.ID, control, "P-10", "param.not_hours")
+		hours, problem := passes.Whole(policy, agent.ID, control, "P-10", "param.not_hours")
 		if !problem.IsZero() {
 			return gap(problem)
 		}
@@ -224,7 +220,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	put("EV-10", func() verdict.Judgement {
 		rows, problem := list(control, "P-07", false)
-		days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-08", "param.not_days")
+		days, daysProblem := passes.Whole(policy, agent.ID, control, "P-08", "param.not_days")
 		j, _ := passes.Review(rows, problem, "P-07", days, daysProblem, "P-08", now)
 		return j
 	}())
@@ -232,7 +228,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// domain reads what DNS publishes of a domain once a pass.
 func (e *Evaluator) domain(ctx context.Context, name, selector string) (Domain, error) {
 	key := name + "|" + selector
 	if d, ok := e.domains[key]; ok {

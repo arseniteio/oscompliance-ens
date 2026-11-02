@@ -60,27 +60,27 @@ func TestCountKeys(t *testing.T) {
 	sshd := fakeSSHD(t, "authorizedkeysfile .ssh/authorized_keys .ssh/authorized_keys2 "+central+"/%u none\n", 0)
 	keys := sshdKeys{status: fact.SSHDRead, path: sshd}
 
-	if got := keys.count(entry); got == nil || *got != 3 {
+	if got := keys.inspect(entry).count; got == nil || *got != 3 {
 		t.Errorf("2 in home + 0 missing + 1 central: got %v", got)
 	}
 
-	if got := (sshdKeys{status: fact.SSHDAbsent}).count(entry); got == nil || *got != 0 {
+	if got := (sshdKeys{status: fact.SSHDAbsent}).inspect(entry).count; got == nil || *got != 0 {
 		t.Errorf("no sshd: want 0, got %v", got)
 	}
 	for _, status := range []string{fact.SSHDCommand, fact.SSHDError} {
-		if got := (sshdKeys{status: status}).count(entry); got != nil {
+		if got := (sshdKeys{status: status}).inspect(entry).count; got != nil {
 			t.Errorf("%s: want unknown, got %d", status, *got)
 		}
 	}
 
-	if got := (sshdKeys{status: fact.SSHDRead, path: fakeSSHD(t, "", 1)}).count(entry); got != nil {
+	if got := (sshdKeys{status: fact.SSHDRead, path: fakeSSHD(t, "", 1)}).inspect(entry).count; got != nil {
 		t.Errorf("sshd -T -C failed: want unknown, got %d", *got)
 	}
 
 	if os.Geteuid() != 0 {
 		locked := filepath.Join(home, ".ssh/authorized_keys2")
 		writeFile(t, locked, "ssh-ed25519 DDDD\n", 0o000)
-		if got := keys.count(entry); got != nil {
+		if got := keys.inspect(entry).count; got != nil {
 			t.Errorf("unreadable key file: want unknown, got %d", *got)
 		}
 	}
@@ -131,7 +131,7 @@ esac
 
 	cases := map[string]*int{"ana": intp(1), "git": intp(2), "ldap": nil}
 	for user, want := range cases {
-		got := keys.count(passwdEntry{user: user, uid: 1500, home: home})
+		got := keys.inspect(passwdEntry{user: user, uid: 1500, home: home}).count
 		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
 			t.Errorf("%s: got %v, want %v", user, deref(got), deref(want))
 		}

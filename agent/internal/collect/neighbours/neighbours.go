@@ -1,4 +1,3 @@
-// Package neighbours reads the machine's IPv4 neighbour table: the hosts it has talked to on its links.
 package neighbours
 
 import (
@@ -17,7 +16,6 @@ type Config struct {
 
 var Default = Config{ARP: "/proc/net/arp"}
 
-// An entry the kernel is still resolving has no MAC yet.
 const unresolved = "00:00:00:00:00:00"
 
 func Collect(e *emit.Emitter, cfg Config) error {
@@ -34,7 +32,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// parse reads /proc/net/arp: IP address, HW type, flags, HW address, mask, device.
 func parse(table string) []fact.Neighbour {
 
 	seen := map[string]bool{}

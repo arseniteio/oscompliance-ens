@@ -7,13 +7,11 @@ import (
 	"time"
 )
 
-// Detection is the newest alert of a machine and how many it had since a time.
 type Detection struct {
 	Last  time.Time
 	Count int
 }
 
-// Detections are the alerts of every machine since a time, OSCompliance's own facts left out.
 func (s *Source) Detections(ctx context.Context, since time.Time) (map[string]Detection, error) {
 
 	filter := []any{
@@ -33,7 +31,6 @@ func (s *Source) Detections(ctx context.Context, since time.Time) (map[string]De
 	return out, err
 }
 
-// GroupDetections are the alerts of the whole fleet in any of some rule groups since a time.
 func (s *Source) GroupDetections(ctx context.Context, groups []string, since time.Time) (Detection, error) {
 
 	names := make([]any, len(groups))
@@ -81,7 +78,6 @@ func detectionOf(b json.RawMessage) (Detection, error) {
 	return d, nil
 }
 
-// LocationDetections are the newest alert of every machine for each log location since a time.
 func (s *Source) LocationDetections(ctx context.Context, since time.Time) (map[string]map[string]time.Time, error) {
 
 	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
@@ -103,8 +99,6 @@ func (s *Source) LocationDetections(ctx context.Context, since time.Time) (map[s
 	return out, err
 }
 
-// PackageCounts are how many packages Wazuh's inventory holds of every machine; the manager's come from its
-// API when the engine has one.
 func (s *Source) PackageCounts(ctx context.Context) (map[string]int, error) {
 
 	out := map[string]int{}
@@ -124,7 +118,6 @@ func (s *Source) PackageCounts(ctx context.Context) (map[string]int, error) {
 	return out, nil
 }
 
-// RuleHours are the hours every machine had alerts of some rules since a time.
 func (s *Source) RuleHours(ctx context.Context, rules []string, since time.Time) (map[string][]time.Time, error) {
 
 	out := map[string][]time.Time{}

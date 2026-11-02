@@ -1,6 +1,3 @@
-// Package mpcom1 judges mp.com.1, the secure perimeter: the logs of the perimeter devices and the flows they
-// let through, and on each machine the ways around the perimeter: interfaces, gateways, tunnels and
-// administration reached from the internet.
 package mpcom1
 
 import (
@@ -18,13 +15,11 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// Element is a perimeter device of P-01 (`elemento | tipo | ubicacion | fuente`) and the hours it logged.
 type Element struct {
 	Name, Source string
 	Hours        []time.Time
 }
 
-// Sources are the names P-01 gives the perimeter devices in Wazuh.
 func Sources(rows []string) []Element {
 	var out []Element
 	for _, r := range rows {
@@ -36,7 +31,6 @@ func Sources(rows []string) []Element {
 	return out
 }
 
-// JudgeEV01 needs a log of every perimeter device within maxHours.
 func JudgeEV01(elements []Element, maxHours int, now time.Time) verdict.Judgement {
 
 	if len(elements) == 0 {
@@ -60,7 +54,6 @@ func JudgeEV01(elements []Element, maxHours int, now time.Time) verdict.Judgemen
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom1.elements_logging", "list", logging))
 }
 
-// JudgeEV08 needs no gap longer than maxHours in the logs of any perimeter device since a time.
 func JudgeEV08(elements []Element, maxHours int, since, now time.Time) verdict.Judgement {
 
 	var gapped []catalog.Message
@@ -82,8 +75,6 @@ func JudgeEV08(elements []Element, maxHours int, since, now time.Time) verdict.J
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom1.logs_continuous", "count", len(elements), "max", maxHours))
 }
 
-// Authorised tells whether a flow matches a row of P-02 (`origen | destino | protocolo | puerto |
-// autorizado_por | fecha`) authorised by someone.
 func Authorised(f source.Flow, rows []string) bool {
 	return slices.ContainsFunc(rows, func(r string) bool {
 		c := cells(r, 6)
@@ -93,7 +84,6 @@ func Authorised(f source.Flow, rows []string) bool {
 	})
 }
 
-// JudgeEV02 needs every flow the perimeter let through authorised in P-02.
 func JudgeEV02(flows []source.Flow, rows []string) verdict.Judgement {
 	var unauthorised []string
 	total := 0
@@ -109,7 +99,6 @@ func JudgeEV02(flows []source.Flow, rows []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom1.flows_authorised", "count", total, "flows", len(flows)))
 }
 
-// JudgeEV03 needs every interface up on the machine expected by P-07.
 func JudgeEV03(network *source.Network, patterns []string) verdict.Judgement {
 	if network == nil {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("mpcom1.no_inventory"))
@@ -126,7 +115,6 @@ func JudgeEV03(network *source.Network, patterns []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom1.interfaces_expected", "count", len(network.Interfaces)))
 }
 
-// JudgeEV04 needs every gateway of the machine among the exits of P-03 (`salida | elemento | pasarela`).
 func JudgeEV04(network *source.Network, exits []string) verdict.Judgement {
 	if network == nil {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("mpcom1.no_inventory"))
@@ -147,7 +135,6 @@ func JudgeEV04(network *source.Network, exits []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom1.gateways_expected", "list", network.Gateways))
 }
 
-// JudgeEV05 needs no tunnel interface up and no tunnelling tool running outside P-08.
 func JudgeEV05(network *source.Network, allowed []string) verdict.Judgement {
 	if network == nil {
 		return passes.Gap(verdict.CauseCollection, catalog.Says("mpcom1.no_inventory"))
@@ -172,7 +159,6 @@ func JudgeEV05(network *source.Network, allowed []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpcom1.no_tunnels"))
 }
 
-// Permissive tells whether a row of P-02 lets anyone in to any port or to an administration port.
 func Permissive(row string) bool {
 	c := cells(row, 4)
 	if !Anywhere(c[0]) {
@@ -184,8 +170,6 @@ func Permissive(row string) bool {
 	return slices.ContainsFunc(AdminPorts, func(p int) bool { return MatchPort(c[3], strconv.Itoa(p)) })
 }
 
-// JudgeEV06 needs the newest review of the perimeter rules (P-11 `fecha | elemento | responsable |
-// hallazgos`) within the days of P-04 and no permissive flow in P-02.
 func JudgeEV06(flows, reviews []string, reviewsProblem catalog.Message, days int, daysProblem catalog.Message, now time.Time) verdict.Judgement {
 	var permissive []string
 	for _, r := range flows {
@@ -200,7 +184,6 @@ func JudgeEV06(flows, reviews []string, reviewsProblem catalog.Message, days int
 	return j
 }
 
-// JudgeEV07 needs no authentication on the machine from a public address outside P-09.
 func JudgeEV07(logins []source.RemoteLogin, allowed []string) verdict.Judgement {
 	var exposed []string
 	for _, l := range logins {

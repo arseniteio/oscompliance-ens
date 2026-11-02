@@ -11,13 +11,11 @@ import (
 	"time"
 )
 
-// MonitoringRecord is one snapshot Wazuh took of an agent's connection.
 type MonitoringRecord struct {
 	Time   time.Time
 	Status string
 }
 
-// MonitoringHistory are the monitoring records of one machine since a time, in order.
 func (s *Source) MonitoringHistory(ctx context.Context, agentID string, since time.Time) ([]MonitoringRecord, error) {
 
 	filter := []any{
@@ -36,7 +34,6 @@ func (s *Source) MonitoringHistory(ctx context.Context, agentID string, since ti
 	return out, err
 }
 
-// AuditFields counts the audit alerts of a machine since a time, and how many carry each minimum field.
 func (s *Source) AuditFields(ctx context.Context, agentID string, since time.Time) (int, map[string]int, error) {
 
 	fields := map[string][]string{
@@ -80,8 +77,6 @@ func (s *Source) AuditFields(ctx context.Context, agentID string, since time.Tim
 	return resp.Hits.Total.Value, counts, nil
 }
 
-// Retention is the age at which the ISM policy of the alerts indices deletes them; found is false when no
-// policy manages them.
 func (s *Source) Retention(ctx context.Context) (days int, found bool, err error) {
 
 	var explain map[string]json.RawMessage
@@ -142,7 +137,6 @@ func (s *Source) Retention(ctx context.Context) (days int, found bool, err error
 	return shortest, shortest > 0, nil
 }
 
-// ageDays reads an ISM age (`90d`, `12h`, `1w`) as whole days.
 func ageDays(v string) (int, bool) {
 	if len(v) < 2 {
 		return 0, false
@@ -162,7 +156,6 @@ func ageDays(v string) (int, bool) {
 	return 0, false
 }
 
-// NewestSnapshot is the end of the newest successful snapshot of any repository of the indexer.
 func (s *Source) NewestSnapshot(ctx context.Context) (time.Time, error) {
 
 	var repos map[string]json.RawMessage

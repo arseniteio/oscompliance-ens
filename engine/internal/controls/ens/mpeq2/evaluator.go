@@ -11,7 +11,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opcont2"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -55,7 +54,6 @@ func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
 
-// leaveOut makes the control NOT_APPLICABLE on the machine, evidences and requirements.
 func (e *Evaluator) leaveOut(agentID string, why catalog.Message) map[string]evaluator.Result {
 	out := verdict.Explain(verdict.NotApplicable, "", why)
 	results := map[string]evaluator.Result{}
@@ -96,7 +94,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return e.leaveOut(agent.ID, catalog.Says("mpeq2.exception")), nil
 	}
 
-	lock, lockProblem := opmon1.Whole(policy, agent.ID, control, "P-01", "param.not_minutes")
+	lock, lockProblem := passes.Whole(policy, agent.ID, control, "P-01", "param.not_minutes")
 	put("EV-01", func() verdict.Judgement {
 		if !lockProblem.IsZero() {
 			return passes.Gap(verdict.CauseConfiguration, lockProblem)
@@ -105,7 +103,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}())
 
 	put("EV-02", func() verdict.Judgement {
-		cancel, problem := opmon1.Whole(policy, agent.ID, control, "P-02", "param.not_minutes")
+		cancel, problem := passes.Whole(policy, agent.ID, control, "P-02", "param.not_minutes")
 		for _, p := range []catalog.Message{lockProblem, problem} {
 			if !p.IsZero() {
 				return passes.Gap(verdict.CauseConfiguration, p)
@@ -132,7 +130,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// running reads the inhibitors once a pass.
 func (e *Evaluator) running(ctx context.Context, names []string) (map[string][]string, error) {
 	if e.processes == nil {
 		p, err := e.facts.Processes(ctx, names)

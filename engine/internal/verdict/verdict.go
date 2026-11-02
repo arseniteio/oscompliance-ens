@@ -30,8 +30,6 @@ const (
 	CauseEvidence Cause = "EVIDENCE"
 )
 
-// Judgement keeps Reason in English for logs and composition; Message is what the reader sees,
-// in their language. A judgement without Message has not been given a code yet.
 type Judgement struct {
 	Status  Status
 	Cause   Cause
@@ -78,7 +76,6 @@ type Agent struct {
 	Name string `json:"name"`
 }
 
-// Explained sets the reason of a verdict from a message: the English text and the code with its values.
 func (v *Verdict) Explained(m catalog.Message, fallback string) {
 	if m.IsZero() {
 		v.Reason = fallback

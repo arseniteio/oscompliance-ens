@@ -1,6 +1,3 @@
-// Package mps4 judges mp.s.4, protection against denial of service, on the machines of the exposed
-// services: headroom of CPU and memory, prevention on the machine, detection and automatic containment
-// backed by Wazuh, the register of episodes with their reaction, and services that can amplify attacks.
 package mps4
 
 import (
@@ -29,7 +26,6 @@ func gap(d *fact.DeviceSecurity) (verdict.Judgement, bool) {
 	return verdict.Judgement{}, false
 }
 
-// JudgeEV01 needs CPU and memory in use at most the percentage of P-02, the headroom the requirement asks.
 func JudgeEV01(d *fact.DeviceSecurity, max int) verdict.Judgement {
 	if j, ok := gap(d); ok {
 		return j
@@ -40,7 +36,6 @@ func JudgeEV01(d *fact.DeviceSecurity, max int) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps4.headroom", "load", d.LoadPercent, "memory", d.MemoryPercent, "max", max))
 }
 
-// JudgeEV02 needs SYN cookies on and a firewall that drops by default what reaches the machine.
 func JudgeEV02(d *fact.DeviceSecurity, fw *fact.FirewallSnapshot) verdict.Judgement {
 	if j, ok := gap(d); ok {
 		return j
@@ -61,8 +56,6 @@ func JudgeEV02(d *fact.DeviceSecurity, fw *fact.FirewallSnapshot) verdict.Judgem
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps4.prevention"))
 }
 
-// JudgeEV07 needs an active response of the manager triggered by a rule of the denial of service
-// indicators.
 func JudgeEV07(m *source.Manager, rules []string) verdict.Judgement {
 	for _, r := range m.Responses {
 		if r.Disabled {
@@ -77,7 +70,6 @@ func JudgeEV07(m *source.Manager, rules []string) verdict.Judgement {
 	return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mps4.no_containment"))
 }
 
-// DoSRules are the loaded rules P-03 names for denial of service.
 func DoSRules(m *source.Manager, rows []string) []string {
 	var out []string
 	for _, r := range rows {
@@ -92,8 +84,6 @@ func DoSRules(m *source.Manager, rows []string) []string {
 	return out
 }
 
-// JudgeEV06 needs every episode of P-07 (`inicio | fin | servicio | vector | impacto | respuesta |
-// proveedor`) of high impact with the provider told.
 func JudgeEV06(episodes []string) verdict.Judgement {
 	var untold []string
 	high := 0
@@ -113,7 +103,6 @@ func JudgeEV06(episodes []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps4.provider_told", "count", high))
 }
 
-// JudgeEV10 needs every episode of P-07 with its vector, impact and response.
 func JudgeEV10(episodes []string) verdict.Judgement {
 	var incomplete []string
 	for _, r := range episodes {
@@ -127,10 +116,8 @@ func JudgeEV10(episodes []string) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mps4.episodes", "count", len(episodes)))
 }
 
-// Amplifiers are the UDP ports of services that answer small queries with large replies.
 var Amplifiers = map[int]string{19: "chargen", 53: "dns", 123: "ntp", 161: "snmp", 389: "cldap", 1900: "ssdp", 5353: "mdns", 11211: "memcached"}
 
-// JudgeEV09 needs no UDP service that can amplify attacks open beyond loopback, outside P-08.
 func JudgeEV09(sockets []fact.ListeningSocket, allowed []string) verdict.Judgement {
 	var open []string
 	for _, s := range sockets {

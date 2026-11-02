@@ -1,5 +1,3 @@
-// Package opcont2 judges op.cont.2, the continuity plan: its approval, the contracts of its alternative
-// means, the training of its people and, as a reinforcement, the integrity check after an outage.
 package opcont2
 
 import (
@@ -24,7 +22,6 @@ func Cells(row string, n int) []string {
 	return c
 }
 
-// Date reads a register date: a day, or a time with its zone.
 func Date(v string) (time.Time, bool) {
 	v = strings.TrimSpace(v)
 	for _, layout := range []string{"2006-01-02", time.RFC3339, "2006-01-02 15:04"} {
@@ -35,14 +32,11 @@ func Date(v string) (time.Time, bool) {
 	return time.Time{}, false
 }
 
-// Person normalises a name to compare it: no case, no accents, single spaces.
 func Person(v string) string {
 	v = strings.NewReplacer("á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u", "ü", "u", "ñ", "n").Replace(strings.ToLower(v))
 	return strings.Join(strings.Fields(v), " ")
 }
 
-// JudgeEV01 needs the newest approval of the plan in P-01 (`referencia | version | fecha_aprobacion |
-// aprobado_por | responsable`) within the months of P-08.
 func JudgeEV01(rows []string, months int, now time.Time) verdict.Judgement {
 
 	var newest time.Time
@@ -62,8 +56,6 @@ func JudgeEV01(rows []string, months int, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont2.plan_current", "plan", plan, "date", newest.Format("2006-01-02"), "months", months))
 }
 
-// JudgeEV04 needs every alternative means of P-04 (`medio | proveedor | contrato | vigencia_hasta |
-// activacion`) with a contract in force.
 func JudgeEV04(rows []string, now time.Time) verdict.Judgement {
 
 	var lacking, valid []catalog.Message
@@ -85,8 +77,6 @@ func JudgeEV04(rows []string, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont2.means_covered", "list", valid))
 }
 
-// JudgeEV06 needs every holder and deputy of P-03 (`funcion | responsable | suplente | actividades`)
-// trained in P-05 (`persona | formacion | fecha | vigente_hasta`) and the training still valid.
 func JudgeEV06(functions, training []string, now time.Time) verdict.Judgement {
 
 	valid := map[string]bool{}
@@ -115,7 +105,6 @@ func JudgeEV06(functions, training []string, now time.Time) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opcont2.trained", "count", len(people)))
 }
 
-// JudgeEV03 needs FIM to check the paths of P-07 when the agent starts, as after an outage.
 func JudgeEV03(config *fact.WazuhAgentConfig, paths []string) verdict.Judgement {
 
 	switch {

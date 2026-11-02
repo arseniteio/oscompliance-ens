@@ -36,7 +36,6 @@ type Config struct {
 	Lookback      time.Duration
 	EngineVersion string
 
-	// Scope answers, for one pass, which machines are judged; nil judges them all on every control.
 	Scope func(ctx context.Context, since time.Time) (Scope, error)
 
 	Plan func(agents []verdict.Agent)
@@ -122,7 +121,6 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 			out := excluded(control.Control, agent.ID)
 			if begun {
 				var err error
-				// An excluded machine is still read: a later control may need what this one records.
 				if results, err = ev.Agent(ctx, agent, policy); err != nil && !out {
 					fail(fmt.Errorf("%s agent %s: %w", control.Control, agent.ID, err))
 				}

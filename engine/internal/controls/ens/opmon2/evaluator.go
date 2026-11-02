@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp7"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
@@ -59,7 +58,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	results := map[string]evaluator.Result{}
 	put := func(id string, j verdict.Judgement) { results[id] = evaluator.Result{Judgement: j} }
 
-	days, daysProblem := opmon1.Whole(policy, agent.ID, control, "P-02", "param.not_days")
+	days, daysProblem := passes.Whole(policy, agent.ID, control, "P-02", "param.not_days")
 	margin, err := policy.Number(agent.ID, control, "P-03")
 	if errors.Is(err, params.ErrNotSet) {
 		margin, err = 0, nil
@@ -69,7 +68,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}
 	people, peopleErr := policy.List(agent.ID, control, "P-05")
 	register, registerErr := policy.List(agent.ID, control, "P-06")
-	registerProblem := problemOf("P-06", registerErr)
+	registerProblem := passes.ParamProblem("P-06", registerErr)
 	if peopleErr != nil {
 		registerProblem = passes.Param("P-05", peopleErr)
 	}
@@ -105,7 +104,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// Period are the incidents opened since a time.
 func Period(incidents []opexp7.Incident, since time.Time) []opexp7.Incident {
 	var out []opexp7.Incident
 	for _, in := range incidents {
@@ -114,11 +112,4 @@ func Period(incidents []opexp7.Incident, since time.Time) []opexp7.Incident {
 		}
 	}
 	return out
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

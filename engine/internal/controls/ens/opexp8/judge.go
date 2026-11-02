@@ -1,5 +1,3 @@
-// Package opexp8 judges op.exp.8, activity logging: the audit log and its delivery, the clock, the
-// indexer's retention and backups, who reads the logs, and the manager's analysis and response.
 package opexp8
 
 import (
@@ -62,7 +60,6 @@ func JudgeEV03(total int, fields map[string]int) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp8.fields_complete", "count", total))
 }
 
-// JudgeEV04 fails a record of the window with the agent not active, or a silence longer than maxHours.
 func JudgeEV04(records []source.MonitoringRecord, manager bool, maxHours int, problem catalog.Message, from, now time.Time) verdict.Judgement {
 
 	if manager {
@@ -141,7 +138,6 @@ func JudgeEV06(t *fact.TimeSync, sources []string, maxOffset float64, problem ca
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp8.time_right", "tool", t.Tool, "sources", t.Sources))
 }
 
-// LongestRetention is the most days P-07 asks to keep any category.
 func LongestRetention(rows []string) int {
 	longest := 0
 	for _, r := range rows {
@@ -171,7 +167,6 @@ func JudgeEV07(deletesAfter int, managed bool, wanted int, problem catalog.Messa
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp8.retention", "days", deletesAfter, "wanted", wanted))
 }
 
-// JudgeEV08 fails a log path readable by everyone, or an ACL naming an account outside P-08.
 func JudgeEV08(s *fact.ACLSnapshot, records []fact.ACLRecord, paths []string, accounts []string, problem catalog.Message) verdict.Judgement {
 
 	switch {
@@ -217,7 +212,6 @@ func JudgeEV08(s *fact.ACLSnapshot, records []fact.ACLRecord, paths []string, ac
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp8.logs_closed", "count", checked))
 }
 
-// ShortestFrequency is the fewest days between backups P-09 declares: a number, or diaria, semanal, mensual.
 func ShortestFrequency(rows []string) int {
 	words := map[string]int{"diaria": 1, "semanal": 7, "mensual": 31}
 	shortest := 0

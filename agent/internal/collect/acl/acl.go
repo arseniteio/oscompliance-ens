@@ -53,7 +53,6 @@ func readACL(path string) fact.ACLRecord {
 
 	r := fact.ACLRecord{Path: path, Status: fact.SourceRead}
 
-	// Stat, not Lstat: rights are judged on what a symlink gives access to.
 	info, err := os.Stat(path)
 
 	switch {

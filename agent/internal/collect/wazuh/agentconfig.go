@@ -85,8 +85,6 @@ func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 
 var syscollectorScans = []string{"hardware", "os", "network", "packages", "ports", "processes"}
 
-// syscollector follows Wazuh's merge: a later block sets only the elements it writes, and an element
-// left out keeps Wazuh's default (every scan on, one hour).
 type syscollector struct {
 	seen     bool
 	disabled bool
@@ -122,8 +120,6 @@ func (s *syscollector) add(blocks []agentConfig) {
 	}
 }
 
-// sealedDays are the days whose alert log Wazuh signed: logs/alerts/<year>/<Mon>/ossec-alerts-<dd>.log.sum.
-// Only the manager writes them.
 func sealedDays(dir string, now time.Time) []string {
 	out := []string{}
 	for d := now.AddDate(0, 0, -400); !d.After(now); d = d.AddDate(0, 0, 1) {
@@ -135,7 +131,6 @@ func sealedDays(dir string, now time.Time) []string {
 	return out
 }
 
-// files are the XML files of a rules directory.
 func files(dir string) []string {
 	out := []string{}
 	entries, _ := os.ReadDir(dir)
@@ -147,7 +142,6 @@ func files(dir string) []string {
 	return out
 }
 
-// lists are the CDB lists of etc/lists, their compiled .cdb files left out.
 func lists(dir string) []fact.CDBList {
 	out := []fact.CDBList{}
 	_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -165,8 +159,6 @@ func lists(dir string) []fact.CDBList {
 	return out
 }
 
-// activeResponses reads shared/ar.conf (`name - script - timeout`): the responses the manager sends this
-// machine. Wazuh's own restarts are not responses to an attack.
 func activeResponses(path string) []string {
 	out := []string{}
 	data, err := fsread.ReadFile(path)
@@ -187,7 +179,6 @@ func activeResponses(path string) []string {
 	return out
 }
 
-// scaSettings follow the same merge; Wazuh's default interval is 12 hours.
 type scaSettings struct {
 	seen     bool
 	disabled bool
@@ -227,7 +218,6 @@ func (s *syscollector) on() []string {
 	return scans
 }
 
-// seconds reads a Wazuh time value: a number of seconds, or a number followed by s, m, h, d or w.
 func seconds(value string) (int, bool) {
 
 	v := strings.TrimSpace(value)
@@ -317,12 +307,8 @@ type SharedPaths struct {
 	KeyStores     []string `json:"key_stores"`
 }
 
-// The engine writes the paths as a comment inside the group configuration: the Wazuh API only writes
-// agent.conf, and an unknown element would make the manager reject the file.
 const ManagedPathsMarker = "oscompliance "
 
-// ReadSharedPaths returns the paths of the last applicable block that carries them: a block naming
-// this machine comes after the group-wide one and replaces it.
 func ReadSharedPaths(cfg AgentConfigPaths) (paths SharedPaths, ok bool, err error) {
 
 	data, err := fsread.ReadFile(cfg.SharedConf)
@@ -339,7 +325,6 @@ func ReadSharedPaths(cfg AgentConfigPaths) (paths SharedPaths, ok bool, err erro
 		return SharedPaths{}, false, err
 	}
 
-	// encoding/xml joins every comment of a block into one string.
 	for _, b := range blocks {
 		_, body, found := strings.Cut(b.Comments, ManagedPathsMarker+"{")
 		if !found {

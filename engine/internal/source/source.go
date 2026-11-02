@@ -32,8 +32,6 @@ type Source struct {
 	vulnerabilities  vulnerabilityCache
 }
 
-// New reads facts and alerts from index, the agents from monitoring, and Wazuh's inventory from the state
-// indices that start with states.
 func New(client *indexer.Client, index, monitoring, states string) *Source {
 	return &Source{client: client, index: index, monitoring: monitoring, states: states}
 }
@@ -62,7 +60,6 @@ func (s *Source) RegisteredAgents(ctx context.Context, since time.Time) ([]verdi
 	return append(monitoring, manager...), nil
 }
 
-// Platforms is the `os.platform` of every registered agent, from its newest inventory document.
 func (s *Source) Platforms(ctx context.Context, since time.Time) (map[string]string, error) {
 
 	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
@@ -292,7 +289,6 @@ func readLatest[T any](ctx context.Context, s *Source, name string, since time.T
 					}
 
 					if named {
-						// The pass that found the snapshot unchanged is when it was last observed.
 						if s, ok := any(&v).(interface{ Seen(string) }); ok {
 							s.Seen(p.ts)
 						}
@@ -364,7 +360,6 @@ func (s *Source) page(ctx context.Context, filter []any, fn func(hit) error) err
 			"size":  pageSize,
 			"query": map[string]any{"bool": map[string]any{"filter": filter}},
 
-			// _id makes the order total: search_after would skip alerts that tie on timestamp.
 			"sort": []any{map[string]any{"timestamp": "asc"}, map[string]any{"_id": "asc"}},
 		}
 		if after != nil {

@@ -35,7 +35,6 @@ func (p *Plan) Set(agentIDs []string) {
 	p.entries = map[string]*entry{}
 }
 
-// Has tells whether a machine is judged in this pass; before any plan every machine is.
 func (p *Plan) Has(agentID string) bool {
 
 	p.mu.Lock()

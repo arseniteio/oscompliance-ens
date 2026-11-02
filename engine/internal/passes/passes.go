@@ -2,6 +2,7 @@ package passes
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
@@ -10,15 +11,10 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-func NotEvaluable(cause verdict.Cause, reason string) verdict.Judgement {
-	return verdict.Judgement{Status: verdict.NotEvaluable, Cause: cause, Reason: reason}
-}
-
 func Gap(cause verdict.Cause, m catalog.Message) verdict.Judgement {
 	return verdict.Explain(verdict.NotEvaluable, cause, m)
 }
 
-// Source names a file the agent could not read, with how it failed.
 func Source(path, status, err string) catalog.Message {
 	return catalog.Says("gap.source", "path", path, "status", catalog.Says("source."+status), "error", err)
 }
@@ -27,7 +23,6 @@ func Incomplete(run string, got, want int, fact string) catalog.Message {
 	return catalog.Says("gap.incomplete", "run", run, "got", got, "want", want, "fact", fact)
 }
 
-// Problems joins what makes the configuration unusable; empty when nothing does.
 func Problems(list []catalog.Message) catalog.Message {
 	if len(list) == 0 {
 		return catalog.Message{}
@@ -35,7 +30,6 @@ func Problems(list []catalog.Message) catalog.Message {
 	return catalog.Says("findings_semicolon", "list", list)
 }
 
-// Param names a parameter that cannot be used: not set, or why its value is not valid.
 func Param(id string, err error) catalog.Message {
 	if errors.Is(err, params.ErrNotSet) {
 		return catalog.Says("param.not_set", "param", id)
@@ -44,6 +38,35 @@ func Param(id string, err error) catalog.Message {
 		return catalog.Says("param.invalid", "param", id, "error", v.Message)
 	}
 	return catalog.Says("param.invalid", "param", id, "error", err.Error())
+}
+
+func ParamProblem(id string, err error) catalog.Message {
+	if err != nil {
+		return Param(id, err)
+	}
+	return catalog.Message{}
+}
+
+func Whole(policy params.Lister, agentID, control, id, notWhole string) (int, catalog.Message) {
+	v, err := policy.Number(agentID, control, id)
+	if err != nil {
+		return 0, Param(id, err)
+	}
+	if v < 1 || v != float64(int(v)) {
+		return 0, catalog.Says(notWhole, "param", id, "value", v)
+	}
+	return int(v), catalog.Message{}
+}
+
+func Cells(row string, n int) []string {
+	c := strings.Split(row, "|")
+	for len(c) < n {
+		c = append(c, "")
+	}
+	for i := range c {
+		c[i] = strings.TrimSpace(c[i])
+	}
+	return c
 }
 
 func IdentityGap(current *fact.IdentitySnapshot, records []fact.IdentityRecord) (gap verdict.Judgement, found bool) {

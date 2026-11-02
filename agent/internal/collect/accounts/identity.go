@@ -164,10 +164,9 @@ func readShadow(path string) (map[string]shadowEntry, error) {
 			passwordState:  passwordState(fields[1]),
 			accountExpires: shadowDate(fields[7]),
 			changed:        shadowDate(fields[2]),
-			// Day 0 in shadow is not a date: it forces a password change at the next login.
-			changeForced: fields[2] == "0",
-			maxDays:      optionalDays(fields[4]),
-			inactiveDays: optionalDays(fields[6]),
+			changeForced:   fields[2] == "0",
+			maxDays:        optionalDays(fields[4]),
+			inactiveDays:   optionalDays(fields[6]),
 		}
 
 		if entry.changeForced {

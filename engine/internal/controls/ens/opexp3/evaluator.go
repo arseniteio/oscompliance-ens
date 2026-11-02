@@ -45,7 +45,6 @@ const control = "op.exp.3"
 
 const summariesHorizon = 366 * 24 * time.Hour
 
-// The score series and the regressions are read back this far: P-12 cannot ask for more.
 const seriesHorizon = 90 * 24 * time.Hour
 
 type Evaluator struct {
@@ -110,7 +109,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// lowestFor reads the score series of a number of days once per pass, whatever machines ask for it.
 func (e *Evaluator) lowestFor(ctx context.Context, days int) (map[string]map[string]int, error) {
 	if l, ok := e.lowest[days]; ok {
 		return l, nil
@@ -161,11 +159,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		read("listening", err)
 	}
 
-	days, daysProblem := whole(policy, agent.ID, control, "P-12", "param.not_days")
+	days, daysProblem := passes.Whole(policy, agent.ID, control, "P-12", "param.not_days")
 
 	judge("EV-01", nil, func() verdict.Judgement {
 		b := opexp2.Baseline{Manager: agent.ID == source.ManagerID, Summaries: e.summaries[agent.ID], Now: now}
-		b.MaxHours, b.HoursProblem = whole(policy, agent.ID, "op.exp.2", "P-09", "param.not_hours")
+		b.MaxHours, b.HoursProblem = passes.Whole(policy, agent.ID, "op.exp.2", "P-09", "param.not_hours")
 		if c, ok := e.wazuh[agent.ID]; ok {
 			b.Config = &c
 		}
@@ -173,10 +171,10 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			b.Reporting = &r
 		}
 		policies, err := policy.List(agent.ID, "op.exp.2", "P-01")
-		b.Policies, b.PolicyProblem = policies, problemOf("P-01", err)
+		b.Policies, b.PolicyProblem = policies, passes.ParamProblem("P-01", err)
 
 		minScore, err := policy.Number(agent.ID, "op.exp.2", "P-05")
-		problem := problemOf("op.exp.2 P-05", err)
+		problem := passes.ParamProblem("op.exp.2 P-05", err)
 		if problem.IsZero() {
 			problem = daysProblem
 		}
@@ -206,7 +204,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseConfiguration, passes.Param("P-04", pathsErr))
 		}
 		authorised, err := policy.List(agent.ID, control, "P-03")
-		return JudgeEV02(edits, accounts, authorised, problemOf("P-03", err), chain)
+		return JudgeEV02(edits, accounts, authorised, passes.ParamProblem("P-03", err), chain)
 	})
 
 	fim, err := e.facts.FIMChanges(ctx, agent.ID, window)
@@ -217,10 +215,9 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseConfiguration, passes.Param("P-04", pathsErr))
 		}
 		rows, err := policy.List(agent.ID, opexp5.Control, opexp5.RegisterParam)
-		return JudgeEV05(fim, paths, opexp5.ParseRegister(rows), agent.Name, problemOf("op.exp.5 P-10", err), window)
+		return JudgeEV05(fim, paths, opexp5.ParseRegister(rows), agent.Name, passes.ParamProblem("op.exp.5 P-10", err), window)
 	})
 
-	// The reaction to notified vulnerabilities is op.exp.4's remediation within deadline.
 	judge("EV-06", nil, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, "op.exp.4", "P-01")
 		deadlines, problem := opexp4.Deadlines(rows)
@@ -230,7 +227,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		return opexp4.JudgeEV02(agent.ID == source.ManagerID, e.vulns[agent.ID], deadlines, problem, now)
 	})
 
-	// The reaction to incidents is the improvement measures recorded in op.exp.7's register.
 	judge("EV-07", nil, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, opexp7.Control, opexp7.RegisterParam)
 		if err != nil {
@@ -244,7 +240,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			return passes.Gap(verdict.CauseConfiguration, passes.Param("P-04", pathsErr))
 		}
 		max, err := policy.Number(agent.ID, control, "P-09")
-		problem := problemOf("P-09", err)
+		problem := passes.ParamProblem("P-09", err)
 		if err == nil && (max < 1 || max != float64(int(max))) {
 			problem = catalog.Says("param.not_whole", "param", "P-09", "value", max)
 		}
@@ -270,7 +266,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			units = &u
 		}
 		authorised, err := policy.List(agent.ID, control, "P-02")
-		return JudgeEV04(units, listening, sockets, authorised, problemOf("P-02", err))
+		return JudgeEV04(units, listening, sockets, authorised, passes.ParamProblem("P-02", err))
 	})
 
 	judge("EV-09", nil, func() verdict.Judgement {
@@ -279,8 +275,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 			b = &s
 		}
 		_, err := policy.List(agent.ID, control, "P-07")
-		problem := problemOf("P-07", err)
-		hours, hoursProblem := whole(policy, agent.ID, control, "P-10", "param.not_hours")
+		problem := passes.ParamProblem("P-07", err)
+		hours, hoursProblem := passes.Whole(policy, agent.ID, control, "P-10", "param.not_hours")
 		if problem.IsZero() {
 			problem = hoursProblem
 		}
@@ -296,29 +292,10 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 
 	judge("EV-11", nil, func() verdict.Judgement {
 		rows, err := policy.List(agent.ID, control, "P-11")
-		maxDays, daysProblem := whole(policy, agent.ID, control, "P-05", "param.not_days")
-		j, _ := passes.Review(rows, problemOf("P-11", err), "P-11", maxDays, daysProblem, "P-05", now)
+		maxDays, daysProblem := passes.Whole(policy, agent.ID, control, "P-05", "param.not_days")
+		j, _ := passes.Review(rows, passes.ParamProblem("P-11", err), "P-11", maxDays, daysProblem, "P-05", now)
 		return j
 	})
 
 	return results, errors.Join(errs...)
-}
-
-func whole(policy params.Lister, agentID, controlID, id, notWhole string) (int, catalog.Message) {
-
-	v, err := policy.Number(agentID, controlID, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

@@ -7,7 +7,6 @@ const (
 	SnapshotListFact        = "snapshot_list"
 )
 
-// UpdateStatus is what the package manager would install now, and how old its package lists are.
 type UpdateStatus struct {
 	Envelope
 	Manager      string `json:"manager"`
@@ -18,7 +17,6 @@ type UpdateStatus struct {
 	Security     int    `json:"security"`
 }
 
-// PackageTransaction is one apt transaction of /var/log/apt/history.log.
 type PackageTransaction struct {
 	Envelope
 	Start     string   `json:"start"`

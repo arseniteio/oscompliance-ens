@@ -4,10 +4,6 @@ const (
 	DeviceSecurityFact = "device_security"
 )
 
-// DeviceSecurity is how the machine protects an unattended session, its disk and its name resolution: its
-// chassis, the screen lock of the graphical session, the idle timeouts of shells and logind, whether its root
-// filesystem is encrypted, the DNS servers it asks, and its load: CPU and memory in steps of ten per cent, and
-// SYN cookies.
 type DeviceSecurity struct {
 	Envelope
 	Status        string   `json:"status"`

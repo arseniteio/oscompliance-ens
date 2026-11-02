@@ -49,7 +49,6 @@ func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool,
 	return catalog.Says("chain.no_audit_log")
 }
 
-// Person names the account behind an audited access: its login uid, else its uid.
 func Person(a source.AuditAccess, accounts Accounts) string {
 
 	for _, id := range []string{a.AUID, a.UID} {

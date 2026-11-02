@@ -1,5 +1,3 @@
-// Package transactions reads apt's history: every transaction, when it ran, who asked for it and what it
-// changed.
 package transactions
 
 import (
@@ -45,10 +43,8 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// apt writes local times without a zone.
 const historyTime = "2006-01-02  15:04:05"
 
-// Parse reads the blocks of history.log, each opened by `Start-Date` and closed by `End-Date`.
 func Parse(log string) []fact.PackageTransaction {
 
 	var out []fact.PackageTransaction
@@ -113,7 +109,6 @@ func stamp(v string) string {
 	return t.Format(time.RFC3339)
 }
 
-// packages reads `name:arch (version), name:arch (old, new), ...` as `name version`.
 func packages(v string) []string {
 	var out []string
 	for _, item := range strings.Split(v, "), ") {

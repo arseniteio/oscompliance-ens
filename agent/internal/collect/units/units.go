@@ -1,4 +1,3 @@
-// Package units lists the systemd services running on the machine.
 package units
 
 import (
@@ -13,8 +12,7 @@ import (
 
 type Config struct {
 	Systemctl string
-	// Systemd's runtime directory: a machine without it does not run systemd, whatever is installed.
-	RunDir string
+	RunDir    string
 }
 
 var Default = Config{Systemctl: "/usr/bin/systemctl", RunDir: "/run/systemd/system"}
@@ -42,7 +40,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// parse takes the first column of `systemctl list-units --plain --no-legend`.
 func parse(out string) []string {
 	units := []string{}
 	for _, line := range strings.Split(out, "\n") {

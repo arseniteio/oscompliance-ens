@@ -1,7 +1,3 @@
-// Package mpsw2 judges mp.sw.2, acceptance and entry into service: every deployment of an application on a
-// machine preceded by its acceptance and, at MEDIO, by its install in pre-production, without the security
-// of the machine getting worse: no SCA regression, no undeclared exposure, no serious vulnerability in its
-// packages.
 package mpsw2
 
 import (
@@ -19,7 +15,6 @@ import (
 
 func cells(row string, n int) []string { return opcont2.Cells(row, n) }
 
-// App is a row of P-01 (`aplicacion | maquinas | paquetes | responsable | origen`).
 type App struct {
 	Name     string
 	Machines []string
@@ -36,7 +31,6 @@ func names(v string) []string {
 	return out
 }
 
-// AppsOf are the applications of P-01 deployed on a machine.
 func AppsOf(rows []string, machine string) []App {
 	var out []App
 	for _, r := range rows {
@@ -49,7 +43,6 @@ func AppsOf(rows []string, machine string) []App {
 	return out
 }
 
-// Deployment is a version of a package of an application installed on the machine.
 type Deployment struct {
 	App, Package, Version string
 	Time                  time.Time
@@ -59,7 +52,6 @@ func (d Deployment) String() string {
 	return d.App + " " + d.Package + " " + d.Version + " (" + d.Time.Format("2006-01-02 15:04") + ")"
 }
 
-// Deployments are the installs, since the horizon read, of the packages of the machine's applications.
 func Deployments(apps []App, installed map[string]time.Time) []Deployment {
 	var out []Deployment
 	for key, t := range installed {
@@ -74,7 +66,6 @@ func Deployments(apps []App, installed map[string]time.Time) []Deployment {
 	return out
 }
 
-// JudgeEV01 needs the machine's applications known by their packages, which is how a deployment is seen.
 func JudgeEV01(apps []App, deployments []Deployment) verdict.Judgement {
 	var unpackaged []string
 	for _, a := range apps {
@@ -88,8 +79,6 @@ func JudgeEV01(apps []App, deployments []Deployment) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.deployments", "apps", len(apps), "count", len(deployments)))
 }
 
-// JudgeEV02 needs every deployment preceded by an acceptance of P-06 (`fecha | aplicacion | version |
-// resultado | aceptado_por`) of its application, with result aceptada and its version or none.
 func JudgeEV02(deployments []Deployment, acceptances []string) verdict.Judgement {
 	var unaccepted []string
 	for _, d := range deployments {
@@ -108,7 +97,6 @@ func JudgeEV02(deployments []Deployment, acceptances []string) verdict.Judgement
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.accepted", "count", len(deployments)))
 }
 
-// JudgeEV03 needs no SCA check that passed before failing within the days of P-04 after a deployment.
 func JudgeEV03(deployments []Deployment, regressions []source.SCARegression, days int) verdict.Judgement {
 	var worse []string
 	for _, r := range regressions {
@@ -124,8 +112,6 @@ func JudgeEV03(deployments []Deployment, regressions []source.SCARegression, day
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.no_regressions", "count", len(deployments), "days", days))
 }
 
-// JudgeEV04 needs every port the machine opens beyond loopback declared in P-05 (`aplicacion | puerto |
-// servicio`) for one of its applications, or as `*` for every machine.
 func JudgeEV04(sockets []fact.ListeningSocket, apps []App, declared []string) verdict.Judgement {
 	allowed := map[int]bool{}
 	for _, r := range declared {
@@ -156,7 +142,6 @@ func JudgeEV04(sockets []fact.ListeningSocket, apps []App, declared []string) ve
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.declared_ports", "count", len(allowed)))
 }
 
-// JudgeEV05 needs no open critical or high vulnerability in the packages of the machine's applications.
 func JudgeEV05(apps []App, vulnerabilities []source.PackageVulnerability) verdict.Judgement {
 	var found []string
 	for _, v := range vulnerabilities {
@@ -172,8 +157,6 @@ func JudgeEV05(apps []App, vulnerabilities []source.PackageVulnerability) verdic
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.not_vulnerable", "count", len(apps)))
 }
 
-// JudgeEV07 needs every deployment's version installed first on the pre-production machine P-03 pairs with
-// this one.
 func JudgeEV07(deployments []Deployment, preproduction string, installed map[string]time.Time) verdict.Judgement {
 	if preproduction == "" {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("mpsw2.no_preproduction"))
@@ -191,7 +174,6 @@ func JudgeEV07(deployments []Deployment, preproduction string, installed map[str
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("mpsw2.preproduced", "machine", preproduction, "count", len(deployments)))
 }
 
-// Earliest joins installs of several sources, keeping the earliest time of each version.
 func Earliest(sources ...map[string]time.Time) map[string]time.Time {
 	out := map[string]time.Time{}
 	for _, src := range sources {

@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-// Wazuh indexes top-level scalars of a fact as strings; Decode converts them back to the field types.
 func Decode(data map[string]any, v any) error {
 
 	kinds := fieldKinds(reflect.TypeOf(v).Elem())

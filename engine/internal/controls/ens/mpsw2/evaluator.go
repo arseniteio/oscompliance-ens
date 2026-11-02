@@ -10,7 +10,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mps1"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opmon1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
@@ -31,7 +30,6 @@ type Facts interface {
 
 const control = "mp.sw.2"
 
-// Deployments are judged this far back.
 const Horizon = 90 * 24 * time.Hour
 
 type Evaluator struct {
@@ -70,8 +68,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// anyReported tells whether a machine of some application of P-01 reports to Wazuh; when none does, the
-// manager carries the applications for the organisation.
 func (e *Evaluator) anyReported(rows []string) bool {
 	for _, r := range rows {
 		for _, m := range names(cells(r, 2)[1]) {
@@ -140,7 +136,7 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	}())
 
 	put("EV-03", func() verdict.Judgement {
-		days, problem := opmon1.Whole(policy, agent.ID, control, "P-04", "param.not_days")
+		days, problem := passes.Whole(policy, agent.ID, control, "P-04", "param.not_days")
 		if !problem.IsZero() {
 			return gap(problem)
 		}
@@ -202,8 +198,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// installs are the package versions installed on a machine since a time: dpkg's from its alerts, rpm's from
-// the install time of Wazuh's inventory. The earliest time of a version wins.
 func (e *Evaluator) installs(ctx context.Context, agentID string, since time.Time) (map[string]time.Time, error) {
 	dpkg, err := e.facts.InstalledVersions(ctx, []string{agentID}, since)
 	if err != nil {

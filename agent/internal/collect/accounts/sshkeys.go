@@ -112,10 +112,6 @@ type keyInfo struct {
 	changed time.Time
 }
 
-func (k sshdKeys) count(entry passwdEntry) *int {
-	return k.inspect(entry).count
-}
-
 func (k sshdKeys) inspect(entry passwdEntry) keyInfo {
 
 	total := 0

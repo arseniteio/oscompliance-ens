@@ -1,5 +1,3 @@
-// Package snapshots lists the LVM, ZFS and Btrfs snapshots of the machine and when each was taken: the
-// reversion points a change can go back to.
 package snapshots
 
 import (
@@ -40,7 +38,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 		s.Snapshots = append(s.Snapshots, zfs(out)...)
 	}
 	if host.Exists(cfg.Btrfs) {
-		// Read-only subvolumes are the snapshots; their creation time comes from `subvolume show`, one per call.
 		if out, err := host.Run(cfg.Btrfs, "subvolume", "list", "-s", "/"); err == nil {
 			for _, path := range btrfsPaths(out) {
 				if info, err := host.Run(cfg.Btrfs, "subvolume", "show", "/"+path); err == nil {
@@ -58,7 +55,6 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	return e.Emit(s)
 }
 
-// lvm keeps the logical volumes whose attributes mark a snapshot (`s` or `S`).
 func lvm(out string) []fact.Snapshot {
 	var list []fact.Snapshot
 	for _, line := range strings.Split(out, "\n") {

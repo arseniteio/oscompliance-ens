@@ -10,14 +10,11 @@ import (
 	"strings"
 )
 
-// Message is a verdict reason the reader sees in their language: a code of messages/<lang>.json
-// and the values its placeholders take.
 type Message struct {
 	Code string         `json:"code"`
 	Args map[string]any `json:"args,omitempty"`
 }
 
-// Says builds a message from name/value pairs.
 func Says(code string, pairs ...any) Message {
 
 	m := Message{Code: code}
@@ -32,7 +29,6 @@ func Says(code string, pairs ...any) Message {
 	return m
 }
 
-// Raw carries text that reads the same in every language: a value, a path, a configuration line.
 func Raw(text string) Message { return Says("raw", "text", text) }
 
 func (m Message) IsZero() bool { return m.Code == "" }
@@ -62,7 +58,6 @@ func loadMessages() {
 
 func Messages(lang string) map[string]string { return messages[lang] }
 
-// Render writes the message in lang; an unknown code renders as the code itself.
 func (m Message) Render(lang string) string {
 
 	text, ok := messages[lang][m.Code]
@@ -70,7 +65,6 @@ func (m Message) Render(lang string) string {
 		return m.Code
 	}
 
-	// Trimmed: an empty last argument leaves no dangling space.
 	return strings.TrimSpace(placeholder.ReplaceAllStringFunc(text, func(p string) string {
 		return renderArg(lang, m.Args[p[1:len(p)-1]])
 	}))
@@ -104,12 +98,10 @@ func renderArg(lang string, v any) string {
 	}
 }
 
-// SortMessages orders messages by their English text, as the lists of strings they replace were.
 func SortMessages(list []Message) {
 	slices.SortFunc(list, func(a, b Message) int { return strings.Compare(a.Render("en"), b.Render("en")) })
 }
 
-// UniqueMessages drops repeated messages, keeping the first of each.
 func UniqueMessages(list []Message) []Message {
 	seen := map[string]bool{}
 	var out []Message

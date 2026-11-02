@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-// VulnerabilityDay counts the open vulnerabilities of one severity a machine got on one day: the state
-// index keeps no history, so the age of a vulnerability is the age of its detection.
 type VulnerabilityDay struct {
 	Severity string
 	Detected time.Time
@@ -22,8 +20,6 @@ type vulnerabilityCache struct {
 	value map[string][]VulnerabilityDay
 }
 
-// Vulnerabilities reads the open vulnerabilities of every machine, by severity and day of detection.
-// Several controls of a pass read them: they are read once while they stay fresh.
 func (s *Source) Vulnerabilities(ctx context.Context) (map[string][]VulnerabilityDay, error) {
 
 	c := &s.vulnerabilities
@@ -80,7 +76,6 @@ func (s *Source) readVulnerabilities(ctx context.Context) (map[string][]Vulnerab
 	return out, err
 }
 
-// Vendors are the vendors of the packages installed on every machine.
 func (s *Source) Vendors(ctx context.Context) (map[string][]string, error) {
 
 	out := map[string][]string{}
@@ -92,8 +87,6 @@ func (s *Source) Vendors(ctx context.Context) (map[string][]string, error) {
 	return out, err
 }
 
-// InstalledVersions are the package versions Wazuh saw installed on some machines since a time (dpkg rule
-// 2902), with the first time each was.
 func (s *Source) InstalledVersions(ctx context.Context, ids []string, since time.Time) (map[string]map[string]time.Time, error) {
 
 	out := map[string]map[string]time.Time{}
@@ -131,7 +124,6 @@ func (s *Source) InstalledVersions(ctx context.Context, ids []string, since time
 	return out, err
 }
 
-// PackageVersions are the package versions installed now on some machines, from their inventory.
 func (s *Source) PackageVersions(ctx context.Context, ids []string) (map[string]map[string]bool, error) {
 
 	out := map[string]map[string]bool{}
@@ -155,7 +147,6 @@ func (s *Source) PackageVersions(ctx context.Context, ids []string) (map[string]
 	return out, err
 }
 
-// PackageVulnerability is an open vulnerability of a package of a machine.
 type PackageVulnerability struct {
 	Package  string
 	Severity string
@@ -163,7 +154,6 @@ type PackageVulnerability struct {
 	Count    int
 }
 
-// PackageVulnerabilities are the open critical and high vulnerabilities of some packages on every machine.
 func (s *Source) PackageVulnerabilities(ctx context.Context, packages []string) (map[string][]PackageVulnerability, error) {
 
 	out := map[string][]PackageVulnerability{}
@@ -207,8 +197,6 @@ func (s *Source) PackageVulnerabilities(ctx context.Context, packages []string) 
 	return out, err
 }
 
-// InventoryInstalls are the package versions Wazuh's inventory dates since a time on some machines, with
-// their install time. rpm records the install time; dpkg does not, and its installs come from its alerts.
 func (s *Source) InventoryInstalls(ctx context.Context, ids []string, since time.Time) (map[string]map[string]time.Time, error) {
 
 	out := map[string]map[string]time.Time{}

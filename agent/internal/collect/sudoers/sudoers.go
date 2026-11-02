@@ -214,7 +214,6 @@ func (p *sudoParser) include(path string, line int, kw, target string, depth int
 	names := []string{}
 	for _, e := range entries {
 
-		// sudo itself skips these names in an included directory.
 		if e.IsDir() || strings.HasSuffix(e.Name(), "~") || strings.Contains(e.Name(), ".") {
 			continue
 		}

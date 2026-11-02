@@ -14,7 +14,6 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
 )
 
-// Class is a row of P-01: from which Wazuh level an alert takes a severity, and whether it is notifiable.
 type Class struct {
 	Category, Severity string
 	Level              int
@@ -41,7 +40,6 @@ func ParseClasses(rows []string) ([]Class, catalog.Message) {
 	return out, catalog.Message{}
 }
 
-// SeverityOf is the severity of the class with the highest level an alert reaches.
 func SeverityOf(classes []Class, level int) string {
 	best, sev := -1, ""
 	for _, c := range classes {
@@ -60,7 +58,6 @@ func MinLevel(classes []Class) int {
 	return m
 }
 
-// Rows by severity of P-02 and P-05.
 func bySeverity(rows []string) map[string][]string {
 	out := map[string][]string{}
 	for _, r := range rows {
@@ -107,8 +104,6 @@ func JudgeEV01(hoursWithAlerts []source.AlertHour, classes []Class, reporting bo
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp7.detection", "list", list, "level", MinLevel(classes)))
 }
 
-// JudgeEV02 needs every hour with relevant alerts followed by an incident of the machine within the
-// escalation deadline of its severity.
 func JudgeEV02(hoursWithAlerts []source.AlertHour, classes []Class, escalation []string, incidents []Incident, machine string, problem catalog.Message) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -205,7 +200,6 @@ func JudgeEV04(incidents []Incident, escalation, owners []string, problem catalo
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp7.escalated", "count", len(incidents)))
 }
 
-// days lists the days an incident spans.
 func days(in Incident, now time.Time) []string {
 	var out []string
 	for d := in.Opened().UTC().Truncate(24 * time.Hour); !d.After(in.End(now)); d = d.AddDate(0, 0, 1) {
@@ -214,7 +208,6 @@ func days(in Incident, now time.Time) []string {
 	return out
 }
 
-// JudgeEV05 needs every day of the incidents sealed in the manager's alert logs; today is not sealed yet.
 func JudgeEV05(incidents []Incident, manager *fact.WazuhAgentConfig, now time.Time) verdict.Judgement {
 
 	if manager == nil {
@@ -235,7 +228,6 @@ func JudgeEV05(incidents []Incident, manager *fact.WazuhAgentConfig, now time.Ti
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp7.sealed", "count", len(incidents)))
 }
 
-// Responded says whether an active response ran on the machine during the incident.
 func Responded(in Incident, responses []time.Time, now time.Time) bool {
 	return slices.ContainsFunc(responses, func(t time.Time) bool { return !t.Before(in.Opened().Truncate(time.Hour)) && !t.After(in.End(now)) })
 }

@@ -58,9 +58,6 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	return nil
 }
 
-// Decisions leave out the machines that declare no copies: mp.info.6 is measured where copies are made
-// or kept. The regulation asks for backups, so when no machine declares any the manager fails for the
-// organisation.
 func (e *Evaluator) Decisions(agentID string) map[string]verdict.Judgement {
 	return e.decisions[agentID]
 }
@@ -108,8 +105,8 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	read, gap, ok := Read(b, copies)
 
 	tests, testsErr := policy.List(agent.ID, control, "P-06")
-	maxDays, daysProblem := whole(policy, agent.ID, "P-05", "param.not_days")
-	j, _ := passes.Review(Restores(tests, agent.Name), problemOf("P-06", testsErr), "P-06", maxDays, daysProblem, "P-05", now)
+	maxDays, daysProblem := passes.Whole(policy, agent.ID, control, "P-05", "param.not_days")
+	j, _ := passes.Review(Restores(tests, agent.Name), passes.ParamProblem("P-06", testsErr), "P-06", maxDays, daysProblem, "P-05", now)
 	put("EV-05", j)
 
 	if !ok {
@@ -155,7 +152,6 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	return results, nil
 }
 
-// anyCopies tells, once a pass, whether some machine of the fleet declares copies.
 func (e *Evaluator) anyCopies(policy params.Lister) bool {
 	if e.copies == nil {
 		found := e.fleet.Any(func(id string) bool { _, err := policy.List(id, control, "P-04"); return err == nil })
@@ -174,18 +170,6 @@ func keyPaths(rows []string) []string {
 	return out
 }
 
-func whole(policy params.Lister, agentID, id, notWhole string) (int, catalog.Message) {
-	v, err := policy.Number(agentID, control, id)
-	if err != nil {
-		return 0, passes.Param(id, err)
-	}
-	if v < 1 || v != float64(int(v)) {
-		return 0, catalog.Says(notWhole, "param", id, "value", v)
-	}
-	return int(v), catalog.Message{}
-}
-
-// optional is a whole number of P-01, P-02 or P-03, 0 when it is not set: a copy can carry its own.
 func optional(policy params.Lister, agentID, id, notWhole string) (int, catalog.Message) {
 	v, err := policy.Number(agentID, control, id)
 	switch {
@@ -197,11 +181,4 @@ func optional(policy params.Lister, agentID, id, notWhole string) (int, catalog.
 		return 0, catalog.Says(notWhole, "param", id, "value", v)
 	}
 	return int(v), catalog.Message{}
-}
-
-func problemOf(id string, err error) catalog.Message {
-	if err != nil {
-		return passes.Param(id, err)
-	}
-	return catalog.Message{}
 }

@@ -49,8 +49,6 @@ func Services(declared []string, logs []fact.ServiceLog, spans map[string]source
 	return out
 }
 
-// declaredNames are the services P-02 declares on this machine: its rows naming it as host, as the group
-// configuration does when it declares their logs.
 func declaredNames(rows []string, agentName string) []string {
 
 	var out []string
