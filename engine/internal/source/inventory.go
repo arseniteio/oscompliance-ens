@@ -198,11 +198,12 @@ type Reporting struct {
 	Groups        []string
 }
 
-// Reporting are the machines judged in this pass: a machine outside the scope counts for nothing.
+// Reporting are the machines judged in this pass for the control reading: a machine outside the scope, or
+// excluded from the control, counts for nothing.
 func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Reporting, error) {
 
 	fleet, err := s.FleetReporting(ctx, since)
-	maps.DeleteFunc(fleet, func(id string, _ Reporting) bool { return !s.pass.plan.Has(id) })
+	maps.DeleteFunc(fleet, func(id string, _ Reporting) bool { return !s.counts(ctx, id) })
 	return fleet, err
 }
 

@@ -176,6 +176,40 @@ func (c *Client) GroupAgents(ctx context.Context, group string) ([]Agent, error)
 	}
 }
 
+func (c *Client) GroupNames(ctx context.Context) ([]string, error) {
+
+	var names []string
+
+	for offset := 0; ; offset += agentsPage {
+
+		var page []struct {
+			Name string `json:"name"`
+		}
+		total, err := c.items(ctx, "/groups?select=name", agentsPage, offset, &page)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, g := range page {
+			names = append(names, g.Name)
+		}
+		if len(page) < agentsPage || len(names) >= total {
+			return names, nil
+		}
+	}
+}
+
+func (c *Client) CreateGroup(ctx context.Context, name string) error {
+
+	body, err := json.Marshal(map[string]string{"group_id": name})
+	if err != nil {
+		return err
+	}
+
+	_, err = c.do(ctx, http.MethodPost, "/groups", "application/json", body)
+	return err
+}
+
 func (c *Client) GroupConfiguration(ctx context.Context, group string) (string, error) {
 
 	body, err := c.do(ctx, http.MethodGet, "/groups/"+url.PathEscape(group)+"/files/agent.conf?raw=true", "", nil)

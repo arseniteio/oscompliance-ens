@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
@@ -145,6 +146,50 @@ func TestOnceControlBeginFails(t *testing.T) {
 	}
 }
 
+type fakeScope struct {
+	outside, excluded string
+}
+
+func (f fakeScope) Evaluable(id string) bool { return id != f.outside }
+
+func (f fakeScope) Excluded(_, id string) bool { return id == f.excluded }
+
+func TestOnceWritesExcludedMachinesAsNotApplicable(t *testing.T) {
+	agents := fakeAgents{senders: []verdict.Agent{{ID: "001"}, {ID: "002"}}}
+	control := &fakeControl{
+		results: map[string]map[string]evaluator.Result{"001": allCompliant(), "002": allCompliant()},
+		failing: map[string]bool{"002": true},
+	}
+	sink := &fakeSink{}
+
+	scoped := cfg
+	scoped.Scope = func(context.Context, time.Time) (Scope, error) { return fakeScope{excluded: "002"}, nil }
+
+	if _, err := Once(context.Background(), agents, []evaluator.Evaluator{control}, noParams{level: "MEDIO"}, sink, scoped, time.Now()); err != nil {
+		t.Fatalf("a read error of an excluded machine must not fail the pass: %v", err)
+	}
+
+	byScope := map[string]int{}
+	for _, v := range sink.got {
+		if v.Agent.ID != "002" {
+			if v.Status == verdict.NotApplicable && v.Scope == verdict.ScopeControl {
+				t.Errorf("the machine that is not excluded came out not applicable: %+v", v)
+			}
+			continue
+		}
+		byScope[v.Scope]++
+		if v.Status != verdict.NotApplicable {
+			t.Errorf("excluded machine: %s %s%s is %s", v.Scope, v.Requirement, v.Evidence, v.Status)
+		}
+		if v.Scope == verdict.ScopeControl && !strings.Contains(v.Reason, catalog.ExclusionGroup(v.Control)) {
+			t.Errorf("control reason %q does not name the group", v.Reason)
+		}
+	}
+	if byScope[verdict.ScopeControl] != 1 || byScope[verdict.ScopeEvidence] == 0 || byScope[verdict.ScopeRequirement] == 0 {
+		t.Errorf("verdicts of the excluded machine: %v", byScope)
+	}
+}
+
 func TestOnceJudgesOnlyEvaluableMachines(t *testing.T) {
 	agents := fakeAgents{senders: []verdict.Agent{{ID: "000"}, {ID: "001"}, {ID: "002"}}}
 	control := &fakeControl{results: map[string]map[string]evaluator.Result{"000": allCompliant(), "001": allCompliant(), "002": allCompliant()}}
@@ -153,9 +198,7 @@ func TestOnceJudgesOnlyEvaluableMachines(t *testing.T) {
 
 	scoped := cfg
 	scoped.Plan = func(a []verdict.Agent) { planned = a }
-	scoped.Evaluable = func(context.Context, time.Time) (func(string) bool, error) {
-		return func(id string) bool { return id != "002" }, nil
-	}
+	scoped.Scope = func(context.Context, time.Time) (Scope, error) { return fakeScope{outside: "002"}, nil }
 
 	if _, err := Once(context.Background(), agents, []evaluator.Evaluator{control}, noParams{}, sink, scoped, time.Now()); err != nil {
 		t.Fatal(err)
@@ -176,7 +219,7 @@ func TestOnceWritesNothingWhenTheScopeCannotBeRead(t *testing.T) {
 	sink := &fakeSink{}
 
 	scoped := cfg
-	scoped.Evaluable = func(context.Context, time.Time) (func(string) bool, error) { return nil, errors.New("no monitoring") }
+	scoped.Scope = func(context.Context, time.Time) (Scope, error) { return nil, errors.New("no monitoring") }
 
 	if _, err := Once(context.Background(), fakeAgents{senders: []verdict.Agent{{ID: "001"}}}, []evaluator.Evaluator{control}, noParams{}, sink, scoped, time.Now()); err == nil {
 		t.Fatal("want the scope error")

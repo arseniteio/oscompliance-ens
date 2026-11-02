@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom1"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom3"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom4"
@@ -50,6 +51,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/run"
+	"github.com/arseniteio/oscompliance-ens/engine/internal/scope"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/store"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
@@ -180,15 +182,17 @@ func runMain() error {
 		mps4.NewEvaluator(facts),
 		mpsw2.NewEvaluator(facts),
 	}
-	var scope *params.Config
+	var current *params.Config
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,
-		Evaluable: func(ctx context.Context, since time.Time) (func(string) bool, error) {
-			machines, err := facts.FleetReporting(ctx, since)
+		Scope: func(ctx context.Context, since time.Time) (run.Scope, error) {
+			reporting, err := facts.FleetReporting(ctx, since)
 			if err != nil {
 				return nil, err
 			}
-			return func(id string) bool { return scope.Evaluates(id, machines[id].Groups) }, nil
+			machines := scope.MachinesOf(current, reporting)
+			facts.UseExclusions(machines.Excluded)
+			return machines, nil
 		},
 		Plan: func(agents []verdict.Agent) {
 			facts.Plan(agents)
@@ -209,11 +213,11 @@ func runMain() error {
 			} else {
 				loaded.UseInventoryTypes(platforms)
 			}
-			policy, scope = loaded, loaded
+			policy, current = loaded, loaded
 			groups.run(ctx, loaded, time.Now())
 		}
 
-		if scope == nil {
+		if current == nil {
 			slog.Error("pass", "error", "the ENS scope has never been read: nothing to judge yet")
 			if *interval == 0 {
 				return errors.New("the ENS scope could not be read")
@@ -264,6 +268,11 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 	}
 	g.last = now
 
+	if policy.Scope.ControlGroups {
+		changes, err := groupconf.CreateExclusionGroups(ctx, g.api, catalog.Controls(), g.apply, now)
+		g.record(ctx, changes, err)
+	}
+
 	groups := policy.Groups()
 	if len(groups) == 0 {
 		slog.Warn("group configuration", "error", "the ENS scope names no Wazuh group: the engine only configures a scope by group")
@@ -271,6 +280,11 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 	}
 
 	changes, err := groupconf.Sync(ctx, g.api, policy, groups, g.apply, now)
+	g.record(ctx, changes, err)
+}
+
+func (g *groupSync) record(ctx context.Context, changes []groupconf.Change, err error) {
+
 	for _, c := range changes {
 		slog.Info("group configuration", "group", c.Group, "agents", c.Agents, "applied", c.Applied)
 		if err := g.history.Write(ctx, c); err != nil {

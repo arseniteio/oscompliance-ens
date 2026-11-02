@@ -198,6 +198,11 @@ func Controls() []Control {
 	return out
 }
 
+// ExclusionGroup is the Wazuh group that takes a machine out of a control.
+func ExclusionGroup(controlID string) string {
+	return "ens-excluir-" + controlID
+}
+
 func LookupControl(id string) (Control, bool) {
 	c, ok := controls[id]
 	return c, ok

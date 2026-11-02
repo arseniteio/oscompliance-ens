@@ -45,7 +45,7 @@ func (s *Source) AuditActions(ctx context.Context, since time.Time) ([]ActionCou
 		return nil
 	})
 
-	return s.judged(out), err
+	return s.judged(ctx, out), err
 }
 
 func (s *Source) SudoActions(ctx context.Context, since time.Time) ([]ActionCount, error) {
@@ -68,11 +68,11 @@ func (s *Source) SudoActions(ctx context.Context, since time.Time) ([]ActionCoun
 		return nil
 	})
 
-	return s.judged(out), err
+	return s.judged(ctx, out), err
 }
 
-func (s *Source) judged(actions []ActionCount) []ActionCount {
-	return slices.DeleteFunc(actions, func(a ActionCount) bool { return !s.pass.plan.Has(a.AgentID) })
+func (s *Source) judged(ctx context.Context, actions []ActionCount) []ActionCount {
+	return slices.DeleteFunc(actions, func(a ActionCount) bool { return !s.counts(ctx, a.AgentID) })
 }
 
 var lastSeen = map[string]any{"t": map[string]any{"max": map[string]any{"field": "timestamp"}}}

@@ -13,9 +13,10 @@ import (
 )
 
 type passState struct {
-	plan   batch.Plan
-	mu     sync.Mutex
-	wanted map[string]map[string]map[string]bool
+	plan     batch.Plan
+	excluded func(controlID, agentID string) bool
+	mu       sync.Mutex
+	wanted   map[string]map[string]map[string]bool
 }
 
 func (s *Source) Plan(agents []verdict.Agent) {
@@ -29,6 +30,19 @@ func (s *Source) Plan(agents []verdict.Agent) {
 	s.pass.mu.Lock()
 	s.pass.wanted = map[string]map[string]map[string]bool{}
 	s.pass.mu.Unlock()
+}
+
+// UseExclusions says which machines each control leaves out.
+func (s *Source) UseExclusions(excluded func(controlID, agentID string) bool) {
+	s.pass.excluded = excluded
+}
+
+// counts tells whether a machine counts for the control reading: in the plan, and not excluded from it.
+func (s *Source) counts(ctx context.Context, agentID string) bool {
+	if !s.pass.plan.Has(agentID) {
+		return false
+	}
+	return s.pass.excluded == nil || !s.pass.excluded(batch.ScopeOf(ctx), agentID)
 }
 
 func batched[R any](ctx context.Context, s *Source, key, agentID string, fetch func(ctx context.Context, ids []string) (map[string]R, error)) (R, error) {

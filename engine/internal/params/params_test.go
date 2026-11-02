@@ -260,3 +260,20 @@ func TestEvaluates(t *testing.T) {
 		}
 	}
 }
+
+func TestExcludes(t *testing.T) {
+	c := &Config{}
+	groups := []string{"ens", "ens-excluir-op.acc.1"}
+
+	if c.Excludes("op.acc.1", groups) {
+		t.Error("with the option off the groups mean nothing")
+	}
+
+	c.Scope.ControlGroups = true
+	if !c.Excludes("op.acc.1", groups) {
+		t.Error("the group of the control excludes")
+	}
+	if c.Excludes("op.acc.2", groups) || c.Excludes("op.acc.1", []string{"ens"}) {
+		t.Error("only the group of the control excludes")
+	}
+}

@@ -143,7 +143,7 @@ USER_ID=$(api -X POST "$API/security/users" \
 api -X POST "$API/security/users/$USER_ID/roles?role_ids=$ROLE"
 ```
 
-The policy grants `group:read`, `group:update_config`, `agent:read`,
+The policy grants `group:read`, `group:create`, `group:update_config`, `agent:read`,
 `syscollector:read`, `manager:read` and `rules:read`. Wazuh requires API
 passwords of 8 to 64 characters with upper and lower case, a digit and a
 symbol.

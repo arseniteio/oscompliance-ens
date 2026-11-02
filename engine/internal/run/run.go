@@ -21,6 +21,11 @@ type Agents interface {
 	RegisteredAgents(ctx context.Context, since time.Time) ([]verdict.Agent, error)
 }
 
+type Scope interface {
+	Evaluable(agentID string) bool
+	Excluded(controlID, agentID string) bool
+}
+
 type Sink interface {
 	Write(ctx context.Context, v verdict.Verdict) error
 }
@@ -31,8 +36,8 @@ type Config struct {
 	Lookback      time.Duration
 	EngineVersion string
 
-	// Evaluable answers, for one pass, which machines are in the scope; nil judges them all.
-	Evaluable func(ctx context.Context, since time.Time) (func(agentID string) bool, error)
+	// Scope answers, for one pass, which machines are judged; nil judges them all on every control.
+	Scope func(ctx context.Context, since time.Time) (Scope, error)
 
 	Plan func(agents []verdict.Agent)
 
@@ -49,12 +54,14 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		return 0, err
 	}
 
-	if cfg.Evaluable != nil {
-		evaluable, err := cfg.Evaluable(ctx, pass.LookbackStart)
+	excluded := func(string, string) bool { return false }
+	if cfg.Scope != nil {
+		scope, err := cfg.Scope(ctx, pass.LookbackStart)
 		if err != nil {
 			return 0, fmt.Errorf("scope: %w", err)
 		}
-		agents = slices.DeleteFunc(agents, func(a verdict.Agent) bool { return !evaluable(a.ID) })
+		agents = slices.DeleteFunc(agents, func(a verdict.Agent) bool { return !scope.Evaluable(a.ID) })
+		excluded = scope.Excluded
 	}
 
 	if cfg.Plan != nil {
@@ -112,14 +119,22 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 
 			results := map[string]evaluator.Result{}
 			var decisions map[string]verdict.Judgement
+			out := excluded(control.Control, agent.ID)
 			if begun {
 				var err error
-				if results, err = ev.Agent(ctx, agent, policy); err != nil {
+				// An excluded machine is still read: a later control may need what this one records.
+				if results, err = ev.Agent(ctx, agent, policy); err != nil && !out {
 					fail(fmt.Errorf("%s agent %s: %w", control.Control, agent.ID, err))
 				}
 				if d, ok := ev.(evaluator.Decider); ok {
 					decisions = d.Decisions(agent.ID)
 				}
+			}
+
+			var why catalog.Message
+			if out {
+				why = catalog.Says("scope.excluded_by_group", "group", catalog.ExclusionGroup(control.Control))
+				results, decisions = excludedFrom(control, why)
 			}
 
 			evidences := map[string]verdict.Judgement{}
@@ -145,6 +160,9 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 			}
 
 			for _, v := range aggregateVerdicts(policy, control, agent, evidences, decisions, base) {
+				if out && v.Scope == verdict.ScopeControl {
+					v.Explained(why, "")
+				}
 				store(v)
 			}
 		}
@@ -186,6 +204,23 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 	}
 
 	return written, errors.Join(errs...)
+}
+
+func excludedFrom(control catalog.Control, why catalog.Message) (map[string]evaluator.Result, map[string]verdict.Judgement) {
+
+	out := verdict.Explain(verdict.NotApplicable, "", why)
+
+	results := map[string]evaluator.Result{}
+	for _, e := range control.Evidences {
+		results[e.ID] = evaluator.Result{Judgement: out}
+	}
+
+	decisions := map[string]verdict.Judgement{}
+	for _, r := range control.Requirements {
+		decisions[r.ID] = out
+	}
+
+	return results, decisions
 }
 
 func judgedAgents(ctx context.Context, list Agents, since time.Time) ([]verdict.Agent, error) {

@@ -6,8 +6,27 @@ package scope
 import (
 	"strings"
 
+	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
 )
+
+// Machines answers, for one pass, which machines the configuration lets the engine judge.
+type Machines struct {
+	config    *params.Config
+	reporting map[string]source.Reporting
+}
+
+func MachinesOf(config *params.Config, reporting map[string]source.Reporting) Machines {
+	return Machines{config: config, reporting: reporting}
+}
+
+func (m Machines) Evaluable(agentID string) bool {
+	return m.config.Evaluates(agentID, m.reporting[agentID].Groups)
+}
+
+func (m Machines) Excluded(controlID, agentID string) bool {
+	return m.config.Excludes(controlID, m.reporting[agentID].Groups)
+}
 
 // Fleet are the machines of a pass: their ids by name, the manager included.
 type Fleet struct {

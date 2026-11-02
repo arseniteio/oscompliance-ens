@@ -84,6 +84,13 @@ be named in a parameter, such as a pre-production host. When the configuration
 cannot be read the engine keeps the last scope it read, and judges nothing
 until it has read one.
 
+With `scope.controlGroups` on, a machine in the Wazuh group
+`ens-excluir-<control>` (for example `ens-excluir-op.acc.1`) is out of that
+control: its verdicts are `NOT_APPLICABLE` and name the group, and it does not
+count as a machine where the control exists. Its facts keep arriving, so taking
+it out of the group judges it again on the next pass. The manager is in no
+group and cannot be excluded this way.
+
 An agent of the scope that stops sending keeps its verdicts as `NOT_EVALUABLE`
 by `COLLECTION` while Wazuh keeps it registered; it does not disappear from the
 report.

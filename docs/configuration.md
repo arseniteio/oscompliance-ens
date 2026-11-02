@@ -85,6 +85,14 @@ Everything outside the markers is left untouched. Every change is recorded in
 `oscompliance-config-history` with the region before and after; without
 `-sync-apply` the change is recorded but not written.
 
+## Control groups
+
+With the option on in Power ENS (`scope.controlGroups`), the engine creates one
+Wazuh group per control, `ens-excluir-<control>`, on its next group sync. It
+needs `-wazuh-api`, `-sync-apply` and `group:create` in its API role. To take a
+machine out of a control, add it to that group. Turning the option off ignores
+the groups and deletes none of them. See [verdicts](verdicts.md).
+
 ## Agent
 
 `/etc/oscompliance/agent.json` is optional. Without it the agent uses the

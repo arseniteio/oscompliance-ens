@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
 )
@@ -186,5 +188,41 @@ func TestSync(t *testing.T) {
 	again, err := Sync(context.Background(), api, policy, policy.Groups(), true, now)
 	if err != nil || len(again) != 0 || api.puts != 1 {
 		t.Errorf("nothing changed, nothing written, however the manager indents it: %v %v %d", again, err, api.puts)
+	}
+}
+
+type fakeMaker struct {
+	names   []string
+	created []string
+	failing string
+}
+
+func (f *fakeMaker) GroupNames(context.Context) ([]string, error) { return f.names, nil }
+
+func (f *fakeMaker) CreateGroup(_ context.Context, name string) error {
+	if name == f.failing {
+		return errors.New("forbidden")
+	}
+	f.created = append(f.created, name)
+	return nil
+}
+
+func TestCreateExclusionGroups(t *testing.T) {
+	controls := []catalog.Control{{Control: "op.acc.1"}, {Control: "op.acc.2"}, {Control: "op.acc.3"}}
+	now := time.Now()
+
+	dry := &fakeMaker{names: []string{"ens", "ens-excluir-op.acc.1"}}
+	changes, err := CreateExclusionGroups(context.Background(), dry, controls, false, now)
+	if err != nil || len(changes) != 2 || changes[0].Applied || len(dry.created) != 0 {
+		t.Errorf("without apply: %v %v created %v", changes, err, dry.created)
+	}
+
+	api := &fakeMaker{names: []string{"ens", "ens-excluir-op.acc.1"}, failing: "ens-excluir-op.acc.3"}
+	changes, err = CreateExclusionGroups(context.Background(), api, controls, true, now)
+	if err == nil {
+		t.Error("want the failed group reported")
+	}
+	if len(changes) != 1 || !changes[0].Applied || changes[0].Group != "ens-excluir-op.acc.2" {
+		t.Errorf("changes %v", changes)
 	}
 }

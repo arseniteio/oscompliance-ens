@@ -32,6 +32,8 @@ type Config struct {
 		Mode     string   `json:"mode"`
 		AgentIDs []string `json:"agentIds"`
 		GroupIDs []string `json:"groupIds"`
+		// ControlGroups turns on the groups that take a machine out of one control.
+		ControlGroups bool `json:"controlGroups"`
 	} `json:"scope"`
 	Controls []struct {
 		ControlID  string `json:"controlId"`
@@ -108,6 +110,16 @@ func (c *Config) Evaluates(agentID string, groups []string) bool {
 		return slices.ContainsFunc(c.Scope.AgentIDs, func(in string) bool { return strings.TrimSpace(in) == agentID })
 	}
 	return true
+}
+
+// Excludes tells whether the groups of a machine take it out of a control.
+func (c *Config) Excludes(controlID string, groups []string) bool {
+	if !c.Scope.ControlGroups {
+		return false
+	}
+	return slices.ContainsFunc(groups, func(g string) bool {
+		return strings.EqualFold(strings.TrimSpace(g), catalog.ExclusionGroup(controlID))
+	})
 }
 
 func (c *Config) Level() string {

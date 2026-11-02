@@ -84,9 +84,13 @@ func WithScope(ctx context.Context, scope string) context.Context {
 	return context.WithValue(ctx, scopeKey{}, scope)
 }
 
-func scoped(ctx context.Context, key string) string {
+func ScopeOf(ctx context.Context) string {
 	scope, _ := ctx.Value(scopeKey{}).(string)
-	return scope + "|" + key
+	return scope
+}
+
+func scoped(ctx context.Context, key string) string {
+	return ScopeOf(ctx) + "|" + key
 }
 
 func Once[R any](ctx context.Context, p *Plan, key string, fetch func(ctx context.Context) (R, error)) (R, error) {
