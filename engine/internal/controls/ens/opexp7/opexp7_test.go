@@ -29,6 +29,26 @@ var register = []string{
 
 var classes, _ = ParseClasses([]string{"intrusión | alta | 10 | no | acceso", "malware | critica | 12 | si | código dañino"})
 
+func TestDetectionNeedsAReportingMachine(t *testing.T) {
+
+	check(t, "silent machine", JudgeEV01(nil, classes, false, catalog.Message{}), verdict.NotEvaluable, verdict.CauseCollection, "has not reported")
+	check(t, "quiet machine", JudgeEV01(nil, classes, true, catalog.Message{}), verdict.Compliant, "", "")
+
+	alert := []source.AlertHour{{Hour: now, Level: 10}}
+	check(t, "alerts prove detection", JudgeEV01(alert, classes, false, catalog.Message{}), verdict.Compliant, "", "")
+}
+
+func TestReportedSince(t *testing.T) {
+
+	since := now.Add(-24 * time.Hour)
+	if !ReportedSince(source.Reporting{LastKeepAlive: now}, since) {
+		t.Error("a recent contact is reporting")
+	}
+	if ReportedSince(source.Reporting{LastKeepAlive: since.Add(-time.Hour)}, since) || ReportedSince(source.Reporting{}, since) {
+		t.Error("an old or missing contact is not reporting")
+	}
+}
+
 func TestRegister(t *testing.T) {
 
 	in := Of(ParseRegister(register), "WEB01", now)

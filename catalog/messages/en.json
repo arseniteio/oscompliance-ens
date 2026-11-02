@@ -757,6 +757,7 @@
   "opexp7.no_reconfiguration": "critical incidents without an automatic response: {list}",
   "opexp7.no_relevant_alerts": "no alert at level {level} or above in the window",
   "opexp7.not_escalated": "incidents not escalated or not reported as P-02 and P-04 ask: {list}",
+  "opexp7.not_reporting": "the machine has not reported to Wazuh in the period: the lack of alerts proves no detection",
   "opexp7.orphan_alerts": "{count} hours with relevant alerts and no incident in P-13: {list}",
   "opexp7.personal_data": "incidents on personal data without assessment or notification in 72 h: {list}",
   "opexp7.personal_data_ok": "{count} incidents on personal data, assessed",

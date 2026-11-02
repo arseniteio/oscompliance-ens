@@ -46,14 +46,14 @@ manager.
 |---|---|---|
 | P-01 classification `categoria \| severidad \| nivel_minimo \| notificable_ccn_cert \| criterio` | the lowest Wazuh level of each severity | EV-01, EV-02, EV-08 |
 | P-02 escalation `severidad \| destinatario \| plazo_horas \| canal` | | EV-02, EV-04 |
-| P-03 incident management system | documentary | |
+| P-03 incident management system | required, otherwise EV-02 is not evidenced | EV-02 |
 | P-04 owners of information and service `sistema \| responsable_informacion \| responsable_servicio` | | EV-04 |
 | P-05 response deadlines `severidad \| contencion_horas \| resolucion_horas` | | EV-03 |
-| P-06 CCN-CERT single window | documentary | |
+| P-06 CCN-CERT single window | required, otherwise EV-08 is not evidenced | EV-08 |
 | P-07 systems with personal data `sistema \| tratamientos` | | EV-07 |
 | P-08 evidence to preserve | documentary | |
 | P-09 automatic response actions | documentary | |
-| P-10 elements of dynamic reconfiguration | documentary | |
+| P-10 elements of dynamic reconfiguration | required, otherwise EV-09 is not evidenced | EV-09 |
 | P-11 CCN-CERT advisories `canal \| responsable \| lista_cdb \| plazo_dias` | | EV-10 |
 | P-12 rules not reconciled `regla \| motivo` | | EV-02 |
 | P-13 incident register | one row per phase | EV-02 to EV-09, EV-12 |
@@ -70,7 +70,9 @@ that share `incidente`; it involves the machine when `sistemas` names it.
 Incidents of the last 90 days are judged.
 
 - **EV-01 detection.** Alerts of the machine at or above the lowest level of
-  P-01 in the window, by severity: COMPLIANT. P-01 empty: NOT_EVALUABLE.
+  P-01 in the window, by severity: COMPLIANT. P-01 empty: NOT_EVALUABLE. No
+  alerts from a machine that has not reported in the window: NOT_EVALUABLE,
+  cause COLLECTION.
 - **EV-02 reconciliation.** Every hour with an alert at or above a severity's
   level, outside P-12, needs an incident of the machine opened within that
   severity's `plazo_horas` of P-02: otherwise NON_COMPLIANT.
@@ -85,7 +87,8 @@ Incidents of the last 90 days are judged.
 - **EV-06 urgent measures.** A high or critical incident needs an active
   response on the machine between its initial and final phases, or an
   intermediate phase.
-- **EV-07 personal data.** An incident on a system of P-07 must fill
+- **EV-07 personal data.** P-07 empty: NOT_EVALUABLE; an organisation with no
+  such system declares a row `ninguno`. An incident on a system of P-07 must fill
   `datos_personales`; when `si`, `notificado_a` must be filled within 72
   hours of the initial phase.
 - **EV-08 CCN-CERT.** An incident whose classification P-01 marks

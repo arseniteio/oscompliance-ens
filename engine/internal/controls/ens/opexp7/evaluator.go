@@ -2,7 +2,6 @@ package opexp7
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,6 +20,7 @@ type Facts interface {
 	MalwareProtections(ctx context.Context, since time.Time) (map[string]fact.MalwareProtection, error)
 	AlertHours(ctx context.Context, minLevel int, excluded []string, since time.Time) (map[string][]source.AlertHour, error)
 	ActiveResponseTimes(ctx context.Context, since time.Time) (map[string][]time.Time, error)
+	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 }
 
 type Evaluator struct {
@@ -31,6 +31,7 @@ type Evaluator struct {
 	protection map[string]fact.MalwareProtection
 	responses  map[string][]time.Time
 	alerts     map[string]map[string][]source.AlertHour
+	reporting  map[string]source.Reporting
 }
 
 func NewEvaluator(facts Facts) *Evaluator {
@@ -49,6 +50,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	}{
 		{"wazuh config", func() (err error) { e.wazuh, err = e.facts.WazuhAgentConfigs(ctx, pass.WindowStart); return }},
 		{"protection", func() (err error) { e.protection, err = e.facts.MalwareProtections(ctx, pass.WindowStart); return }},
+		{"reporting", func() (err error) { e.reporting, err = e.facts.Reporting(ctx, pass.WindowStart); return }},
 		{"active responses", func() (err error) {
 			e.responses, err = e.facts.ActiveResponseTimes(ctx, pass.Now.Add(-Horizon))
 			return
@@ -101,11 +103,14 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		hours = fleet[agent.ID]
 	}
 
-	put("EV-01", JudgeEV01(hours, classes, classProblem))
+	// The manager is not an agent of the monitoring index: it reports by being the one that judges.
+	reporting := agent.ID == source.ManagerID || ReportedSince(e.reporting[agent.ID], e.pass.WindowStart)
+	put("EV-01", JudgeEV01(hours, classes, reporting, classProblem))
 
 	escalation, err := policy.List(agent.ID, Control, "P-02")
 	escalationProblem := first(registerProblem, classProblem, problemOf("P-02", err))
-	put("EV-02", JudgeEV02(hours, classes, escalation, incidents, agent.Name, escalationProblem))
+	_, err = policy.List(agent.ID, Control, "P-03")
+	put("EV-02", JudgeEV02(hours, classes, escalation, incidents, agent.Name, first(escalationProblem, problemOf("P-03", err))))
 
 	deadlines, err := policy.List(agent.ID, Control, "P-05")
 	put("EV-03", JudgeEV03(incidents, deadlines, first(registerProblem, problemOf("P-05", err)), now))
@@ -120,15 +125,14 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-05", gated(registerProblem, func() verdict.Judgement { return JudgeEV05(incidents, manager, now) }))
 	put("EV-06", gated(registerProblem, func() verdict.Judgement { return JudgeEV06(incidents, e.responses[agent.ID], now) }))
 
-	// Without P-07 no system holds personal data: the evidence holds trivially.
 	personal, err := policy.List(agent.ID, Control, "P-07")
-	if errors.Is(err, params.ErrNotSet) {
-		err = nil
-	}
 	put("EV-07", JudgeEV07(incidents, personal, first(registerProblem, problemOf("P-07", err))))
 
-	put("EV-08", JudgeEV08(incidents, classes, first(registerProblem, classProblem)))
-	put("EV-09", gated(registerProblem, func() verdict.Judgement { return JudgeEV09(incidents, e.responses[agent.ID], now) }))
+	_, err = policy.List(agent.ID, Control, "P-06")
+	put("EV-08", JudgeEV08(incidents, classes, first(registerProblem, classProblem, problemOf("P-06", err))))
+
+	_, err = policy.List(agent.ID, Control, "P-10")
+	put("EV-09", gated(first(registerProblem, problemOf("P-10", err)), func() verdict.Judgement { return JudgeEV09(incidents, e.responses[agent.ID], now) }))
 
 	advisories, err := policy.List(agent.ID, Control, "P-11")
 	put("EV-10", JudgeEV10(manager, advisories, problemOf("P-11", err), now))
@@ -146,6 +150,11 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 	put("EV-12", gated(registerProblem, func() verdict.Judgement { return JudgeEV12(incidents) }))
 
 	return results, nil
+}
+
+// ReportedSince looks at the last contact: the monitoring index keeps writing records of a disconnected agent.
+func ReportedSince(r source.Reporting, since time.Time) bool {
+	return r.LastKeepAlive.After(since)
 }
 
 func gated(problem catalog.Message, j func() verdict.Judgement) verdict.Judgement {

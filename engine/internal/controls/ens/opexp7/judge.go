@@ -83,7 +83,7 @@ func hours(cells []string, i int) (int, bool) {
 	return n, err == nil && n >= 0
 }
 
-func JudgeEV01(hoursWithAlerts []source.AlertHour, classes []Class, problem catalog.Message) verdict.Judgement {
+func JudgeEV01(hoursWithAlerts []source.AlertHour, classes []Class, reporting bool, problem catalog.Message) verdict.Judgement {
 
 	if !problem.IsZero() {
 		return passes.Gap(verdict.CauseConfiguration, problem)
@@ -97,6 +97,9 @@ func JudgeEV01(hoursWithAlerts []source.AlertHour, classes []Class, problem cata
 		if n := counts[c.Severity]; n > 0 && !slices.ContainsFunc(list, func(s string) bool { return strings.HasPrefix(s, c.Severity+" ") }) {
 			list = append(list, fmt.Sprintf("%s %d h", c.Severity, n))
 		}
+	}
+	if len(list) == 0 && !reporting {
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opexp7.not_reporting"))
 	}
 	if len(list) == 0 {
 		return verdict.Explain(verdict.Compliant, "", catalog.Says("opexp7.no_relevant_alerts", "level", MinLevel(classes)))
