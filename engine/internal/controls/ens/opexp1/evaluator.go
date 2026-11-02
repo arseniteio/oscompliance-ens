@@ -17,7 +17,7 @@ import (
 
 type Facts interface {
 	Inventories(ctx context.Context) (map[string]*source.Inventory, error)
-	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
+	FleetReporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 	WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error)
 	ListeningSnapshots(ctx context.Context, since time.Time) (map[string]fact.ListeningSnapshot, error)
 	NeighbourSnapshots(ctx context.Context, since time.Time) (map[string]fact.NeighbourSnapshot, error)
@@ -58,7 +58,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		do   func() error
 	}{
 		{"inventory", func() (err error) { e.inventories, err = e.facts.Inventories(ctx); return }},
-		{"monitoring", func() (err error) { e.reporting, err = e.facts.Reporting(ctx, pass.LookbackStart); return }},
+		{"monitoring", func() (err error) { e.reporting, err = e.facts.FleetReporting(ctx, pass.LookbackStart); return }},
 		{"wazuh config", func() (err error) { e.wazuh, err = e.facts.WazuhAgentConfigs(ctx, w); return }},
 		{"listening", func() (err error) { listening, err = e.facts.ListeningSnapshots(ctx, w); return }},
 		{"neighbours", func() (err error) { e.neighbours, err = e.facts.NeighbourSnapshots(ctx, w); return }},

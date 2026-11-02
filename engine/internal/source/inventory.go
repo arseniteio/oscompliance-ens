@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"time"
 )
 
@@ -194,13 +195,24 @@ type Reporting struct {
 	Status        string
 	LastKeepAlive time.Time
 	IP            string
+	Groups        []string
 }
 
+// Reporting are the machines judged in this pass: a machine outside the scope counts for nothing.
 func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Reporting, error) {
+
+	fleet, err := s.FleetReporting(ctx, since)
+	maps.DeleteFunc(fleet, func(id string, _ Reporting) bool { return !s.pass.plan.Has(id) })
+	return fleet, err
+}
+
+// FleetReporting are all the registered machines, inside the scope or not: for finding out whom a name or
+// an address belongs to, never for judging them.
+func (s *Source) FleetReporting(ctx context.Context, since time.Time) (map[string]Reporting, error) {
 
 	filter := []any{map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}}}
 	sub := map[string]any{"last": map[string]any{"top_hits": map[string]any{
-		"size": 1, "sort": []any{map[string]any{"timestamp": "desc"}}, "_source": []string{"name", "status", "lastKeepAlive", "ip"},
+		"size": 1, "sort": []any{map[string]any{"timestamp": "desc"}}, "_source": []string{"name", "status", "lastKeepAlive", "ip", "group"},
 	}}}
 
 	out := map[string]Reporting{}
@@ -212,10 +224,11 @@ func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Rep
 					Hits struct {
 						Hits []struct {
 							Source struct {
-								Name          string `json:"name"`
-								Status        string `json:"status"`
-								LastKeepAlive string `json:"lastKeepAlive"`
-								IP            string `json:"ip"`
+								Name          string   `json:"name"`
+								Status        string   `json:"status"`
+								LastKeepAlive string   `json:"lastKeepAlive"`
+								IP            string   `json:"ip"`
+								Group         []string `json:"group"`
 							} `json:"_source"`
 						} `json:"hits"`
 					} `json:"hits"`
@@ -228,7 +241,7 @@ func (s *Source) Reporting(ctx context.Context, since time.Time) (map[string]Rep
 				return nil
 			}
 			h := c.Last.Hits.Hits[0].Source
-			r := Reporting{Name: h.Name, Status: h.Status, IP: h.IP}
+			r := Reporting{Name: h.Name, Status: h.Status, IP: h.IP, Groups: h.Group}
 			if t, err := time.Parse(time.RFC3339, h.LastKeepAlive); err == nil {
 				r.LastKeepAlive = t
 			}

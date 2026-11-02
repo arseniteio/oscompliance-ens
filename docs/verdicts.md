@@ -76,10 +76,17 @@ machine holds it, the system fails: the manager carries the
 
 ## Which machines are judged
 
-Every agent that sent a fact in the lookback (7 days by default), every agent
-in `wazuh-monitoring-*` in the lookback, and the manager. An agent that stops
-sending keeps its verdicts as `NOT_EVALUABLE` by `COLLECTION` while Wazuh
-keeps it registered; it does not disappear from the report.
+The machines of the ENS scope (`scope` in the Power ENS configuration): those
+of its groups, by default `ens`, read from `wazuh-monitoring-*`, and the
+manager, which is in no group. A machine outside the scope gets no verdict and
+counts for nothing in the controls that look at the whole fleet; it can still
+be named in a parameter, such as a pre-production host. When the configuration
+cannot be read the engine keeps the last scope it read, and judges nothing
+until it has read one.
+
+An agent of the scope that stops sending keeps its verdicts as `NOT_EVALUABLE`
+by `COLLECTION` while Wazuh keeps it registered; it does not disappear from the
+report.
 
 ## Time
 

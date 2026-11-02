@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -179,8 +180,16 @@ func runMain() error {
 		mps4.NewEvaluator(facts),
 		mpsw2.NewEvaluator(facts),
 	}
+	var scope *params.Config
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,
+		Evaluable: func(ctx context.Context, since time.Time) (func(string) bool, error) {
+			machines, err := facts.FleetReporting(ctx, since)
+			if err != nil {
+				return nil, err
+			}
+			return func(id string) bool { return scope.Evaluates(id, machines[id].Groups) }, nil
+		},
 		Plan: func(agents []verdict.Agent) {
 			facts.Plan(agents)
 			hist.Plan(agents)
@@ -200,8 +209,21 @@ func runMain() error {
 			} else {
 				loaded.UseInventoryTypes(platforms)
 			}
-			policy = loaded
+			policy, scope = loaded, loaded
 			groups.run(ctx, loaded, time.Now())
+		}
+
+		if scope == nil {
+			slog.Error("pass", "error", "the ENS scope has never been read: nothing to judge yet")
+			if *interval == 0 {
+				return errors.New("the ENS scope could not be read")
+			}
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(*interval):
+			}
+			continue
 		}
 
 		start, before := time.Now(), client.Requests()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -30,6 +31,9 @@ type Config struct {
 	Lookback      time.Duration
 	EngineVersion string
 
+	// Evaluable answers, for one pass, which machines are in the scope; nil judges them all.
+	Evaluable func(ctx context.Context, since time.Time) (func(agentID string) bool, error)
+
 	Plan func(agents []verdict.Agent)
 
 	Flush func(ctx context.Context) error
@@ -43,6 +47,14 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 
 	if err != nil {
 		return 0, err
+	}
+
+	if cfg.Evaluable != nil {
+		evaluable, err := cfg.Evaluable(ctx, pass.LookbackStart)
+		if err != nil {
+			return 0, fmt.Errorf("scope: %w", err)
+		}
+		agents = slices.DeleteFunc(agents, func(a verdict.Agent) bool { return !evaluable(a.ID) })
 	}
 
 	if cfg.Plan != nil {

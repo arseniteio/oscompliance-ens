@@ -18,7 +18,7 @@ import (
 
 type Facts interface {
 	WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error)
-	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
+	FleetReporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 	SCASummaries(ctx context.Context, since time.Time) (map[string][]source.SCASummary, error)
 	IdentitySnapshots(ctx context.Context, since time.Time, n int) (map[string][]fact.IdentitySnapshot, error)
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
@@ -68,7 +68,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		do   func() error
 	}{
 		{"wazuh config", func() (err error) { e.wazuh, err = e.facts.WazuhAgentConfigs(ctx, w); return }},
-		{"monitoring", func() (err error) { e.reporting, err = e.facts.Reporting(ctx, pass.LookbackStart); return }},
+		{"monitoring", func() (err error) { e.reporting, err = e.facts.FleetReporting(ctx, pass.LookbackStart); return }},
 		{"sca", func() (err error) {
 			e.summaries, err = e.facts.SCASummaries(ctx, pass.Now.Add(-summariesHorizon))
 			return

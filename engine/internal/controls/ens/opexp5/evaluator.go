@@ -20,7 +20,7 @@ import (
 
 type Facts interface {
 	WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error)
-	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
+	FleetReporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 	FIMChanges(ctx context.Context, agentID string, since time.Time) ([]source.FIMChange, error)
 	TransactionSnapshots(ctx context.Context, since time.Time) (map[string]fact.TransactionSnapshot, error)
 	PackageTransactions(ctx context.Context, agentID, runID string, since time.Time) ([]fact.PackageTransaction, error)
@@ -60,7 +60,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		do   func() error
 	}{
 		{"wazuh config", func() (err error) { e.wazuh, err = e.facts.WazuhAgentConfigs(ctx, w); return }},
-		{"monitoring", func() (err error) { reporting, err = e.facts.Reporting(ctx, pass.LookbackStart); return }},
+		{"monitoring", func() (err error) { reporting, err = e.facts.FleetReporting(ctx, pass.LookbackStart); return }},
 		{"transactions", func() (err error) { e.transactions, err = e.facts.TransactionSnapshots(ctx, w); return }},
 		{"units", func() (err error) { e.units, err = e.facts.UnitSnapshots(ctx, w); return }},
 		{"snapshots", func() (err error) { e.snapshots, err = e.facts.SnapshotLists(ctx, w); return }},

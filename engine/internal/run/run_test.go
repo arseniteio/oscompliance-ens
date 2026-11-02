@@ -145,6 +145,47 @@ func TestOnceControlBeginFails(t *testing.T) {
 	}
 }
 
+func TestOnceJudgesOnlyEvaluableMachines(t *testing.T) {
+	agents := fakeAgents{senders: []verdict.Agent{{ID: "000"}, {ID: "001"}, {ID: "002"}}}
+	control := &fakeControl{results: map[string]map[string]evaluator.Result{"000": allCompliant(), "001": allCompliant(), "002": allCompliant()}}
+	sink := &fakeSink{}
+	var planned []verdict.Agent
+
+	scoped := cfg
+	scoped.Plan = func(a []verdict.Agent) { planned = a }
+	scoped.Evaluable = func(context.Context, time.Time) (func(string) bool, error) {
+		return func(id string) bool { return id != "002" }, nil
+	}
+
+	if _, err := Once(context.Background(), agents, []evaluator.Evaluator{control}, noParams{}, sink, scoped, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(planned) != 2 {
+		t.Errorf("planned %v", planned)
+	}
+	for _, v := range sink.got {
+		if v.Agent.ID == "002" {
+			t.Fatalf("a verdict for a machine outside the scope: %+v", v)
+		}
+	}
+}
+
+func TestOnceWritesNothingWhenTheScopeCannotBeRead(t *testing.T) {
+	control := &fakeControl{results: map[string]map[string]evaluator.Result{"001": allCompliant()}}
+	sink := &fakeSink{}
+
+	scoped := cfg
+	scoped.Evaluable = func(context.Context, time.Time) (func(string) bool, error) { return nil, errors.New("no monitoring") }
+
+	if _, err := Once(context.Background(), fakeAgents{senders: []verdict.Agent{{ID: "001"}}}, []evaluator.Evaluator{control}, noParams{}, sink, scoped, time.Now()); err == nil {
+		t.Fatal("want the scope error")
+	}
+	if len(sink.got) != 0 {
+		t.Errorf("verdicts without a scope: %d", len(sink.got))
+	}
+}
+
 func TestOnceJudgesRegisteredSilentAgents(t *testing.T) {
 	agents := fakeAgents{
 		senders:    []verdict.Agent{{ID: "001"}},

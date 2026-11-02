@@ -21,7 +21,7 @@ import (
 
 type Facts interface {
 	Networks(ctx context.Context, tools []string) (map[string]*source.Network, error)
-	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
+	FleetReporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 	SourceActivity(ctx context.Context, name string, since time.Time) ([]time.Time, error)
 	AcceptedFlows(ctx context.Context, names []string, since time.Time) ([]source.Flow, error)
 }
@@ -56,7 +56,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.networks, err = e.facts.Networks(ctx, mpcom1.TunnelTools); err != nil {
 		return fmt.Errorf("networks: %w", err)
 	}
-	reporting, err := e.facts.Reporting(ctx, pass.LookbackStart)
+	reporting, err := e.facts.FleetReporting(ctx, pass.LookbackStart)
 	if err != nil {
 		return fmt.Errorf("reporting: %w", err)
 	}

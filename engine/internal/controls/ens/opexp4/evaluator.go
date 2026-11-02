@@ -19,7 +19,7 @@ import (
 
 type Facts interface {
 	Inventories(ctx context.Context) (map[string]*source.Inventory, error)
-	Reporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
+	FleetReporting(ctx context.Context, since time.Time) (map[string]source.Reporting, error)
 	WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error)
 	Vulnerabilities(ctx context.Context) (map[string][]source.VulnerabilityDay, error)
 	Vendors(ctx context.Context) (map[string][]string, error)
@@ -69,7 +69,7 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 		do   func() error
 	}{
 		{"inventory", func() (err error) { e.inventories, err = e.facts.Inventories(ctx); return }},
-		{"monitoring", func() (err error) { e.reporting, err = e.facts.Reporting(ctx, pass.LookbackStart); return }},
+		{"monitoring", func() (err error) { e.reporting, err = e.facts.FleetReporting(ctx, pass.LookbackStart); return }},
 		{"wazuh config", func() (err error) { e.wazuh, err = e.facts.WazuhAgentConfigs(ctx, w); return }},
 		{"vulnerabilities", func() (err error) { e.vulns, err = e.facts.Vulnerabilities(ctx); return }},
 		{"vendors", func() (err error) { e.vendors, err = e.facts.Vendors(ctx); return }},

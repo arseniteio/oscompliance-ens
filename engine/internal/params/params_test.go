@@ -227,3 +227,36 @@ func TestBool(t *testing.T) {
 		t.Errorf("P-99: %v", err)
 	}
 }
+
+func TestEvaluates(t *testing.T) {
+	config := func(mode string, agents, groups []string) *Config {
+		c := &Config{}
+		c.Scope.Mode, c.Scope.AgentIDs, c.Scope.GroupIDs = mode, agents, groups
+		return c
+	}
+
+	cases := []struct {
+		name   string
+		c      *Config
+		agent  string
+		groups []string
+		want   bool
+	}{
+		{"in a group of the scope", config("group", nil, []string{"ens"}), "001", []string{"default", "ens"}, true},
+		{"group names ignore case and spaces", config("group", nil, []string{" ENS "}), "001", []string{"ens"}, true},
+		{"several evaluable groups", config("group", nil, []string{"ens", "dmz"}), "001", []string{"dmz"}, true},
+		{"in another group", config("group", nil, []string{"ens"}), "002", []string{"default"}, false},
+		{"in no group", config("group", nil, []string{"ens"}), "003", nil, false},
+		{"a scope naming no group holds no machine", config("group", nil, nil), "001", []string{"ens"}, false},
+		{"the manager is in no group and always in", config("group", nil, []string{"ens"}), "000", nil, true},
+		{"named agent", config("agent", []string{"001"}, nil), "001", nil, true},
+		{"unnamed agent", config("agent", []string{"001"}, nil), "002", []string{"ens"}, false},
+		{"global", config("global", nil, nil), "002", nil, true},
+	}
+
+	for _, tc := range cases {
+		if got := tc.c.Evaluates(tc.agent, tc.groups); got != tc.want {
+			t.Errorf("%s: got %v", tc.name, got)
+		}
+	}
+}

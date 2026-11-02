@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -29,6 +30,7 @@ type Config struct {
 	} `json:"global"`
 	Scope struct {
 		Mode     string   `json:"mode"`
+		AgentIDs []string `json:"agentIds"`
 		GroupIDs []string `json:"groupIds"`
 	} `json:"scope"`
 	Controls []struct {
@@ -87,6 +89,25 @@ func (c *Config) Groups() []string {
 		return nil
 	}
 	return c.Scope.GroupIDs
+}
+
+// Evaluates tells whether a machine is in the ENS scope, as the plugin resolves it. The manager is in no group
+// and is always in.
+func (c *Config) Evaluates(agentID string, groups []string) bool {
+	if agentID == "000" {
+		return true
+	}
+	switch c.Scope.Mode {
+	case "group":
+		return slices.ContainsFunc(groups, func(g string) bool {
+			return slices.ContainsFunc(c.Scope.GroupIDs, func(in string) bool {
+				return strings.EqualFold(strings.TrimSpace(in), strings.TrimSpace(g))
+			})
+		})
+	case "agent":
+		return slices.ContainsFunc(c.Scope.AgentIDs, func(in string) bool { return strings.TrimSpace(in) == agentID })
+	}
+	return true
 }
 
 func (c *Config) Level() string {

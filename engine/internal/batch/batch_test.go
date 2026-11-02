@@ -145,3 +145,16 @@ func TestOnceFetchesOncePerPass(t *testing.T) {
 		t.Fatalf("%d fetches, want 2", fetches)
 	}
 }
+
+func TestPlanHas(t *testing.T) {
+
+	var p Plan
+	if !p.Has("001") {
+		t.Error("before a plan every machine is judged")
+	}
+
+	p.Set([]string{"001"})
+	if !p.Has("001") || p.Has("002") {
+		t.Error("after a plan only its machines are")
+	}
+}
