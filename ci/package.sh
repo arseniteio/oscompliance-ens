@@ -1,10 +1,4 @@
 #!/usr/bin/env bash
-# Builds the release packages: per Linux architecture, the agent and the engine with the Wazuh rules, the
-# agent.conf fragment, the indexer and API roles and the example agent configuration, plus SHA256SUMS.
-#
-#   ci/package.sh 1.0.0
-#
-# Output: dist/oscompliance-ens-<version>-linux-<arch>.tar.gz and dist/SHA256SUMS.
 set -euo pipefail
 
 version="${1:?usage: ci/package.sh <version>}"
