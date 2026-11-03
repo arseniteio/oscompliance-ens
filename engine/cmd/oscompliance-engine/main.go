@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -92,6 +93,7 @@ func runMain() error {
 	syncInterval := flag.Duration("sync-interval", 15*time.Minute, "minimum time between two group configuration syncs")
 	syncApply := flag.Bool("sync-apply", false, "write the group configuration; without it the changes are only logged and recorded")
 	configHistoryIndex := flag.String("config-history-index", "oscompliance-config-history", "index recording every group configuration change")
+	onlyControls := flag.String("controls", "", "comma-separated controls to judge, such as op.acc.1; empty judges all of them")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, nil)))
@@ -182,6 +184,11 @@ func runMain() error {
 		mps4.NewEvaluator(facts),
 		mpsw2.NewEvaluator(facts),
 	}
+	controls, err = selectControls(controls, *onlyControls)
+	if err != nil {
+		return err
+	}
+
 	var current *params.Config
 	cfg := run.Config{
 		Window: *window, Lookback: *lookback, EngineVersion: version,
@@ -249,6 +256,29 @@ func runMain() error {
 		case <-time.After(*interval):
 		}
 	}
+}
+
+func selectControls(all []evaluator.Evaluator, names string) ([]evaluator.Evaluator, error) {
+
+	if names == "" {
+		return all, nil
+	}
+
+	byName := make(map[string]evaluator.Evaluator, len(all))
+	for _, ev := range all {
+		byName[ev.Control()] = ev
+	}
+
+	var selected []evaluator.Evaluator
+	for _, name := range strings.Split(names, ",") {
+		ev, ok := byName[strings.TrimSpace(name)]
+		if !ok {
+			return nil, fmt.Errorf("-controls: unknown control %q", name)
+		}
+		selected = append(selected, ev)
+	}
+
+	return selected, nil
 }
 
 type groupSync struct {

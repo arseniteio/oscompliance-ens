@@ -31,6 +31,7 @@ every pass.
 | `-lookback` | `168h` | agents with facts this recent are judged |
 | `-sync-interval` | `15m` | minimum time between two group configuration syncs |
 | `-sync-apply` | off | write the group configuration; without it changes are only logged and recorded |
+| `-controls` | empty | comma-separated controls to judge; empty judges all of them |
 | `-alerts-index` | `wazuh-alerts-*` | alerts index pattern |
 | `-monitoring-index` | `wazuh-monitoring-*` | agent keepalive index pattern |
 | `-states-prefix` | `wazuh-states-` | prefix of Wazuh's inventory and vulnerability indices |
