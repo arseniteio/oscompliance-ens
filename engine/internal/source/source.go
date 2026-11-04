@@ -318,6 +318,19 @@ var quietFacts = map[string]bool{
 	fact.ACLSnapshotFact:        true,
 	fact.AuditWatchSnapshotFact: true,
 	fact.FirewallSnapshotFact:   true,
+
+	fact.BackupSnapshotFact:      true,
+	fact.DeviceSecurityFact:      true,
+	fact.KeySnapshotFact:         true,
+	fact.MalwareProtectionFact:   true,
+	fact.NeighbourSnapshotFact:   true,
+	fact.PackageSelectionFact:    true,
+	fact.SnapshotListFact:        true,
+	fact.TimeSyncFact:            true,
+	fact.TransactionSnapshotFact: true,
+	fact.UnitSnapshotFact:        true,
+	fact.UpdateStatusFact:        true,
+	fact.VirtualizationFact:      true,
 }
 
 type heldPass struct {
