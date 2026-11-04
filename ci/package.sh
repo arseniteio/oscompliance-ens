@@ -15,8 +15,8 @@ for arch in amd64 arm64; do
       go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$dir/bin/oscompliance-$part" "./cmd/oscompliance-$part")
   done
   cp "$root"/catalog/wazuh/* "$dir/wazuh/"
-  cp "$root/agent/agent.example.json" "$dir/agent/"
-  tar -C "$dist" -czf "$dist/$name.tar.gz" "$name"
+  cp "$root/agent/agent.example.json" "$root/agent/oscompliance.cron" "$dir/agent/"
+  COPYFILE_DISABLE=1 tar --no-xattrs -C "$dist" -czf "$dist/$name.tar.gz" "$name"
   rm -rf "$dir"
 done
 

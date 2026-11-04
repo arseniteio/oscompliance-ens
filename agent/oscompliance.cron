@@ -1,0 +1,2 @@
+17 * * * * root /usr/local/bin/oscompliance-agent >/dev/null 2>&1
+23 3 * * * root /usr/local/bin/oscompliance-agent -collect sweep >/dev/null 2>&1

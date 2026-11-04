@@ -1,0 +1,34 @@
+{
+  "cluster_permissions": [
+    "cluster_composite_ops_ro",
+    "cluster:admin/opendistro/ism/managedindex/explain",
+    "cluster:admin/opendistro/ism/policy/get"
+  ],
+  "index_permissions": [
+    {
+      "index_patterns": [
+        "wazuh-alerts-*",
+        "wazuh-monitoring-*",
+        "wazuh-states-inventory-*",
+        "wazuh-states-vulnerabilities-*",
+        "wazuh-ens-configuration"
+      ],
+      "allowed_actions": ["read"]
+    },
+    {
+      "index_patterns": [
+        "oscompliance-verdicts",
+        "oscompliance-identity-history",
+        "oscompliance-config-history"
+      ],
+      "allowed_actions": [
+        "create_index",
+        "manage_mapping",
+        "crud",
+        "indices:admin/get",
+        "indices:admin/refresh*",
+        "indices:data/write/bulk*"
+      ]
+    }
+  ]
+}

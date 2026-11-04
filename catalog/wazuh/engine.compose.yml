@@ -1,0 +1,23 @@
+services:
+  oscompliance.engine:
+    image: alpine:3.20
+    restart: always
+    entrypoint: ["/opt/oscompliance/oscompliance-engine"]
+    command:
+      - -indexer=https://wazuh.indexer:9200
+      - -user=oscompliance
+      - -ca=/certs/root-ca.pem
+      - -wazuh-api=https://wazuh.manager:55000
+      - -wazuh-api-user=oscompliance
+      - -wazuh-api-ca=/wazuh-api/ssl/server.crt
+      - -wazuh-api-server-name=localhost
+      - -interval=15m
+      - -sync-apply
+    env_file: /etc/oscompliance/engine.env
+    volumes:
+      - /usr/local/bin/oscompliance-engine:/opt/oscompliance/oscompliance-engine:ro
+      - ./config/wazuh_indexer_ssl_certs/root-ca.pem:/certs/root-ca.pem:ro
+      - wazuh_api_configuration:/wazuh-api:ro
+    depends_on:
+      - wazuh.indexer
+      - wazuh.manager

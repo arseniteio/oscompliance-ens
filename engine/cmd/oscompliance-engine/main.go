@@ -75,7 +75,7 @@ func main() {
 
 func runMain() error {
 	indexerURL := flag.String("indexer", "https://wazuh.indexer:9200", "indexer URL")
-	user := flag.String("user", "admin", "indexer user; password in $"+passwordEnv+"; least privilege: catalog/wazuh/engine-role.yml")
+	user := flag.String("user", "admin", "indexer user; password in $"+passwordEnv+"; least privilege: catalog/wazuh/engine-role.json")
 	caFile := flag.String("ca", "", "CA certificate for the indexer (PEM)")
 	alerts := flag.String("alerts-index", "wazuh-alerts-*", "index pattern holding the facts")
 	monitoring := flag.String("monitoring-index", "wazuh-monitoring-*", "index pattern listing the registered agents")

@@ -1,0 +1,22 @@
+[Unit]
+Description=OSCompliance ENS engine
+After=network-online.target wazuh-indexer.service wazuh-manager.service
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=/etc/oscompliance/engine.env
+ExecStart=/usr/local/bin/oscompliance-engine \
+  -indexer=https://127.0.0.1:9200 -user=oscompliance \
+  -ca=/etc/wazuh-indexer/certs/root-ca.pem \
+  -wazuh-api=https://127.0.0.1:55000 -wazuh-api-user=oscompliance \
+  -wazuh-api-ca=/var/ossec/api/configuration/ssl/server.crt -wazuh-api-server-name=localhost \
+  -interval=15m -sync-apply
+Restart=on-failure
+RestartSec=60
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
