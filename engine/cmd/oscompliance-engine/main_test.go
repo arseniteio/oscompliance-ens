@@ -50,3 +50,11 @@ func TestSelectControls(t *testing.T) {
 		})
 	}
 }
+
+func TestCatalogControlsAreTheJudgedOnes(t *testing.T) {
+	got := catalogControls([]evaluator.Evaluator{namedControl("op.acc.1"), namedControl("not.in.catalog")})
+
+	if len(got) != 1 || got[0].Control != "op.acc.1" {
+		t.Errorf("got %v", got)
+	}
+}

@@ -188,6 +188,9 @@ func runMain() error {
 	if err != nil {
 		return err
 	}
+	if groups != nil {
+		groups.controls = catalogControls(controls)
+	}
 
 	var current *params.Config
 	cfg := run.Config{
@@ -281,12 +284,25 @@ func selectControls(all []evaluator.Evaluator, names string) ([]evaluator.Evalua
 	return selected, nil
 }
 
+func catalogControls(judged []evaluator.Evaluator) []catalog.Control {
+
+	var out []catalog.Control
+	for _, ev := range judged {
+		if control, ok := catalog.LookupControl(ev.Control()); ok {
+			out = append(out, control)
+		}
+	}
+
+	return out
+}
+
 type groupSync struct {
-	api     *wazuhapi.Client
-	history *store.ConfigHistory
-	every   time.Duration
-	apply   bool
-	last    time.Time
+	api      *wazuhapi.Client
+	controls []catalog.Control
+	history  *store.ConfigHistory
+	every    time.Duration
+	apply    bool
+	last     time.Time
 }
 
 func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Time) {
@@ -297,7 +313,7 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 	g.last = now
 
 	if policy.Scope.ControlGroups {
-		changes, err := groupconf.CreateExclusionGroups(ctx, g.api, catalog.Controls(), g.apply, now)
+		changes, err := groupconf.CreateExclusionGroups(ctx, g.api, g.controls, g.apply, now)
 		g.record(ctx, changes, err)
 	}
 
