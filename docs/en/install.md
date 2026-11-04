@@ -78,7 +78,7 @@ The script validates the zip, keeps a copy of any previous version in `/var/back
 bash deploy-plugin.sh powerEns-2.19.6.zip
 ```
 
-Log in to the dashboard and open Power ENS. A user with `all_access` can change the configuration. To allow another user, see [Power ENS installation](https://github.com/arseniteio/power-ens/blob/main/docs/en/install.md).
+Log in to the dashboard and open Power ENS. If it says `No se puede leer el inventario de agentes`, the dashboard has not yet written its agent inventory, which it does every 15 minutes: wait and press Reintentar. A user with `all_access` can change the configuration. To allow another user, see [Power ENS installation](https://github.com/arseniteio/power-ens/blob/main/docs/en/install.md).
 
 ## 5. Set the ENS configuration
 
@@ -240,4 +240,4 @@ Remove the engine users. The script asks for the password of `wazuh-wui`.
 bash wazuh/engine-users.sh remove
 ```
 
-The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them. If you installed the manager's agent, also remove its two localfile blocks from `ossec.conf`.
+The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them. If you audited the manager, also run the commands for audited machines on the server, and remove its two localfile blocks from `ossec.conf`.

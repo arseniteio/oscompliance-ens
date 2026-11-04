@@ -1,0 +1,104 @@
+# Operación
+
+## Qué se ejecuta y cuándo
+
+Cada máquina auditada ejecuta una pasada del agente cada hora en el minuto 17, y el barrido del sistema de ficheros cada día a las 03:23, limitado por `sweep_timeout` (15 minutos). El motor ejecuta una pasada cada 15 minutos. Sincroniza la configuración de grupo como máximo cada 15 minutos, y solo cuando algo ha cambiado.
+
+## Registros del motor
+
+El motor registra en JSON en el journal:
+
+```bash
+journalctl -u oscompliance-engine -f
+```
+
+| Mensaje | Campos | Significado |
+|---|---|---|
+| `pass` | `verdicts`, `seconds`, `requests` | una pasada terminada |
+| `pass` con `error` | los mismos, más `error` | la pasada ha fallado; los veredictos ya escritos se quedan |
+| `parameters` | `error` | no se ha podido leer la configuración ENS; la pasada sigue con lo leído |
+| `inventory platforms` | `error` | no se han podido derivar los tipos de sistema del inventario |
+| `group configuration` | `group`, `agents`, `applied` | se ha sincronizado la región de un grupo (`applied: false` sin `-sync-apply`) |
+| `group configuration` | `error` | la sincronización ha fallado; la siguiente pasada lo intenta de nuevo |
+
+`requests` debería crecer linealmente con la flota, unas 0,7 por agente. Una pasada que tarda varias veces lo habitual apunta al indexer: memoria, disco o una recolección de basura larga.
+
+## Comprobar una máquina
+
+En la máquina:
+
+```bash
+tail -n 5 /var/log/oscompliance/facts.ndjson | jq -c '{fact, ts, status}'
+grep -c oscompliance /var/ossec/etc/shared/agent.conf
+auditctl -l | grep -c oscompliance_
+```
+
+En Discover, sobre `wazuh-alerts-*`, para ese agente:
+
+| Consulta | Muestra |
+|---|---|
+| `rule.id:119001` | sus hechos |
+| `rule.id:119002` | sus sondas de autenticación: el registro de autenticación llega a Wazuh |
+| `rule.id:119004` | sus accesos auditados |
+
+Sus veredictos, en `oscompliance-verdicts`:
+
+```
+agent.name:"web-01" and scope:evidence and status:NOT_EVALUABLE
+```
+
+## Resolución de problemas
+
+No hay alertas 119001 de una máquina. El agente de Wazuh no ha recibido el localfile de hechos o las reglas no están cargadas. Comprueba que `/var/ossec/etc/shared/agent.conf` de la máquina menciona `facts.ndjson` y ejecuta `wazuh-analysisd -t` en el manager. Si el fichero llegó después de la primera pasada, ejecuta `touch /var/log/oscompliance/facts.ndjson`, reinicia `wazuh-agent` y ejecuta `oscompliance-agent -full`.
+
+Todo sale NOT_EVALUABLE por COLLECTION en una máquina. No ha habido ninguna pasada del agente en la ventana. Revisa `/etc/cron.d/oscompliance` y ejecuta el agente a mano para leer su error. Con SELinux en enforcing, ejecuta `restorecon` como en la guía de instalación.
+
+Las evidencias de inicio de sesión salen NOT_EVALUABLE por COLLECTION. El registro de autenticación no llega a Wazuh, así que no hay alerta 119002. Añade `/var/log/auth.log`, `/var/log/secure` o journald a los localfiles del agente, y después inicia sesión por SSH.
+
+EV-06 de op.acc.2, op.acc.3 o EV-07 de op.acc.4 salen NOT_EVALUABLE por COLLECTION. auditd está parado, sus vigilancias no están cargadas o no se lee el registro de auditoría. Instala auditd y comprueba `auditctl -l`. El bloque del motor en la configuración de grupo añade el localfile de auditoría.
+
+Un control sale NOT_EVALUABLE por CONFIGURATION. Falta un parámetro. El veredicto lo nombra: defínelo en Power ENS.
+
+El motor registra `the ENS scope has never been read`. Nadie ha guardado aún la configuración. Pulsa Guardar configuración global en Power ENS y reinicia el motor.
+
+El motor recibe 401 o 403 del indexer. La contraseña es incorrecta o al rol le falta un permiso. Revisa `engine.env` y compara el rol con `engine-role.json`. El error nombra la acción.
+
+El motor recibe 401 o 403 de la API de Wazuh. La contraseña es incorrecta o a la política le falta una acción. Compara la política con `engine-api-role.json`.
+
+El motor registra un error de certificado. La CA es incorrecta o el certificado de la API nombra otro host. Revisa `-ca`, `-wazuh-api-ca` y `-wazuh-api-server-name`.
+
+El motor registra HTTP 429. El indexer está bajo presión. El motor reintenta. Si ocurre a menudo, aumenta la memoria del indexer o `-interval`.
+
+No se aplica la configuración de grupo. Falta `-sync-apply` o el alcance no nombra ningún grupo de Wazuh. La línea `group configuration` del registro indica cuál.
+
+`agent_groups` devuelve el error 1017. El manager está arrancando. Espera un minuto y repite. El error 1751 significa que el agente ya está en el grupo, y no hay que hacer nada.
+
+El manager no tiene veredictos. El agente no está instalado en él o su `ossec.conf` no tiene el localfile de hechos. Consulta la [instalación, apartado 8](install.md#8-auditar-el-manager).
+
+Una máquina nueva no muestra nada. No está en el grupo ENS, o su primera pasada se ejecutó antes de recibir la configuración de grupo. Añádela al grupo y repite el [apartado 7 de la instalación](install.md#7-instalar-el-agente-en-las-máquinas-auditadas).
+
+Power ENS no aparece en el dashboard. En paquetes, lee la salida de `deploy-plugin.sh` y `journalctl -u wazuh-dashboard`. En Docker, revisa la imagen del servicio `wazuh.dashboard`. Si el zip se compiló para otra versión, el dashboard lo rechaza: compílalo de nuevo para tu versión. Una página en blanco tras una actualización desaparece al cerrar la pestaña y volver a entrar.
+
+## Antes de instalar en una máquina
+
+`oscompliance-doctor` ([arseniteio/oscompliance-agent-doctor-ens](https://github.com/arseniteio/oscompliance-agent-doctor-ens)) comprueba que auditd está instalado y en marcha, y que el agente de Wazuh está instalado, registrado y conectado al manager. Termina con código 0 cuando la máquina está lista y con 1 y cada problema en caso contrario.
+
+## Capacidad
+
+Una pasada hace unas 0,7 peticiones por agente. Tarda de 6 a 8 segundos con 1.000 agentes y de 100 a 130 segundos con 10.000, medido en un indexer de laboratorio de un solo nodo con 1 GB de memoria.
+
+Cada agente envía unos 115 hechos al día en régimen estable, una pequeña parte de lo que envían los módulos de Wazuh. Los veredictos se escriben por pasada, así que define una política ISM en `oscompliance-verdicts` con la retención que exija la auditoría.
+
+`oscompliance-fleetsim` carga una flota sintética, copiada de un agente real, en índices separados, para medir el motor en el indexer de destino antes del despliegue:
+
+```bash
+oscompliance-fleetsim -indexer https://127.0.0.1:9200 -user admin -ca root-ca.pem \
+  -agent 001 -agents 10000 -quiet
+oscompliance-engine -indexer https://127.0.0.1:9200 -user admin -ca root-ca.pem \
+  -alerts-index wazuh-alerts-4.x-fleetsim -monitoring-index wazuh-monitoring-fleetsim \
+  -verdicts-index oscompliance-verdicts-fleetsim
+```
+
+## Copias de seguridad
+
+Todo lo que OSCompliance necesita para recuperarse está en el indexer: la configuración ENS (`wazuh-ens-configuration`) y los índices de historial. Inclúyelos en la política de snapshots del indexer. Los agentes no guardan ningún estado que no se pueda reconstruir: perder `/var/lib/oscompliance` solo hace que la siguiente pasada sea completa.

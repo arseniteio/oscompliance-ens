@@ -68,5 +68,5 @@ Judges are in `engine/internal/controls/ens/mps1`.
 
 ## Not measured
 
-- EV-04 (every message scanned) and EV-08 (spoofing of the own domain): no common log tells them. DMARC (EV-03) covers spoofing.
+- EV-04 (every message scanned) and EV-08 (spoofing of the own domain): no common log tells them. DMARC (EV-07) covers spoofing.
 - Mail TLS is read from Postfix only. Other mail servers are NOT_EVALUABLE by COLLECTION for EV-06.

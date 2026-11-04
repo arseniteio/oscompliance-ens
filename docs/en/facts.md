@@ -22,7 +22,7 @@ Every line carries these fields, with the payload next to them at the top level.
 | `records_run_id` | Set on a snapshot whose records did not change since an earlier pass: its records are those of that run, which the agent does not emit again. The agent emits every record at least every 3 days. |
 
 ```json
-{"oscompliance":"1","fact":"group_record","ts":"2026-11-01T10:17:02Z","host":"web-01","agent_version":"1.0.0","run_id":"5f0c…","group_name":"sudo","gid":27,"members":["alice"]}
+{"oscompliance":"1","fact":"group_record","ts":"2026-11-01T10:17:02Z","host":"web-01","agent_version":"0.10.1","run_id":"5f0c…","group_name":"sudo","gid":27,"members":["alice"]}
 ```
 
 ## Passes
