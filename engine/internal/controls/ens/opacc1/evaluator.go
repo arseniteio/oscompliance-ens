@@ -217,14 +217,17 @@ func inputEV06(ctx context.Context, facts Facts, policy params.Lister, agentID s
 		in.Privileged = privileged
 	}
 
-	suffix, err := policy.List(agentID, "op.acc.1", "P-12")
+	affixRows, err := policy.List(agentID, "op.acc.1", adminAffixParam)
 	switch {
 	case errors.Is(err, params.ErrNotSet):
 
 	case err != nil:
-		in.ConfigProblem = passes.Param("P-12", err)
+		in.ConfigProblem = passes.Param(adminAffixParam, err)
 	default:
-		in.Suffix = suffix[0]
+		var problem catalog.Message
+		if in.AdminAffixes, problem = parseAdminAffixes(affixRows); !problem.IsZero() {
+			in.ConfigProblem = problem
+		}
 	}
 
 	if records, problem := completeIdentity(ev02); !problem.IsZero() {

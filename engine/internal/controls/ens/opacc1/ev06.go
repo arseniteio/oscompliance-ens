@@ -1,8 +1,8 @@
 package opacc1
 
 import (
+	"slices"
 	"sort"
-	"strings"
 
 	"github.com/arseniteio/oscompliance-ens/catalog"
 	"github.com/arseniteio/oscompliance-ens/catalog/fact"
@@ -26,7 +26,7 @@ type EV06Input struct {
 
 	ConfigProblem catalog.Message
 
-	Suffix string
+	AdminAffixes []AdminAffix
 
 	AuthSeen bool
 	Logins   []source.Login
@@ -57,7 +57,7 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 	var structural []catalog.Message
 
 	for _, name := range sortedKeys(privileged) {
-		if in.Suffix != "" && exists[name+in.Suffix] {
+		if hasAdminIdentity(name, exists, in.AdminAffixes) {
 			continue
 		}
 		structural = append(structural, catalog.Says("opacc1.member_of", "account", name, "groups", privileged[name]))
@@ -115,7 +115,7 @@ func privilegedMembers(in EV06Input) map[string][]string {
 
 		for _, member := range group.Members {
 
-			if in.Suffix != "" && len(member) > len(in.Suffix) && strings.HasSuffix(member, in.Suffix) {
+			if isAdminAccount(member, in.AdminAffixes) {
 				continue
 			}
 
@@ -124,6 +124,14 @@ func privilegedMembers(in EV06Input) map[string][]string {
 	}
 
 	return members
+}
+
+func hasAdminIdentity(person string, exists map[string]bool, affixes []AdminAffix) bool {
+	return slices.ContainsFunc(affixes, func(a AdminAffix) bool { return exists[a.accountFor(person)] })
+}
+
+func isAdminAccount(account string, affixes []AdminAffix) bool {
+	return slices.ContainsFunc(affixes, func(a AdminAffix) bool { return a.marks(account) })
 }
 
 func sortedKeys(m map[string][]string) []string {

@@ -216,6 +216,8 @@
   "mpsw2.undeclared_ports": "ports open beyond loopback not declared in P-05: {list}",
   "mpsw2.vulnerable": "critical or high vulnerabilities in the packages of the applications: {list}",
   "opacc1.account_days": "{account} ({days} days)",
+  "opacc1.admin_affix_empty": "row without text: «{value}»",
+  "opacc1.admin_affix_position": "unknown position «{value}», expected sufijo or prefijo",
   "opacc1.ev01.shared_uids": "UIDs shared by more than one account: {uids}",
   "opacc1.ev01.unique": "{accounts} accounts, {people} with UID >= {uid_min} (P-10), all UIDs unique",
   "opacc1.ev02.baseline": "baseline: first complete pass, {accounts} accounts",

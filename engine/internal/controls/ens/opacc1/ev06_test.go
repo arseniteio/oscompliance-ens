@@ -28,7 +28,7 @@ func TestJudgeEV06(t *testing.T) {
 		return EV06Input{
 			Groups: snapshot, GroupRecords: records,
 			Accounts:   []string{"root", "ubuntu", "jperez", "jperez.adm", "mgarcia"},
-			Privileged: DefaultPrivilegedGroups, Suffix: ".adm", AuthSeen: true,
+			Privileged: DefaultPrivilegedGroups, AdminAffixes: []AdminAffix{{Text: ".adm"}}, AuthSeen: true,
 		}
 	}
 
@@ -58,8 +58,15 @@ func TestJudgeEV06(t *testing.T) {
 	silentWithFinding := base(group("sudo", "ubuntu"))
 	silentWithFinding.AuthSeen = false
 
-	noSuffix := base(group("sudo", "jperez"))
-	noSuffix.Suffix = ""
+	noAffix := base(group("sudo", "jperez"))
+	noAffix.AdminAffixes = nil
+
+	both := func(groups ...fact.GroupRecord) EV06Input {
+		in := base(groups...)
+		in.Accounts = append(in.Accounts, "adm_mgarcia")
+		in.AdminAffixes = []AdminAffix{{Text: ".adm"}, {Text: "adm_", Prefix: true}}
+		return in
+	}
 
 	defaulted := base(group("sudo", "jperez.adm"))
 	defaulted.PrivilegedDefault = true
@@ -82,7 +89,10 @@ func TestJudgeEV06(t *testing.T) {
 		{"member of two privileged groups", base(group("sudo", "mgarcia"), group("wheel", "mgarcia")), verdict.NonCompliant, "", []string{"mgarcia (sudo, wheel)"}},
 		{"login with the privileged identity", withLogins(base(group("sudo", "jperez")), "jperez", "jperez", "mgarcia"), verdict.NonCompliant, "", []string{"privileged identity used to log in: jperez (2)"}},
 		{"login with the admin identity is fine", withLogins(base(group("sudo", "jperez.adm")), "jperez.adm"), verdict.Compliant, "", nil},
-		{"no suffix: nobody excluded", noSuffix, verdict.NonCompliant, "", []string{"jperez (sudo)"}},
+		{"no convention: nobody excluded", noAffix, verdict.NonCompliant, "", []string{"jperez (sudo)"}},
+		{"both conventions pair each person", both(group("sudo", "jperez", "mgarcia")), verdict.Compliant, "", []string{"2 members"}},
+		{"prefixed admin account is not a finding", both(group("sudo", "adm_mgarcia")), verdict.Compliant, "", nil},
+		{"both conventions, person without admin identity", both(group("sudo", "ubuntu", "mgarcia")), verdict.NonCompliant, "", []string{"ubuntu (sudo)"}},
 		{"finding stands without auth log", silentWithFinding, verdict.NonCompliant, "", []string{"ubuntu"}},
 		{"nothing found, auth log silent", silent, verdict.NotEvaluable, verdict.CauseCollection, []string{"cannot be checked"}},
 		{"default P-11 is said", defaulted, verdict.Compliant, "", []string{"product default"}},
