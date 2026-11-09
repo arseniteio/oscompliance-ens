@@ -149,6 +149,10 @@ docker logs --tail 5 "$PROJECT-oscompliance.engine-1"
 
 Then check the dashboard as in [section 9 of the package guide](install.md#9-verify).
 
+## Upgrade Wazuh
+
+The dashboard image is built on one Wazuh version, so it does not change when you upgrade the other services. Follow the official Wazuh procedure. Before you recreate the services, build the plugin for the new version, build the image with a new tag and set that tag in the `wazuh.dashboard` service, as in section 5. The plugin must match the dashboard: 2.19.5 for Wazuh 4.14.7, 2.19.6 for 4.14.8 and 4.14.9.
+
 ## Uninstall
 
 On each audited machine, follow the first step of [the package guide](install.md#uninstall).
