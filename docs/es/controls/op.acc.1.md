@@ -51,7 +51,7 @@ Cuenta deshabilitada: shell sin inicio de sesión, caducada, o sin contraseña u
 | P-09 bajas declaradas `usuario \| fecha_baja` (AAAA-MM-DD) | | EV-04, EV-08 |
 | P-10 UID más bajo de una persona | plataforma; valor por defecto del producto 1000 | EV-01, EV-04, EV-07, EV-08 |
 | P-11 grupos privilegiados | plataforma; valor por defecto del producto `sudo, wheel, admin` | EV-06 |
-| P-12 sufijo de las cuentas administrativas | primera entrada; si no hay ninguna, no excluye a nadie | EV-06 |
+| P-12 prefijo o sufijo de las cuentas administrativas | tabla `texto`, `posicion` (`sufijo` o `prefijo`, vacía equivale a `sufijo`); se aplican todas las filas; si no hay ninguna, no excluye a nadie | EV-06 |
 | P-ATT atestaciones documentales | | 1.5, r1.1 |
 
 Las expresiones regulares son RE2, comparan el nombre completo, distinguen mayúsculas y tienen 512 caracteres como máximo. Las listas comparan sin distinguir mayúsculas. P-10 y P-11 son los únicos parámetros con valor por defecto del producto, y el veredicto indica cuándo se usa.
@@ -65,7 +65,7 @@ Los jueces están en `engine/internal/controls/ens/opacc1`. Si falta una fuente,
 - EV-03 cuentas genéricas. Un inicio de sesión en la ventana de una cuenta que coincide con P-04: NON_COMPLIANT, con cada cuenta y su recuento. Ningún evento de autenticación en el periodo de consulta: NOT_EVALUABLE por COLLECTION, porque el silencio de un registro que no llega a Wazuh no es cumplimiento.
 - EV-04 bajas deshabilitadas a tiempo. Una cuenta con UID igual o mayor que P-10 y una fecha de baja (su fila de P-09 o, si no, su caducidad) sin deshabilitar en los P-05 días siguientes: NON_COMPLIANT. Cuando solo sus claves podrían decidirlo y son desconocidas: NOT_EVALUABLE por EVIDENCE. Sin ninguna fecha y con P-09 vacío: NOT_EVALUABLE por CONFIGURATION. Una cuenta declarada que ya no existe cuenta como tratada.
 - EV-05 cuentas de servicio. Como EV-03, frente a P-03.
-- EV-06 una identidad por rol. Un miembro de un grupo de P-11 (grupo primario incluido) que no es una cuenta administrativa `<x><P-12>` y no tiene cuenta `<miembro><P-12>`, o un inicio de sesión de ese miembro: NON_COMPLIANT. Sin hallazgos y sin eventos de autenticación en el periodo de consulta: NOT_EVALUABLE por COLLECTION.
+- EV-06 una identidad por rol. Un miembro de un grupo de P-11 (grupo primario incluido) que no es una cuenta administrativa según una convención de P-12 y no tiene una cuenta que empareje `<miembro>` con una convención de P-12, o un inicio de sesión de ese miembro: NON_COMPLIANT. Sin hallazgos y sin eventos de autenticación en el periodo de consulta: NOT_EVALUABLE por COLLECTION.
 - EV-07 cuentas activas autorizadas. Una cuenta activa que no está en la columna `usuario` de P-07: NON_COMPLIANT. No listada y con estado desconocido: NOT_EVALUABLE por EVIDENCE.
 - EV-08 conservación antes del borrado. Según el historial de identidades. Una cuenta con UID igual o mayor que P-10 borrada en la ventana menos de P-06 días después de su fecha de inicio (fila de P-09 o, si no, última caducidad o, si no, el día en que se vio deshabilitada), o borrada estando aún habilitada: NON_COMPLIANT. Borrada sin fecha de inicio o con su último estado desconocido: NOT_EVALUABLE por EVIDENCE.
 

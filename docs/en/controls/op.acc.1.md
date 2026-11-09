@@ -65,7 +65,7 @@ and not disabled.
 | P-09 declared departures `usuario \| fecha_baja` (YYYY-MM-DD) | | EV-04, EV-08 |
 | P-10 lowest UID of a person | platform; product default 1000 | EV-01, EV-04, EV-07, EV-08 |
 | P-11 privileged groups | platform; product default `sudo, wheel, admin` | EV-06 |
-| P-12 suffix of administrative accounts | first entry; none excludes nobody | EV-06 |
+| P-12 prefix or suffix of administrative accounts | table `texto`, `posicion` (`sufijo` or `prefijo`, empty means `sufijo`); every row applies; none excludes nobody | EV-06 |
 | P-ATT documentary attestations | | 1.5, r1.1 |
 
 Regular expressions are RE2, match the whole name, are case-sensitive and at
@@ -97,8 +97,8 @@ NOT_EVALUABLE by CONFIGURATION.
   counts as handled.
 - EV-05 service accounts. As EV-03, against P-03.
 - EV-06 one identity per role. A member of a P-11 group (primary group
-  included) that is not itself an administrative account `<x><P-12>` and has
-  no `<member><P-12>` account, or a login by such a member: NON_COMPLIANT. No
+  included) that is not itself an administrative account under a P-12 convention
+  and has no account pairing `<member>` with a P-12 convention, or a login by such a member: NON_COMPLIANT. No
   finding and no authentication event in the lookback: NOT_EVALUABLE by
   COLLECTION.
 - EV-07 active accounts authorised. An active account not in the
