@@ -79,6 +79,8 @@ Una máquina nueva no muestra nada. No está en el grupo ENS, o su primera pasad
 
 Power ENS no aparece en el dashboard. En paquetes, lee la salida de `deploy-plugin.sh` y `journalctl -u wazuh-dashboard`. En Docker, revisa la imagen del servicio `wazuh.dashboard`. Si el zip se compiló para otra versión, el dashboard lo rechaza: compílalo de nuevo para tu versión. Una página en blanco tras una actualización desaparece al cerrar la pestaña y volver a entrar.
 
+Docker no puede descargar imágenes. El host necesita acceso a Docker Hub. Si no lo tiene, descarga `wazuh/wazuh-dashboard` de tu versión y `alpine:3.20` desde una red con acceso, y pásalas con `docker save` y `docker load`.
+
 ## Antes de instalar en una máquina
 
 `oscompliance-doctor` ([arseniteio/oscompliance-agent-doctor-ens](https://github.com/arseniteio/oscompliance-agent-doctor-ens)) comprueba que auditd está instalado y en marcha, y que el agente de Wazuh está instalado, registrado y conectado al manager. Termina con código 0 cuando la máquina está lista y con 1 y cada problema en caso contrario.

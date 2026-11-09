@@ -81,6 +81,8 @@ A new machine shows nothing. It is not in the ENS group, or its first pass ran b
 
 Power ENS does not appear in the dashboard. On packages, read the output of `deploy-plugin.sh` and `journalctl -u wazuh-dashboard`. On Docker, check the image of the `wazuh.dashboard` service. If the zip was built for another version, the dashboard refuses it: build it again for your version. A blank page after an upgrade goes away after closing the tab and logging in again.
 
+Docker cannot pull images. The host needs access to Docker Hub. Without it, pull `wazuh/wazuh-dashboard` for your version and `alpine:3.20` from a network with access, and move them with `docker save` and `docker load`.
+
 ## Before installing on a machine
 
 `oscompliance-doctor` ([arseniteio/oscompliance-agent-doctor-ens](https://github.com/arseniteio/oscompliance-agent-doctor-ens))

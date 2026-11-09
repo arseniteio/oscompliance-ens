@@ -30,6 +30,12 @@ Guarda una copia de tu fichero de compose. El apartado 5 lo cambia, y la desinst
 cp "$WAZUH_DIR/docker-compose.yml" "$WAZUH_DIR/docker-compose.yml.bak"
 ```
 
+Comprueba la versión del dashboard. Debe ser 2.19.5 en Wazuh 4.14.7 y 2.19.6 en 4.14.8 y 4.14.9. Compila el plugin para esa versión en el apartado 2.
+
+```bash
+docker exec "$PROJECT-wazuh.dashboard-1" grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
+```
+
 ## 2. Compilar los paquetes
 
 Compila el agente y el motor en este repositorio. Usa el paquete de tu arquitectura y cópialo al host y a cada máquina auditada.
@@ -104,7 +110,18 @@ Recrea el servicio.
 docker compose --project-directory "$WAZUH_DIR" -p "$PROJECT" up -d wazuh.dashboard
 ```
 
-Entra en el dashboard y abre Power ENS. Si indica `No se puede leer el inventario de agentes`, el dashboard aún no ha escrito su inventario de agentes, lo que hace cada 15 minutos: espera y pulsa Reintentar. Un usuario con `all_access` puede cambiar la configuración. Para dar permiso a otro usuario, consulta la [instalación de Power ENS](https://github.com/arseniteio/power-ens/blob/main/docs/es/install.md).
+Entra en el dashboard y abre Power ENS. Si indica `No se puede leer el inventario de agentes`, el dashboard aún no ha escrito su inventario de agentes, lo que hace cada 15 minutos: espera y pulsa Reintentar. Un usuario con `all_access` puede cambiar la configuración. Para dar permiso a otros usuarios, crea el rol `power_ens_admin` con las variables del apartado 4. La lista sustituye a la anterior, así que incluye a todos los que deban tener el rol. Las dos respuestas deben ser `CREATED` u `OK`.
+
+```bash
+os() {
+  curl -sS --resolve "$INDEXER_RESOLVE" --cacert "$CERTS/root-ca.pem" \
+    --cert "$CERTS/admin.pem" --key "$CERTS/admin-key.pem" \
+    -H 'Content-Type: application/json' "$@"
+}
+SEC=$INDEXER_URL/_plugins/_security/api
+os -X PUT "$SEC/roles/power_ens_admin" -d '{"cluster_permissions":[]}'; echo
+os -X PUT "$SEC/rolesmapping/power_ens_admin" -d '{"users":["<usuario>"]}'; echo
+```
 
 Ahora define la configuración ENS, como en el [apartado 5 de la guía por paquetes](install.md#5-definir-la-configuración-ens).
 

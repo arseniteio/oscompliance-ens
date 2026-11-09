@@ -30,6 +30,12 @@ Keep a copy of your compose file. Section 5 changes it, and the uninstall sectio
 cp "$WAZUH_DIR/docker-compose.yml" "$WAZUH_DIR/docker-compose.yml.bak"
 ```
 
+Check the dashboard version. It must be 2.19.5 on Wazuh 4.14.7 and 2.19.6 on 4.14.8 and 4.14.9. Build the plugin for that version in section 2.
+
+```bash
+docker exec "$PROJECT-wazuh.dashboard-1" grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
+```
+
 ## 2. Build the packages
 
 Build the agent and the engine in this repository. Use the package of your architecture, and copy it to the host and to every audited machine.
@@ -104,7 +110,18 @@ Recreate the service.
 docker compose --project-directory "$WAZUH_DIR" -p "$PROJECT" up -d wazuh.dashboard
 ```
 
-Log in to the dashboard and open Power ENS. If it says `No se puede leer el inventario de agentes`, the dashboard has not yet written its agent inventory, which it does every 15 minutes: wait and press Reintentar. A user with `all_access` can change the configuration. To allow another user, see [Power ENS installation](https://github.com/arseniteio/power-ens/blob/main/docs/en/install.md).
+Log in to the dashboard and open Power ENS. If it says `No se puede leer el inventario de agentes`, the dashboard has not yet written its agent inventory, which it does every 15 minutes: wait and press Reintentar. A user with `all_access` can change the configuration. To allow other users, create the `power_ens_admin` role with the variables of section 4. The list replaces the previous one, so name every user who needs the role. Both responses must be `CREATED` or `OK`.
+
+```bash
+os() {
+  curl -sS --resolve "$INDEXER_RESOLVE" --cacert "$CERTS/root-ca.pem" \
+    --cert "$CERTS/admin.pem" --key "$CERTS/admin-key.pem" \
+    -H 'Content-Type: application/json' "$@"
+}
+SEC=$INDEXER_URL/_plugins/_security/api
+os -X PUT "$SEC/roles/power_ens_admin" -d '{"cluster_permissions":[]}'; echo
+os -X PUT "$SEC/rolesmapping/power_ens_admin" -d '{"users":["<user>"]}'; echo
+```
 
 Now set the ENS configuration, as in [section 5 of the package guide](install.md#5-set-the-ens-configuration).
 

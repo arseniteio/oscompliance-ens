@@ -147,6 +147,12 @@ tail -n 1 /var/log/oscompliance/facts.ndjson
 
 El agente añade sus vigilancias de auditoría en tiempo de ejecución con `auditctl`, etiquetadas `oscompliance_*`. Nunca retira una regla y nunca escribe en `/etc/audit`. Con SELinux en enforcing, ejecuta también `restorecon -R /usr/local/bin/oscompliance-agent /etc/cron.d/oscompliance /var/log/oscompliance`.
 
+En RHEL y Rocky, `cron` es el paquete `cronie`.
+
+```bash
+dnf install -y cronie && systemctl enable --now crond
+```
+
 ## 8. Auditar el manager
 
 El manager se juzga como cualquier otra máquina. Hasta que el agente se ejecute en él, su fila aparece como no conforme. No pertenece a ningún grupo, así que necesita dos ajustes propios.
