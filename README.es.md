@@ -55,7 +55,7 @@ make check
 Compila los paquetes en `dist/`.
 
 ```bash
-make dist VERSION=0.10.1
+make dist VERSION=0.10.3
 ```
 
 ## Seguridad

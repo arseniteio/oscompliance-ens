@@ -55,7 +55,7 @@ make check
 Build the packages in `dist/`.
 
 ```bash
-make dist VERSION=0.10.1
+make dist VERSION=0.10.3
 ```
 
 ## Security

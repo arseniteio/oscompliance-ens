@@ -109,7 +109,7 @@ Quitar un colector de la lista deja las evidencias que lo necesitan en NOT_EVALU
 
 ## Política ENS
 
-Se define en Power ENS, en Configuración, y se guarda en el documento `ACTIVE_CONFIGURATION` de `wazuh-ens-configuration`.
+Se define en Power ENS, en Configuración, y se guarda en el documento `active` de `wazuh-ens-configuration`.
 
 | Ajuste | Efecto |
 |---|---|

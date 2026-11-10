@@ -1,4 +1,6 @@
 services:
+  wazuh.dashboard:
+    image: power-ens/wazuh-dashboard:local
   oscompliance.engine:
     image: alpine:3.20
     restart: always

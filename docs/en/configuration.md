@@ -130,7 +130,7 @@ NOT_EVALUABLE by COLLECTION. It never makes them pass.
 ## ENS policy
 
 Set in Power ENS > Configuración and stored in the document
-`ACTIVE_CONFIGURATION` of `wazuh-ens-configuration`.
+`active` of `wazuh-ens-configuration`.
 
 | Setting | Effect |
 |---|---|

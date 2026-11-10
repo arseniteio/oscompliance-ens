@@ -8,17 +8,19 @@ Plan for about one hour on the server and a few minutes per audited machine. All
 
 - Wazuh 4.14.7, 4.14.8 or 4.14.9.
 - Audited machines on Linux, amd64 or arm64, with a Wazuh agent enrolled in the manager.
-- `jq` and `unzip` on the server, `cron` and `auditd` on the audited machines.
-- Go and Docker on the machine that builds the packages. It can be any machine.
+- `curl`, `jq`, `python3` and `unzip` on the server, `cron` and `auditd` on the audited machines.
+- The authentication log of each audited machine reaching Wazuh: `/var/log/auth.log`, `/var/log/secure` or journald, as a localfile of the Wazuh agent.
+- Go 1.27.2 or later and Docker on the machine that builds the packages, with access to GitHub and Docker Hub. It can be any machine.
 
-auditd feeds op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04 and EV-07. Without it those evidences are not evaluable.
+auditd feeds op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04 and EV-07. Without it those evidences are not evaluable. Without the authentication log, the login evidences are not evaluable.
 
 ## 1. Build the packages
 
-Build the agent and the engine in this repository. Use the package of your architecture, and copy it to the server and to every audited machine.
+Build the agent and the engine in this repository. `VERSION` is the version the binaries report. Use the package of your architecture, and copy it to the server and to every audited machine.
 
 ```bash
-make dist VERSION=0.10.1
+export VERSION=0.10.3
+make dist VERSION="$VERSION"
 ```
 
 The result is in `dist/`, with a `SHA256SUMS` file. Each package holds the binaries in `bin/`, the Wazuh files in `wazuh/`, and the agent's cron file and example configuration in `agent/`.
@@ -29,24 +31,25 @@ Find the OpenSearch Dashboards version of your dashboard on the server. It is 2.
 grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
 ```
 
-Build the plugin for that version in the power-ens repository. The first build takes about 20 minutes. Copy the zip and `config/deploy-plugin.sh` to the server.
+Build the plugin for that version in the power-ens repository. The first build takes about 20 minutes. Copy the zip, `config/deploy-plugin.sh` and `config/create-admin-role.sh` to the server.
 
 ```bash
 ci/build-zip.sh 2.19.6
 ```
 
-On the server and on every audited machine, unpack the package. The commands below run from this folder.
+On the server and on every audited machine, unpack the package with the same `VERSION`. The commands below run from this folder.
 
 ```bash
-tar xzf oscompliance-ens-0.10.1-linux-amd64.tar.gz
-cd oscompliance-ens-0.10.1-linux-amd64
+tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
+cd "oscompliance-ens-$VERSION-linux-amd64"
 ```
 
 ## 2. Install the rules and create the group
 
-The rules use IDs 119000 to 119004. They index facts, the authentication probe, service events and audited accesses, and raise nothing above level 3. `wazuh-analysisd -t` must print no errors.
+The rules use IDs 119000 to 119004. They index facts, the authentication probe, service events and audited accesses, and raise nothing above level 3. No other rule may use those IDs: the first command must print nothing, or only `oscompliance_facts_rules.xml` on a reinstallation. `wazuh-analysisd -t` must print no errors.
 
 ```bash
+grep -rlE 'id="11900[0-4]"' /var/ossec/etc/rules/
 install -o wazuh -g wazuh -m 660 wazuh/oscompliance_facts_rules.xml /var/ossec/etc/rules/
 /var/ossec/bin/wazuh-analysisd -t
 systemctl restart wazuh-manager
@@ -64,7 +67,7 @@ Wait one minute for the manager to start. Then create the `ens` group and add ea
 
 The engine has its own user in the indexer and in the Wazuh API, with the permissions listed in [Security](security.md#engine). This script creates them and writes the credentials to `/etc/oscompliance/engine.env`.
 
-It asks for the password of `wazuh-wui`, found in `wazuh-passwords.txt` inside `wazuh-install-files.tar`, and for two new passwords. Each new password needs 8 to 64 characters with upper and lower case, a digit and a symbol, and cannot hold `$`, `&`, quotes, backslashes or spaces.
+It asks for the password of `wazuh-wui`, found in `wazuh-passwords.txt` inside `wazuh-install-files.tar`, and for two new passwords. Each new password needs 8 to 64 characters with upper and lower case, a digit and a symbol, and cannot hold `$`, `&`, quotes, backslashes or spaces. To run it without questions, export `API_ADMIN_PASSWORD`, `OSC_INDEXER_PASSWORD` and `OSC_WAZUH_API_PASSWORD` first, and unset them afterwards.
 
 ```bash
 bash wazuh/engine-users.sh create
@@ -78,7 +81,11 @@ The script validates the zip, keeps a copy of any previous version in `/var/back
 bash deploy-plugin.sh powerEns-2.19.6.zip
 ```
 
-Log in to the dashboard and open Power ENS. If it says `No se puede leer el inventario de agentes`, the dashboard has not yet written its agent inventory, which it does every 15 minutes: wait and press Reintentar. A user with `all_access` can change the configuration. To allow another user, see [Power ENS installation](https://github.com/arseniteio/power-ens/blob/main/docs/en/install.md).
+Log in to the dashboard and open Power ENS. If it says `No se puede leer el inventario de agentes`, the dashboard has not yet written its agent inventory, which it does every 15 minutes: wait and press Reintentar. A user with `all_access` can change the configuration. To allow another user, give it the `power_ens_admin` role. The script adds the user and keeps the ones that already have the role.
+
+```bash
+bash create-admin-role.sh --map <user>
+```
 
 ## 5. Set the ENS configuration
 
