@@ -14,6 +14,34 @@ Calcula alrededor de una hora en el servidor y unos minutos por máquina auditad
 
 auditd alimenta EV-06 de op.acc.2, op.acc.3 y EV-04 y EV-07 de op.acc.4. Sin él, esas evidencias no son evaluables. Sin el registro de autenticación, las evidencias de inicio de sesión no son evaluables.
 
+## Antes de empezar
+
+Decide con la organización qué máquinas se auditan, su categoría ENS (BAJO, MEDIO o ALTO) y quién cambia la configuración además de los usuarios con `all_access`. Una categoría equivocada da veredictos equivocados sin ningún error. Los parámetros de los controles se pueden declarar más tarde.
+
+En el servidor, comprueba las versiones y los certificados. El dashboard debe ser 2.19.5 en Wazuh 4.14.7 y 2.19.6 en 4.14.8 y 4.14.9.
+
+```bash
+/var/ossec/bin/wazuh-control info | grep WAZUH_VERSION
+grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
+ls /etc/wazuh-indexer/certs/admin.pem /etc/wazuh-indexer/certs/admin-key.pem
+```
+
+En cada máquina que se va a auditar, los servicios deben estar `active` y el último comando debe mostrar al menos una línea, lo que significa que el registro de autenticación llega a Wazuh. En RHEL y Rocky el servicio de cron es `crond`. `uname -m` indica el paquete: `x86_64` es amd64 y `aarch64` es arm64.
+
+```bash
+systemctl is-active wazuh-agent auditd cron
+uname -m
+grep -E 'auth.log|/var/log/secure|journald' /var/ossec/etc/ossec.conf /var/ossec/etc/shared/agent.conf
+```
+
+El script del apartado 3 pide tres contraseñas. Para ejecutarlo sin preguntas, por ejemplo desde una automatización o un agente de IA, expórtalas antes en ese shell y bórralas al terminar.
+
+| Variable | Valor |
+|---|---|
+| `API_ADMIN_PASSWORD` | contraseña de `wazuh-wui`, en `wazuh-passwords.txt` dentro de `wazuh-install-files.tar` |
+| `OSC_INDEXER_PASSWORD` | contraseña nueva del usuario del motor en el indexer |
+| `OSC_WAZUH_API_PASSWORD` | contraseña nueva del usuario del motor en la API de Wazuh |
+
 ## 1. Compilar los paquetes
 
 Compila el agente y el motor en este repositorio. `VERSION` es la versión que informan los binarios. Usa el paquete de tu arquitectura y cópialo al servidor y a cada máquina auditada.
@@ -37,9 +65,10 @@ Compila el plugin para esa versión en el repositorio power-ens. La primera comp
 ci/build-zip.sh 2.19.6
 ```
 
-En el servidor y en cada máquina auditada, descomprime el paquete con la misma `VERSION`. Los comandos siguientes se ejecutan desde esta carpeta.
+En el servidor y en cada máquina auditada, copia `SHA256SUMS` junto al paquete, compruébalo y descomprímelo con la misma `VERSION`. La línea de tu paquete debe terminar en `OK`. Los comandos siguientes se ejecutan desde esta carpeta.
 
 ```bash
+sha256sum -c --ignore-missing SHA256SUMS
 tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
 cd "oscompliance-ens-$VERSION-linux-amd64"
 ```
@@ -67,7 +96,7 @@ Espera un minuto a que arranque el manager. Después crea el grupo `ens` y añad
 
 El motor tiene su propio usuario en el indexer y en la API de Wazuh, con los permisos que indica [Seguridad](security.md#motor). Este script los crea y escribe las credenciales en `/etc/oscompliance/engine.env`.
 
-Pide la contraseña de `wazuh-wui`, que está en `wazuh-passwords.txt` dentro de `wazuh-install-files.tar`, y dos contraseñas nuevas. Cada contraseña nueva necesita entre 8 y 64 caracteres con mayúscula, minúscula, número y símbolo, y no puede contener `$`, `&`, comillas, barras invertidas ni espacios. Para ejecutarlo sin preguntas, exporta antes `API_ADMIN_PASSWORD`, `OSC_INDEXER_PASSWORD` y `OSC_WAZUH_API_PASSWORD`, y bórralas después.
+Pide la contraseña de `wazuh-wui`, que está en `wazuh-passwords.txt` dentro de `wazuh-install-files.tar`, y dos contraseñas nuevas. Cada contraseña nueva necesita entre 8 y 64 caracteres con mayúscula, minúscula, número y símbolo, y no puede contener `$`, `&`, comillas, barras invertidas ni espacios. Para ejecutarlo sin preguntas, exporta las variables de [Antes de empezar](#antes-de-empezar).
 
 ```bash
 bash wazuh/engine-users.sh create
@@ -96,6 +125,8 @@ En Power ENS, abre Configuración.
 3. En Agentes, abre cada máquina y rellena los parámetros que corresponden a la máquina.
 
 Cada página de [Controles](controls/README.md) lista los parámetros de su control. Un control se puede rellenar más tarde: hasta entonces aparece como no evaluable por configuración.
+
+El primer guardado solo se hace desde el dashboard, porque escribe el catálogo completo de controles. Después, los parámetros también se pueden definir desde un fichero JSON: consulta [Configuración](configuration.md#parámetros-desde-un-fichero).
 
 ## 6. Arrancar el motor
 

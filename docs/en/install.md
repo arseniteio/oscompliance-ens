@@ -14,6 +14,34 @@ Plan for about one hour on the server and a few minutes per audited machine. All
 
 auditd feeds op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04 and EV-07. Without it those evidences are not evaluable. Without the authentication log, the login evidences are not evaluable.
 
+## Before you start
+
+Decide with the organisation which machines to audit, its ENS category (BAJO, MEDIO or ALTO) and who changes the configuration besides the users with `all_access`. A wrong category gives wrong verdicts without any error. The control parameters can be declared later.
+
+On the server, check the versions and the certificates. The dashboard must be 2.19.5 on Wazuh 4.14.7 and 2.19.6 on 4.14.8 and 4.14.9.
+
+```bash
+/var/ossec/bin/wazuh-control info | grep WAZUH_VERSION
+grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
+ls /etc/wazuh-indexer/certs/admin.pem /etc/wazuh-indexer/certs/admin-key.pem
+```
+
+On each machine to audit, the services must be `active` and the last command must print at least one line, which means the authentication log reaches Wazuh. On RHEL and Rocky the cron service is `crond`. `uname -m` tells the package: `x86_64` is amd64 and `aarch64` is arm64.
+
+```bash
+systemctl is-active wazuh-agent auditd cron
+uname -m
+grep -E 'auth.log|/var/log/secure|journald' /var/ossec/etc/ossec.conf /var/ossec/etc/shared/agent.conf
+```
+
+The script of section 3 asks for three passwords. To run it without questions, for example from an automation or an AI agent, export them in that shell first and unset them at the end.
+
+| Variable | Value |
+|---|---|
+| `API_ADMIN_PASSWORD` | password of `wazuh-wui`, in `wazuh-passwords.txt` inside `wazuh-install-files.tar` |
+| `OSC_INDEXER_PASSWORD` | new password of the engine user in the indexer |
+| `OSC_WAZUH_API_PASSWORD` | new password of the engine user in the Wazuh API |
+
 ## 1. Build the packages
 
 Build the agent and the engine in this repository. `VERSION` is the version the binaries report. Use the package of your architecture, and copy it to the server and to every audited machine.
@@ -37,9 +65,10 @@ Build the plugin for that version in the power-ens repository. The first build t
 ci/build-zip.sh 2.19.6
 ```
 
-On the server and on every audited machine, unpack the package with the same `VERSION`. The commands below run from this folder.
+On the server and on every audited machine, copy `SHA256SUMS` with the package, check it and unpack it with the same `VERSION`. The line of your package must end in `OK`. The commands below run from this folder.
 
 ```bash
+sha256sum -c --ignore-missing SHA256SUMS
 tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
 cd "oscompliance-ens-$VERSION-linux-amd64"
 ```
@@ -67,7 +96,7 @@ Wait one minute for the manager to start. Then create the `ens` group and add ea
 
 The engine has its own user in the indexer and in the Wazuh API, with the permissions listed in [Security](security.md#engine). This script creates them and writes the credentials to `/etc/oscompliance/engine.env`.
 
-It asks for the password of `wazuh-wui`, found in `wazuh-passwords.txt` inside `wazuh-install-files.tar`, and for two new passwords. Each new password needs 8 to 64 characters with upper and lower case, a digit and a symbol, and cannot hold `$`, `&`, quotes, backslashes or spaces. To run it without questions, export `API_ADMIN_PASSWORD`, `OSC_INDEXER_PASSWORD` and `OSC_WAZUH_API_PASSWORD` first, and unset them afterwards.
+It asks for the password of `wazuh-wui`, found in `wazuh-passwords.txt` inside `wazuh-install-files.tar`, and for two new passwords. Each new password needs 8 to 64 characters with upper and lower case, a digit and a symbol, and cannot hold `$`, `&`, quotes, backslashes or spaces. To run it without questions, export the variables of [Before you start](#before-you-start).
 
 ```bash
 bash wazuh/engine-users.sh create
@@ -96,6 +125,8 @@ The screens are in Spanish. In Power ENS, open Configuración.
 3. In Agentes, open each machine and fill in the parameters that belong to the machine.
 
 Each page in [Controls](controls/README.md) lists the parameters of its control. A control can be filled in later: until then it shows as not evaluable by configuration.
+
+The first save is only done from the dashboard, because it writes the full catalog of controls. After it, the parameters can also be set from a JSON file: see [Configuration](configuration.md#parameters-from-a-file).
 
 ## 6. Start the engine
 

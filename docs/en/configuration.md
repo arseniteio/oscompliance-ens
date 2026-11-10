@@ -161,3 +161,26 @@ A parameter that is not set gives NOT_EVALUABLE by CONFIGURATION on the
 evidences that need it. The engine never applies a value nobody chose, except
 the two product defaults that op.acc.1 documents (lowest UID of a person and
 privileged groups), and the verdict says when it does.
+
+## Parameters from a file
+
+After the first save from Power ENS, which creates the configuration with the full catalog, the parameters can also be set from a JSON file with `config/set-parameters.py` of the power-ens repository. It checks every value against the catalog, shows the plan and writes only with `--apply`. Each run keeps the previous version in the history, as a save from the dashboard does.
+
+Run it from the `config/` folder of a full power-ens clone, on a machine that reaches the indexer with its admin certificate. It needs `python3`. On Docker, add `ENS_OS_URL=https://127.0.0.1:9200` and the certificates of `config/wazuh_indexer_ssl_certs`.
+
+```bash
+export OS_CERT=/etc/wazuh-indexer/certs/admin.pem OS_KEY=/etc/wazuh-indexer/certs/admin-key.pem
+python3 set-parameters.py /root/parameters.json
+python3 set-parameters.py /root/parameters.json --apply
+```
+
+The file has one key per control with its organisation values, `agents` with the values per machine by Wazuh agent ID, and `organization` with the Datos de la organización items. Values follow the types above; a parameter that accepts a regular expression takes `{"value": "...", "matchMode": "regex"}`.
+
+```json
+{
+  "op.acc.1": {"P-04": ["guest", "test"], "P-05": 2},
+  "agents": {"001": {"op.acc.1": {"P-07": ["alice | web-01 | admin"]}}}
+}
+```
+
+The first run must print the plan and no `ERROR`; each error names the control, the parameter and the reason. Write only the parameters the organisation decided: an empty value or `null` removes the current value. The file holds the organisation's policy, so keep it out of any repository and delete it when you finish.

@@ -15,6 +15,8 @@ Calcula alrededor de una hora en el host de Docker y unos minutos por máquina a
 
 auditd alimenta EV-06 de op.acc.2, op.acc.3 y EV-04 y EV-07 de op.acc.4. Sin él, esas evidencias no son evaluables. Sin el registro de autenticación, las evidencias de inicio de sesión no son evaluables.
 
+Antes de empezar, decide con la organización, comprueba las máquinas que se van a auditar y prepara las contraseñas como en [Antes de empezar](install.md#antes-de-empezar) de la guía por paquetes. En Docker, `API_ADMIN_PASSWORD` es `API_PASSWORD` en tu fichero de compose.
+
 ## 1. Definir las variables
 
 Defínelas en un shell y mantenlo abierto hasta el apartado 6. `WAZUH_DIR` es la carpeta de tu `docker-compose.yml`. `PROJECT` es el nombre del proyecto de compose, que muestra `docker compose ls`.
@@ -54,9 +56,10 @@ Compila el plugin en el repositorio power-ens: 2.19.5 para Wazuh 4.14.7, 2.19.6 
 ci/build-zip.sh 2.19.6
 ```
 
-En el host y en cada máquina auditada, descomprime el paquete con la misma `VERSION`. Los comandos siguientes se ejecutan desde esta carpeta.
+En el host y en cada máquina auditada, copia `SHA256SUMS` junto al paquete, compruébalo y descomprímelo con la misma `VERSION`. La línea de tu paquete debe terminar en `OK`. Los comandos siguientes se ejecutan desde esta carpeta.
 
 ```bash
+sha256sum -c --ignore-missing SHA256SUMS
 tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
 cd "oscompliance-ens-$VERSION-linux-amd64"
 ```
@@ -86,7 +89,7 @@ docker exec "$MGR" /var/ossec/bin/agent_groups -a -i <id> -g ens -q
 
 El motor tiene su propio usuario en el indexer y en la API de Wazuh, con los permisos que indica [Seguridad](security.md#motor). Este script los crea y escribe las credenciales en `/etc/oscompliance/engine.env` en el host. Las dos variables hacen que llegue al indexer con el nombre de su certificado.
 
-Pide la contraseña de `wazuh-wui`, que es `API_PASSWORD` en tu fichero de compose, y dos contraseñas nuevas. Cada contraseña nueva necesita entre 8 y 64 caracteres con mayúscula, minúscula, número y símbolo, y no puede contener `$`, `&`, comillas, barras invertidas ni espacios. Para ejecutarlo sin preguntas, exporta antes `API_ADMIN_PASSWORD`, `OSC_INDEXER_PASSWORD` y `OSC_WAZUH_API_PASSWORD`, y bórralas después.
+Pide la contraseña de `wazuh-wui`, que es `API_PASSWORD` en tu fichero de compose, y dos contraseñas nuevas. Cada contraseña nueva necesita entre 8 y 64 caracteres con mayúscula, minúscula, número y símbolo, y no puede contener `$`, `&`, comillas, barras invertidas ni espacios. Para ejecutarlo sin preguntas, exporta las variables de [Antes de empezar](install.md#antes-de-empezar).
 
 ```bash
 export INDEXER_URL=https://wazuh.indexer:9200

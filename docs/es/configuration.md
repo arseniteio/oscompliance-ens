@@ -132,3 +132,26 @@ Plantillas: la asignada a la máquina, integrada (`catalog/templates/`) o propia
 Las listas comparan sin distinguir mayúsculas. Un parámetro marcado como expresión regular usa RE2, compara el valor completo, distingue mayúsculas y tiene 512 caracteres como máximo. Las tablas son filas de celdas separadas por `|`.
 
 Un parámetro sin definir da NOT_EVALUABLE por CONFIGURATION en las evidencias que lo necesitan. El motor nunca aplica un valor que nadie haya elegido, salvo los dos valores por defecto del producto que documenta op.acc.1 (el UID más bajo de una persona y los grupos privilegiados), y el veredicto indica cuándo lo hace.
+
+## Parámetros desde un fichero
+
+Después del primer guardado desde Power ENS, que crea la configuración con el catálogo completo, los parámetros también se pueden definir desde un fichero JSON con `config/set-parameters.py` del repositorio power-ens. Comprueba cada valor con el catálogo, muestra el plan y solo escribe con `--apply`. Cada ejecución guarda la versión anterior en el historial, igual que un guardado desde el dashboard.
+
+Ejecútalo desde la carpeta `config/` de un clon completo de power-ens, en una máquina que llegue al indexer con su certificado de administrador. Necesita `python3`. En Docker, añade `ENS_OS_URL=https://127.0.0.1:9200` y los certificados de `config/wazuh_indexer_ssl_certs`.
+
+```bash
+export OS_CERT=/etc/wazuh-indexer/certs/admin.pem OS_KEY=/etc/wazuh-indexer/certs/admin-key.pem
+python3 set-parameters.py /root/parameters.json
+python3 set-parameters.py /root/parameters.json --apply
+```
+
+El fichero tiene una clave por control con sus valores de organización, `agents` con los valores por máquina según el identificador de agente de Wazuh, y `organization` con los elementos de Datos de la organización. Los valores siguen los tipos de arriba; un parámetro que admite una expresión regular recibe `{"value": "...", "matchMode": "regex"}`.
+
+```json
+{
+  "op.acc.1": {"P-04": ["guest", "test"], "P-05": 2},
+  "agents": {"001": {"op.acc.1": {"P-07": ["alice | web-01 | admin"]}}}
+}
+```
+
+La primera ejecución debe mostrar el plan y ningún `ERROR`; cada error indica el control, el parámetro y el motivo. Escribe solo los parámetros que decidió la organización: un valor vacío o `null` borra el valor actual. El fichero contiene la política de la organización, así que mantenlo fuera de cualquier repositorio y bórralo al terminar.
