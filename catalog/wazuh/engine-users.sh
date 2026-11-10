@@ -31,7 +31,8 @@ api() {
 }
 
 api_login() {
-  read -rsp "Password of the Wazuh API user $API_ADMIN: " admin_password; echo
+  local admin_password="${API_ADMIN_PASSWORD:-}"
+  [ -n "$admin_password" ] || { read -rsp "Password of the Wazuh API user $API_ADMIN: " admin_password; echo >&2; }
   TOKEN="$(curl -sSk -u "$API_ADMIN:$admin_password" -X POST "$API_URL/security/user/authenticate?raw=true")"
   case "$TOKEN" in
     ey*) ;;
@@ -45,8 +46,8 @@ api_id() {
 }
 
 ask_password() {
-  local prompt="$1" value
-  read -rsp "$prompt: " value; echo >&2
+  local prompt="$1" value="${2:-}"
+  [ -n "$value" ] || { read -rsp "$prompt: " value; echo >&2; }
   case "$value" in
     *[\$\&\'\"\\\ ]*) echo "the password cannot hold \$, &, quotes, backslashes or spaces" >&2; exit 4 ;;
   esac
@@ -55,8 +56,8 @@ ask_password() {
 
 create() {
   local indexer_password api_password policy role user
-  indexer_password="$(ask_password 'New password of the oscompliance indexer user')"
-  api_password="$(ask_password 'New password of the oscompliance Wazuh API user')"
+  indexer_password="$(ask_password 'New password of the oscompliance indexer user' "${OSC_INDEXER_PASSWORD:-}")"
+  api_password="$(ask_password 'New password of the oscompliance Wazuh API user' "${OSC_WAZUH_API_PASSWORD:-}")"
 
   indexer -o /dev/null -X PUT "$INDEXER_URL/_plugins/_security/api/roles/oscompliance_engine" \
     -d @"$HERE/engine-role.json"
