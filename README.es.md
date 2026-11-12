@@ -61,3 +61,11 @@ make dist VERSION=0.10.3
 ## Seguridad
 
 Notifica las vulnerabilidades en privado mediante un aviso de seguridad de GitHub. Consulta [Seguridad](docs/es/security.md).
+
+## Licencia
+
+Copyright (c) 2026 Quersystem.
+
+OSCompliance ENS se distribuye bajo la GNU Affero General Public License versión 3 (AGPL-3.0-only). Consulta [LICENSE](LICENSE).
+
+Quersystem ofrece también OSCompliance ENS con una licencia comercial, para organizaciones que no pueden cumplir las obligaciones de la AGPL, como mantener privados los cambios en un producto o en un servicio en red. Contacta con Quersystem para conocer las condiciones.
