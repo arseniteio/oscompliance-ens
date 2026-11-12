@@ -51,7 +51,7 @@ export VERSION=0.10.3
 make dist VERSION="$VERSION"
 ```
 
-El resultado está en `dist/`, con un fichero `SHA256SUMS`. Cada paquete contiene los binarios en `bin/`, los ficheros de Wazuh en `wazuh/`, y el fichero de cron y la configuración de ejemplo del agente en `agent/`.
+El resultado está en `dist/`, con un fichero `SHA256SUMS`. Cada paquete contiene los binarios en `bin/`, los ficheros de Wazuh en `wazuh/`, el fichero de cron y la configuración de ejemplo del agente en `agent/`, y las licencias en `LICENSE` y `THIRD_PARTY_NOTICES`.
 
 Consulta en el servidor la versión de OpenSearch Dashboards de tu dashboard. Es 2.19.5 en Wazuh 4.14.7 y 2.19.6 en 4.14.8 y 4.14.9.
 
