@@ -2,7 +2,7 @@
 
 [Versión en español](README.es.md)
 
-OSCompliance ENS measures the Esquema Nacional de Seguridad (Real Decreto 311/2022) on a Wazuh deployment. It turns what your machines actually do into a verdict per control, per requirement and per machine, with the reason behind every result, every 15 minutes.
+OSCompliance ENS measures the Esquema Nacional de Seguridad (Real Decreto 311/2022) on a Wazuh deployment. It turns what your machines do into a verdict per control, per requirement and per machine, with the reason behind every result, every 15 minutes.
 
 It adds one agent binary to each Linux machine and one engine next to the Wazuh indexer. Wazuh keeps doing the collection. Nothing is judged on the machine being audited, and nothing that cannot be proven counts as compliant. The results are shown in the Wazuh dashboard by the [Power ENS](https://github.com/arseniteio/power-ens) plugin.
 
@@ -46,7 +46,7 @@ Each control has a page with what the ENS requires, how every evidence is measur
 
 ## Build and test
 
-Check formatting and run the tests.
+Check formatting, run go vet, golangci-lint and the tests. golangci-lint 2.15.0 or later must be installed.
 
 ```bash
 make check

@@ -85,10 +85,7 @@ Docker cannot pull images. The host needs access to Docker Hub. Without it, pull
 
 ## Before installing on a machine
 
-`oscompliance-doctor` ([arseniteio/oscompliance-agent-doctor-ens](https://github.com/arseniteio/oscompliance-agent-doctor-ens))
-checks that auditd is installed and running, and that the Wazuh agent is
-installed, enrolled and connected to the manager. It exits 0 when the machine
-is ready and 1 with each problem otherwise.
+`oscompliance-doctor` ([arseniteio/oscompliance-agent-doctor-ens](https://github.com/arseniteio/oscompliance-agent-doctor-ens)) checks a machine before and after the installation: the Wazuh agent is installed, enrolled, connected and in the ENS group; auditd, auditctl, cron, the syslog socket and the authentication log are in place; and, once the agent is installed, its cron file, directories, configuration and last pass. On the manager it checks the facts localfile in `ossec.conf` instead of the group. It exits 0 when the machine is ready and 1 with each problem otherwise.
 
 ## Capacity
 

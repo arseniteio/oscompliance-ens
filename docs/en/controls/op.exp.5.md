@@ -1,6 +1,6 @@
 # op.exp.5 Gestión de cambios
 
-op.exp.5 (change management) sets the changes that really happen on each
+op.exp.5 (change management) sets the changes that happen on each
 machine against the change register the organisation keeps in Configuración:
 every change needs an approved request, requests carry enough information,
 high-risk ones are approved beforehand by the security manager, the service
