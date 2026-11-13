@@ -1,0 +1,52 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - revive
+    - gosec
+    - unused
+  settings:
+    errcheck:
+      exclude-functions:
+        - (*os.File).Close
+        - (io.ReadCloser).Close
+        - (*compress/gzip.Reader).Close
+        - (*log/syslog.Writer).Close
+    gosec:
+      excludes:
+        # The agent reads system files and runs system tools by their fixed paths; that is its job.
+        - G204
+        - G304
+        # Reported by errcheck with the Close exclusions above.
+        - G104
+        # facts.ndjson is 0640 so the Wazuh agent can read it.
+        - G302
+    revive:
+      rules:
+        # Internal packages carry no doc comments by project rule; names document them.
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - -QF1001
+        - -QF1002
+        - -ST1000
+        - -ST1003
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+      # Environment variable names, not credentials.
+      - path: engine/cmd/oscompliance-engine/main\.go
+        text: G101
+      # utmp, lastlog and stat fields are reinterpreted bit for bit.
+      - path: agent/internal/collect/(accounts/logins|sweep/sweep)\.go
+        text: G115
