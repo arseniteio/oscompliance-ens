@@ -39,7 +39,7 @@ var DefaultFiles = []string{
 	"/etc/postfix/main.cf",
 }
 
-// Only the keys the controls judge leave the machine: configuration files can hold secrets.
+// Keys lists the only keys that leave the machine, the ones the controls judge: configuration files can hold secrets.
 var Keys = map[string][]string{
 	"/etc/login.defs":              {"PASS_MAX_DAYS", "UID_MIN"},
 	"/etc/security/faillock.conf":  {"deny", "unlock_time"},

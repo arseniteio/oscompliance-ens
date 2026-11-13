@@ -119,8 +119,8 @@ func TestScopesKeepTheirChunks(t *testing.T) {
 
 	a, b := WithScope(context.Background(), "a"), WithScope(context.Background(), "b")
 	for i := range Size {
-		Get(a, &p, "k", ids[Size+i], fetch)
-		Get(b, &p, "k", ids[i], fetch)
+		_, _ = Get(a, &p, "k", ids[Size+i], fetch)
+		_, _ = Get(b, &p, "k", ids[i], fetch)
 	}
 	if fetches != 2 {
 		t.Fatalf("%d fetches, want 2", fetches)
@@ -140,7 +140,7 @@ func TestOnceFetchesOncePerPass(t *testing.T) {
 		}
 	}
 	p.Set(nil)
-	Once(context.Background(), &p, "k", fetch)
+	_, _ = Once(context.Background(), &p, "k", fetch)
 	if fetches != 2 {
 		t.Fatalf("%d fetches, want 2", fetches)
 	}

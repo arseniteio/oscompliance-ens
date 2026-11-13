@@ -21,8 +21,12 @@ func TestCollectServiceLogs(t *testing.T) {
 
 	var gz bytes.Buffer
 	zw := gzip.NewWriter(&gz)
-	zw.Write([]byte("not json\n" + `{"ts":"2026-09-01T07:30:00+02:00","tipo":"autenticacion","usuario":"c0"}` + "\n"))
-	zw.Close()
+	if _, err := zw.Write([]byte("not json\n" + `{"ts":"2026-09-01T07:30:00+02:00","tipo":"autenticacion","usuario":"c0"}` + "\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
 	collecttest.Write(t, sede+".1.gz", gz.String())
 	old := time.Now().Add(-48 * time.Hour)
 	if err := os.Chtimes(sede+".1.gz", old, old); err != nil {

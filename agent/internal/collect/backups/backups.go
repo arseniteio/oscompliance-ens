@@ -63,7 +63,7 @@ func source(src string, mounts []mount) fact.BackupSource {
 
 	var c copies
 	var err error
-	root := src
+	var root string
 	if dir, ok := strings.CutPrefix(src, gitPrefix); ok {
 		root = dir
 		c, err = commits(dir)
