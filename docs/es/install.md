@@ -44,10 +44,10 @@ El script del apartado 3 pide tres contraseñas. Para ejecutarlo sin preguntas, 
 
 ## 1. Compilar los paquetes
 
-Compila el agente y el motor en este repositorio. `VERSION` es la versión que informan los binarios. Usa el paquete de tu arquitectura y cópialo al servidor y a cada máquina auditada.
+Descarga los paquetes de la versión v1.0.0 con `gh release download v1.0.0 -R arseniteio/oscompliance-ens`, o compílalos en este repositorio. `VERSION` es la versión que informan los binarios. Usa el paquete de tu arquitectura y cópialo al servidor y a cada máquina auditada.
 
 ```bash
-export VERSION=0.10.3
+export VERSION=1.0.0
 make dist VERSION="$VERSION"
 ```
 
@@ -59,7 +59,7 @@ Consulta en el servidor la versión de OpenSearch Dashboards de tu dashboard. Es
 grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
 ```
 
-Compila el plugin para esa versión en el repositorio power-ens. La primera compilación tarda unos 20 minutos. Copia el zip, `config/deploy-plugin.sh` y `config/create-admin-role.sh` al servidor.
+Descarga el plugin para esa versión de la versión v1.0.0 de power-ens, o compílalo en el repositorio power-ens; la primera compilación tarda unos 20 minutos. Copia el zip, `config/deploy-plugin.sh` y `config/create-admin-role.sh` al servidor.
 
 ```bash
 ci/build-zip.sh 2.19.6

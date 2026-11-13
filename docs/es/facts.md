@@ -19,7 +19,7 @@ Cada línea lleva estos campos, con los datos a su lado en el nivel superior.
 | `records_run_id` | Se define en un snapshot cuyos registros no han cambiado desde una pasada anterior: sus registros son los de esa pasada, que el agente no vuelve a emitir. El agente emite cada registro al menos cada 3 días. |
 
 ```json
-{"oscompliance":"1","fact":"group_record","ts":"2026-11-01T10:17:02Z","host":"web-01","agent_version":"0.10.1","run_id":"5f0c…","group_name":"sudo","gid":27,"members":["alice"]}
+{"oscompliance":"1","fact":"group_record","ts":"2026-11-01T10:17:02Z","host":"web-01","agent_version":"1.0.0","run_id":"5f0c…","group_name":"sudo","gid":27,"members":["alice"]}
 ```
 
 ## Pasadas

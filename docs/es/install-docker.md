@@ -46,11 +46,11 @@ docker exec "$PROJECT-wazuh.dashboard-1" grep -m1 '"version"' /usr/share/wazuh-d
 Compila el agente y el motor en este repositorio. `VERSION` es la versión que informan los binarios. Usa el paquete de tu arquitectura y cópialo al host y a cada máquina auditada.
 
 ```bash
-export VERSION=0.10.3
+export VERSION=1.0.0
 make dist VERSION="$VERSION"
 ```
 
-Compila el plugin en el repositorio power-ens: 2.19.5 para Wazuh 4.14.7, 2.19.6 para 4.14.8 y 4.14.9. La primera compilación tarda unos 20 minutos. Copia el zip, `ci/dashboard.Dockerfile` y `config/create-admin-role.sh` al host.
+Descarga el plugin de la versión v1.0.0 de power-ens, o compílalo en el repositorio power-ens: 2.19.5 para Wazuh 4.14.7, 2.19.6 para 4.14.8 y 4.14.9. La primera compilación tarda unos 20 minutos. Copia el zip, `ci/dashboard.Dockerfile` y `config/create-admin-role.sh` al host.
 
 ```bash
 ci/build-zip.sh 2.19.6

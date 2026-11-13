@@ -44,10 +44,10 @@ The script of section 3 asks for three passwords. To run it without questions, f
 
 ## 1. Build the packages
 
-Build the agent and the engine in this repository. `VERSION` is the version the binaries report. Use the package of your architecture, and copy it to the server and to every audited machine.
+Download the packages of the v1.0.0 release with `gh release download v1.0.0 -R arseniteio/oscompliance-ens`, or build them in this repository. `VERSION` is the version the binaries report. Use the package of your architecture, and copy it to the server and to every audited machine.
 
 ```bash
-export VERSION=0.10.3
+export VERSION=1.0.0
 make dist VERSION="$VERSION"
 ```
 
@@ -59,7 +59,7 @@ Find the OpenSearch Dashboards version of your dashboard on the server. It is 2.
 grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
 ```
 
-Build the plugin for that version in the power-ens repository. The first build takes about 20 minutes. Copy the zip, `config/deploy-plugin.sh` and `config/create-admin-role.sh` to the server.
+Download the plugin for that version from the power-ens v1.0.0 release, or build it in the power-ens repository; the first build takes about 20 minutes. Copy the zip, `config/deploy-plugin.sh` and `config/create-admin-role.sh` to the server.
 
 ```bash
 ci/build-zip.sh 2.19.6

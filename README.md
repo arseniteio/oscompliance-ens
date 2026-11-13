@@ -10,10 +10,48 @@ It runs on Wazuh 4.14.7, 4.14.8 and 4.14.9, with audited machines on Linux.
 
 ## Get started
 
-Follow the guide for your deployment. Each one takes about an hour on the server and a few minutes per audited machine.
+The quick install below covers one server with Wazuh 4.14.8 or 4.14.9 installed from packages, and Linux amd64 machines. For Wazuh 4.14.7 use the `osd-2.19.5` zip. For Docker, other architectures or the details of each step, follow the full guides:
 
 - [Installation with packages](docs/en/install.md)
 - [Installation with Docker](docs/en/install-docker.md)
+
+### Quick install
+
+On the server, as root, with `gh` signed in to GitHub. `engine-users.sh` asks for the password of `wazuh-wui` and for two new passwords.
+
+```bash
+gh release download v1.0.0 -R arseniteio/oscompliance-ens -D osc -p '*-linux-amd64.tar.gz' -p SHA256SUMS
+gh release download v1.0.0 -R arseniteio/power-ens -D plugin
+(cd osc && sha256sum -c --ignore-missing SHA256SUMS) && (cd plugin && sha256sum -c --ignore-missing SHA256SUMS)
+tar xzf osc/oscompliance-ens-1.0.0-linux-amd64.tar.gz && cd oscompliance-ens-1.0.0-linux-amd64
+install -o wazuh -g wazuh -m 660 wazuh/oscompliance_facts_rules.xml /var/ossec/etc/rules/
+systemctl restart wazuh-manager && sleep 60
+/var/ossec/bin/agent_groups -a -g ens -q
+bash wazuh/engine-users.sh create
+bash ../plugin/deploy-plugin.sh ../plugin/power-ens-1.0.0-osd-2.19.6.zip
+```
+
+In the dashboard, open Power ENS, Configuración, Organización, fill in Cliente and press Guardar configuración global. Then start the engine and add each machine to the `ens` group, with the agent ID from `agent_control -l`.
+
+```bash
+install -m 755 bin/oscompliance-engine /usr/local/bin/
+install -m 644 wazuh/oscompliance-engine.service /etc/systemd/system/
+systemctl daemon-reload && systemctl enable --now oscompliance-engine
+/var/ossec/bin/agent_groups -a -i <id> -g ens -q
+```
+
+On each machine, copy the same package and unpack it. When `grep -c facts.ndjson /var/ossec/etc/shared/agent.conf` prints a number above 0, install the agent.
+
+```bash
+cd oscompliance-ens-1.0.0-linux-amd64
+install -m 755 bin/oscompliance-agent /usr/local/bin/
+install -m 644 agent/oscompliance.cron /etc/cron.d/oscompliance
+install -d -m 750 /var/log/oscompliance && install -d -m 700 /var/lib/oscompliance
+touch /var/log/oscompliance/facts.ndjson && systemctl restart wazuh-agent
+sleep 30 && oscompliance-agent -full
+```
+
+The first verdicts appear in Power ENS after the next engine pass, within 15 minutes.
 
 ## How it works
 
@@ -55,7 +93,7 @@ make check
 Build the packages in `dist/`.
 
 ```bash
-make dist VERSION=0.10.3
+make dist VERSION=1.0.0
 ```
 
 ## Security
