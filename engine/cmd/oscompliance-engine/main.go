@@ -140,7 +140,10 @@ func runMain() error {
 		if err != nil {
 			return fmt.Errorf("config history index: %w", err)
 		}
-		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply}
+		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply,
+			requests: func(ctx context.Context, now time.Time) (map[string]string, error) {
+				return requestedGroups(ctx, facts, now.Add(-*window))
+			}}
 		facts.UseManagerInventory(func(ctx context.Context) (*source.Inventory, error) { return managerInventory(ctx, api) })
 		facts.UseManager(func(ctx context.Context) (*source.Manager, error) { return managerState(ctx, api) })
 		facts.UseManagerNetwork(func(ctx context.Context, tools []string) (*source.Network, error) {
@@ -305,6 +308,7 @@ type groupSync struct {
 	api      *wazuhapi.Client
 	controls []catalog.Control
 	history  *store.ConfigHistory
+	requests func(ctx context.Context, now time.Time) (map[string]string, error)
 	every    time.Duration
 	apply    bool
 	last     time.Time
@@ -328,8 +332,35 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 		return
 	}
 
-	changes, err := groupconf.Sync(ctx, g.api, policy, groups, g.apply, now)
+	changes, err := groupconf.CreateGroups(ctx, g.api, groups, g.apply, now)
 	g.record(ctx, changes, err)
+
+	if requests, err := g.requests(ctx, now); err != nil {
+		slog.Warn("group requests", "error", err)
+	} else {
+		changes, err := groupconf.Assign(ctx, g.api, requests, groups, g.apply, now)
+		g.record(ctx, changes, err)
+	}
+
+	changes, err = groupconf.Sync(ctx, g.api, policy, groups, g.apply, now)
+	g.record(ctx, changes, err)
+}
+
+func requestedGroups(ctx context.Context, facts *source.Source, since time.Time) (map[string]string, error) {
+
+	passes, err := facts.AgentPasses(ctx, since)
+	if err != nil {
+		return nil, err
+	}
+
+	requests := map[string]string{}
+	for agentID, pass := range passes {
+		if pass.RequestedGroup != "" {
+			requests[agentID] = pass.RequestedGroup
+		}
+	}
+
+	return requests, nil
 }
 
 func (g *groupSync) record(ctx context.Context, changes []groupconf.Change, err error) {

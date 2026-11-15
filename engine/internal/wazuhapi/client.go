@@ -207,6 +207,40 @@ func (c *Client) CreateGroup(ctx context.Context, name string) error {
 	return err
 }
 
+const assignBatch = 500
+
+func (c *Client) AssignAgents(ctx context.Context, group string, agentIDs []string) error {
+
+	for start := 0; start < len(agentIDs); start += assignBatch {
+
+		batch := agentIDs[start:min(start+assignBatch, len(agentIDs))]
+		path := fmt.Sprintf("/agents/group?group_id=%s&agents_list=%s", url.QueryEscape(group), url.QueryEscape(strings.Join(batch, ",")))
+		body, err := c.do(ctx, http.MethodPut, path, "", nil)
+		if err != nil {
+			return err
+		}
+
+		var answer struct {
+			Data struct {
+				FailedItems []struct {
+					Error struct {
+						Message string `json:"message"`
+					} `json:"error"`
+					ID []string `json:"id"`
+				} `json:"failed_items"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(body, &answer); err != nil {
+			return fmt.Errorf("wazuh api: assign to %s: %w", group, err)
+		}
+		if failed := answer.Data.FailedItems; len(failed) > 0 {
+			return fmt.Errorf("wazuh api: assign to %s: agents %v: %s", group, failed[0].ID, failed[0].Error.Message)
+		}
+	}
+
+	return nil
+}
+
 func (c *Client) GroupConfiguration(ctx context.Context, group string) (string, error) {
 
 	body, err := c.do(ctx, http.MethodGet, "/groups/"+url.PathEscape(group)+"/files/agent.conf?raw=true", "", nil)

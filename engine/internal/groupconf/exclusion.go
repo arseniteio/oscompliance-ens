@@ -17,6 +17,16 @@ type GroupMaker interface {
 
 func CreateExclusionGroups(ctx context.Context, api GroupMaker, controls []catalog.Control, apply bool, now time.Time) ([]Change, error) {
 
+	groups := make([]string, 0, len(controls))
+	for _, control := range controls {
+		groups = append(groups, catalog.ExclusionGroup(control.Control))
+	}
+
+	return CreateGroups(ctx, api, groups, apply, now)
+}
+
+func CreateGroups(ctx context.Context, api GroupMaker, groups []string, apply bool, now time.Time) ([]Change, error) {
+
 	existing, err := api.GroupNames(ctx)
 	if err != nil {
 		return nil, err
@@ -25,9 +35,8 @@ func CreateExclusionGroups(ctx context.Context, api GroupMaker, controls []catal
 	var changes []Change
 	var errs []error
 
-	for _, control := range controls {
+	for _, group := range groups {
 
-		group := catalog.ExclusionGroup(control.Control)
 		if slices.Contains(existing, group) {
 			continue
 		}
