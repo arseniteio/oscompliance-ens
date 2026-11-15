@@ -6,5 +6,6 @@ const (
 
 type AgentPass struct {
 	Envelope
-	InForce []string `json:"in_force"`
+	InForce        []string `json:"in_force"`
+	RequestedGroup string   `json:"requested_group,omitempty"`
 }

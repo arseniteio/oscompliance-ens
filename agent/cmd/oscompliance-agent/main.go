@@ -86,7 +86,7 @@ func runPass(opts options) error {
 
 	inForce, errs := runCollectors(out, &buf, state, collectorsFor(e, opts), opts)
 
-	if err := writeAgentPass(out, &buf, e, inForce); err != nil {
+	if err := writeAgentPass(out, &buf, e, inForce, opts.WazuhGroup); err != nil {
 		errs = append(errs, fmt.Errorf("agent_pass: %w", err))
 	}
 
@@ -223,14 +223,14 @@ func flush(out io.Writer, state *emit.State, collector string, lines []byte, ful
 	return nil
 }
 
-func writeAgentPass(out io.Writer, buf *bytes.Buffer, e *emit.Emitter, inForce []string) error {
+func writeAgentPass(out io.Writer, buf *bytes.Buffer, e *emit.Emitter, inForce []string, wazuhGroup string) error {
 
 	if len(inForce) == 0 {
 		return nil
 	}
 
 	buf.Reset()
-	if err := e.Emit(fact.AgentPass{Envelope: e.Envelope(fact.AgentPassFact), InForce: inForce}); err != nil {
+	if err := e.Emit(fact.AgentPass{Envelope: e.Envelope(fact.AgentPassFact), InForce: inForce, RequestedGroup: wazuhGroup}); err != nil {
 		return err
 	}
 

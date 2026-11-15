@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 )
 
 const defaultConfigPath = "/etc/oscompliance/agent.json"
+
+var wazuhGroupName = regexp.MustCompile(`^[A-Za-z0-9._-]{1,255}$`)
 
 type options struct {
 	Output       string   `json:"output"`
@@ -22,6 +25,7 @@ type options struct {
 	Collectors   []string `json:"collectors"`
 	SweepTimeout duration `json:"sweep_timeout"`
 	Paths        paths    `json:"paths"`
+	WazuhGroup   string   `json:"wazuh_group"`
 
 	full     bool
 	selected map[string]bool
@@ -114,6 +118,9 @@ func loadOptions(path string, required bool) (options, error) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&opts); err != nil {
 		return opts, fmt.Errorf("configuration %s: %w", path, err)
+	}
+	if opts.WazuhGroup != "" && !wazuhGroupName.MatchString(opts.WazuhGroup) {
+		return opts, fmt.Errorf("configuration %s: wazuh_group %q is not a Wazuh group name", path, opts.WazuhGroup)
 	}
 
 	return opts, nil

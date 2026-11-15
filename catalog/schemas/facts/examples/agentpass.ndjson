@@ -1,1 +1,2 @@
 {"oscompliance":"1","fact":"agent_pass","ts":"2026-10-25T22:00:00Z","host":"lab-agent-01","agent_version":"0.1.0","run_id":"5d7f9b1c-3e5a-4c7e-9a1b-3c5d7e9f1a2b","in_force":["listening_snapshot:9c1e3a5b-7d2f-4b6a-8e0c-2a4b6c8d0e1f","config_snapshot:9c1e3a5b-7d2f-4b6a-8e0c-2a4b6c8d0e1f"]}
+{"oscompliance":"1","fact":"agent_pass","ts":"2026-11-16T00:00:00Z","host":"lab-agent-02","agent_version":"1.2.0","run_id":"6e8a0c2d-4f6b-4d8f-8b2c-4d6e8f0a2b3c","in_force":["listening_snapshot:6e8a0c2d-4f6b-4d8f-8b2c-4d6e8f0a2b3c"],"requested_group":"ens"}

@@ -18,6 +18,11 @@
         "type": "string",
         "pattern": "^[a-z][a-z0-9_]*:[0-9a-f-]{36}$"
       }
+    },
+    "requested_group": {
+      "description": "Wazuh group the machine asks to join, set by install.sh agent --group. The engine adds the agent to it when the group is in the ENS scope.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{1,255}$"
     }
   },
   "allOf": [

@@ -67,3 +67,20 @@ func TestUnknownCollector(t *testing.T) {
 		t.Fatal("an unknown collector was accepted")
 	}
 }
+
+func TestLoadOptionsReadsTheWazuhGroup(t *testing.T) {
+
+	opts, err := loadOptions(writeConfig(t, `{"wazuh_group": "ens"}`), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opts.WazuhGroup != "ens" {
+		t.Errorf("WazuhGroup = %q, want ens", opts.WazuhGroup)
+	}
+}
+
+func TestLoadOptionsRejectsAnInvalidWazuhGroup(t *testing.T) {
+	if _, err := loadOptions(writeConfig(t, `{"wazuh_group": "ens; rm"}`), true); err == nil {
+		t.Fatal("loadOptions accepted an invalid group name")
+	}
+}
