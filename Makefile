@@ -9,6 +9,7 @@ check:
 	  if [ -n "$$unformatted" ]; then echo "not gofmt-ed: $$unformatted"; exit 1; fi; \
 	  (cd $$m && go vet ./... && golangci-lint run -c ../.golangci.yml ./... && go test -count=1 ./...) || exit 1; \
 	done
+	@for t in tests/scripts/*.test.sh; do echo "==> $$t"; bash $$t || exit 1; done
 
 test:
 	@for m in $(MODULES); do (cd $$m && go test -count=1 ./...) || exit 1; done
