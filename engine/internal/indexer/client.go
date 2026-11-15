@@ -17,7 +17,8 @@ import (
 )
 
 type Client struct {
-	baseURL  string
+	baseURLs []string
+	current  atomic.Uint32
 	user     string
 	password string
 	http     *http.Client
@@ -29,7 +30,12 @@ const inFlight = 4
 
 var retries = []time.Duration{time.Second, 2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second}
 
-func New(baseURL, user, password, caFile string) (*Client, error) {
+func New(urls, user, password, caFile string) (*Client, error) {
+
+	baseURLs := splitURLs(urls)
+	if len(baseURLs) == 0 {
+		return nil, fmt.Errorf("indexer: no URL")
+	}
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 
@@ -46,7 +52,7 @@ func New(baseURL, user, password, caFile string) (*Client, error) {
 	}
 
 	return &Client{
-		baseURL:  strings.TrimSuffix(baseURL, "/"),
+		baseURLs: baseURLs,
 		user:     user,
 		password: password,
 		http:     &http.Client{Transport: transport, Timeout: 60 * time.Second},
@@ -65,9 +71,33 @@ func (e *Error) Error() string {
 
 func (c *Client) Requests() uint64 { return c.requests.Load() }
 
+func splitURLs(urls string) []string {
+
+	var out []string
+	for _, u := range strings.Split(urls, ",") {
+		if u = strings.TrimSuffix(strings.TrimSpace(u), "/"); u != "" {
+			out = append(out, u)
+		}
+	}
+
+	return out
+}
+
+func (c *Client) baseURL() string {
+	return c.baseURLs[int(c.current.Load())%len(c.baseURLs)]
+}
+
+func (c *Client) failOver(from string) {
+	if c.baseURL() == from {
+		c.current.Add(1)
+	}
+}
+
 func (c *Client) send(ctx context.Context, method, path, contentType string, body []byte) (*http.Response, error) {
 
-	for attempt := 0; ; attempt++ {
+	busyRetries, failovers := 0, 0
+
+	for {
 
 		select {
 		case c.slots <- struct{}{}:
@@ -82,7 +112,8 @@ func (c *Client) send(ctx context.Context, method, path, contentType string, bod
 			reader = bytes.NewReader(body)
 		}
 
-		req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reader)
+		base := c.baseURL()
+		req, err := http.NewRequestWithContext(ctx, method, base+path, reader)
 		if err != nil {
 			<-c.slots
 			return nil, err
@@ -93,7 +124,12 @@ func (c *Client) send(ctx context.Context, method, path, contentType string, bod
 		resp, err := c.http.Do(req)
 		<-c.slots
 		if err != nil {
-			return nil, fmt.Errorf("indexer: %s %s: %w", method, path, err)
+			if ctx.Err() == nil && failovers < len(c.baseURLs)-1 {
+				failovers++
+				c.failOver(base)
+				continue
+			}
+			return nil, fmt.Errorf("indexer: %s %s%s: %w", method, base, path, err)
 		}
 
 		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
@@ -105,15 +141,16 @@ func (c *Client) send(ctx context.Context, method, path, contentType string, bod
 		e := &Error{Status: resp.StatusCode, Body: string(msg)}
 
 		busy := resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusServiceUnavailable
-		if !busy || attempt >= len(retries) {
+		if !busy || busyRetries >= len(retries) {
 			return nil, e
 		}
 
 		select {
-		case <-time.After(retries[attempt]):
+		case <-time.After(retries[busyRetries]):
 		case <-ctx.Done():
 			return nil, e
 		}
+		busyRetries++
 	}
 }
 
