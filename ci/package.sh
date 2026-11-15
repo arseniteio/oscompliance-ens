@@ -13,6 +13,13 @@ notices="$dist/THIRD_PARTY_NOTICES"
   cat "$root/ci/go-LICENSE"
 } > "$notices"
 
+# install.sh trusts an unpacked package only when root or the sudo user owns it.
+if tar --version | grep -q bsdtar; then
+  root_owned=(--uid 0 --gid 0 --uname root --gname root)
+else
+  root_owned=(--owner=0 --group=0 --numeric-owner)
+fi
+
 release_installer() {
   sed "s/^OSC_RELEASE=\"\${OSC_RELEASE:-}\"\$/OSC_RELEASE=\"\${OSC_RELEASE:-$version}\"/" "$root/install.sh" > "$1"
   grep -q "OSC_RELEASE:-$version}" "$1" || { echo "install.sh: cannot set the release version" >&2; exit 1; }
@@ -32,7 +39,7 @@ for arch in amd64 arm64; do
   cp "$root/LICENSE" "$notices" "$dir/"
   echo "$version" > "$dir/VERSION"
   release_installer "$dir/install.sh"
-  COPYFILE_DISABLE=1 tar --no-xattrs -C "$dist" -czf "$dist/$name.tar.gz" "$name"
+  COPYFILE_DISABLE=1 tar --no-xattrs "${root_owned[@]}" -C "$dist" -czf "$dist/$name.tar.gz" "$name"
   rm -rf "$dir"
 done
 

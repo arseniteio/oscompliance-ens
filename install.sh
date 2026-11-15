@@ -97,10 +97,21 @@ script_dir() {
   [ -n "$source" ] && [ -f "$source" ] && (cd "$(dirname "$source")" && pwd)
 }
 
+owned_and_locked() {
+  local dir="$1" owner="${SUDO_UID:-$(id -u)}"
+  [ -z "$(find "$dir" \( -perm -g+w -o -perm -o+w \) -print -quit)" ] &&
+    [ -z "$(find "$dir" ! -uid 0 ! -uid "$owner" -print -quit)" ]
+}
+
+unpacked_package() {
+  local dir="$1"
+  [ -n "$dir" ] && [ -f "$dir/VERSION" ] && [ -x "$dir/bin/oscompliance-agent" ] && owned_and_locked "$dir"
+}
+
 fetch_package() {
   local here
   here="$(script_dir || true)"
-  if [ -n "$here" ] && [ -x "$here/bin/oscompliance-agent" ]; then
+  if unpacked_package "$here"; then
     PKG="$here"
     return
   fi

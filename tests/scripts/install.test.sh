@@ -30,6 +30,11 @@ cp "$ROOT/install.sh" "$T/pkg/" && echo 1.1.0 > "$T/pkg/VERSION"
 r="$(cd "$T" && OSC_INSTALL_SOURCED=1 bash -c 'source pkg/install.sh; fetch_package; echo "$PKG $(package_version)"')"
 [ "$r" = "$T/pkg 1.1.0" ] && ok "uses the package it was unpacked from without downloading" || fail "local package ($r)"
 
+mkdir -p "$T/loose/bin" && cp "$ROOT/install.sh" "$T/loose/" && touch "$T/loose/bin/oscompliance-agent" && chmod +x "$T/loose/bin/oscompliance-agent"
+unpacked_package "$T/loose" && fail "a folder without VERSION is a package" || ok "a script next to a planted bin/ without VERSION is not a package"
+mkdir -p "$T/shared" && cp -R "$T/pkg/." "$T/shared/" && chmod o+w "$T/shared/bin"
+unpacked_package "$T/shared" && fail "a writable package is trusted" || ok "a package others can write to is not trusted"
+
 OSSEC="$T/ossec" CONF_DIR="$T/etc"; mkdir -p "$OSSEC/etc"
 echo '<ossec_config></ossec_config>' > "$OSSEC/etc/ossec.conf"
 audit_manager_config; audit_manager_config
