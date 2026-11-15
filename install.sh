@@ -185,7 +185,7 @@ group_conf_arrived() {
 }
 
 rules_synced() {
-  [ -f "$RULES_FILE" ]
+  cmp -s "$RULES_FILE" "$PKG/wazuh/oscompliance_facts_rules.xml"
 }
 
 with_terminal() {
@@ -352,11 +352,13 @@ request_group() {
   install -d -m 755 "$CONF_DIR"
   if [ ! -s "$config" ]; then
     printf '{"wazuh_group": "%s"}\n' "$group" > "$config"
-    return
+  elif grep -q '"wazuh_group"' "$config"; then
+    sed -E "s/\"wazuh_group\"[[:space:]]*:[[:space:]]*\"[^\"]*\"/\"wazuh_group\": \"$group\"/" "$config" > "$config.new"
+    mv "$config.new" "$config"
+  else
+    awk -v group="$group" '!done && sub(/\{/, "{\"wazuh_group\": \"" group "\", ") { done = 1 } { print }' "$config" > "$config.new"
+    mv "$config.new" "$config"
   fi
-  command -v jq >/dev/null || die "$config already exists: install jq, or add \"wazuh_group\": \"$group\" to it, and run this again"
-  jq --arg group "$group" '.wazuh_group = $group' "$config" > "$config.new"
-  mv "$config.new" "$config"
 }
 
 create_group() {
@@ -385,10 +387,8 @@ install_engine() {
 
 reload_synced_rules() {
   say "worker node: the rules and the group configuration come from the master"
-  if ! wait_for "the rules from the master" "$OSC_WAIT_SECONDS" rules_synced; then
-    say "the rules have not arrived from the master: run install.sh server on the master, then this again"
-    return
-  fi
+  wait_for "the rules of release $VERSION from the master" "$OSC_WAIT_SECONDS" rules_synced ||
+    die "the rules of release $VERSION have not arrived from the master: run install.sh server on the master, then this again"
   systemctl restart wazuh-manager
   say "rules loaded on this worker"
 }

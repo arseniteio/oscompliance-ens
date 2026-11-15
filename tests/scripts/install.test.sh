@@ -74,10 +74,13 @@ remove_block "$OSSEC/etc/ossec.conf"; [ "$(cat "$OSSEC/etc/ossec.conf")" = '<oss
 
 rm -f "$CONF_DIR/agent.json"; request_group ens
 [ "$(cat "$CONF_DIR/agent.json")" = '{"wazuh_group": "ens"}' ] && ok "writes the requested group" || fail "agent.json group"
-if command -v jq >/dev/null; then
-  echo '{"collectors": ["identity"]}' > "$CONF_DIR/agent.json"; request_group ens
-  [ "$(jq -c . "$CONF_DIR/agent.json")" = '{"collectors":["identity"],"wazuh_group":"ens"}' ] && ok "keeps the rest of an existing agent.json" || fail "agent.json merge"
-fi
+echo '{"collectors": ["identity"]}' > "$CONF_DIR/agent.json"; request_group ens
+[ "$(cat "$CONF_DIR/agent.json")" = '{"wazuh_group": "ens", "collectors": ["identity"]}' ] && ok "adds the group to an existing agent.json" || fail "agent.json insert ($(cat "$CONF_DIR/agent.json"))"
+request_group web; [ "$(cat "$CONF_DIR/agent.json")" = '{"wazuh_group": "web", "collectors": ["identity"]}' ] && ok "replaces a previous group" || fail "agent.json replace ($(cat "$CONF_DIR/agent.json"))"
+
+PKG="$T/pkg" RULES_FILE="$OSSEC/etc/rules/oscompliance_facts_rules.xml"; mkdir -p "$PKG/wazuh" "$OSSEC/etc/rules"; echo new > "$PKG/wazuh/oscompliance_facts_rules.xml"; echo old > "$RULES_FILE"
+rules_synced && fail "old rules count as synced" || ok "a worker waits for the rules of its release"
+echo new > "$RULES_FILE"; rules_synced && ok "a worker sees the rules of its release" || fail "synced rules"
 
 r="$( (main agent --only engine) 2>&1)"; [ $? -ne 0 ] && echo "$r" | grep -q usage && ok "--only belongs to server" || fail "agent --only"
 r="$( (main server --group ens) 2>&1)"; [ $? -ne 0 ] && echo "$r" | grep -q usage && ok "--group belongs to agent" || fail "server --group"
