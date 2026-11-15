@@ -4,6 +4,14 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `install.sh`, published with each release and included in each package. `install.sh server` installs the rules, the engine and its users and the Power ENS plugin on an all-in-one Wazuh server installed from packages, and audits the manager. `install.sh agent` installs the agent and runs its first pass once the group configuration arrives. `install.sh uninstall` removes both. It verifies every download against `SHA256SUMS`.
+
+### Changed
+
+- The installation guides download the release with `curl` and `sha256sum`, and building from source moves to its own section.
+
 ## [1.0.0] - 2026-11-13
 
 First release.

@@ -4,13 +4,14 @@ This guide installs OSCompliance ENS and Power ENS on a Wazuh deployment install
 
 Plan for about one hour on the server and a few minutes per audited machine. All commands run as root.
 
+On a server like this one, `install.sh server` runs sections 2 to 8 and `install.sh agent` runs section 7 on each machine, as in [Get started](../../README.md#get-started). This guide is the manual procedure, and the reference for what the script does.
+
 ## Requirements
 
 - Wazuh 4.14.7, 4.14.8 or 4.14.9.
 - Audited machines on Linux, amd64 or arm64, with a Wazuh agent enrolled in the manager.
 - `curl`, `jq`, `python3` and `unzip` on the server, `cron` and `auditd` on the audited machines.
 - The authentication log of each audited machine reaching Wazuh: `/var/log/auth.log`, `/var/log/secure` or journald, as a localfile of the Wazuh agent.
-- Go 1.27.2 or later and Docker on the machine that builds the packages, with access to GitHub and Docker Hub. It can be any machine.
 
 auditd feeds op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04 and EV-07. Without it those evidences are not evaluable. Without the authentication log, the login evidences are not evaluable.
 
@@ -42,36 +43,30 @@ The script of section 3 asks for three passwords. To run it without questions, f
 | `OSC_INDEXER_PASSWORD` | new password of the engine user in the indexer |
 | `OSC_WAZUH_API_PASSWORD` | new password of the engine user in the Wazuh API |
 
-## 1. Build the packages
+## 1. Get the packages
 
-Download the packages of the v1.0.0 release with `gh release download v1.0.0 -R arseniteio/oscompliance-ens`, or build them in this repository. `VERSION` is the version the binaries report. Use the package of your architecture, and copy it to the server and to every audited machine.
-
-```bash
-export VERSION=1.0.0
-make dist VERSION="$VERSION"
-```
-
-The result is in `dist/`, with a `SHA256SUMS` file. Each package holds the binaries in `bin/`, the Wazuh files in `wazuh/`, the agent's cron file and example configuration in `agent/`, and the licenses in `LICENSE` and `THIRD_PARTY_NOTICES`.
-
-Find the OpenSearch Dashboards version of your dashboard on the server. It is 2.19.5 on Wazuh 4.14.7 and 2.19.6 on 4.14.8 and 4.14.9.
+Download the package of your architecture and its checksums on the server and on every audited machine. `uname -m` tells the architecture: `x86_64` is amd64 and `aarch64` is arm64. The line of your package must end in `OK`. The commands below run from the package folder.
 
 ```bash
-grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
-```
-
-Download the plugin for that version from the power-ens v1.0.0 release, or build it in the power-ens repository; the first build takes about 20 minutes. Copy the zip, `config/deploy-plugin.sh` and `config/create-admin-role.sh` to the server.
-
-```bash
-ci/build-zip.sh 2.19.6
-```
-
-On the server and on every audited machine, copy `SHA256SUMS` with the package, check it and unpack it with the same `VERSION`. The line of your package must end in `OK`. The commands below run from this folder.
-
-```bash
+v=1.1.0
+url=https://github.com/arseniteio/oscompliance-ens/releases/download/v$v
+curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
-tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
-cd "oscompliance-ens-$VERSION-linux-amd64"
+tar xzf "oscompliance-ens-$v-linux-amd64.tar.gz" && cd "oscompliance-ens-$v-linux-amd64"
 ```
+
+Each package holds the binaries in `bin/`, the Wazuh files in `wazuh/`, the agent's cron file and example configuration in `agent/`, `install.sh` and the licenses.
+
+On the server, download the plugin for your dashboard into the same folder: `osd-2.19.5` for Wazuh 4.14.7, `osd-2.19.6` for 4.14.8 and 4.14.9.
+
+```bash
+url=https://github.com/arseniteio/power-ens/releases/download/v$v
+curl -fL -o plugin.sha256 "$url/SHA256SUMS"
+curl -fLO "$url/power-ens-$v-osd-2.19.6.zip" -O "$url/deploy-plugin.sh" -O "$url/create-admin-role.sh"
+sha256sum -c --ignore-missing plugin.sha256
+```
+
+To build the packages and the plugin instead, see [Build from source](#build-from-source).
 
 ## 2. Install the rules and create the group
 
@@ -107,7 +102,7 @@ bash wazuh/engine-users.sh create
 The script validates the zip, keeps a copy of any previous version in `/var/backups/power-ens`, installs the plugin and restarts the dashboard. It must end with the dashboard active.
 
 ```bash
-bash deploy-plugin.sh powerEns-2.19.6.zip
+bash deploy-plugin.sh "power-ens-$v-osd-2.19.6.zip"
 ```
 
 Log in to the dashboard and open Power ENS. If it says `No se puede leer el inventario de agentes`, the dashboard has not yet written its agent inventory, which it does every 15 minutes: wait and press Reintentar. A user with `all_access` can change the configuration. To allow another user, give it the `power_ens_admin` role. The script adds the user and keeps the ones that already have the role.
@@ -253,9 +248,13 @@ install -m 755 bin/oscompliance-engine /usr/local/bin/
 systemctl restart oscompliance-engine
 ```
 
-If the rules changed, install them as in section 2. If the role changed, run `wazuh/engine-users.sh create` again, which also sets the passwords again. On each audited machine, install the new agent binary: the next cron run uses it. Install the plugin zip built from the matching commit as in section 4.
+If the rules changed, install them as in section 2. If the role changed, run `wazuh/engine-users.sh create` again, which also sets the passwords again. On each audited machine, install the new agent binary: the next cron run uses it. Install the plugin zip of the same release as in section 4.
+
+With the install script, run `install.sh server` of the new release on the server, then `install.sh agent` on each machine.
 
 ## Uninstall
+
+With the install script, run `install.sh uninstall` on each audited machine and on the server. The manual steps follow.
 
 On each audited machine:
 
@@ -285,3 +284,17 @@ bash wazuh/engine-users.sh remove
 ```
 
 The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them. If you audited the manager, also run the commands for audited machines on the server, and remove its two localfile blocks from `ossec.conf`.
+
+## Build from source
+
+Build the packages in this repository with Go 1.27.2 or later. The result is in `dist/`, with `install.sh` and `SHA256SUMS`.
+
+```bash
+make dist VERSION=1.1.0
+```
+
+Build the plugin in the power-ens repository with Docker, for the OpenSearch Dashboards version of your dashboard. The first build takes about 20 minutes. The result is `dist/powerEns-2.19.6.zip`.
+
+```bash
+ci/build-zip.sh 2.19.6
+```

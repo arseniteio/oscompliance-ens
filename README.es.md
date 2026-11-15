@@ -10,48 +10,45 @@ Funciona en Wazuh 4.14.7, 4.14.8 y 4.14.9, con las máquinas auditadas en Linux.
 
 ## Primeros pasos
 
-La instalación rápida de abajo cubre un servidor con Wazuh 4.14.8 o 4.14.9 instalado por paquetes y máquinas Linux amd64. Con Wazuh 4.14.7, usa el zip `osd-2.19.5`. Para Docker, otras arquitecturas o el detalle de cada paso, sigue las guías completas:
+En un servidor de Wazuh con el manager, el indexer y el dashboard instalados por paquetes, ejecuta como un usuario con sudo:
+
+```bash
+curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- server
+```
+
+El script instala las reglas, el motor y sus usuarios, el plugin Power ENS para tu dashboard, y audita el manager. Pide la contraseña de `wazuh-wui` y dos contraseñas nuevas.
+
+En el dashboard, abre Power ENS, Configuración, Organización, rellena Cliente y pulsa Guardar configuración global. Después añade cada máquina que se audita al grupo `ens`, con su ID de `/var/ossec/bin/agent_control -l`.
+
+```bash
+sudo /var/ossec/bin/agent_groups -a -i <id> -g ens -q
+```
+
+En cada una de esas máquinas:
+
+```bash
+curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- agent
+```
+
+Los primeros veredictos aparecen en Power ENS en menos de 15 minutos. Ejecuta los mismos comandos con una versión más nueva para actualizar, y con `uninstall` para quitarlo todo.
+
+Para revisar los ficheros antes de ejecutar nada, descarga el paquete y compruébalo. El `install.sh` del paquete usa los ficheros que tiene al lado.
+
+```bash
+v=1.1.0
+url=https://github.com/arseniteio/oscompliance-ens/releases/download/v$v
+curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
+sha256sum -c --ignore-missing SHA256SUMS
+tar xzf "oscompliance-ens-$v-linux-amd64.tar.gz"
+sudo "./oscompliance-ens-$v-linux-amd64/install.sh" agent
+```
+
+En el servidor, el script descarga el plugin de la versión de power-ens y lo comprueba. Para instalar sin acceso a GitHub, copia antes el zip del plugin y `deploy-plugin.sh` en la carpeta del paquete.
+
+Para Wazuh en Docker, un despliegue distribuido o el detalle de cada paso, sigue las guías completas:
 
 - [Instalación por paquetes](docs/es/install.md)
 - [Instalación con Docker](docs/es/install-docker.md)
-
-### Instalación rápida
-
-En el servidor, como root y con `gh` autenticado en GitHub. `engine-users.sh` pide la contraseña de `wazuh-wui` y dos contraseñas nuevas.
-
-```bash
-gh release download v1.0.0 -R arseniteio/oscompliance-ens -D osc -p '*-linux-amd64.tar.gz' -p SHA256SUMS
-gh release download v1.0.0 -R arseniteio/power-ens -D plugin
-(cd osc && sha256sum -c --ignore-missing SHA256SUMS) && (cd plugin && sha256sum -c --ignore-missing SHA256SUMS)
-tar xzf osc/oscompliance-ens-1.0.0-linux-amd64.tar.gz && cd oscompliance-ens-1.0.0-linux-amd64
-install -o wazuh -g wazuh -m 660 wazuh/oscompliance_facts_rules.xml /var/ossec/etc/rules/
-systemctl restart wazuh-manager && sleep 60
-/var/ossec/bin/agent_groups -a -g ens -q
-bash wazuh/engine-users.sh create
-bash ../plugin/deploy-plugin.sh ../plugin/power-ens-1.0.0-osd-2.19.6.zip
-```
-
-En el dashboard, abre Power ENS, Configuración, Organización, rellena Cliente y pulsa Guardar configuración global. Después arranca el motor y añade cada máquina al grupo `ens`, con el ID de agente de `agent_control -l`.
-
-```bash
-install -m 755 bin/oscompliance-engine /usr/local/bin/
-install -m 644 wazuh/oscompliance-engine.service /etc/systemd/system/
-systemctl daemon-reload && systemctl enable --now oscompliance-engine
-/var/ossec/bin/agent_groups -a -i <id> -g ens -q
-```
-
-En cada máquina, copia el mismo paquete y descomprímelo. Cuando `grep -c facts.ndjson /var/ossec/etc/shared/agent.conf` muestre un número mayor que 0, instala el agente.
-
-```bash
-cd oscompliance-ens-1.0.0-linux-amd64
-install -m 755 bin/oscompliance-agent /usr/local/bin/
-install -m 644 agent/oscompliance.cron /etc/cron.d/oscompliance
-install -d -m 750 /var/log/oscompliance && install -d -m 700 /var/lib/oscompliance
-touch /var/log/oscompliance/facts.ndjson && systemctl restart wazuh-agent
-sleep 30 && oscompliance-agent -full
-```
-
-Los primeros veredictos aparecen en Power ENS tras la siguiente pasada del motor, en menos de 15 minutos.
 
 ## Cómo funciona
 
@@ -90,10 +87,10 @@ Comprueba el formato y ejecuta go vet, golangci-lint y las pruebas. Necesita gol
 make check
 ```
 
-Compila los paquetes en `dist/`.
+Compila los paquetes en `dist/`, con `install.sh` y `SHA256SUMS`. Hace falta Go 1.27.2 o posterior.
 
 ```bash
-make dist VERSION=1.0.0
+make dist VERSION=1.1.0
 ```
 
 ## Seguridad

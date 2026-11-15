@@ -11,7 +11,6 @@ Calcula alrededor de una hora en el host de Docker y unos minutos por máquina a
 - Máquinas auditadas en Linux, amd64 o arm64, con un agente de Wazuh registrado en el manager.
 - `curl`, `jq` y `python3` en el host, `cron` y `auditd` en las máquinas auditadas.
 - Que el registro de autenticación de cada máquina auditada llegue a Wazuh: `/var/log/auth.log`, `/var/log/secure` o journald, como localfile del agente de Wazuh.
-- Go 1.27.2 o posterior y Docker en la máquina donde se compilan los paquetes, con acceso a GitHub y Docker Hub. Puede ser cualquier máquina.
 
 auditd alimenta EV-06 de op.acc.2, op.acc.3 y EV-04 y EV-07 de op.acc.4. Sin él, esas evidencias no son evaluables. Sin el registro de autenticación, las evidencias de inicio de sesión no son evaluables.
 
@@ -35,34 +34,23 @@ Tu fichero de compose no se modifica. La instalación añade `docker-compose.ove
 cat "$WAZUH_DIR/docker-compose.override.yml" 2>/dev/null
 ```
 
-Comprueba la versión del dashboard. Debe ser 2.19.5 en Wazuh 4.14.7 y 2.19.6 en 4.14.8 y 4.14.9. Compila el plugin para esa versión en el apartado 2.
+Comprueba la versión del dashboard. Debe ser 2.19.5 en Wazuh 4.14.7 y 2.19.6 en 4.14.8 y 4.14.9. Descarga el plugin para esa versión en el apartado 2.
 
 ```bash
 docker exec "$PROJECT-wazuh.dashboard-1" grep -m1 '"version"' /usr/share/wazuh-dashboard/package.json
 ```
 
-## 2. Compilar los paquetes
+## 2. Obtener los paquetes
 
-Compila el agente y el motor en este repositorio. `VERSION` es la versión que informan los binarios. Usa el paquete de tu arquitectura y cópialo al host y a cada máquina auditada.
-
-```bash
-export VERSION=1.0.0
-make dist VERSION="$VERSION"
-```
-
-Descarga el plugin de la versión v1.0.0 de power-ens, o compílalo en el repositorio power-ens: 2.19.5 para Wazuh 4.14.7, 2.19.6 para 4.14.8 y 4.14.9. La primera compilación tarda unos 20 minutos. Copia el zip, `ci/dashboard.Dockerfile` y `config/create-admin-role.sh` al host.
+Descarga el paquete de tu arquitectura y sus sumas de comprobación en el host y en cada máquina auditada, y los ficheros del plugin en el host, como en el [apartado 1 de la guía por paquetes](install.md#1-obtener-los-paquetes). En Docker el plugin necesita `dashboard.Dockerfile` en lugar de `deploy-plugin.sh`.
 
 ```bash
-ci/build-zip.sh 2.19.6
+v=1.1.0
+url=https://github.com/arseniteio/power-ens/releases/download/v$v
+curl -fLO "$url/dashboard.Dockerfile"
 ```
 
-En el host y en cada máquina auditada, copia `SHA256SUMS` junto al paquete, compruébalo y descomprímelo con la misma `VERSION`. La línea de tu paquete debe terminar en `OK`. Los comandos siguientes se ejecutan desde esta carpeta.
-
-```bash
-sha256sum -c --ignore-missing SHA256SUMS
-tar xzf "oscompliance-ens-$VERSION-linux-amd64.tar.gz"
-cd "oscompliance-ens-$VERSION-linux-amd64"
-```
+Para compilar los paquetes y el plugin, consulta [Compilar desde el código](install.md#compilar-desde-el-código).
 
 ## 3. Instalar las reglas y crear el grupo
 
@@ -103,7 +91,7 @@ El plugin va en una imagen propia, porque lo que se instala en un contenedor en 
 
 ```bash
 docker build -f dashboard.Dockerfile --build-arg WAZUH_VERSION="$WAZUH_VERSION" \
-  --build-arg PLUGIN_ZIP=powerEns-2.19.6.zip -t power-ens/wazuh-dashboard:local .
+  --build-arg PLUGIN_ZIP="power-ens-$v-osd-2.19.6.zip" -t power-ens/wazuh-dashboard:local .
 ```
 
 Desde la carpeta del paquete, instala el binario del motor y el fichero override, y recrea el dashboard. El fichero override indica la imagen del dashboard y define el servicio del motor, que arranca en el apartado 6.
@@ -146,7 +134,7 @@ docker exec "$MGR" cat /var/ossec/etc/shared/ens/agent.conf
 
 ## 7. Instalar el agente en las máquinas auditadas
 
-Sigue el [apartado 7 de la guía por paquetes](install.md#7-instalar-el-agente-en-las-máquinas-auditadas) en cada máquina del grupo `ens`.
+En cada máquina del grupo `ens`, ejecuta `install.sh agent` desde el paquete, o sigue el [apartado 7 de la guía por paquetes](install.md#7-instalar-el-agente-en-las-máquinas-auditadas).
 
 Esta guía no audita el contenedor del manager, así que su fila aparece como no conforme. Para ver cada resultado, elige la máquina en el selector Máquina.
 
@@ -176,7 +164,7 @@ Para actualizar el plugin, guarda la imagen actual con otra etiqueta, construye 
 ```bash
 docker tag power-ens/wazuh-dashboard:local power-ens/wazuh-dashboard:previous
 docker build -f dashboard.Dockerfile --build-arg WAZUH_VERSION="$WAZUH_VERSION" \
-  --build-arg PLUGIN_ZIP=powerEns-2.19.6.zip -t power-ens/wazuh-dashboard:local .
+  --build-arg PLUGIN_ZIP="power-ens-$v-osd-2.19.6.zip" -t power-ens/wazuh-dashboard:local .
 (cd "$WAZUH_DIR" && docker compose -p "$PROJECT" up -d wazuh.dashboard)
 ```
 
