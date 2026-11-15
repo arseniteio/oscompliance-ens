@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed controls templates messages system-types.json
+//go:embed controls templates messages system-types.json default-configuration.json
 var files embed.FS
 
 type Control struct {

@@ -5,6 +5,7 @@ import (
 
 	"errors"
 	"fmt"
+	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
@@ -15,7 +16,10 @@ import (
 	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
 )
 
-var ErrNotSet = errors.New("not set")
+var (
+	ErrNotSet   = errors.New("not set")
+	ErrNotSaved = errors.New("no saved configuration")
+)
 
 type ValueError struct{ Message catalog.Message }
 
@@ -127,6 +131,18 @@ func (c *Config) ControlEnabled(controlID string) bool {
 	return true
 }
 
+func Default() *Config {
+
+	d := catalog.Default()
+
+	c := &Config{}
+	c.Global.EnsLevel = d.EnsLevel
+	c.Scope.Mode = d.Scope.Mode
+	c.Scope.GroupIDs = d.Scope.GroupIDs
+
+	return c
+}
+
 func Load(ctx context.Context, client *indexer.Client, index string) (*Config, error) {
 
 	query := map[string]any{
@@ -144,12 +160,17 @@ func Load(ctx context.Context, client *indexer.Client, index string) (*Config, e
 		} `json:"hits"`
 	}
 
-	if err := client.Search(ctx, index, query, &resp); err != nil {
+	err := client.Search(ctx, index, query, &resp)
+	var missing *indexer.Error
+	if errors.As(err, &missing) && missing.Status == http.StatusNotFound {
+		return nil, fmt.Errorf("%w: no index %s", ErrNotSaved, index)
+	}
+	if err != nil {
 		return nil, err
 	}
 
 	if len(resp.Hits.Hits) == 0 {
-		return nil, fmt.Errorf("no ACTIVE_CONFIGURATION in %s", index)
+		return nil, fmt.Errorf("%w: no ACTIVE_CONFIGURATION in %s", ErrNotSaved, index)
 	}
 
 	return &resp.Hits.Hits[0].Source.Configuration, nil

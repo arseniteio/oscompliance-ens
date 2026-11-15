@@ -214,7 +214,12 @@ func runMain() error {
 	for {
 
 		var policy params.Lister
-		if loaded, err := params.Load(ctx, client, *configIndex); err != nil {
+		loaded, err := params.Load(ctx, client, *configIndex)
+		if errors.Is(err, params.ErrNotSaved) {
+			slog.Info("parameters", "using", "catalog default", "reason", err.Error())
+			loaded, err = params.Default(), nil
+		}
+		if err != nil {
 			slog.Warn("parameters", "error", err)
 			policy = params.Unavailable(err)
 		} else {
