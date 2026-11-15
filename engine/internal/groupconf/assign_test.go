@@ -69,3 +69,12 @@ func TestAssignOnlyRecordsWithoutApply(t *testing.T) {
 		t.Errorf("changes = %+v", changes)
 	}
 }
+
+func TestOutOfScopeNamesRequestedGroupsOutsideTheScope(t *testing.T) {
+
+	got := OutOfScope(map[string]string{"001": "ens", "002": "web", "003": "web", "004": "db"}, []string{"ENS"})
+
+	if !slices.Equal(got, []string{"db", "web"}) {
+		t.Errorf("OutOfScope = %v, want [db web]", got)
+	}
+}

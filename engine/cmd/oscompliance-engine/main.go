@@ -340,6 +340,9 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 	} else {
 		changes, err := groupconf.Assign(ctx, g.api, requests, groups, g.apply, now)
 		g.record(ctx, changes, err)
+		if outside := groupconf.OutOfScope(requests, groups); len(outside) > 0 {
+			slog.Warn("group requests", "error", "agents ask to join groups outside the ENS scope", "groups", outside)
+		}
 	}
 
 	changes, err = groupconf.Sync(ctx, g.api, policy, groups, g.apply, now)

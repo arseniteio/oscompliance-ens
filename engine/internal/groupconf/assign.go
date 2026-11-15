@@ -51,6 +51,20 @@ func Assign(ctx context.Context, api Assigner, requests map[string]string, group
 	return changes, errors.Join(errs...)
 }
 
+func OutOfScope(requests map[string]string, groups []string) []string {
+
+	var out []string
+	for _, wanted := range requests {
+		inScope := slices.ContainsFunc(groups, func(g string) bool { return strings.EqualFold(strings.TrimSpace(g), strings.TrimSpace(wanted)) })
+		if !inScope && !slices.Contains(out, wanted) {
+			out = append(out, wanted)
+		}
+	}
+	slices.Sort(out)
+
+	return out
+}
+
 func requesters(requests map[string]string, group string) []string {
 
 	var ids []string
