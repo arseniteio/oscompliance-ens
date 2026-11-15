@@ -3,6 +3,9 @@ set -euo pipefail
 
 CERTS="${CERTS:-/etc/wazuh-indexer/certs}"
 INDEXER_URL="${INDEXER_URL:-https://127.0.0.1:9200}"
+INDEXER_CA="${INDEXER_CA:-$CERTS/root-ca.pem}"
+INDEXER_ADMIN="${INDEXER_ADMIN:-admin}"
+KEEP_PASSWORDS="${KEEP_PASSWORDS:-0}"
 INDEXER_RESOLVE="${INDEXER_RESOLVE:-}"
 API_URL="${API_URL:-https://127.0.0.1:55000}"
 API_ADMIN="${API_ADMIN:-wazuh-wui}"
@@ -18,11 +21,23 @@ for tool in curl jq; do
   command -v "$tool" >/dev/null || { echo "$tool is not installed" >&2; exit 2; }
 done
 
+indexer_auth() {
+  if [ -f "$CERTS/admin.pem" ] && [ -f "$CERTS/admin-key.pem" ]; then
+    INDEXER_AUTH=(--cert "$CERTS/admin.pem" --key "$CERTS/admin-key.pem")
+    return
+  fi
+  local password
+  password="$(read_secret "Password of the indexer user $INDEXER_ADMIN" "${INDEXER_ADMIN_PASSWORD:-}")"
+  INDEXER_HEADERS="$(mktemp)"
+  trap 'rm -f "$INDEXER_HEADERS"' EXIT
+  printf 'Authorization: Basic %s\n' "$(printf '%s:%s' "$INDEXER_ADMIN" "$password" | base64 | tr -d '\n')" > "$INDEXER_HEADERS"
+  INDEXER_AUTH=(-H "@$INDEXER_HEADERS")
+}
+
 indexer() {
   local resolve=()
   [ -z "$INDEXER_RESOLVE" ] || resolve=(--resolve "$INDEXER_RESOLVE")
-  curl -sS --fail-with-body ${resolve[@]+"${resolve[@]}"} --cacert "$CERTS/root-ca.pem" \
-    --cert "$CERTS/admin.pem" --key "$CERTS/admin-key.pem" \
+  curl -sS --fail-with-body ${resolve[@]+"${resolve[@]}"} --cacert "$INDEXER_CA" "${INDEXER_AUTH[@]}" \
     -H 'Content-Type: application/json' "$@"
 }
 
@@ -30,9 +45,18 @@ api() {
   curl -sSk -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' "$@"
 }
 
+read_secret() {
+  local prompt="$1" value="${2:-}"
+  if [ -z "$value" ]; then
+    read -rsp "$prompt: " value || { echo >&2; echo "no terminal to ask for it: export the password in the environment, see install.md" >&2; exit 4; }
+    echo >&2
+  fi
+  printf '%s' "$value"
+}
+
 api_login() {
-  local admin_password="${API_ADMIN_PASSWORD:-}"
-  [ -n "$admin_password" ] || { read -rsp "Password of the Wazuh API user $API_ADMIN: " admin_password; echo >&2; }
+  local admin_password
+  admin_password="$(read_secret "Password of the Wazuh API user $API_ADMIN" "${API_ADMIN_PASSWORD:-}")"
   TOKEN="$(curl -sSk -u "$API_ADMIN:$admin_password" -X POST "$API_URL/security/user/authenticate?raw=true")"
   case "$TOKEN" in
     ey*) ;;
@@ -46,8 +70,8 @@ api_id() {
 }
 
 ask_password() {
-  local prompt="$1" value="${2:-}"
-  [ -n "$value" ] || { read -rsp "$prompt: " value; echo >&2; }
+  local value
+  value="$(read_secret "$1" "${2:-}")"
   case "$value" in
     *[\$\&\'\"\\\ ]*) echo "the password cannot hold \$, &, quotes, backslashes or spaces" >&2; exit 4 ;;
   esac
@@ -56,8 +80,15 @@ ask_password() {
 
 create() {
   local indexer_password api_password policy role user
-  indexer_password="$(ask_password 'New password of the oscompliance indexer user' "${OSC_INDEXER_PASSWORD:-}")"
-  api_password="$(ask_password 'New password of the oscompliance Wazuh API user' "${OSC_WAZUH_API_PASSWORD:-}")"
+  if [ "$KEEP_PASSWORDS" = 1 ] && [ -f "$ENV_FILE" ]; then
+    indexer_password="$(sed -n 's/^OSC_INDEXER_PASSWORD=//p' "$ENV_FILE")"
+    api_password="$(sed -n 's/^OSC_WAZUH_API_PASSWORD=//p' "$ENV_FILE")"
+  else
+    indexer_password="$(ask_password 'New password of the oscompliance indexer user' "${OSC_INDEXER_PASSWORD:-}")"
+    api_password="$(ask_password 'New password of the oscompliance Wazuh API user' "${OSC_WAZUH_API_PASSWORD:-}")"
+  fi
+
+  indexer_auth
 
   indexer -o /dev/null -X PUT "$INDEXER_URL/_plugins/_security/api/roles/oscompliance_engine" \
     -d @"$HERE/engine-role.json"
@@ -69,7 +100,11 @@ create() {
 
   api_login
   policy="$(api_id policies name oscompliance_engine_groups)"
-  [ -n "$policy" ] || policy="$(api -X POST "$API_URL/security/policies" -d "$(jq .policy "$HERE/engine-api-role.json")" | jq -r '.data.affected_items[0].id')"
+  if [ -n "$policy" ]; then
+    api -o /dev/null -X PUT "$API_URL/security/policies/$policy" -d "$(jq .policy "$HERE/engine-api-role.json")"
+  else
+    policy="$(api -X POST "$API_URL/security/policies" -d "$(jq .policy "$HERE/engine-api-role.json")" | jq -r '.data.affected_items[0].id')"
+  fi
   role="$(api_id roles name oscompliance_engine)"
   [ -n "$role" ] || role="$(api -X POST "$API_URL/security/roles" -d '{"name": "oscompliance_engine"}' | jq -r '.data.affected_items[0].id')"
   api -o /dev/null -X POST "$API_URL/security/roles/$role/policies?policy_ids=$policy"
@@ -95,6 +130,7 @@ create() {
 
 remove() {
   local id
+  indexer_auth
   for path in internalusers/oscompliance rolesmapping/oscompliance_engine roles/oscompliance_engine; do
     curl_status="$(indexer -o /dev/null -w '%{http_code}' -X DELETE "$INDEXER_URL/_plugins/_security/api/$path" || true)"
     echo "indexer: $path $curl_status"
