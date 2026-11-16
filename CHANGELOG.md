@@ -24,6 +24,11 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 - The Wazuh API role of the engine adds `group:modify_assignments` and `agent:modify_group`.
 - `install.sh uninstall` removes from each node only what is installed there, and the rules only on the master.
 - The installation guide covers distributed deployments, with the steps of each node type.
+- `install.sh server` installs `jq` and `unzip` with the system package manager when they are missing.
+
+### Fixed
+
+- The engine logs in to the Wazuh API again when its token is revoked by a change of roles, as happens right after `engine-users.sh` creates them, instead of skipping the group configuration until the next sync.
 
 ## [1.1.0] - 2026-11-15
 
