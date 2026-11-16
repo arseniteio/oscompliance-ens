@@ -132,6 +132,12 @@ func (c *Client) do(ctx context.Context, method, path, contentType string, body 
 
 		if resp.StatusCode == http.StatusUnauthorized && attempt == 0 {
 			c.forget(token)
+			// Wazuh revokes tokens issued in the same second as an RBAC change, such as engine-users.sh creating the engine role.
+			select {
+			case <-time.After(tokenRetryDelay):
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 			continue
 		}
 		if resp.StatusCode >= 300 {
@@ -143,6 +149,8 @@ func (c *Client) do(ctx context.Context, method, path, contentType string, body 
 }
 
 const agentsPage = 500
+
+var tokenRetryDelay = 2 * time.Second
 
 func (c *Client) GroupAgents(ctx context.Context, group string) ([]Agent, error) {
 
