@@ -283,6 +283,17 @@ resolve_indexer() {
   [ -f "$OSC_INDEXER_CA" ] || die "no indexer CA certificate found: set OSC_INDEXER_CA to the root-ca.pem the indexers are signed with"
 }
 
+reachable_indexer() {
+  local url
+  for url in ${OSC_INDEXER_URLS//,/ }; do
+    if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 --cacert "$OSC_INDEXER_CA" "$url")" != 000 ]; then
+      echo "$url"
+      return
+    fi
+  done
+  die "no indexer of $OSC_INDEXER_URLS answers from this host"
+}
+
 write_engine_conf() {
   install -d -m 755 "$CONF_DIR"
   printf 'OSC_INDEXER_URLS=%s\nOSC_INDEXER_CA=%s\n' "$OSC_INDEXER_URLS" "$OSC_INDEXER_CA" > "$ENGINE_CONF"
@@ -371,7 +382,7 @@ create_engine_users() {
   else
     say "creating the engine users"
   fi
-  INDEXER_URL="${OSC_INDEXER_URLS%%,*}" INDEXER_CA="$OSC_INDEXER_CA" CERTS="$INDEXER_CERTS" \
+  INDEXER_URL="$(reachable_indexer)" INDEXER_CA="$OSC_INDEXER_CA" CERTS="$INDEXER_CERTS" \
     KEEP_PASSWORDS="$([ -f "$CONF_DIR/engine.env" ] && echo 1 || echo 0)" \
     with_terminal bash "$PKG/wazuh/engine-users.sh" create
 }
