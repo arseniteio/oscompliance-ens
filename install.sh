@@ -205,7 +205,8 @@ group_conf_arrived() {
 }
 
 rules_synced() {
-  cmp -s "$RULES_FILE" "$PKG/wazuh/oscompliance_facts_rules.xml"
+  [ -f "$RULES_FILE" ] &&
+    [ "$(sha256sum < "$RULES_FILE")" = "$(sha256sum < "$PKG/wazuh/oscompliance_facts_rules.xml")" ]
 }
 
 with_terminal() {
