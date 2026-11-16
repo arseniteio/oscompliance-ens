@@ -61,6 +61,26 @@ require_tools() {
   done
 }
 
+install_tools() {
+  local missing=() tool
+  for tool in "$@"; do
+    command -v "$tool" >/dev/null || missing+=("$tool")
+  done
+  [ ${#missing[@]} -gt 0 ] || return 0
+
+  say "installing ${missing[*]}"
+  if command -v dnf >/dev/null; then
+    dnf install -y -q "${missing[@]}" >/dev/null
+  elif command -v yum >/dev/null; then
+    yum install -y -q "${missing[@]}" >/dev/null
+  elif command -v apt-get >/dev/null; then
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "${missing[@]}" >/dev/null
+  elif command -v zypper >/dev/null; then
+    zypper -q install -y "${missing[@]}" >/dev/null
+  fi
+  require_tools "${missing[@]}"
+}
+
 arch_of() {
   case "$1" in
     x86_64 | amd64) echo amd64 ;;
@@ -428,10 +448,10 @@ server() {
   fi
   if has plugin; then
     is_dashboard || die "no Wazuh dashboard in $DASHBOARD"
-    require_tools unzip
+    install_tools unzip
   fi
   if has engine; then
-    require_tools jq
+    install_tools jq
     resolve_indexer
   fi
   say "installing on this node: $SELECTED"
