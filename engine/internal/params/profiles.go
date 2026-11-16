@@ -64,6 +64,21 @@ func (c *Config) MatchedProfiles(agentID string) []catalog.Profile {
 	return slices.Clone(c.matched[agentID])
 }
 
+func (c *Config) KnowsHosts() bool { return c.hostFacts != nil }
+
+func (c *Config) ProfileMembers() map[string][]string {
+	out := map[string][]string{}
+	for agentID, profiles := range c.matched {
+		for _, p := range profiles {
+			out[p.ID] = append(out[p.ID], agentID)
+		}
+	}
+	for _, ids := range out {
+		slices.Sort(ids)
+	}
+	return out
+}
+
 func (c *Config) assign() {
 	c.matched = map[string][]catalog.Profile{}
 	for agentID, facts := range c.hostFacts {

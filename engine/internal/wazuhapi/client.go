@@ -218,12 +218,20 @@ func (c *Client) CreateGroup(ctx context.Context, name string) error {
 const assignBatch = 500
 
 func (c *Client) AssignAgents(ctx context.Context, group string, agentIDs []string) error {
+	return c.changeGroup(ctx, http.MethodPut, group, agentIDs)
+}
+
+func (c *Client) RemoveAgents(ctx context.Context, group string, agentIDs []string) error {
+	return c.changeGroup(ctx, http.MethodDelete, group, agentIDs)
+}
+
+func (c *Client) changeGroup(ctx context.Context, method, group string, agentIDs []string) error {
 
 	for start := 0; start < len(agentIDs); start += assignBatch {
 
 		batch := agentIDs[start:min(start+assignBatch, len(agentIDs))]
 		path := fmt.Sprintf("/agents/group?group_id=%s&agents_list=%s", url.QueryEscape(group), url.QueryEscape(strings.Join(batch, ",")))
-		body, err := c.do(ctx, http.MethodPut, path, "", nil)
+		body, err := c.do(ctx, method, path, "", nil)
 		if err != nil {
 			return err
 		}
@@ -239,10 +247,10 @@ func (c *Client) AssignAgents(ctx context.Context, group string, agentIDs []stri
 			} `json:"data"`
 		}
 		if err := json.Unmarshal(body, &answer); err != nil {
-			return fmt.Errorf("wazuh api: assign to %s: %w", group, err)
+			return fmt.Errorf("wazuh api: agents of group %s: %w", group, err)
 		}
 		if failed := answer.Data.FailedItems; len(failed) > 0 {
-			return fmt.Errorf("wazuh api: assign to %s: agents %v: %s", group, failed[0].ID, failed[0].Error.Message)
+			return fmt.Errorf("wazuh api: agents of group %s: %v: %s", group, failed[0].ID, failed[0].Error.Message)
 		}
 	}
 

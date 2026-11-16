@@ -95,6 +95,7 @@ func runMain() error {
 	syncApply := flag.Bool("sync-apply", false, "write the group configuration; without it the changes are only logged and recorded")
 	configHistoryIndex := flag.String("config-history-index", "oscompliance-config-history", "index recording every group configuration change")
 	hostProfileIndex := flag.String("host-profile-index", "oscompliance-host-profile", "index of what the engine deduces about each machine from the Wazuh inventory")
+	profileGroups := flag.Bool("profile-groups", false, "put each machine in the Wazuh group ens-perfil-<id> of every profile it gets, with the label ens.perfil.<id>")
 	onlyControls := flag.String("controls", "", "comma-separated controls to judge, such as op.acc.1; empty judges all of them")
 	flag.Parse()
 
@@ -147,7 +148,7 @@ func runMain() error {
 		if err != nil {
 			return fmt.Errorf("config history index: %w", err)
 		}
-		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply,
+		groups = &groupSync{api: api, history: history, every: *syncInterval, apply: *syncApply, profiles: *profileGroups,
 			requests: func(ctx context.Context, now time.Time) (map[string]string, error) {
 				return requestedGroups(ctx, facts, now.Add(-*window))
 			}}
@@ -324,6 +325,7 @@ type groupSync struct {
 	requests func(ctx context.Context, now time.Time) (map[string]string, error)
 	every    time.Duration
 	apply    bool
+	profiles bool
 	last     time.Time
 }
 
@@ -360,6 +362,11 @@ func (g *groupSync) run(ctx context.Context, policy *params.Config, now time.Tim
 
 	changes, err = groupconf.Sync(ctx, g.api, policy, groups, g.apply, now)
 	g.record(ctx, changes, err)
+
+	if g.profiles && policy.KnowsHosts() {
+		changes, err = groupconf.PublishProfiles(ctx, g.api, policy.ProfileMembers(), g.apply, now)
+		g.record(ctx, changes, err)
+	}
 }
 
 func requestedGroups(ctx context.Context, facts *source.Source, since time.Time) (map[string]string, error) {

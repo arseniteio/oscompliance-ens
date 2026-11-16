@@ -17,6 +17,8 @@ const (
 	LayerSite    = "site"
 )
 
+const ProfileGroupPrefix = "ens-perfil-"
+
 var Layers = []string{LayerDistro, LayerRole, LayerService, LayerSite}
 
 type Profile struct {
@@ -132,6 +134,9 @@ func (p Profile) Validate() []string {
 		case slices.Contains(listFields, c.Field):
 			if !slices.Contains(listOps, c.Op) {
 				add("%s: match %d: %s takes %s", p.ID, i+1, c.Field, strings.Join(listOps, ", "))
+			}
+			if c.Field == "group" && strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.Value)), ProfileGroupPrefix) {
+				add("%s: match %d: the %s* groups follow the profiles, so a profile cannot depend on them", p.ID, i+1, ProfileGroupPrefix)
 			}
 		default:
 			add("%s: match %d: unknown field %q", p.ID, i+1, c.Field)

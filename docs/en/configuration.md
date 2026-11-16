@@ -34,6 +34,7 @@ every pass.
 | `-history-index` | `oscompliance-identity-history` | per-account history |
 | `-config-history-index` | `oscompliance-config-history` | group configuration changes |
 | `-host-profile-index` | `oscompliance-host-profile` | what the engine deduces about each machine |
+| `-profile-groups` | off | put each machine in the Wazuh group `ens-perfil-<id>` of every profile it gets; needs `-wazuh-api` and writes only with `-sync-apply` |
 
 | Environment variable | Purpose |
 |---|---|
@@ -94,6 +95,8 @@ values:
 | `replace` | parameters, by control, for which this profile drops the values of less specific layers |
 
 When several profiles match a machine, lists and tables add up from every layer and other values come from the most specific one. A value set for the machine itself, or a template assigned to it, comes first; a machine with the template `none` takes no profile. Without a host profile, which the engine writes on its next pass, a machine keeps the built-in template of its system type.
+
+With `-profile-groups`, the engine also keeps one Wazuh group per profile, `ens-perfil-<id>`, with the machines that get it, and gives the group the label `ens.perfil.<id>`. Alerts then carry `agent.labels.ens.perfil.<id>`, and rules, dashboards or a group `agent.conf` can tell machines apart by profile. A machine that stops matching leaves the group; the manager is never added. A profile condition cannot use these groups.
 
 `oscompliance-policy`, installed with the engine, reads profiles from YAML files and writes them. It uses the indexer user and password, like the engine: run it on the manager with an admin user.
 

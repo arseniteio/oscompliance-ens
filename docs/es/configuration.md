@@ -31,6 +31,7 @@ La política nunca reside en las máquinas. Los agentes solo guardan rutas; cada
 | `-history-index` | `oscompliance-identity-history` | historial por cuenta |
 | `-config-history-index` | `oscompliance-config-history` | cambios en la configuración de grupo |
 | `-host-profile-index` | `oscompliance-host-profile` | lo que el motor deduce de cada máquina |
+| `-profile-groups` | desactivado | mete cada máquina en el grupo de Wazuh `ens-perfil-<id>` de cada perfil que recibe; necesita `-wazuh-api` y solo escribe con `-sync-apply` |
 
 | Variable de entorno | Función |
 |---|---|
@@ -90,6 +91,8 @@ values:
 | `replace` | parámetros, por control, para los que este perfil descarta los valores de las capas menos específicas |
 
 Cuando varios perfiles encajan con una máquina, las listas y las tablas se suman desde todas las capas y el resto de valores sale de la más específica. Un valor definido para la propia máquina, o una plantilla asignada a ella, va primero; una máquina con la plantilla `none` no toma ningún perfil. Sin perfil de máquina, que el motor escribe en su siguiente pasada, la máquina sigue con la plantilla integrada de su tipo de sistema.
+
+Con `-profile-groups`, el motor mantiene además un grupo de Wazuh por perfil, `ens-perfil-<id>`, con las máquinas que lo reciben, y da al grupo la etiqueta `ens.perfil.<id>`. Así las alertas llevan `agent.labels.ens.perfil.<id>`, y las reglas, los dashboards o el `agent.conf` de un grupo pueden distinguir las máquinas por perfil. Una máquina que deja de encajar sale del grupo; el manager nunca se añade. Una condición de perfil no puede usar estos grupos.
 
 `oscompliance-policy`, que se instala con el motor, lee perfiles de ficheros YAML y los escribe. Usa el usuario y la contraseña del indexer, como el motor: ejecútalo en el manager con un usuario administrador.
 
