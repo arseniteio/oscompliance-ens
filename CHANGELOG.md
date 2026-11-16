@@ -4,6 +4,10 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+### Changed
+
+- The repository is now `arseniteio/oscompliance-ens-wazuh`, to leave room for other SIEMs. The Go module paths and schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.
+
 ## [1.2.0] - 2026-11-16
 
 ### Added
@@ -57,7 +61,7 @@ First release.
 - Packages for Linux amd64 and arm64 with a `SHA256SUMS` file.
 - Support for Wazuh 4.14.7, 4.14.8 and 4.14.9, installed from packages or on Docker.
 
-[Unreleased]: https://github.com/arseniteio/oscompliance-ens/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/arseniteio/oscompliance-ens/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/arseniteio/oscompliance-ens/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/arseniteio/oscompliance-ens/releases/tag/v1.0.0
+[Unreleased]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/releases/tag/v1.0.0
