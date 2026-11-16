@@ -49,6 +49,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opnub1"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/evaluator"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/groupconf"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/hostprofile"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/run"
@@ -93,6 +94,7 @@ func runMain() error {
 	syncInterval := flag.Duration("sync-interval", 15*time.Minute, "minimum time between two group configuration syncs")
 	syncApply := flag.Bool("sync-apply", false, "write the group configuration; without it the changes are only logged and recorded")
 	configHistoryIndex := flag.String("config-history-index", "oscompliance-config-history", "index recording every group configuration change")
+	hostProfileIndex := flag.String("host-profile-index", "oscompliance-host-profile", "index of what the engine deduces about each machine from the Wazuh inventory")
 	onlyControls := flag.String("controls", "", "comma-separated controls to judge, such as op.acc.1; empty judges all of them")
 	flag.Parse()
 
@@ -125,6 +127,11 @@ func runMain() error {
 	}
 
 	facts := source.New(client, *alerts, *monitoring, *states)
+
+	profiles, err := store.NewHostProfiles(ctx, client, *hostProfileIndex)
+	if err != nil {
+		return fmt.Errorf("host profile index: %w", err)
+	}
 
 	var groups *groupSync
 	if *apiURL != "" {
@@ -247,6 +254,8 @@ func runMain() error {
 			}
 			continue
 		}
+
+		profileHosts(ctx, facts, profiles, time.Now().Add(-*lookback))
 
 		start, before := time.Now(), client.Requests()
 		n, err := run.Once(ctx, facts, controls, policy, sink, cfg, time.Now())
@@ -377,6 +386,39 @@ func (g *groupSync) record(ctx context.Context, changes []groupconf.Change, err 
 	if err != nil {
 		slog.Error("group configuration", "error", err)
 	}
+}
+
+func profileHosts(ctx context.Context, facts *source.Source, profiles *store.HostProfiles, since time.Time) {
+
+	reporting, err := facts.FleetReporting(ctx, since)
+	if err != nil {
+		slog.Warn("host profiles", "error", err)
+		return
+	}
+
+	signals := catalog.Signals()
+	exact, prefixes := signals.PackageNames()
+	inventories, err := facts.HostInventories(ctx, exact, prefixes)
+	if err != nil {
+		slog.Warn("host profiles", "error", err)
+		return
+	}
+
+	if _, ok := reporting[source.ManagerID]; !ok {
+		reporting[source.ManagerID] = source.Reporting{}
+	}
+
+	now := time.Now()
+	out := make([]hostprofile.Profile, 0, len(reporting))
+	for id, r := range reporting {
+		out = append(out, hostprofile.Build(verdict.Agent{ID: id, Name: r.Name}, r.Groups, inventories[id], signals, now, version))
+	}
+
+	if err := profiles.Write(ctx, out); err != nil {
+		slog.Warn("host profiles", "error", err)
+		return
+	}
+	slog.Info("host profiles", "machines", len(out))
 }
 
 func managerInventory(ctx context.Context, api *wazuhapi.Client) (*source.Inventory, error) {

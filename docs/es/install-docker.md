@@ -193,4 +193,4 @@ Retira los usuarios del motor, con las mismas variables del apartado 4. El scrip
 bash wazuh/engine-users.sh remove
 ```
 
-Los índices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` y `wazuh-ens-configuration` se quedan en el indexer, así que no se pierde el historial. Bórralos desde Dev Tools cuando ya no los necesites.
+Los índices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history`, `oscompliance-host-profile` y `wazuh-ens-configuration` se quedan en el indexer, así que no se pierde el historial. Bórralos desde Dev Tools cuando ya no los necesites.

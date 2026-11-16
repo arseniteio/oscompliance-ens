@@ -19,7 +19,8 @@
       "index_patterns": [
         "oscompliance-verdicts",
         "oscompliance-identity-history",
-        "oscompliance-config-history"
+        "oscompliance-config-history",
+        "oscompliance-host-profile"
       ],
       "allowed_actions": [
         "create_index",

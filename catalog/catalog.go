@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed controls templates messages system-types.json default-configuration.json
+//go:embed controls templates messages system-types.json default-configuration.json host-signals.json
 var files embed.FS
 
 type Control struct {
@@ -164,6 +164,7 @@ func init() {
 
 	loadMessages()
 	loadSystemTypes()
+	loadHostSignals()
 }
 
 func decodeStrict(p string, v any) error {

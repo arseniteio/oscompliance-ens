@@ -193,4 +193,4 @@ Remove the engine users, with the same variables as in section 4. The script ask
 bash wazuh/engine-users.sh remove
 ```
 
-The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them.
+The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history`, `oscompliance-host-profile` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them.

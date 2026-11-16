@@ -447,7 +447,7 @@ bash wazuh/engine-users.sh remove
 
 On each worker manager, restart the manager once the rules file is gone.
 
-The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them. If you audited the manager, also remove the agent from the master as from an audited machine, and remove its two localfile blocks from `ossec.conf`.
+The indices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history`, `oscompliance-host-profile` and `wazuh-ens-configuration` stay in the indexer, so the history is not lost. Delete them from Dev Tools when you no longer need them. If you audited the manager, also remove the agent from the master as from an audited machine, and remove its two localfile blocks from `ossec.conf`.
 
 ## Build from source
 

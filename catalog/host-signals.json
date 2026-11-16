@@ -1,0 +1,27 @@
+{
+  "distros": [
+    {"id": "ubuntu", "family": "debian", "platforms": ["ubuntu"], "names": ["ubuntu"], "version": "major.minor"},
+    {"id": "debian", "family": "debian", "platforms": ["debian"], "names": ["debian"], "version": "major"},
+    {"id": "rhel", "family": "rhel", "platforms": ["rhel", "redhat"], "names": ["red hat enterprise linux"], "version": "major"},
+    {"id": "rocky", "family": "rhel", "platforms": ["rocky"], "names": ["rocky linux"], "version": "major"},
+    {"id": "almalinux", "family": "rhel", "platforms": ["almalinux"], "names": ["almalinux"], "version": "major"},
+    {"id": "centos", "family": "rhel", "platforms": ["centos"], "names": ["centos"], "version": "major"},
+    {"id": "oracle", "family": "rhel", "platforms": ["ol", "oracle"], "names": ["oracle linux"], "version": "major"},
+    {"id": "amazon", "family": "rhel", "platforms": ["amzn"], "names": ["amazon linux"], "version": "major"},
+    {"id": "fedora", "family": "rhel", "platforms": ["fedora"], "names": ["fedora"], "version": "major"},
+    {"id": "sles", "family": "suse", "platforms": ["sles"], "names": ["suse linux enterprise"], "version": "major"},
+    {"id": "opensuse", "family": "suse", "platforms": ["opensuse", "opensuse-leap", "opensuse-tumbleweed"], "names": ["opensuse"], "version": "major.minor"}
+  ],
+  "roles": [
+    {"id": "manager", "packages": ["wazuh-manager"]},
+    {"id": "workstation", "packages": ["gdm3", "gdm", "lightdm", "sddm", "gnome-shell", "plasma-desktop", "plasma-workspace", "xfce4-session", "cinnamon", "mate-session-manager"]}
+  ],
+  "services": [
+    {"id": "zimbra", "packages": ["zimbra-core"]},
+    {"id": "openldap", "packages": ["slapd", "openldap-servers"], "unless": ["zimbra"]},
+    {"id": "web", "packages": ["nginx", "apache2", "httpd"]},
+    {"id": "database", "packages": ["postgresql-server", "postgresql-1*", "mariadb-server", "mysql-server"]},
+    {"id": "wazuh-indexer", "packages": ["wazuh-indexer"]},
+    {"id": "wazuh-dashboard", "packages": ["wazuh-dashboard"]}
+  ]
+}

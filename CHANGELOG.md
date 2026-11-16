@@ -4,6 +4,11 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- The engine deduces each machine's distro, role (manager, server or workstation) and services from the Wazuh inventory on every pass, and writes them to `oscompliance-host-profile` with the signal behind each one. The rules are in `catalog/host-signals.json`. Verdicts do not change.
+- `-host-profile-index` names that index.
+
 ### Changed
 
 - The repository is now `arseniteio/oscompliance-ens-wazuh`, to leave room for other SIEMs. The Go module paths and schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.

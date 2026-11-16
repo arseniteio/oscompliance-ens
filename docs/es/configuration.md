@@ -30,6 +30,7 @@ La política nunca reside en las máquinas. Los agentes solo guardan rutas; cada
 | `-verdicts-index` | `oscompliance-verdicts` | veredictos |
 | `-history-index` | `oscompliance-identity-history` | historial por cuenta |
 | `-config-history-index` | `oscompliance-config-history` | cambios en la configuración de grupo |
+| `-host-profile-index` | `oscompliance-host-profile` | lo que el motor deduce de cada máquina |
 
 | Variable de entorno | Función |
 |---|---|
@@ -44,6 +45,22 @@ La unidad de systemd `oscompliance-engine.service` lee `/etc/oscompliance/engine
 OSC_INDEXER_URLS=https://10.0.0.1:9200,https://10.0.0.2:9200
 OSC_INDEXER_CA=/etc/filebeat/certs/root-ca.pem
 ```
+
+## Perfil de máquina
+
+En cada pasada, el motor deduce qué es cada máquina a partir del inventario de Wazuh y lo escribe en `oscompliance-host-profile`, un documento por agente. Ningún agente envía nada nuevo y no se configura nada en las máquinas.
+
+| Campo | Procede de |
+|---|---|
+| `distro`, `family` | `host.os.platform` o, si no, `host.os.name` de `wazuh-states-inventory-system`, con la versión recortada a `major` o `major.minor` |
+| `role` | `manager` para el agente 000 o una máquina con `wazuh-manager`; `workstation` para una máquina con un gestor de pantalla o un paquete de escritorio; `server` en el resto |
+| `services` | paquetes instalados de `wazuh-states-inventory-packages`, como `zimbra-core` o `slapd` |
+| `groups` | los grupos de Wazuh del agente |
+| `signals` | cada deducción con el campo o el paquete del que sale |
+
+Las reglas están en [`catalog/host-signals.json`](../../catalog/host-signals.json). Un nombre de paquete que termina en `*` compara por prefijo. Un servicio con `unless` se omite cuando está presente alguno de esos servicios, para que el LDAP que trae Zimbra no aparezca como OpenLDAP.
+
+El perfil todavía no cambia ningún veredicto. Es la base para asignar la configuración por tipo de máquina.
 
 ## Configuración de grupo
 

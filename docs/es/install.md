@@ -447,7 +447,7 @@ bash wazuh/engine-users.sh remove
 
 En cada manager worker, reinicia el manager cuando haya desaparecido el fichero de reglas.
 
-Los índices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history` y `wazuh-ens-configuration` se quedan en el indexer, así que no se pierde el historial. Bórralos desde Dev Tools cuando ya no los necesites. Si auditaste el manager, retira también el agente del maestro como en una máquina auditada, y retira sus dos bloques localfile de `ossec.conf`.
+Los índices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompliance-config-history`, `oscompliance-host-profile` y `wazuh-ens-configuration` se quedan en el indexer, así que no se pierde el historial. Bórralos desde Dev Tools cuando ya no los necesites. Si auditaste el manager, retira también el agente del maestro como en una máquina auditada, y retira sus dos bloques localfile de `ossec.conf`.
 
 ## Compilar desde el código
 

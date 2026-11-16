@@ -33,6 +33,7 @@ every pass.
 | `-verdicts-index` | `oscompliance-verdicts` | verdicts |
 | `-history-index` | `oscompliance-identity-history` | per-account history |
 | `-config-history-index` | `oscompliance-config-history` | group configuration changes |
+| `-host-profile-index` | `oscompliance-host-profile` | what the engine deduces about each machine |
 
 | Environment variable | Purpose |
 |---|---|
@@ -48,6 +49,22 @@ The systemd unit `oscompliance-engine.service` reads `/etc/oscompliance/engine.c
 OSC_INDEXER_URLS=https://10.0.0.1:9200,https://10.0.0.2:9200
 OSC_INDEXER_CA=/etc/filebeat/certs/root-ca.pem
 ```
+
+## Host profile
+
+On every pass the engine works out what each machine is from the Wazuh inventory and writes it to `oscompliance-host-profile`, one document per agent. No agent sends anything new and nothing is configured on the machines.
+
+| Field | Comes from |
+|---|---|
+| `distro`, `family` | `host.os.platform` or, failing that, `host.os.name` of `wazuh-states-inventory-system`, with the version cut to `major` or `major.minor` |
+| `role` | `manager` for agent 000 or a machine with `wazuh-manager`; `workstation` for a machine with a display manager or desktop package; `server` otherwise |
+| `services` | installed packages in `wazuh-states-inventory-packages`, such as `zimbra-core` or `slapd` |
+| `groups` | the agent's Wazuh groups |
+| `signals` | each deduction with the field or package it came from |
+
+The rules are in [`catalog/host-signals.json`](../../catalog/host-signals.json). A package name ending in `*` matches by prefix. A service with `unless` is left out when one of those services is present, so the LDAP server bundled with Zimbra is not reported as OpenLDAP.
+
+The profile does not change any verdict yet. It is the basis for assigning configuration by machine type.
 
 ## Group configuration
 
