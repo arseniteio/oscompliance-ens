@@ -427,8 +427,9 @@ reload_synced_rules() {
 
 server_next_steps() {
   echo
-  echo "Done on this node. Next steps:"
+  echo "Done on this node."
   if has engine; then
+    echo "Next steps:"
     echo "  1. Run this script with the server argument on every other manager and dashboard node."
     echo "  2. On each machine to audit, run this script with: agent --group ens"
     echo "The engine judges with the default configuration (level MEDIO, group ens) until one is saved"
