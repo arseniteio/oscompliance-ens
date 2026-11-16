@@ -4,6 +4,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-16
+
 ### Added
 
 - `install.sh server` detects the node and installs only its part: rules, manager audit and engine on the master manager or single node, a restart once the rules of the release arrive on a worker, and the Power ENS plugin on a dashboard node.
@@ -55,6 +57,7 @@ First release.
 - Packages for Linux amd64 and arm64 with a `SHA256SUMS` file.
 - Support for Wazuh 4.14.7, 4.14.8 and 4.14.9, installed from packages or on Docker.
 
-[Unreleased]: https://github.com/arseniteio/oscompliance-ens/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/arseniteio/oscompliance-ens/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/arseniteio/oscompliance-ens/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/arseniteio/oscompliance-ens/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/arseniteio/oscompliance-ens/releases/tag/v1.0.0
