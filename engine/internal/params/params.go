@@ -63,6 +63,9 @@ type Config struct {
 	} `json:"agents"`
 
 	inventoryTypes map[string]string
+	profiles       []catalog.Profile
+	hostFacts      map[string]catalog.HostFacts
+	matched        map[string][]catalog.Profile
 }
 
 const NoTemplate = "none"
@@ -353,6 +356,11 @@ func (c *Config) Matcher(agentID, controlID, paramID string) (Matcher, error) {
 }
 
 func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, bool) {
+	r, ok := c.resolve(agentID, controlID, paramID)
+	return r.Value, r.Mode, ok
+}
+
+func (c *Config) resolve(agentID, controlID, paramID string) (Resolution, bool) {
 
 	if catalog.IsAgentLevel(controlID, paramID) {
 
@@ -361,13 +369,27 @@ func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, 
 
 		if hasProfile {
 			if value, ok := entry.Parameters[paramID]; ok {
-				return value, entry.MatchModes[paramID], true
+				return Resolution{Value: value, Mode: entry.MatchModes[paramID], Sources: []Source{{Kind: "agent", ID: agentID}}}, true
+			}
+		}
+
+		if entry.TemplateID != "" && entry.TemplateID != NoTemplate {
+			if values, modes, ok := c.assignedTemplate(entry.TemplateID, controlID); ok {
+				if value, ok := values[paramID]; ok {
+					return Resolution{Value: value, Mode: modes[paramID], Sources: []Source{{Kind: "template", ID: entry.TemplateID}}}, true
+				}
+			}
+		}
+
+		if entry.TemplateID != NoTemplate {
+			if r, ok := c.fromProfiles(agentID, controlID, paramID); ok {
+				return r, true
 			}
 		}
 
 		if values, modes, ok := c.template(agent.TypeOverride, c.systemType(agentID, agent.DetectedType), entry.TemplateID, controlID); ok {
 			if value, ok := values[paramID]; ok {
-				return value, modes[paramID], true
+				return Resolution{Value: value, Mode: modes[paramID], Sources: []Source{{Kind: "template", ID: "default"}}}, true
 			}
 		}
 	}
@@ -378,12 +400,24 @@ func (c *Config) valueAndMode(agentID, controlID, paramID string) (any, string, 
 		}
 		for _, p := range control.Parameters {
 			if p.ID == paramID {
-				return p.Value, p.MatchMode, true
+				return Resolution{Value: p.Value, Mode: p.MatchMode, Sources: []Source{{Kind: "organisation"}}}, true
 			}
 		}
 	}
 
-	return nil, "", false
+	return Resolution{}, false
+}
+
+func (c *Config) assignedTemplate(id, controlID string) (map[string]any, map[string]string, bool) {
+	if t, ok := catalog.BuiltinTemplate(id, controlID); ok {
+		return t.Values[controlID], t.MatchModes[controlID], true
+	}
+	for _, t := range c.Templates {
+		if t.ID == id && t.ControlID == controlID {
+			return t.Values, t.MatchModes, true
+		}
+	}
+	return nil, nil, false
 }
 
 func (c *Config) template(typeOverride, detectedType, assigned, controlID string) (map[string]any, map[string]string, bool) {

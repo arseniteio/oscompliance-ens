@@ -223,7 +223,7 @@ EOF
 Install and start the engine.
 
 ```bash
-install -m 755 bin/oscompliance-engine /usr/local/bin/
+install -m 755 bin/oscompliance-engine bin/oscompliance-policy /usr/local/bin/
 install -m 644 wazuh/oscompliance-engine.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now oscompliance-engine
@@ -396,7 +396,7 @@ By hand, on the master, save the current binary, so you can return to it by putt
 
 ```bash
 cp /usr/local/bin/oscompliance-engine /usr/local/bin/oscompliance-engine.prev
-install -m 755 bin/oscompliance-engine /usr/local/bin/
+install -m 755 bin/oscompliance-engine bin/oscompliance-policy /usr/local/bin/
 systemctl restart oscompliance-engine
 ```
 
@@ -432,7 +432,7 @@ On the master manager, remove the engine, the rules and the block in the group c
 
 ```bash
 systemctl disable --now oscompliance-engine
-rm -f /etc/systemd/system/oscompliance-engine.service /usr/local/bin/oscompliance-engine
+rm -f /etc/systemd/system/oscompliance-engine.service /usr/local/bin/oscompliance-engine /usr/local/bin/oscompliance-policy
 systemctl daemon-reload
 rm -f /var/ossec/etc/rules/oscompliance_facts_rules.xml
 sed -i '/<!-- oscompliance begin/,/<!-- oscompliance end -->/d' /var/ossec/etc/shared/ens/agent.conf

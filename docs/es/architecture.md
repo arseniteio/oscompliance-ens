@@ -58,7 +58,7 @@ En el lado del agente, una pasada lee ficheros locales y ejecuta unos pocos coma
 | `catalog/templates/`, `catalog/system-types.json` | valores de parámetros integrados por tipo de sistema |
 | `catalog/wazuh/` | reglas, fragmento de agent.conf, roles del indexer y de la API, script de usuarios, unidad de servicio y fichero de compose del motor |
 | `agent/` | `oscompliance-agent` y sus colectores |
-| `engine/` | `oscompliance-engine`, fuentes, jueces, agregación, configuración de grupo; `oscompliance-fleetsim` |
+| `engine/` | `oscompliance-engine`, fuentes, jueces, agregación, configuración de grupo; `oscompliance-policy`; `oscompliance-fleetsim` |
 | `docs/` | esta documentación, en `en/` y `es/` |
 | `ci/`, `.github/workflows/` | empaquetado y CI |
 

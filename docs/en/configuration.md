@@ -64,7 +64,47 @@ On every pass the engine works out what each machine is from the Wazuh inventory
 
 The rules are in [`catalog/host-signals.json`](../../catalog/host-signals.json). A package name ending in `*` matches by prefix. A service with `unless` is left out when one of those services is present, so the LDAP server bundled with Zimbra is not reported as OpenLDAP.
 
-The profile does not change any verdict yet. It is the basis for assigning configuration by machine type.
+The host profile decides which [profiles](#profiles) a machine gets.
+
+## Profiles
+
+A profile gives parameter values to every machine whose host profile meets its conditions, so a value is set once per machine type instead of once per machine. Each profile is one document in `wazuh-ens-configuration` with `documentType` `PROFILE`. The catalog ships `ubuntu` and `manager-wazuh` in [`catalog/profiles/`](../../catalog/profiles/), with the same values as the built-in templates; a stored profile with the same `id` replaces the built-in one.
+
+```yaml
+id: web
+name: Web servers
+layer: service
+match:
+  - field: service
+    op: has
+    value: web
+values:
+  op.acc.1:
+    P-03:
+      - www-data
+```
+
+| Key | Meaning |
+|---|---|
+| `id` | lowercase letters, digits and hyphens |
+| `layer` | `distro`, `role`, `service` or `site`, from least to most specific |
+| `match` | conditions that must all hold: `distro`, `family`, `role` and `hostname` take `is`, `is_not` or `matches` (shell pattern such as `web-*`); `service` and `group` take `has` or `has_not` |
+| `values` | parameters by control, with the types of the [ENS policy](#ens-policy); `organisation` parameters are not accepted |
+| `match_modes` | `regex` for a parameter given as a regular expression |
+| `replace` | parameters, by control, for which this profile drops the values of less specific layers |
+
+When several profiles match a machine, lists and tables add up from every layer and other values come from the most specific one. A value set for the machine itself, or a template assigned to it, comes first; a machine with the template `none` takes no profile. Without a host profile, which the engine writes on its next pass, a machine keeps the built-in template of its system type.
+
+`oscompliance-policy`, installed with the engine, reads profiles from YAML files and writes them. It uses the indexer user and password, like the engine: run it on the manager with an admin user.
+
+```bash
+export OSC_INDEXER_PASSWORD='...'
+oscompliance-policy check profiles/*.yaml
+oscompliance-policy plan -ca /etc/wazuh-indexer/certs/root-ca.pem profiles/*.yaml
+oscompliance-policy apply -ca /etc/wazuh-indexer/certs/root-ca.pem profiles/*.yaml
+```
+
+`check` validates the files without connecting. `plan` lists each profile as new, changed (with the parameters that change) or the same, and the stored profiles the files do not hold. `apply` writes the new and changed ones; the engine uses them from its next pass. `export` prints the stored profiles as YAML, all of them or the ones named, and with `-builtin` also the built-in ones, so the files can start from what is in use. `delete` removes stored profiles. `explain -agent 001` shows what the engine deduced about a machine, the profiles it gets and where each of its parameters comes from. `-indexer` takes the indexer URL, `https://localhost:9200` by default.
 
 ## Group configuration
 
@@ -174,7 +214,7 @@ Every parameter has a class that decides where its value comes from:
 | Class | Value |
 |---|---|
 | `organisation` | the control's common value; per-machine values are ignored |
-| `system` | the machine's own value, else its template, else the common value |
+| `system` | the machine's own value, else the template assigned to it, else its profiles, else the template of its system type, else the common value |
 | `platform` | as `system`; built-in templates per system type ship values for it |
 
 Templates: the one assigned to the machine, built-in (`catalog/templates/`)
@@ -193,7 +233,7 @@ privileged groups), and the verdict says when it does.
 
 ## Parameters from a file
 
-After the first save from Power ENS, which creates the configuration with the full catalog, the parameters can also be set from a JSON file with `config/set-parameters.py` of the power-ens-wazuh repository. It checks every value against the catalog, shows the plan and writes only with `--apply`. Each run keeps the previous version in the history, as a save from the dashboard does.
+Values by machine type go in [profiles](#profiles). After the first save from Power ENS, which creates the configuration with the full catalog, the parameters can also be set from a JSON file with `config/set-parameters.py` of the power-ens-wazuh repository. It checks every value against the catalog, shows the plan and writes only with `--apply`. Each run keeps the previous version in the history, as a save from the dashboard does.
 
 Run it from the `config/` folder of a full power-ens-wazuh clone, on a machine that reaches the indexer with its admin certificate. It needs `python3`. On Docker, add `ENS_OS_URL=https://127.0.0.1:9200` and the certificates of `config/wazuh_indexer_ssl_certs`.
 

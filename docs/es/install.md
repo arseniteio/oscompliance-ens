@@ -223,7 +223,7 @@ EOF
 Instala y arranca el motor.
 
 ```bash
-install -m 755 bin/oscompliance-engine /usr/local/bin/
+install -m 755 bin/oscompliance-engine bin/oscompliance-policy /usr/local/bin/
 install -m 644 wazuh/oscompliance-engine.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now oscompliance-engine
@@ -396,7 +396,7 @@ A mano, en el maestro, guarda el binario actual, para poder volver a él ponién
 
 ```bash
 cp /usr/local/bin/oscompliance-engine /usr/local/bin/oscompliance-engine.prev
-install -m 755 bin/oscompliance-engine /usr/local/bin/
+install -m 755 bin/oscompliance-engine bin/oscompliance-policy /usr/local/bin/
 systemctl restart oscompliance-engine
 ```
 
@@ -432,7 +432,7 @@ En el manager maestro, retira el motor, las reglas y el bloque de la configuraci
 
 ```bash
 systemctl disable --now oscompliance-engine
-rm -f /etc/systemd/system/oscompliance-engine.service /usr/local/bin/oscompliance-engine
+rm -f /etc/systemd/system/oscompliance-engine.service /usr/local/bin/oscompliance-engine /usr/local/bin/oscompliance-policy
 systemctl daemon-reload
 rm -f /var/ossec/etc/rules/oscompliance_facts_rules.xml
 sed -i '/<!-- oscompliance begin/,/<!-- oscompliance end -->/d' /var/ossec/etc/shared/ens/agent.conf

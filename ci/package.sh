@@ -11,6 +11,11 @@ notices="$dist/THIRD_PARTY_NOTICES"
   echo "The binaries link the Go standard library, $(go env GOVERSION), under the following license."
   echo
   cat "$root/ci/go-LICENSE"
+  yaml="$(cd "$root/engine" && go list -m -f '{{.Dir}}' go.yaml.in/yaml/v3)"
+  echo
+  echo "oscompliance-policy links go.yaml.in/yaml/v3 under the following licenses."
+  echo
+  cat "$yaml/LICENSE" "$yaml/NOTICE"
 } > "$notices"
 
 # install.sh trusts an unpacked package only when root or the sudo user owns it.
@@ -30,9 +35,9 @@ for arch in amd64 arm64; do
   name="oscompliance-ens-wazuh-$version-linux-$arch"
   dir="$dist/$name"
   mkdir -p "$dir/bin" "$dir/wazuh" "$dir/agent"
-  for part in agent engine; do
-    (cd "$root/$part" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
-      go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$dir/bin/oscompliance-$part" "./cmd/oscompliance-$part")
+  for part in agent:agent engine:engine engine:policy; do
+    (cd "$root/${part%%:*}" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
+      go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$dir/bin/oscompliance-${part#*:}" "./cmd/oscompliance-${part#*:}")
   done
   cp "$root"/catalog/wazuh/* "$dir/wazuh/"
   cp "$root/agent/agent.example.json" "$root/agent/oscompliance.cron" "$dir/agent/"

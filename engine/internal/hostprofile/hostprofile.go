@@ -143,3 +143,11 @@ func firstMatch(sig catalog.PackageSignal, packages []string) (string, bool) {
 	}
 	return "", false
 }
+
+func (p Profile) Facts() catalog.HostFacts {
+	hostname := p.Hostname
+	if hostname == "" {
+		hostname = p.Agent.Name
+	}
+	return catalog.HostFacts{Distro: p.Distro, Family: p.Family, Role: p.Role, Hostname: hostname, Services: p.Services, Groups: p.Groups}
+}

@@ -45,8 +45,11 @@ linters:
         linters:
           - gosec
       # Environment variable names, not credentials.
-      - path: engine/cmd/oscompliance-engine/main\.go
+      - path: engine/cmd/oscompliance-(engine|policy)/main\.go
         text: G101
       # utmp, lastlog and stat fields are reinterpreted bit for bit.
       - path: agent/internal/collect/(accounts/logins|sweep/sweep)\.go
         text: G115
+      # The policy tool reads the files its user names.
+      - path: engine/cmd/oscompliance-policy/main\.go
+        text: G703

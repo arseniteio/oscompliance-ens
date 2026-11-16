@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-//go:embed controls templates messages system-types.json default-configuration.json host-signals.json
+//go:embed controls templates messages system-types.json default-configuration.json host-signals.json profiles
 var files embed.FS
 
 type Control struct {
@@ -165,6 +165,7 @@ func init() {
 	loadMessages()
 	loadSystemTypes()
 	loadHostSignals()
+	loadProfiles()
 }
 
 func decodeStrict(p string, v any) error {
@@ -221,6 +222,10 @@ func (e Evidence) AppliesAt(level string) bool {
 
 func ParameterClass(controlID, paramID string) string {
 	return controls[controlID].Parameters[paramID].Class
+}
+
+func ParameterType(controlID, paramID string) string {
+	return controls[controlID].Parameters[paramID].Type
 }
 
 func IsAgentLevel(controlID, paramID string) bool {

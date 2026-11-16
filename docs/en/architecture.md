@@ -107,7 +107,7 @@ nothing. A steady machine sends about 115 facts per day.
 | `catalog/templates/`, `catalog/system-types.json` | built-in parameter values per system type |
 | `catalog/wazuh/` | rules, agent.conf fragment, indexer and API roles |
 | `agent/` | `oscompliance-agent` and its collectors |
-| `engine/` | `oscompliance-engine`, sources, judges, aggregation, group configuration; `oscompliance-fleetsim` |
+| `engine/` | `oscompliance-engine`, sources, judges, aggregation, group configuration; `oscompliance-policy`; `oscompliance-fleetsim` |
 | `docs/` | this documentation, in `en/` and `es/` |
 | `ci/`, `.github/workflows/` | packaging and CI |
 

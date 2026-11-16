@@ -238,6 +238,12 @@ func runMain() error {
 			} else {
 				loaded.UseInventoryTypes(platforms)
 			}
+			custom, err := params.LoadProfiles(ctx, client, *configIndex)
+			if err != nil {
+				slog.Warn("profiles", "error", err)
+			}
+			loaded.UseProfiles(custom)
+			loaded.UseHostFacts(profileHosts(ctx, facts, profiles, time.Now().Add(-*lookback)))
 			policy, current = loaded, loaded
 			groups.run(ctx, loaded, time.Now())
 		}
@@ -254,8 +260,6 @@ func runMain() error {
 			}
 			continue
 		}
-
-		profileHosts(ctx, facts, profiles, time.Now().Add(-*lookback))
 
 		start, before := time.Now(), client.Requests()
 		n, err := run.Once(ctx, facts, controls, policy, sink, cfg, time.Now())
@@ -388,12 +392,12 @@ func (g *groupSync) record(ctx context.Context, changes []groupconf.Change, err 
 	}
 }
 
-func profileHosts(ctx context.Context, facts *source.Source, profiles *store.HostProfiles, since time.Time) {
+func profileHosts(ctx context.Context, facts *source.Source, profiles *store.HostProfiles, since time.Time) map[string]catalog.HostFacts {
 
 	reporting, err := facts.FleetReporting(ctx, since)
 	if err != nil {
 		slog.Warn("host profiles", "error", err)
-		return
+		return nil
 	}
 
 	signals := catalog.Signals()
@@ -401,7 +405,7 @@ func profileHosts(ctx context.Context, facts *source.Source, profiles *store.Hos
 	inventories, err := facts.HostInventories(ctx, exact, prefixes)
 	if err != nil {
 		slog.Warn("host profiles", "error", err)
-		return
+		return nil
 	}
 
 	if _, ok := reporting[source.ManagerID]; !ok {
@@ -410,15 +414,19 @@ func profileHosts(ctx context.Context, facts *source.Source, profiles *store.Hos
 
 	now := time.Now()
 	out := make([]hostprofile.Profile, 0, len(reporting))
+	hosts := make(map[string]catalog.HostFacts, len(reporting))
 	for id, r := range reporting {
-		out = append(out, hostprofile.Build(verdict.Agent{ID: id, Name: r.Name}, r.Groups, inventories[id], signals, now, version))
+		p := hostprofile.Build(verdict.Agent{ID: id, Name: r.Name}, r.Groups, inventories[id], signals, now, version)
+		out = append(out, p)
+		hosts[id] = p.Facts()
 	}
 
 	if err := profiles.Write(ctx, out); err != nil {
 		slog.Warn("host profiles", "error", err)
-		return
+	} else {
+		slog.Info("host profiles", "machines", len(out))
 	}
-	slog.Info("host profiles", "machines", len(out))
+	return hosts
 }
 
 func managerInventory(ctx context.Context, api *wazuhapi.Client) (*source.Inventory, error) {

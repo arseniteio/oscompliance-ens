@@ -8,6 +8,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 - The engine deduces each machine's distro, role (manager, server or workstation) and services from the Wazuh inventory on every pass, and writes them to `oscompliance-host-profile` with the signal behind each one. The rules are in `catalog/host-signals.json`. Verdicts do not change.
 - `-host-profile-index` names that index.
+- Profiles give parameter values to every machine whose host profile meets their conditions, in four layers (distro, role, service, site): lists add up across layers and other values come from the most specific one. Each profile is a `PROFILE` document in `wazuh-ens-configuration`. The catalog ships `ubuntu` and `manager-wazuh` with the values of the built-in templates, so verdicts do not change.
+- `oscompliance-policy`, installed with the engine, checks, plans, applies, exports and deletes profiles written in YAML, and explains which profiles and values a machine gets.
 
 ### Changed
 

@@ -1,0 +1,26 @@
+id: web
+name: Servidores web
+layer: service
+match:
+  - field: service
+    op: has
+    value: web
+values:
+  op.acc.1:
+    P-03:
+      - www-data
+---
+id: dmz
+name: DMZ
+layer: site
+match:
+  - field: hostname
+    op: matches
+    value: dmz-*
+values:
+  op.acc.1:
+    P-03:
+      - deploy
+replace:
+  op.acc.1:
+    - P-03

@@ -60,7 +60,47 @@ En cada pasada, el motor deduce qué es cada máquina a partir del inventario de
 
 Las reglas están en [`catalog/host-signals.json`](../../catalog/host-signals.json). Un nombre de paquete que termina en `*` compara por prefijo. Un servicio con `unless` se omite cuando está presente alguno de esos servicios, para que el LDAP que trae Zimbra no aparezca como OpenLDAP.
 
-El perfil todavía no cambia ningún veredicto. Es la base para asignar la configuración por tipo de máquina.
+El perfil de máquina decide qué [perfiles](#perfiles) recibe cada máquina.
+
+## Perfiles
+
+Un perfil da valores de parámetros a todas las máquinas cuyo perfil de máquina cumple sus condiciones, de modo que un valor se define una vez por tipo de máquina y no una vez por máquina. Cada perfil es un documento de `wazuh-ens-configuration` con `documentType` `PROFILE`. El catálogo trae `ubuntu` y `manager-wazuh` en [`catalog/profiles/`](../../catalog/profiles/), con los mismos valores que las plantillas integradas; un perfil guardado con el mismo `id` sustituye al integrado.
+
+```yaml
+id: web
+name: Servidores web
+layer: service
+match:
+  - field: service
+    op: has
+    value: web
+values:
+  op.acc.1:
+    P-03:
+      - www-data
+```
+
+| Clave | Significado |
+|---|---|
+| `id` | minúsculas, dígitos y guiones |
+| `layer` | `distro`, `role`, `service` o `site`, de menos a más específica |
+| `match` | condiciones que deben cumplirse todas: `distro`, `family`, `role` y `hostname` admiten `is`, `is_not` o `matches` (patrón de shell como `web-*`); `service` y `group` admiten `has` o `has_not` |
+| `values` | parámetros por control, con los tipos de la [política ENS](#política-ens); no se aceptan parámetros `organisation` |
+| `match_modes` | `regex` para un parámetro dado como expresión regular |
+| `replace` | parámetros, por control, para los que este perfil descarta los valores de las capas menos específicas |
+
+Cuando varios perfiles encajan con una máquina, las listas y las tablas se suman desde todas las capas y el resto de valores sale de la más específica. Un valor definido para la propia máquina, o una plantilla asignada a ella, va primero; una máquina con la plantilla `none` no toma ningún perfil. Sin perfil de máquina, que el motor escribe en su siguiente pasada, la máquina sigue con la plantilla integrada de su tipo de sistema.
+
+`oscompliance-policy`, que se instala con el motor, lee perfiles de ficheros YAML y los escribe. Usa el usuario y la contraseña del indexer, como el motor: ejecútalo en el manager con un usuario administrador.
+
+```bash
+export OSC_INDEXER_PASSWORD='...'
+oscompliance-policy check perfiles/*.yaml
+oscompliance-policy plan -ca /etc/wazuh-indexer/certs/root-ca.pem perfiles/*.yaml
+oscompliance-policy apply -ca /etc/wazuh-indexer/certs/root-ca.pem perfiles/*.yaml
+```
+
+`check` valida los ficheros sin conectarse. `plan` muestra cada perfil como nuevo, cambiado (con los parámetros que cambian) o igual, y los perfiles guardados que no están en los ficheros. `apply` escribe los nuevos y los cambiados; el motor los usa desde su siguiente pasada. `export` imprime en YAML los perfiles guardados, todos o los indicados, y con `-builtin` también los integrados, para partir de lo que está en uso. `delete` borra perfiles guardados. `explain -agent 001` muestra lo que el motor ha deducido de una máquina, los perfiles que recibe y de dónde sale cada uno de sus parámetros. `-indexer` indica la URL del indexer, `https://localhost:9200` por defecto.
 
 ## Configuración de grupo
 
@@ -153,7 +193,7 @@ Cada parámetro tiene una clase que decide de dónde sale su valor:
 | Clase | Valor |
 |---|---|
 | `organisation` | el valor común del control; se ignoran los valores por máquina |
-| `system` | el valor propio de la máquina o, si no, su plantilla o, si no, el valor común |
+| `system` | el valor propio de la máquina o, si no, la plantilla asignada o, si no, sus perfiles o, si no, la plantilla de su tipo de sistema o, si no, el valor común |
 | `platform` | como `system`; las plantillas integradas por tipo de sistema traen valores para él |
 
 Plantillas: la asignada a la máquina, integrada (`catalog/templates/`) o propia; `none` la desactiva; sin ninguna asignada, la plantilla integrada del tipo de sistema de la máquina. El tipo de sistema es el definido a mano o, si no, el que implica la plataforma del inventario de Wazuh (`catalog/system-types.json`).
@@ -164,7 +204,7 @@ Un parámetro sin definir da NOT_EVALUABLE por CONFIGURATION en las evidencias q
 
 ## Parámetros desde un fichero
 
-Después del primer guardado desde Power ENS, que crea la configuración con el catálogo completo, los parámetros también se pueden definir desde un fichero JSON con `config/set-parameters.py` del repositorio power-ens-wazuh. Comprueba cada valor con el catálogo, muestra el plan y solo escribe con `--apply`. Cada ejecución guarda la versión anterior en el historial, igual que un guardado desde el dashboard.
+Los valores por tipo de máquina van en [perfiles](#perfiles). Después del primer guardado desde Power ENS, que crea la configuración con el catálogo completo, los parámetros también se pueden definir desde un fichero JSON con `config/set-parameters.py` del repositorio power-ens-wazuh. Comprueba cada valor con el catálogo, muestra el plan y solo escribe con `--apply`. Cada ejecución guarda la versión anterior en el historial, igual que un guardado desde el dashboard.
 
 Ejecútalo desde la carpeta `config/` de un clon completo de power-ens-wazuh, en una máquina que llegue al indexer con su certificado de administrador. Necesita `python3`. En Docker, añade `ENS_OS_URL=https://127.0.0.1:9200` y los certificados de `config/wazuh_indexer_ssl_certs`.
 

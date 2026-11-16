@@ -410,7 +410,7 @@ create_engine_users() {
 
 install_engine() {
   write_engine_conf
-  install -m 755 "$PKG/bin/oscompliance-engine" "$PREFIX/"
+  install -m 755 "$PKG/bin/oscompliance-engine" "$PKG/bin/oscompliance-policy" "$PREFIX/"
   install -m 644 "$PKG/wazuh/oscompliance-engine.service" "$UNIT_FILE"
   systemctl daemon-reload
   systemctl enable -q oscompliance-engine
@@ -553,7 +553,7 @@ remove_engine() {
     INDEXER_CA="$(sed -n 's/^OSC_INDEXER_CA=//p' "$ENGINE_CONF" 2>/dev/null)" CERTS="$INDEXER_CERTS" \
     with_terminal bash "$PKG/wazuh/engine-users.sh" remove || say "warning: the engine users could not be removed"
   systemctl disable -q --now oscompliance-engine || true
-  rm -f "$UNIT_FILE" "$PREFIX/oscompliance-engine"
+  rm -f "$UNIT_FILE" "$PREFIX/oscompliance-engine" "$PREFIX/oscompliance-policy"
   systemctl daemon-reload
 }
 
