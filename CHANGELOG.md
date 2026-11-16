@@ -7,6 +7,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 ### Changed
 
 - The repository is now `arseniteio/oscompliance-ens-wazuh`, to leave room for other SIEMs. The Go module paths and schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.
+- The installation guide lists the hardware the agent, the engine and the verdicts need, measured in the lab.
+- `CONTRIBUTING.md` and `CONTRIBUTING.es.md` explain how to propose a change and the contributor license agreement.
 
 ## [1.2.0] - 2026-11-16
 
