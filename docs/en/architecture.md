@@ -20,7 +20,7 @@ The Wazuh agent ships that file with the authentication and audit logs, inventor
 
 Wazuh rules 119000 to 119004 run on the manager. They index facts, the authentication probe, service events and audited accesses. They carry no verdict.
 
-`oscompliance-engine` runs next to the indexer, usually on the manager host. It judges every evidence, requirement and control and writes the verdicts. It changes nothing on the audited machines except through the group configuration.
+`oscompliance-engine` runs on the master manager, one per deployment. It reaches the indexers over the network, with failover between them, and the Wazuh API on its own host. It judges every evidence, requirement and control and writes the verdicts. It changes nothing on the audited machines except through the group configuration.
 
 The Power ENS plugin runs in the Wazuh dashboard. It stores the organisation's parameters and shows verdicts and reports. It does not judge.
 
@@ -50,7 +50,9 @@ The Power ENS plugin runs in the Wazuh dashboard. It stores the organisation's p
    (ACL paths, audit watches, service logs, FIM directories). The engine
    writes them into a marked region of each ENS group's `agent.conf` through
    the Wazuh API, and records every change in `oscompliance-config-history`.
-   Wazuh distributes the file to the agents.
+   Wazuh distributes the file to the agents. The engine also creates the
+   groups of the ENS scope that do not exist, and adds to them the agents
+   whose `agent_pass` asks for one of them.
 7. Show. The plugin reads the latest pass of each machine and the last
    control verdict of each day, and renders reasons from their codes in the
    user's language.

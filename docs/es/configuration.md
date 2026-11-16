@@ -1,6 +1,6 @@
 # Configuración
 
-Se configuran tres cosas, en tres lugares. El operador define la conexión y los tiempos del motor una vez, con flags y `/etc/oscompliance/engine.env` en el manager. El operador define las rutas del agente en `/etc/oscompliance/agent.json`, solo en máquinas no estándar. El responsable de seguridad define la política ENS (nivel, alcance y cada parámetro de control) en Power ENS en cualquier momento. Se guarda en `wazuh-ens-configuration`.
+Se configuran tres cosas, en tres lugares. El operador define la conexión y los tiempos del motor una vez, con flags, `/etc/oscompliance/engine.conf` y `/etc/oscompliance/engine.env` en el manager maestro. El operador define las rutas del agente en `/etc/oscompliance/agent.json`, solo en máquinas no estándar. El responsable de seguridad define la política ENS (nivel, alcance y cada parámetro de control) en Power ENS en cualquier momento. Se guarda en `wazuh-ens-configuration`.
 
 La política nunca reside en las máquinas. Los agentes solo guardan rutas; cada valor que decide el cumplimiento es un parámetro de Power ENS, y el motor lo recarga en cada pasada.
 
@@ -10,7 +10,7 @@ La política nunca reside en las máquinas. Los agentes solo guardan rutas; cada
 
 | Flag | Por defecto | Función |
 |---|---|---|
-| `-indexer` | `https://wazuh.indexer:9200` | URL del indexer |
+| `-indexer` | `https://wazuh.indexer:9200` | URL de los indexers, separadas por comas; cuando una no responde, el motor prueba la siguiente |
 | `-user` | `admin` | usuario del indexer; contraseña en `OSC_INDEXER_PASSWORD` |
 | `-ca` | raíces del sistema | certificado de CA del indexer (PEM) |
 | `-wazuh-api` | vacío | URL de la API de Wazuh; vacío desactiva todo lo que se lee o se escribe en la API |
@@ -37,6 +37,13 @@ La política nunca reside en las máquinas. Los agentes solo guardan rutas; cada
 | `OSC_WAZUH_API_PASSWORD` | contraseña de la API de Wazuh |
 
 La ventana es de 26 horas para que un agente horario y un barrido diario siempre tengan una pasada dentro, con margen para una ejecución tardía de cron.
+
+La unidad de systemd `oscompliance-engine.service` lee `/etc/oscompliance/engine.conf` y pasa `OSC_INDEXER_URLS` a `-indexer` y `OSC_INDEXER_CA` a `-ca`. Sin el fichero usa `https://127.0.0.1:9200` y `/etc/wazuh-indexer/certs/root-ca.pem`. `install.sh server` escribe el fichero a partir de la salida de Filebeat del manager: los hosts de `output.elasticsearch.hosts` de `/etc/filebeat/filebeat.yml` y `/etc/filebeat/certs/root-ca.pem` o, si no, `/etc/wazuh-indexer/certs/root-ca.pem`.
+
+```ini
+OSC_INDEXER_URLS=https://10.0.0.1:9200,https://10.0.0.2:9200
+OSC_INDEXER_CA=/etc/filebeat/certs/root-ca.pem
+```
 
 ## Configuración de grupo
 
@@ -71,6 +78,8 @@ Con `-wazuh-api` y `-sync-apply`, el motor mantiene una región marcada en el `a
 
 Lo que comparten la mayoría de las máquinas del grupo va a todos los agentes; una máquina que necesita otras rutas o tiene servicios propios recibe un bloque con su nombre. Todo lo que queda fuera de las marcas no se toca. Cada cambio se registra en `oscompliance-config-history` con la región anterior y posterior; sin `-sync-apply` el cambio se registra pero no se escribe.
 
+En cada sincronización de grupos, el motor también crea los grupos del alcance ENS que no existen y les añade los agentes que los piden. Un agente pide un grupo con `wazuh_group` en su `agent.json`, que envía como `requested_group` en cada hecho `agent_pass`. El motor lee las peticiones de los hechos `agent_pass` dentro de su ventana, y solo añade un agente a un grupo del alcance ENS. Una petición de cualquier otro grupo se ignora. Cada asignación se registra en `oscompliance-config-history`.
+
 ## Grupos por control
 
 Con la opción activada en Power ENS (`scope.controlGroups`), el motor crea un grupo de Wazuh por control, `ens-excluir-<control>`, en su siguiente sincronización de grupos. Necesita `-wazuh-api`, `-sync-apply` y `group:create` en su rol de API. Para sacar una máquina de un control, añádela a ese grupo. Al desactivar la opción, los grupos se ignoran y no se borra ninguno. Consulta [Veredictos](verdicts.md).
@@ -94,6 +103,7 @@ Con la opción activada en Power ENS (`scope.controlGroups`), el motor crea un g
 | `paths.pam_dir` | `/etc/pam.d` | configuración de PAM |
 | `paths.wazuh_shared_conf` | `/var/ossec/etc/shared/agent.conf` | configuración de grupo que escribe el motor |
 | `paths.wazuh_client_keys` | `/var/ossec/etc/client.keys` | la clave del agente, que da nombre a la máquina en esa configuración; vacío en el manager |
+| `wazuh_group` | vacío | grupo de Wazuh al que la máquina pide que el motor la añada; lo escribe `install.sh agent --group` |
 
 `agent/agent.example.json` contiene cada clave con su valor por defecto.
 
@@ -110,6 +120,8 @@ Quitar un colector de la lista deja las evidencias que lo necesitan en NOT_EVALU
 ## Política ENS
 
 Se define en Power ENS, en Configuración, y se guarda en el documento `active` de `wazuh-ens-configuration`.
+
+Hasta que se guarda una configuración, el motor y el plugin usan la configuración por defecto del catálogo, [`catalog/default-configuration.json`](../../catalog/default-configuration.json): categoría MEDIO y alcance por grupo, con el grupo `ens`. Ningún parámetro de control está definido, así que las evidencias que necesitan uno son NOT_EVALUABLE por CONFIGURATION. El motor registra una línea `parameters` con `catalog default` en cada pasada que la usa.
 
 | Ajuste | Efecto |
 |---|---|

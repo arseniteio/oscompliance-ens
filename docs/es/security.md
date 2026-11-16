@@ -24,11 +24,13 @@ El motor se ejecuta como servicio de systemd en el host del manager, con `NoNewP
 
 En el indexer tiene su propio usuario y rol. Lee los índices de alertas, monitorización, inventario y vulnerabilidades de Wazuh y la configuración de Power ENS, y solo escribe en `oscompliance-*`.
 
-En la API de Wazuh tiene su propio usuario y política. Lee agentes, grupos, inventario, configuración del manager y reglas, y solo escribe la configuración de grupo. La política concede `group:read`, `group:create`, `group:update_config`, `agent:read`, `syscollector:read`, `manager:read` y `rules:read`.
+En la API de Wazuh tiene su propio usuario y política. Lee agentes, grupos, inventario, configuración del manager y reglas. Solo escribe la configuración de grupo, crea los grupos del alcance ENS y les añade agentes. La política concede `group:read`, `group:create`, `group:update_config`, `group:modify_assignments`, `agent:modify_group`, `agent:read`, `syscollector:read`, `manager:read` y `rules:read`.
+
+`engine-users.sh` crea los dos usuarios. Se autentica en el indexer con el certificado de administración cuando existe `/etc/wazuh-indexer/certs/admin.pem` en el host y, si no, con la contraseña del usuario `admin` del indexer, escrita en la pregunta o leída de `INDEXER_ADMIN_PASSWORD`. La contraseña llega a curl en un fichero de cabeceras temporal, nunca en la línea de comandos, y no se copia ningún certificado entre hosts.
 
 Sus credenciales están en `/etc/oscompliance/engine.env`, modo 0600, y se leen por el entorno. Nunca aparecen en la línea de comandos ni en los registros. Los certificados se verifican contra la CA indicada con `-ca` y `-wazuh-api-ca`, y no hay opción para omitir la verificación.
 
-El único cambio que hace el motor en el despliegue de Wazuh es la región marcada del `agent.conf` de cada grupo ENS. Es opcional (`-sync-apply`), se limita a los grupos del alcance ENS, y cada cambio queda registrado con la región anterior y posterior en `oscompliance-config-history`. El motor no puede ejecutar comandos en los agentes, cambiar reglas o decodificadores ni tocar ningún otro grupo.
+El motor cambia tres cosas en el despliegue de Wazuh: la región marcada del `agent.conf` de cada grupo ENS, los grupos del alcance ENS que no existen, que crea, y los miembros de esos grupos, a los que añade los agentes que los piden. Las tres son opcionales (`-sync-apply`), se limitan a los grupos del alcance ENS y quedan registradas en `oscompliance-config-history`. El motor nunca saca un agente de un grupo. No puede ejecutar comandos en los agentes, cambiar reglas o decodificadores ni tocar ningún otro grupo.
 
 Roles: [`catalog/wazuh/engine-role.json`](../../catalog/wazuh/engine-role.json), [`catalog/wazuh/engine-api-role.json`](../../catalog/wazuh/engine-api-role.json).
 
@@ -46,7 +48,11 @@ El host del motor es el host del manager de Wazuh. Quien lo controla puede cambi
 
 Las credenciales del motor en el indexer permiten escribir veredictos falsos. No permiten leer más allá de los índices de Wazuh ni cambiar los datos de Wazuh.
 
-Las credenciales del motor en la API permiten cambiar la configuración de cualquier grupo. No permiten ejecutar comandos, reiniciar agentes ni cambiar reglas.
+Las credenciales del motor en la API permiten cambiar la configuración de cualquier grupo y los grupos de cualquier agente. No permiten ejecutar comandos, reiniciar agentes ni cambiar reglas.
+
+Root en una máquina auditada puede pedir un grupo con `wazuh_group`. El motor solo añade el agente a un grupo del alcance ENS, así que la petición no puede meter la máquina en ningún otro grupo ni sacarla de uno.
+
+Con `install.sh agent --group`, la máquina auditada lee el fichero de hechos mediante un localfile en su propio `ossec.conf`, entre marcas `<!-- oscompliance begin -->`. Lee el mismo fichero que la configuración de grupo, así que no añade ninguna fuente nueva a lo que aceptan las reglas.
 
 Por eso la máquina auditada informa de hechos, nunca de veredictos, y por eso el silencio nunca es cumplimiento. Donde Wazuh ya observa algo, el motor lee Wazuh, no el agente.
 

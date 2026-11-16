@@ -61,7 +61,7 @@ op.acc.2 EV-06, op.acc.3 or op.acc.4 EV-07 are NOT_EVALUABLE by COLLECTION. audi
 
 A control is NOT_EVALUABLE by CONFIGURATION. A parameter is not set. The verdict names it: set it in Power ENS.
 
-The engine logs `the ENS scope has never been read`. Nobody has saved the configuration yet. Press Guardar configuración global in Power ENS and restart the engine.
+The engine logs `the ENS scope has never been read`. The engine could not read the configuration index since it started. The `parameters` line before it names the error, usually the indexer connection. Without a saved configuration the engine uses the catalog default and does not log this.
 
 The engine gets 401 or 403 from the indexer. The password is wrong or the role lacks a permission. Check `engine.env` and compare the role with `engine-role.json`. The error names the action.
 
@@ -78,6 +78,10 @@ The group configuration is not applied. `-sync-apply` is missing, or the scope n
 The manager has no verdicts. The agent is not installed on it, or its `ossec.conf` lacks the facts localfile. See [installation, section 8](install.md#8-audit-the-manager).
 
 A new machine shows nothing. It is not in the ENS group, or its first pass ran before it received the group configuration. Add it to the group and repeat [section 7 of the installation](install.md#7-install-the-agent-on-the-audited-machines).
+
+A machine installed with `--group` does not join the group. The group is not in the ENS scope, the engine lacks `group:modify_assignments` or `agent:modify_group`, or no `agent_pass` with `requested_group` is in the window. The `group configuration` and `group requests` log lines say which. After an upgrade from 1.1.0, run `engine-users.sh create` again to add the two actions.
+
+The Wazuh agent logs warning 1958 for `facts.ndjson`. The file is declared in `ossec.conf` and in the group configuration. Wazuh reads it once, and nothing needs doing.
 
 Power ENS does not appear in the dashboard. On packages, read the output of `deploy-plugin.sh` and `journalctl -u wazuh-dashboard`. On Docker, check the image of the `wazuh.dashboard` service. If the zip was built for another version, the dashboard refuses it: build it again for your version. A blank page after an upgrade goes away after closing the tab and logging in again.
 

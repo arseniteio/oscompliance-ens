@@ -1,6 +1,6 @@
 # Configuration
 
-Three things are configured, in three places. The operator sets the engine's connection and timing once, with flags and `/etc/oscompliance/engine.env` on the manager. The operator sets agent paths in `/etc/oscompliance/agent.json`, only on non-standard machines. The security officer sets the ENS policy (level, scope and every control parameter) in Power ENS at any time. It is stored in `wazuh-ens-configuration`.
+Three things are configured, in three places. The operator sets the engine's connection and timing once, with flags, `/etc/oscompliance/engine.conf` and `/etc/oscompliance/engine.env` on the master manager. The operator sets agent paths in `/etc/oscompliance/agent.json`, only on non-standard machines. The security officer sets the ENS policy (level, scope and every control parameter) in Power ENS at any time. It is stored in `wazuh-ens-configuration`.
 
 Policy never lives on the machines. Agents hold paths only; every value that
 decides compliance is a parameter in Power ENS, and the engine reloads it on
@@ -13,7 +13,7 @@ every pass.
 
 | Flag | Default | Purpose |
 |---|---|---|
-| `-indexer` | `https://wazuh.indexer:9200` | indexer URL |
+| `-indexer` | `https://wazuh.indexer:9200` | indexer URLs, comma-separated; when one does not answer, the engine tries the next |
 | `-user` | `admin` | indexer user; password in `OSC_INDEXER_PASSWORD` |
 | `-ca` | system roots | CA certificate of the indexer (PEM) |
 | `-wazuh-api` | empty | Wazuh API URL; empty disables everything read from or written to the API |
@@ -41,6 +41,13 @@ every pass.
 
 The window is 26 hours so that an hourly agent and a daily sweep always have
 a pass inside it, with margin for a late cron run.
+
+The systemd unit `oscompliance-engine.service` reads `/etc/oscompliance/engine.conf` and passes `OSC_INDEXER_URLS` to `-indexer` and `OSC_INDEXER_CA` to `-ca`. Without the file it uses `https://127.0.0.1:9200` and `/etc/wazuh-indexer/certs/root-ca.pem`. `install.sh server` writes the file from the Filebeat output of the manager: the hosts of `output.elasticsearch.hosts` in `/etc/filebeat/filebeat.yml` and `/etc/filebeat/certs/root-ca.pem`, else `/etc/wazuh-indexer/certs/root-ca.pem`.
+
+```ini
+OSC_INDEXER_URLS=https://10.0.0.1:9200,https://10.0.0.2:9200
+OSC_INDEXER_CA=/etc/filebeat/certs/root-ca.pem
+```
 
 ## Group configuration
 
@@ -80,6 +87,8 @@ Everything outside the markers is left untouched. Every change is recorded in
 `oscompliance-config-history` with the region before and after; without
 `-sync-apply` the change is recorded but not written.
 
+On each group sync the engine also creates the groups of the ENS scope that do not exist, and adds to them the agents that ask for them. An agent asks with `wazuh_group` in its `agent.json`, which it sends as `requested_group` in every `agent_pass` fact. The engine reads the requests from the `agent_pass` facts inside its window, and adds an agent only to a group of the ENS scope. A request for any other group is ignored. Each assignment is recorded in `oscompliance-config-history`.
+
 ## Control groups
 
 With the option on in Power ENS (`scope.controlGroups`), the engine creates one
@@ -109,6 +118,7 @@ agent with an error. The file is read on every run.
 | `paths.pam_dir` | `/etc/pam.d` | PAM configuration |
 | `paths.wazuh_shared_conf` | `/var/ossec/etc/shared/agent.conf` | group configuration the engine writes |
 | `paths.wazuh_client_keys` | `/var/ossec/etc/client.keys` | the agent's key, which names the machine in that configuration; empty on the manager |
+| `wazuh_group` | empty | Wazuh group the machine asks the engine to add it to; set by `install.sh agent --group` |
 
 `agent/agent.example.json` holds every key with its default.
 
@@ -131,6 +141,8 @@ NOT_EVALUABLE by COLLECTION. It never makes them pass.
 
 Set in Power ENS > Configuración and stored in the document
 `active` of `wazuh-ens-configuration`.
+
+Until a configuration is saved, the engine and the plugin use the catalog default, [`catalog/default-configuration.json`](../../catalog/default-configuration.json): category MEDIO and scope by group, with the `ens` group. Every control parameter is unset, so the evidences that need one are NOT_EVALUABLE by CONFIGURATION. The engine logs a `parameters` line with `catalog default` on each pass that uses it.
 
 | Setting | Effect |
 |---|---|

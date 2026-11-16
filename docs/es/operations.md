@@ -59,7 +59,7 @@ EV-06 de op.acc.2, op.acc.3 o EV-07 de op.acc.4 salen NOT_EVALUABLE por COLLECTI
 
 Un control sale NOT_EVALUABLE por CONFIGURATION. Falta un parámetro. El veredicto lo nombra: defínelo en Power ENS.
 
-El motor registra `the ENS scope has never been read`. Nadie ha guardado aún la configuración. Pulsa Guardar configuración global en Power ENS y reinicia el motor.
+El motor registra `the ENS scope has never been read`. El motor no ha podido leer el índice de configuración desde que arrancó. La línea `parameters` anterior nombra el error, normalmente la conexión con el indexer. Sin una configuración guardada, el motor usa la configuración por defecto del catálogo y no registra esto.
 
 El motor recibe 401 o 403 del indexer. La contraseña es incorrecta o al rol le falta un permiso. Revisa `engine.env` y compara el rol con `engine-role.json`. El error nombra la acción.
 
@@ -76,6 +76,10 @@ No se aplica la configuración de grupo. Falta `-sync-apply` o el alcance no nom
 El manager no tiene veredictos. El agente no está instalado en él o su `ossec.conf` no tiene el localfile de hechos. Consulta la [instalación, apartado 8](install.md#8-auditar-el-manager).
 
 Una máquina nueva no muestra nada. No está en el grupo ENS, o su primera pasada se ejecutó antes de recibir la configuración de grupo. Añádela al grupo y repite el [apartado 7 de la instalación](install.md#7-instalar-el-agente-en-las-máquinas-auditadas).
+
+Una máquina instalada con `--group` no entra en el grupo. El grupo no está en el alcance ENS, al motor le falta `group:modify_assignments` o `agent:modify_group`, o no hay ningún `agent_pass` con `requested_group` en la ventana. Las líneas `group configuration` y `group requests` del registro indican cuál. Tras actualizar desde 1.1.0, ejecuta de nuevo `engine-users.sh create` para añadir las dos acciones.
+
+El agente de Wazuh registra el aviso 1958 para `facts.ndjson`. El fichero está declarado en `ossec.conf` y en la configuración de grupo. Wazuh lo lee una sola vez, y no hay que hacer nada.
 
 Power ENS no aparece en el dashboard. En paquetes, lee la salida de `deploy-plugin.sh` y `journalctl -u wazuh-dashboard`. En Docker, revisa la imagen del servicio `wazuh.dashboard`. Si el zip se compiló para otra versión, el dashboard lo rechaza: compílalo de nuevo para tu versión. Una página en blanco tras una actualización desaparece al cerrar la pestaña y volver a entrar.
 

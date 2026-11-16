@@ -111,6 +111,7 @@ Last fact of every collection pass. A collector whose records and snapshot did n
 | Field | Type | Meaning |
 |---|---|---|
 | `in_force` | array | One "fact:run_id" per collector: the snapshot fact and the pass that sent it. |
+| `requested_group` | string | Wazuh group the machine asks to join, from `wazuh_group` in `agent.json`, set by `install.sh agent --group`. The engine adds the agent to it when the group is in the ENS scope. Absent when no group is requested. |
 
 ### audit_watch_snapshot
 

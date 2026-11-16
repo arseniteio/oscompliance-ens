@@ -4,48 +4,42 @@
 
 OSCompliance ENS measures the Esquema Nacional de Seguridad (Real Decreto 311/2022) on a Wazuh deployment. It turns what your machines do into a verdict per control, per requirement and per machine, with the reason behind every result, every 15 minutes.
 
-It adds one agent binary to each Linux machine and one engine next to the Wazuh indexer. Wazuh keeps doing the collection. Nothing is judged on the machine being audited, and nothing that cannot be proven counts as compliant. The results are shown in the Wazuh dashboard by the [Power ENS](https://github.com/arseniteio/power-ens) plugin.
+It adds one agent binary to each Linux machine and one engine on the master Wazuh manager. Wazuh keeps doing the collection. Nothing is judged on the machine being audited, and nothing that cannot be proven counts as compliant. The results are shown in the Wazuh dashboard by the [Power ENS](https://github.com/arseniteio/power-ens) plugin.
 
 It runs on Wazuh 4.14.7, 4.14.8 and 4.14.9, with audited machines on Linux.
 
 ## Get started
 
-On a Wazuh server with the manager, indexer and dashboard installed from packages, run as a user with sudo:
+Run the same command on each Wazuh server node installed from packages, as a user with sudo. Start with the master manager, or the server of an all-in-one deployment, then the worker managers and the dashboard nodes. Indexer nodes need nothing.
 
 ```bash
 curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- server
 ```
 
-The script installs the rules, the engine and its users, the Power ENS plugin for your dashboard, and audits the manager. It asks for the password of `wazuh-wui` and for two new passwords.
+The script detects the node. On the master it installs the rules, the engine and its users, and audits the manager. It asks for the password of `wazuh-wui` and for two new passwords, and for the password of the indexer `admin` user when the host has no indexer admin certificate. On a worker it waits for the rules the master syncs through the cluster and restarts the manager. On a dashboard node it installs the Power ENS plugin. On an all-in-one server it does all of it.
 
-In the dashboard, open Power ENS, Configuración, Organización, fill in Cliente and press Guardar configuración global. Then add each machine to audit to the `ens` group, with its ID from `/var/ossec/bin/agent_control -l`.
-
-```bash
-sudo /var/ossec/bin/agent_groups -a -i <id> -g ens -q
-```
-
-On each of those machines:
+On each machine to audit:
 
 ```bash
-curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- agent
+curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- agent --group ens
 ```
 
-The first verdicts appear in Power ENS within 15 minutes. Run the same commands with a newer release to upgrade, and with `uninstall` to remove everything.
+The engine adds each machine to the `ens` group within 15 minutes, and the first verdicts appear in Power ENS after its next pass. Until a configuration is saved in Power ENS, the engine judges at level MEDIO with the `ens` group in scope. Run the same commands with a newer release to upgrade, and with `uninstall` on each node to remove everything.
 
 To check the files before running anything, download the package and verify it. `install.sh` inside the package uses the files next to it.
 
 ```bash
-v=1.1.0
+v=1.2.0
 url=https://github.com/arseniteio/oscompliance-ens/releases/download/v$v
 curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
 tar xzf "oscompliance-ens-$v-linux-amd64.tar.gz"
-sudo "./oscompliance-ens-$v-linux-amd64/install.sh" agent
+sudo "./oscompliance-ens-$v-linux-amd64/install.sh" agent --group ens
 ```
 
-On the server, the script downloads the plugin from the power-ens release and checks it. To install without access to GitHub, copy the plugin zip and `deploy-plugin.sh` into the package folder first.
+On a dashboard node, the script downloads the plugin from the power-ens release and checks it. To install without access to GitHub, copy the plugin zip and `deploy-plugin.sh` into the package folder first.
 
-For Wazuh on Docker, a distributed deployment or the detail of each step, follow the full guides:
+For Wazuh on Docker or the detail of each step, follow the full guides:
 
 - [Installation with packages](docs/en/install.md)
 - [Installation with Docker](docs/en/install-docker.md)
@@ -90,7 +84,7 @@ make check
 Build the packages in `dist/`, with `install.sh` and `SHA256SUMS`. Go 1.27.2 or later is required.
 
 ```bash
-make dist VERSION=1.1.0
+make dist VERSION=1.2.0
 ```
 
 ## Security

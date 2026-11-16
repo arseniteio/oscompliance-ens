@@ -45,7 +45,7 @@ docker exec "$PROJECT-wazuh.dashboard-1" grep -m1 '"version"' /usr/share/wazuh-d
 Download the package of your architecture and its checksums on the host and on every audited machine, and the plugin files on the host, as in [section 1 of the package guide](install.md#1-get-the-packages). On Docker the plugin needs `dashboard.Dockerfile` instead of `deploy-plugin.sh`.
 
 ```bash
-v=1.1.0
+v=1.2.0
 url=https://github.com/arseniteio/power-ens/releases/download/v$v
 curl -fLO "$url/dashboard.Dockerfile"
 ```
@@ -112,7 +112,7 @@ export OS_URL=$INDEXER_URL OS_RESOLVE=$INDEXER_RESOLVE
 bash create-admin-role.sh --map <user>
 ```
 
-Now set the ENS configuration, as in [section 5 of the package guide](install.md#5-set-the-ens-configuration).
+Until a configuration is saved, the engine uses the catalog default: level MEDIO and the `ens` group in scope. To change it, set the ENS configuration as in [section 5 of the package guide](install.md#5-set-the-ens-configuration).
 
 ## 6. Start the engine
 
@@ -134,7 +134,7 @@ docker exec "$MGR" cat /var/ossec/etc/shared/ens/agent.conf
 
 ## 7. Install the agent on the audited machines
 
-On each machine in the `ens` group, run `install.sh agent` from the package, or follow [section 7 of the package guide](install.md#7-install-the-agent-on-the-audited-machines).
+On each machine to audit, run `install.sh agent --group ens` from the package, or follow [section 7 of the package guide](install.md#7-install-the-agent-on-the-audited-machines).
 
 This guide does not audit the manager container, so its row shows as not compliant. To see each result, choose the machine in the Máquina selector.
 
@@ -152,7 +152,7 @@ Then check the dashboard as in [section 9 of the package guide](install.md#9-ver
 
 ## Upgrade
 
-Upgrade the engine first: it reads facts from older agents. Install the new binary and restart the service. If the rules changed, install them as in section 3. On each audited machine, install the new agent binary.
+Upgrade the engine first: it reads facts from older agents. Install the new binary and restart the service. If the rules changed, install them as in section 3. If the role changed, run `KEEP_PASSWORDS=1 bash wazuh/engine-users.sh create` with the variables of sections 1 and 4; an upgrade from 1.1.0 needs it. On each audited machine, install the new agent binary.
 
 ```bash
 install -m 755 bin/oscompliance-engine /usr/local/bin/

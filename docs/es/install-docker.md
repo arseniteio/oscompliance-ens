@@ -45,7 +45,7 @@ docker exec "$PROJECT-wazuh.dashboard-1" grep -m1 '"version"' /usr/share/wazuh-d
 Descarga el paquete de tu arquitectura y sus sumas de comprobación en el host y en cada máquina auditada, y los ficheros del plugin en el host, como en el [apartado 1 de la guía por paquetes](install.md#1-obtener-los-paquetes). En Docker el plugin necesita `dashboard.Dockerfile` en lugar de `deploy-plugin.sh`.
 
 ```bash
-v=1.1.0
+v=1.2.0
 url=https://github.com/arseniteio/power-ens/releases/download/v$v
 curl -fLO "$url/dashboard.Dockerfile"
 ```
@@ -112,7 +112,7 @@ export OS_URL=$INDEXER_URL OS_RESOLVE=$INDEXER_RESOLVE
 bash create-admin-role.sh --map <usuario>
 ```
 
-Ahora define la configuración ENS, como en el [apartado 5 de la guía por paquetes](install.md#5-definir-la-configuración-ens).
+Hasta que se guarda una configuración, el motor usa la configuración por defecto del catálogo: nivel MEDIO y el grupo `ens` en alcance. Para cambiarla, define la configuración ENS como en el [apartado 5 de la guía por paquetes](install.md#5-definir-la-configuración-ens).
 
 ## 6. Arrancar el motor
 
@@ -134,7 +134,7 @@ docker exec "$MGR" cat /var/ossec/etc/shared/ens/agent.conf
 
 ## 7. Instalar el agente en las máquinas auditadas
 
-En cada máquina del grupo `ens`, ejecuta `install.sh agent` desde el paquete, o sigue el [apartado 7 de la guía por paquetes](install.md#7-instalar-el-agente-en-las-máquinas-auditadas).
+En cada máquina que se audita, ejecuta `install.sh agent --group ens` desde el paquete, o sigue el [apartado 7 de la guía por paquetes](install.md#7-instalar-el-agente-en-las-máquinas-auditadas).
 
 Esta guía no audita el contenedor del manager, así que su fila aparece como no conforme. Para ver cada resultado, elige la máquina en el selector Máquina.
 
@@ -152,7 +152,7 @@ Después comprueba el dashboard como en el [apartado 9 de la guía por paquetes]
 
 ## Actualizar
 
-Actualiza primero el motor: lee hechos de agentes anteriores. Instala el binario nuevo y reinicia el servicio. Si cambiaron las reglas, instálalas como en el apartado 3. En cada máquina auditada, instala el binario nuevo del agente.
+Actualiza primero el motor: lee hechos de agentes anteriores. Instala el binario nuevo y reinicia el servicio. Si cambiaron las reglas, instálalas como en el apartado 3. Si cambió el rol, ejecuta `KEEP_PASSWORDS=1 bash wazuh/engine-users.sh create` con las variables de los apartados 1 y 4; una actualización desde 1.1.0 lo necesita. En cada máquina auditada, instala el binario nuevo del agente.
 
 ```bash
 install -m 755 bin/oscompliance-engine /usr/local/bin/

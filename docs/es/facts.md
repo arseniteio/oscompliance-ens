@@ -108,6 +108,7 @@ Resumen de una lectura de las rutas de la configuración de grupo, emitido despu
 | Campo | Tipo | Significado |
 |---|---|---|
 | `in_force` | lista | Un "fact:run_id" por colector: el hecho snapshot y la pasada que lo envió. |
+| `requested_group` | cadena | Grupo de Wazuh al que la máquina pide entrar, de `wazuh_group` en `agent.json`, que escribe `install.sh agent --group`. El motor añade el agente cuando el grupo está en el alcance ENS. No aparece si no se pide ningún grupo. |
 
 ### audit_watch_snapshot
 

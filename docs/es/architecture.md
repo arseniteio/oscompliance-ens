@@ -12,7 +12,7 @@ El agente de Wazuh envía ese fichero junto con los registros de autenticación 
 
 Las reglas de Wazuh 119000 a 119004 se ejecutan en el manager. Indexan hechos, la sonda de autenticación, eventos de servicio y accesos auditados. No llevan ningún veredicto.
 
-`oscompliance-engine` se ejecuta junto al indexer, normalmente en el host del manager. Juzga cada evidencia, requisito y control y escribe los veredictos. No cambia nada en las máquinas auditadas salvo mediante la configuración de grupo.
+`oscompliance-engine` se ejecuta en el manager maestro, uno por despliegue. Llega a los indexers por la red, con conmutación entre ellos, y a la API de Wazuh en su propio host. Juzga cada evidencia, requisito y control y escribe los veredictos. No cambia nada en las máquinas auditadas salvo mediante la configuración de grupo.
 
 El plugin Power ENS se ejecuta en el dashboard de Wazuh. Guarda los parámetros de la organización y muestra veredictos e informes. No juzga.
 
@@ -23,7 +23,7 @@ El plugin Power ENS se ejecuta en el dashboard de Wazuh. Guarda los parámetros 
 3. Leer. El motor lee, en cada pasada: los hechos de cada máquina en la ventana, las alertas de Wazuh (autenticación, sudo, FIM, SCA, auditoría, antimalware, detección de vulnerabilidades), el inventario de Wazuh (`wazuh-states-inventory-*`, `wazuh-states-vulnerabilities-*`), los keepalive de los agentes (`wazuh-monitoring-*`), la configuración del manager mediante la API de Wazuh, los registros DNS para los controles de correo y los parámetros que el plugin guarda en `wazuh-ens-configuration`.
 4. Juzgar. El juez de cada control convierte fuentes y parámetros en un veredicto por máquina y evidencia. Las evidencias se suman en requisitos y los requisitos en una puntuación de control ([Veredictos](verdicts.md)).
 5. Escribir. Los veredictos van a `oscompliance-verdicts`; el historial de identidades por cuenta, a `oscompliance-identity-history`.
-6. Configurar. Algunos parámetros nombran rutas que los agentes deben leer o vigilar (rutas de ACL, vigilancias de auditoría, registros de servicio, directorios de FIM). El motor las escribe en una región marcada del `agent.conf` de cada grupo ENS mediante la API de Wazuh, y registra cada cambio en `oscompliance-config-history`. Wazuh distribuye el fichero a los agentes.
+6. Configurar. Algunos parámetros nombran rutas que los agentes deben leer o vigilar (rutas de ACL, vigilancias de auditoría, registros de servicio, directorios de FIM). El motor las escribe en una región marcada del `agent.conf` de cada grupo ENS mediante la API de Wazuh, y registra cada cambio en `oscompliance-config-history`. Wazuh distribuye el fichero a los agentes. El motor también crea los grupos del alcance ENS que no existen, y les añade los agentes cuyo `agent_pass` pide uno de ellos.
 7. Mostrar. El plugin lee la última pasada de cada máquina y el último veredicto de control de cada día, y presenta los motivos a partir de sus códigos en el idioma del usuario.
 
 ## Principios de diseño

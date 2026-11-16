@@ -37,14 +37,18 @@ The engine runs as a systemd service on the manager host, with `NoNewPrivileges`
 
 In the indexer it has its own user and role. It reads Wazuh's alerts, monitoring, inventory and vulnerability indices and the Power ENS configuration, and writes only `oscompliance-*`.
 
-In the Wazuh API it has its own user and policy. It reads agents, groups, inventory, manager configuration and rules, and writes only the group configuration. The policy grants `group:read`, `group:create`, `group:update_config`, `agent:read`, `syscollector:read`, `manager:read` and `rules:read`.
+In the Wazuh API it has its own user and policy. It reads agents, groups, inventory, manager configuration and rules. It writes only the group configuration, creates the groups of the ENS scope and adds agents to them. The policy grants `group:read`, `group:create`, `group:update_config`, `group:modify_assignments`, `agent:modify_group`, `agent:read`, `syscollector:read`, `manager:read` and `rules:read`.
+
+`engine-users.sh` creates both users. It authenticates to the indexer with the admin certificate when `/etc/wazuh-indexer/certs/admin.pem` exists on the host, and otherwise with the password of the indexer `admin` user, typed at the prompt or read from `INDEXER_ADMIN_PASSWORD`. The password goes to curl through a temporary header file, never on the command line, and no certificate is copied between hosts.
 
 Its credentials are in `/etc/oscompliance/engine.env`, mode 0600, read through the environment. They never appear on the command line or in logs. Certificates are verified against the CA given with `-ca` and `-wazuh-api-ca`, and there is no option to skip verification.
 
-The only change the engine makes to the Wazuh deployment is the marked region
-of each ENS group's `agent.conf`. It is opt-in (`-sync-apply`), limited to the
-groups in the ENS scope, and every change is recorded with the region before
-and after in `oscompliance-config-history`. The engine cannot run commands on
+The engine changes three things in the Wazuh deployment: the marked region
+of each ENS group's `agent.conf`, the groups of the ENS scope that do not
+exist, which it creates, and the membership of those groups, to which it adds
+the agents that ask for them. All three are opt-in (`-sync-apply`), limited to
+the groups in the ENS scope, and recorded in `oscompliance-config-history`.
+The engine never removes an agent from a group. It cannot run commands on
 agents, change rules or decoders, or touch any other group.
 
 Roles: [`catalog/wazuh/engine-role.json`](../../catalog/wazuh/engine-role.json),
@@ -67,7 +71,11 @@ The engine host is the Wazuh manager host. Whoever controls it can change verdic
 
 The engine's indexer credentials allow writing false verdicts. They do not allow reading beyond Wazuh's indices or changing Wazuh's data.
 
-The engine's API credentials allow changing the group configuration of any group. They do not allow running commands, restarting agents or changing rules.
+The engine's API credentials allow changing the group configuration of any group and the groups of any agent. They do not allow running commands, restarting agents or changing rules.
+
+Root on an audited machine can ask for a group with `wazuh_group`. The engine adds the agent only to a group of the ENS scope, so the request cannot move the machine into any other group or out of one.
+
+With `install.sh agent --group`, the audited machine reads the facts file through a localfile in its own `ossec.conf`, between `<!-- oscompliance begin -->` markers. It reads the same file as the group configuration, so it adds no new source to what the rules accept.
 
 This is why the audited machine reports facts, never verdicts, and why silence is never compliance. Where Wazuh already observes something, the engine reads Wazuh, not the agent.
 
