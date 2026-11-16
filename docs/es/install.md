@@ -36,6 +36,18 @@ Instala primero el maestro. Los workers toman de él las reglas a través del cl
 
 auditd alimenta EV-06 de op.acc.2, op.acc.3 y EV-04 y EV-07 de op.acc.4. Sin él, esas evidencias no son evaluables. Sin el registro de autenticación, las evidencias de inicio de sesión no son evaluables.
 
+### Hardware
+
+Las cifras se midieron en el laboratorio sobre arm64 con los 34 controles del catálogo. Se suman a lo que necesita Wazuh.
+
+| Componente | Dónde | CPU | Memoria | Disco |
+|---|---|---|---|---|
+| Agente | cada máquina auditada | menos de 1 segundo por pasada horaria | 15 MB durante la pasada, nada entre pasadas | 10 MB del binario, más `facts.ndjson`, unos 200 KB al día |
+| Motor | manager master | 1 núcleo durante la pasada | 50 MB más 250 MB por cada 1.000 máquinas auditadas | nada en el manager |
+| Veredictos | clúster de indexers | | | unos 2,5 MB por máquina auditada y día en `oscompliance-verdicts`, sin réplicas |
+
+Una pasada sobre 5.000 máquinas tardó 270 segundos con un pico de 1,2 GB de memoria. La pasada debe acabar dentro de `-interval`, 15 minutos por defecto, lo que sitúa el límite de un motor en unas 15.000 máquinas. El barrido diario de ficheros del agente se detiene tras `sweep_timeout`, 15 minutos por defecto.
+
 ## Antes de empezar
 
 Decide con la organización qué máquinas se auditan, su categoría ENS (BAJO, MEDIO o ALTO) y quién cambia la configuración además de los usuarios con `all_access`. Una categoría equivocada da veredictos equivocados sin ningún error. Los parámetros de los controles se pueden declarar más tarde.

@@ -36,6 +36,18 @@ Install the master first. The workers take the rules from it through the Wazuh c
 
 auditd feeds op.acc.2 EV-06, op.acc.3 and op.acc.4 EV-04 and EV-07. Without it those evidences are not evaluable. Without the authentication log, the login evidences are not evaluable.
 
+### Hardware
+
+The figures below were measured in the lab on arm64 with the 34 controls of the catalog. They come on top of what Wazuh itself needs.
+
+| Component | Where | CPU | Memory | Disk |
+|---|---|---|---|---|
+| Agent | each audited machine | under 1 second per hourly pass | 15 MB during a pass, nothing between passes | 10 MB for the binary, plus `facts.ndjson`, about 200 KB per day |
+| Engine | master manager | 1 core during the pass | 50 MB plus 250 MB per 1,000 audited machines | none on the manager |
+| Verdicts | indexer cluster | | | about 2.5 MB per audited machine and day in `oscompliance-verdicts`, before replicas |
+
+A pass over 5,000 machines took 270 seconds and peaked at 1.2 GB of memory. The pass must end within `-interval`, 15 minutes by default, which puts the limit of one engine at about 15,000 machines. The daily file sweep of the agent stops after `sweep_timeout`, 15 minutes by default.
+
 ## Before you start
 
 Decide with the organisation which machines to audit, its ENS category (BAJO, MEDIO or ALTO) and who changes the configuration besides the users with `all_access`. A wrong category gives wrong verdicts without any error. The control parameters can be declared later.
