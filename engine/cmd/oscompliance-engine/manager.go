@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/wazuhapi"
 )
 
 func managerState(ctx context.Context, api *wazuhapi.Client) (*source.Manager, error) {

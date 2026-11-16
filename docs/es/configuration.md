@@ -147,9 +147,9 @@ Un parámetro sin definir da NOT_EVALUABLE por CONFIGURATION en las evidencias q
 
 ## Parámetros desde un fichero
 
-Después del primer guardado desde Power ENS, que crea la configuración con el catálogo completo, los parámetros también se pueden definir desde un fichero JSON con `config/set-parameters.py` del repositorio power-ens. Comprueba cada valor con el catálogo, muestra el plan y solo escribe con `--apply`. Cada ejecución guarda la versión anterior en el historial, igual que un guardado desde el dashboard.
+Después del primer guardado desde Power ENS, que crea la configuración con el catálogo completo, los parámetros también se pueden definir desde un fichero JSON con `config/set-parameters.py` del repositorio power-ens-wazuh. Comprueba cada valor con el catálogo, muestra el plan y solo escribe con `--apply`. Cada ejecución guarda la versión anterior en el historial, igual que un guardado desde el dashboard.
 
-Ejecútalo desde la carpeta `config/` de un clon completo de power-ens, en una máquina que llegue al indexer con su certificado de administrador. Necesita `python3`. En Docker, añade `ENS_OS_URL=https://127.0.0.1:9200` y los certificados de `config/wazuh_indexer_ssl_certs`.
+Ejecútalo desde la carpeta `config/` de un clon completo de power-ens-wazuh, en una máquina que llegue al indexer con su certificado de administrador. Necesita `python3`. En Docker, añade `ENS_OS_URL=https://127.0.0.1:9200` y los certificados de `config/wazuh_indexer_ssl_certs`.
 
 ```bash
 export OS_CERT=/etc/wazuh-indexer/certs/admin.pem OS_KEY=/etc/wazuh-indexer/certs/admin-key.pem

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 var now = time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)

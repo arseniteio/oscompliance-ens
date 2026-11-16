@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/wazuhapi"
 )
 
 type Assigner interface {

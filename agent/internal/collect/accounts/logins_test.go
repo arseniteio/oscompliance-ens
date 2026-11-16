@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
 func utmpRecord(kind int16, user string, sec int32) []byte {

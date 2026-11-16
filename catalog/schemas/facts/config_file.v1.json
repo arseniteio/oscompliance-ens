@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/config_file.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/config_file.v1.json",
   "title": "config_file v1",
   "description": "One configuration source read as key/value entries, in source order: a file (login.defs, faillock.conf, pwquality.conf...) or the effective configuration a program prints (sshd -T). Only the keys the controls judge are sent (agent/internal/collect/config Keys): configuration files can hold secrets. Emitted before the config_snapshot of the same run_id.",
   "type": "object",

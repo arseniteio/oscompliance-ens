@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/config_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/config_snapshot.v1.json",
   "title": "config_snapshot v1",
   "description": "Summary of one read of the configuration sources, emitted after their config_file records.",
   "type": "object",

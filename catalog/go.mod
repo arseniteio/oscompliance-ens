@@ -1,4 +1,4 @@
-module github.com/arseniteio/oscompliance-ens/catalog
+module github.com/arseniteio/oscompliance-ens-wazuh/catalog
 
 go 1.27.2
 

@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/batch"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/batch"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 type passState struct {

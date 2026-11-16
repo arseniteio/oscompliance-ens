@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
 )
 
 const heldRun = "held-run"

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 )
 
 type Machine struct {

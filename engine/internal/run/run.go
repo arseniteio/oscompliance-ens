@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/aggregate"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/batch"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/aggregate"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/batch"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/evaluator"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 type Agents interface {

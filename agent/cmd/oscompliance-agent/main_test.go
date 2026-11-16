@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
 )
 
 func TestEveryCollectorIsWired(t *testing.T) {

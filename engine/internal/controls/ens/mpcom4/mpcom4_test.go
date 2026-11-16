@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp7"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opexp7"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 func check(t *testing.T, name string, got verdict.Judgement, status verdict.Status, cause verdict.Cause, reason string) {

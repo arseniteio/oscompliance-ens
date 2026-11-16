@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
 type Emitter struct {

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
 func TestEmitWritesFlatEnvelopeAndPayload(t *testing.T) {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/auth_log_probe.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/auth_log_probe.v1.json",
   "title": "auth_log_probe v1",
   "description": "The agent wrote the line \"auth log probe <run_id>\" to syslog with facility authpriv and tag oscompliance-agent, where the authentication log is written. When the same line comes back as a Wazuh alert (rule 119002), the authentication log of the machine reaches Wazuh, whether or not anybody logged in.",
   "type": "object",

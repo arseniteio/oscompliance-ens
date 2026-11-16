@@ -4,11 +4,11 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 func Gap(cause verdict.Cause, m catalog.Message) verdict.Judgement {

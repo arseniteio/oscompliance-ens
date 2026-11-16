@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/group_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/group_snapshot.v1.json",
   "title": "group_snapshot v1",
   "description": "Summary of one read of the group file. Emitted once per pass, after every group_record of the same run_id. Emitted even when the file could not be read; then no group_record is emitted.",
   "type": "object",

@@ -3,8 +3,8 @@ package scope
 import (
 	"strings"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
 )
 
 type Machines struct {

@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 var Daemons = []string{"wazuh-analysisd", "wazuh-remoted", "wazuh-db", "wazuh-modulesd"}

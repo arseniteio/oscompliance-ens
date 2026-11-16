@@ -27,7 +27,7 @@ release_installer() {
 }
 
 for arch in amd64 arm64; do
-  name="oscompliance-ens-$version-linux-$arch"
+  name="oscompliance-ens-wazuh-$version-linux-$arch"
   dir="$dist/$name"
   mkdir -p "$dir/bin" "$dir/wazuh" "$dir/agent"
   for part in agent engine; do

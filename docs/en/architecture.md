@@ -118,5 +118,5 @@ nothing. A steady machine sends about 115 facts per day.
 2. `agent/`: collectors for what Wazuh does not already collect.
 3. `engine/internal/controls/ens/<control>`: the judge, with tests.
 4. `docs/en/controls/<control>.md` and `docs/es/controls/<control>.md`: the page, with the sections every control has.
-5. power-ens: `npx tsx config/sync-catalog.ts` to vendor the catalog.
+5. power-ens-wazuh: `npx tsx config/sync-catalog.ts` to vendor the catalog.
 6. Lab: facts arrive, the engine writes verdicts, the plugin shows them.

@@ -87,10 +87,10 @@ Descarga el paquete de tu arquitectura y sus sumas de comprobación en cada nodo
 
 ```bash
 v=1.2.0
-url=https://github.com/arseniteio/oscompliance-ens/releases/download/v$v
+url=https://github.com/arseniteio/oscompliance-ens-wazuh/releases/download/v$v
 curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
-tar xzf "oscompliance-ens-$v-linux-amd64.tar.gz" && cd "oscompliance-ens-$v-linux-amd64"
+tar xzf "oscompliance-ens-wazuh-$v-linux-amd64.tar.gz" && cd "oscompliance-ens-wazuh-$v-linux-amd64"
 ```
 
 Cada paquete contiene los binarios en `bin/`, los ficheros de Wazuh en `wazuh/`, el fichero de cron y la configuración de ejemplo del agente en `agent/`, `install.sh` y las licencias.
@@ -98,7 +98,7 @@ Cada paquete contiene los binarios en `bin/`, los ficheros de Wazuh en `wazuh/`,
 En cada nodo de dashboard, descarga en la misma carpeta el plugin para tu dashboard: `osd-2.19.5` para Wazuh 4.14.7, `osd-2.19.6` para 4.14.8 y 4.14.9. `create-admin-role.sh` se ejecuta en el host que tiene el certificado de administración del indexer.
 
 ```bash
-url=https://github.com/arseniteio/power-ens/releases/download/v$v
+url=https://github.com/arseniteio/power-ens-wazuh/releases/download/v$v
 curl -fL -o plugin.sha256 "$url/SHA256SUMS"
 curl -fLO "$url/power-ens-$v-osd-2.19.6.zip" -O "$url/deploy-plugin.sh" -O "$url/create-admin-role.sh"
 sha256sum -c --ignore-missing plugin.sha256
@@ -169,7 +169,7 @@ Ejecuta esto en cada nodo de dashboard o en el servidor todo en uno.
 El script valida el zip, guarda una copia de la versión anterior en `/var/backups/power-ens`, instala el plugin y reinicia el dashboard. Debe terminar con el dashboard activo.
 
 ```bash
-bash deploy-plugin.sh "power-ens-$v-osd-2.19.6.zip"
+bash deploy-plugin.sh "power-ens-wazuh-$v-osd-2.19.6.zip"
 ```
 
 Entra en el dashboard y abre Power ENS. Si indica `No se puede leer el inventario de agentes`, el dashboard aún no ha escrito su inventario de agentes, lo que hace cada 15 minutos: espera y pulsa Reintentar.
@@ -445,7 +445,7 @@ Compila los paquetes en este repositorio con Go 1.27.2 o posterior. El resultado
 make dist VERSION=1.2.0
 ```
 
-Compila el plugin en el repositorio power-ens con Docker, para la versión de OpenSearch Dashboards de tu dashboard. La primera compilación tarda unos 20 minutos. El resultado es `dist/powerEns-2.19.6.zip`.
+Compila el plugin en el repositorio power-ens-wazuh con Docker, para la versión de OpenSearch Dashboards de tu dashboard. La primera compilación tarda unos 20 minutos. El resultado es `dist/powerEns-2.19.6.zip`.
 
 ```bash
 ci/build-zip.sh 2.19.6

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
 func privilegedAccounts(idx accountIndex, groups []string, grants []fact.SudoGrant) (privileged map[string][]string, unresolved []string) {

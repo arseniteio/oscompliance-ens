@@ -3,7 +3,7 @@ package opacc1
 import (
 	"strings"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 )
 
 const adminAffixParam = "P-12"

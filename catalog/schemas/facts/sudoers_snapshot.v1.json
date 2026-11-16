@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/sudoers_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/sudoers_snapshot.v1.json",
   "title": "sudoers_snapshot v1",
   "description": "Summary of one read of the sudoers policy (/etc/sudoers and the files sudo includes), emitted after its sudo_grant records. blind_spots counts what was read but cannot be attributed to named subjects; while it is not zero, 'nobody else has sudo' cannot be asserted.",
   "type": "object",

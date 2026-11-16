@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc4"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp5"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opacc4"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opexp5"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 func JudgeEV01(assessed verdict.Judgement, policies []string, lowest map[string]int, minScore int, days int, problem catalog.Message) verdict.Judgement {

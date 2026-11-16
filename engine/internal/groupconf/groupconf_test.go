@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/wazuhapi"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/wazuhapi"
 )
 
 func policyOf(t *testing.T, doc string) *params.Config {

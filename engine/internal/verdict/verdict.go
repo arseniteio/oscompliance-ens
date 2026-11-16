@@ -1,6 +1,6 @@
 package verdict
 
-import "github.com/arseniteio/oscompliance-ens/catalog"
+import "github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 
 type Status string
 

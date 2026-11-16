@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/time_sync.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/time_sync.v1.json",
   "title": "time_sync v1",
   "description": "How the machine keeps its clock: chrony or systemd-timesyncd, whether it is synchronised, its offset, the sources in use and whether they are authenticated.",
   "type": "object",

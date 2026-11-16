@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
-	"github.com/arseniteio/oscompliance-ens/agent/internal/fsread"
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/fsread"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
 type Config struct {

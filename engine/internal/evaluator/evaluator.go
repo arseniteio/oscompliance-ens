@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 type Pass struct {

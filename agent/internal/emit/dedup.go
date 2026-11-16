@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/arseniteio/oscompliance-ens/agent/internal/fsread"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/fsread"
 	"os"
 	"path/filepath"
 	"time"

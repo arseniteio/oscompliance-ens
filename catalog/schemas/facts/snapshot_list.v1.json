@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/snapshot_list.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/snapshot_list.v1.json",
   "title": "snapshot_list v1",
   "description": "The LVM, ZFS and Btrfs snapshots of the machine and when each was taken.",
   "type": "object",

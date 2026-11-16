@@ -3,11 +3,11 @@ package mps3
 import (
 	"slices"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/mpcom1"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/mpcom1"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 var Filters = []struct{ Name, Evidence string }{

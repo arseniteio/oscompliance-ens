@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/backup_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/backup_snapshot.v1.json",
   "title": "backup_snapshot v1",
   "description": "The copies each source of the group configuration holds (backup_sources): a git directory, a directory or a file pattern, with the dates of its newest and oldest copy, who can read them and their filesystem; and the mode of the keys that encrypt them (backup_keys).",
   "type": "object",

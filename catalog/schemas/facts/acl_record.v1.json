@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/acl_record.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/acl_record.v1.json",
   "title": "acl_record v1",
   "description": "Mode, owner and POSIX ACL of one path the manager asked the agent to watch (acl_paths of the group configuration the engine writes). Emitted before the acl_snapshot of the same run_id.",
   "type": "object",

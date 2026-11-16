@@ -3,7 +3,7 @@ package store
 import (
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 func TestDocumentID(t *testing.T) {

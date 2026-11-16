@@ -176,9 +176,9 @@ privileged groups), and the verdict says when it does.
 
 ## Parameters from a file
 
-After the first save from Power ENS, which creates the configuration with the full catalog, the parameters can also be set from a JSON file with `config/set-parameters.py` of the power-ens repository. It checks every value against the catalog, shows the plan and writes only with `--apply`. Each run keeps the previous version in the history, as a save from the dashboard does.
+After the first save from Power ENS, which creates the configuration with the full catalog, the parameters can also be set from a JSON file with `config/set-parameters.py` of the power-ens-wazuh repository. It checks every value against the catalog, shows the plan and writes only with `--apply`. Each run keeps the previous version in the history, as a save from the dashboard does.
 
-Run it from the `config/` folder of a full power-ens clone, on a machine that reaches the indexer with its admin certificate. It needs `python3`. On Docker, add `ENS_OS_URL=https://127.0.0.1:9200` and the certificates of `config/wazuh_indexer_ssl_certs`.
+Run it from the `config/` folder of a full power-ens-wazuh clone, on a machine that reaches the indexer with its admin certificate. It needs `python3`. On Docker, add `ENS_OS_URL=https://127.0.0.1:9200` and the certificates of `config/wazuh_indexer_ssl_certs`.
 
 ```bash
 export OS_CERT=/etc/wazuh-indexer/certs/admin.pem OS_KEY=/etc/wazuh-indexer/certs/admin-key.pem

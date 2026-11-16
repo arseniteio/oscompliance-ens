@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/identity_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/identity_snapshot.v1.json",
   "title": "identity_snapshot v1",
   "description": "Summary of one read of the identity files. Emitted once per pass, after every identity_record of the same run_id, so it also marks the pass as complete. Emitted even when a file could not be read; then no identity_record is emitted.",
   "type": "object",

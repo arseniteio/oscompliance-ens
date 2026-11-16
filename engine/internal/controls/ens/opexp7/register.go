@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opexp5"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opexp5"
 )
 
 const (

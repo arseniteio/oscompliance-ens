@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
 )
 
 func indexerAnswering(t *testing.T, status int, body string) *indexer.Client {

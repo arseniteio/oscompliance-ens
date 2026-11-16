@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/batch"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/history"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/batch"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/history"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 var historyMapping = map[string]any{

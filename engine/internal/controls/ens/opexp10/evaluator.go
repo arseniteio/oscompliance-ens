@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc4"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/controls/ens/opacc6"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/evaluator"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/params"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/passes"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opacc4"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opacc6"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/evaluator"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/passes"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 type Facts interface {

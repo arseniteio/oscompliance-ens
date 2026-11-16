@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/virtualization.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/virtualization.v1.json",
   "title": "virtualization v1",
   "description": "Whether the machine is a virtual machine, from systemd-detect-virt, the firmware (DMI) or the CPU hypervisor flag. Containers are not virtual machines.",
   "type": "object",

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 )
 
 var says = regexp.MustCompile(`Says\("([a-z0-9_.]+)"`)

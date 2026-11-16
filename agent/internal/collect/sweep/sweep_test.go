@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/agent/internal/collect/collecttest"
-	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/collecttest"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
 )
 
 func accountFiles(t *testing.T, known bool) (string, string) {

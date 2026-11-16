@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 func Review(rows []string, rowsProblem catalog.Message, register string, maxDays int, daysProblem catalog.Message, period string, now time.Time) (verdict.Judgement, time.Time) {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/file_sweep_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/file_sweep_snapshot.v1.json",
   "title": "file_sweep_snapshot v1",
   "description": "Summary of one filesystem sweep, emitted after its special_file records. The sweep walks every local filesystem (one device per root, never crossing into another), pruning pseudo and container filesystems. It is complete only with status complete and no unreadable directories.",
   "type": "object",

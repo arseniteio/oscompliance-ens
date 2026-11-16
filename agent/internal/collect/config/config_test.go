@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/agent/internal/collect/collecttest"
-	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
-	"github.com/arseniteio/oscompliance-ens/catalog/fact"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/collecttest"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
 func TestParseEntries(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/arseniteio/oscompliance-ens/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 )
 
 type GroupMaker interface {

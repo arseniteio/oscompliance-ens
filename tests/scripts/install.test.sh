@@ -13,7 +13,7 @@ set +e
 [ "$(arch_of x86_64)" = amd64 ] && [ "$(arch_of aarch64)" = arm64 ] && ok "maps uname -m to the package architecture" || fail "architecture"
 r="$( (arch_of riscv64) 2>&1)"; [ $? -ne 0 ] && echo "$r" | grep -q "unsupported architecture" && ok "rejects another architecture" || fail "riscv64 ($r)"
 
-[ "$(plugin_zip_for 1.1.0 2.19.6)" = power-ens-1.1.0-osd-2.19.6.zip ] && ok "picks the plugin zip of the dashboard" || fail "zip for 2.19.6"
+[ "$(plugin_zip_for 1.1.0 2.19.6)" = power-ens-wazuh-1.1.0-osd-2.19.6.zip ] && ok "picks the plugin zip of the dashboard" || fail "zip for 2.19.6"
 r="$( (plugin_zip_for 1.1.0 2.19.4) 2>&1)"; [ $? -ne 0 ] && echo "$r" | grep -q "unsupported OpenSearch Dashboards" && ok "rejects another dashboard version" || fail "zip for 2.19.4 ($r)"
 
 [ "$(OSC_RELEASE=v1.2.3 release_version)" = 1.2.3 ] && ok "takes the release from OSC_RELEASE without the v" || fail "OSC_RELEASE"

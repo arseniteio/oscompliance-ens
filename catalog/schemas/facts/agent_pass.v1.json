@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/agent_pass.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/agent_pass.v1.json",
   "title": "agent_pass v1",
   "description": "Last fact of every collection pass. A collector whose records and snapshot did not change since it last sent them sends nothing; in_force names, for every such collector that ran in the pass and for those that sent their facts, the snapshot that holds now. The engine takes a snapshot older than its window as current when the newest agent_pass in the window names it. The agent sends every collector in full at least every 3 days.",
   "type": "object",

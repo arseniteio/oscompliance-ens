@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/package_transaction.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/package_transaction.v1.json",
   "title": "package_transaction v1",
   "description": "One apt transaction of /var/log/apt/history.log: when it ran, who asked for it and the packages it changed (name version).",
   "type": "object",

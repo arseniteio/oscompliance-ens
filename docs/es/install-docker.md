@@ -46,7 +46,7 @@ Descarga el paquete de tu arquitectura y sus sumas de comprobación en el host y
 
 ```bash
 v=1.2.0
-url=https://github.com/arseniteio/power-ens/releases/download/v$v
+url=https://github.com/arseniteio/power-ens-wazuh/releases/download/v$v
 curl -fLO "$url/dashboard.Dockerfile"
 ```
 
@@ -91,7 +91,7 @@ El plugin va en una imagen propia, porque lo que se instala en un contenedor en 
 
 ```bash
 docker build -f dashboard.Dockerfile --build-arg WAZUH_VERSION="$WAZUH_VERSION" \
-  --build-arg PLUGIN_ZIP="power-ens-$v-osd-2.19.6.zip" -t power-ens/wazuh-dashboard:local .
+  --build-arg PLUGIN_ZIP="power-ens-wazuh-$v-osd-2.19.6.zip" -t power-ens/wazuh-dashboard:local .
 ```
 
 Desde la carpeta del paquete, instala el binario del motor y el fichero override, y recrea el dashboard. El fichero override indica la imagen del dashboard y define el servicio del motor, que arranca en el apartado 6.
@@ -164,7 +164,7 @@ Para actualizar el plugin, guarda la imagen actual con otra etiqueta, construye 
 ```bash
 docker tag power-ens/wazuh-dashboard:local power-ens/wazuh-dashboard:previous
 docker build -f dashboard.Dockerfile --build-arg WAZUH_VERSION="$WAZUH_VERSION" \
-  --build-arg PLUGIN_ZIP="power-ens-$v-osd-2.19.6.zip" -t power-ens/wazuh-dashboard:local .
+  --build-arg PLUGIN_ZIP="power-ens-wazuh-$v-osd-2.19.6.zip" -t power-ens/wazuh-dashboard:local .
 (cd "$WAZUH_DIR" && docker compose -p "$PROJECT" up -d wazuh.dashboard)
 ```
 

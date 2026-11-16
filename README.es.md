@@ -4,7 +4,7 @@
 
 OSCompliance ENS mide el Esquema Nacional de Seguridad (Real Decreto 311/2022) sobre un despliegue de Wazuh. Convierte lo que hacen tus máquinas en un veredicto por control, por requisito y por máquina, con el motivo de cada resultado, cada 15 minutos.
 
-Añade un binario de agente en cada máquina Linux y un motor en el manager maestro de Wazuh. Wazuh sigue haciendo la recogida. No se juzga nada en la máquina auditada, y lo que no se puede demostrar no cuenta como cumplido. El plugin [Power ENS](https://github.com/arseniteio/power-ens) muestra los resultados en el dashboard de Wazuh.
+Añade un binario de agente en cada máquina Linux y un motor en el manager maestro de Wazuh. Wazuh sigue haciendo la recogida. No se juzga nada en la máquina auditada, y lo que no se puede demostrar no cuenta como cumplido. El plugin [Power ENS](https://github.com/arseniteio/power-ens-wazuh) muestra los resultados en el dashboard de Wazuh.
 
 Funciona en Wazuh 4.14.7, 4.14.8 y 4.14.9, con las máquinas auditadas en Linux.
 
@@ -13,7 +13,7 @@ Funciona en Wazuh 4.14.7, 4.14.8 y 4.14.9, con las máquinas auditadas en Linux.
 Ejecuta el mismo comando en cada nodo servidor de Wazuh instalado por paquetes, como un usuario con sudo. Empieza por el manager maestro, o por el servidor de un despliegue todo en uno, y sigue con los managers worker y los nodos de dashboard. Los nodos de indexer no necesitan nada.
 
 ```bash
-curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- server
+curl -fsSL https://github.com/arseniteio/oscompliance-ens-wazuh/releases/latest/download/install.sh | sudo bash -s -- server
 ```
 
 El script detecta el nodo. En el maestro instala las reglas, el motor y sus usuarios, y audita el manager. Pide la contraseña de `wazuh-wui` y dos contraseñas nuevas, y la contraseña del usuario `admin` del indexer cuando el host no tiene el certificado de administración del indexer. En un worker espera las reglas que el maestro sincroniza a través del clúster y reinicia el manager. En un nodo de dashboard instala el plugin Power ENS. En un servidor todo en uno lo hace todo.
@@ -21,7 +21,7 @@ El script detecta el nodo. En el maestro instala las reglas, el motor y sus usua
 En cada máquina que se audita:
 
 ```bash
-curl -fsSL https://github.com/arseniteio/oscompliance-ens/releases/latest/download/install.sh | sudo bash -s -- agent --group ens
+curl -fsSL https://github.com/arseniteio/oscompliance-ens-wazuh/releases/latest/download/install.sh | sudo bash -s -- agent --group ens
 ```
 
 El motor añade cada máquina al grupo `ens` en menos de 15 minutos, y los primeros veredictos aparecen en Power ENS tras su siguiente pasada. Hasta que se guarda una configuración en Power ENS, el motor juzga con nivel MEDIO y el grupo `ens` en alcance. Ejecuta los mismos comandos con una versión más nueva para actualizar, y con `uninstall` en cada nodo para quitarlo todo.
@@ -30,14 +30,14 @@ Para revisar los ficheros antes de ejecutar nada, descarga el paquete y comprué
 
 ```bash
 v=1.2.0
-url=https://github.com/arseniteio/oscompliance-ens/releases/download/v$v
+url=https://github.com/arseniteio/oscompliance-ens-wazuh/releases/download/v$v
 curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
-tar xzf "oscompliance-ens-$v-linux-amd64.tar.gz"
+tar xzf "oscompliance-ens-wazuh-$v-linux-amd64.tar.gz"
 sudo "./oscompliance-ens-$v-linux-amd64/install.sh" agent --group ens
 ```
 
-En un nodo de dashboard, el script descarga el plugin de la versión de power-ens y lo comprueba. Para instalar sin acceso a GitHub, copia antes el zip del plugin y `deploy-plugin.sh` en la carpeta del paquete.
+En un nodo de dashboard, el script descarga el plugin de la versión de power-ens-wazuh y lo comprueba. Para instalar sin acceso a GitHub, copia antes el zip del plugin y `deploy-plugin.sh` en la carpeta del paquete.
 
 Para Wazuh en Docker o el detalle de cada paso, sigue las guías completas:
 

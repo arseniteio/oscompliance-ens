@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/key_record.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/key_record.v1.json",
   "title": "key_record v1",
   "description": "A private key found on disk by its PEM header: path, kind, fingerprint of its public part (SHA256, as OpenSSH writes it), mode and owner.",
   "type": "object",

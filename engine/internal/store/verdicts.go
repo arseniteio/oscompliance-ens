@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/indexer"
-	"github.com/arseniteio/oscompliance-ens/engine/internal/verdict"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 var mapping = map[string]any{

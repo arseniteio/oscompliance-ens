@@ -68,5 +68,5 @@ En el lado del agente, una pasada lee ficheros locales y ejecuta unos pocos coma
 2. `agent/`: colectores para lo que Wazuh no recoge ya.
 3. `engine/internal/controls/ens/<control>`: el juez, con pruebas.
 4. `docs/en/controls/<control>.md` y `docs/es/controls/<control>.md`: la página, con las secciones que tiene cada control.
-5. power-ens: `npx tsx config/sync-catalog.ts` para incluir el catálogo.
+5. power-ens-wazuh: `npx tsx config/sync-catalog.ts` para incluir el catálogo.
 6. Laboratorio: llegan los hechos, el motor escribe veredictos, el plugin los muestra.

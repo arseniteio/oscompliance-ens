@@ -3,7 +3,7 @@ package scope
 import (
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/engine/internal/source"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
 )
 
 func TestFleet(t *testing.T) {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/arseniteio/oscompliance-ens/catalog/schemas/facts/firewall_snapshot.v1.json",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/firewall_snapshot.v1.json",
   "title": "firewall_snapshot v1",
   "description": "The packet filter of the machine: its base chains on the input and forward hooks and their default policy. A machine with no base input chain accepts everything.",
   "type": "object",

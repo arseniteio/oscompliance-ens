@@ -91,7 +91,7 @@ arch_of() {
 
 plugin_zip_for() {
   case "$2" in
-    2.19.5 | 2.19.6) echo "power-ens-$1-osd-$2.zip" ;;
+    2.19.5 | 2.19.6) echo "power-ens-wazuh-$1-osd-$2.zip" ;;
     *) die "unsupported OpenSearch Dashboards version: $2 (Wazuh 4.14.7, 4.14.8 or 4.14.9 is required)" ;;
   esac
 }
@@ -106,7 +106,7 @@ release_version() {
     return
   fi
   local latest
-  latest="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$OSC_REPO_URL/oscompliance-ens/releases/latest")"
+  latest="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$OSC_REPO_URL/oscompliance-ens-wazuh/releases/latest")"
   case "$latest" in
     */tag/v*) echo "${latest##*/tag/v}" ;;
     *) die "cannot find the latest release: set OSC_RELEASE, for example OSC_RELEASE=1.0.0" ;;
@@ -156,9 +156,9 @@ fetch_package() {
 
   VERSION="$(release_version)"
   local name
-  name="oscompliance-ens-$VERSION-linux-$(arch_of "$(uname -m)")"
+  name="oscompliance-ens-wazuh-$VERSION-linux-$(arch_of "$(uname -m)")"
   say "downloading $name"
-  download oscompliance-ens "$VERSION" "$WORK" "$name.tar.gz"
+  download oscompliance-ens-wazuh "$VERSION" "$WORK" "$name.tar.gz"
   tar -xzf "$WORK/$name.tar.gz" -C "$WORK"
   PKG="$WORK/$name"
 }
@@ -175,7 +175,7 @@ fetch_plugin() {
   fi
 
   say "downloading $zip"
-  download power-ens "$VERSION" "$WORK" "$zip" deploy-plugin.sh
+  download power-ens-wazuh "$VERSION" "$WORK" "$zip" deploy-plugin.sh
   PLUGIN_ZIP="$WORK/$zip"
   DEPLOY="$WORK/deploy-plugin.sh"
 }

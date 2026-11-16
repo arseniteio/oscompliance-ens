@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/arseniteio/oscompliance-ens/agent/internal/emit"
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
 )
 
 func Facts(t *testing.T, collect func(*emit.Emitter) error) []map[string]any {
