@@ -4,6 +4,27 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `install.sh server` detects the node and installs only its part: rules, manager audit and engine on the master manager or single node, a restart once the rules of the release arrive on a worker, and the Power ENS plugin on a dashboard node.
+- `install.sh server --only <components>` replaces the detection with a comma-separated list of `rules`, `audit`, `engine`, `plugin` and `worker`.
+- `install.sh agent --group <name>` asks the engine to add the machine to a Wazuh group and reads the facts file through a localfile in the agent's own `ossec.conf` until the group configuration arrives.
+- The agent sends `wazuh_group` from `agent.json` as `requested_group` in every `agent_pass` fact.
+- The engine creates the groups of the ENS scope that do not exist and adds to them the agents that ask for them, never to a group outside the scope.
+- The engine logs a warning for agents that ask for a group outside the ENS scope.
+- `-indexer` accepts several comma-separated URLs and fails over to the next one when one does not answer.
+- `catalog/default-configuration.json` holds the default ENS configuration: level MEDIO and the `ens` group in scope.
+
+### Changed
+
+- Until a configuration is saved in Power ENS, the engine judges with the catalog default, so the "Guardar configuración global" (save global configuration) step is no longer required for the first verdicts.
+- The engine unit reads the indexer URLs and CA certificate from `/etc/oscompliance/engine.conf`, which `install.sh server` writes from the Filebeat output of the manager.
+- `engine-users.sh` uses the indexer admin certificate when it is on the host and otherwise asks for the password of the indexer `admin` user, so no certificate is copied between hosts.
+- `install.sh server` keeps the passwords of existing engine users on a rerun and updates their permissions.
+- The Wazuh API role of the engine adds `group:modify_assignments` and `agent:modify_group`.
+- `install.sh uninstall` removes from each node only what is installed there, and the rules only on the master.
+- The installation guide covers distributed deployments, with the steps of each node type.
+
 ## [1.1.0] - 2026-11-15
 
 ### Added
