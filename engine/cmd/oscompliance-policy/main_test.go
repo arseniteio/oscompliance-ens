@@ -169,4 +169,12 @@ func TestPlanApplyExportDelete(t *testing.T) {
 	if err := run(append([]string{"delete"}, append(at, "dmz")...), io.Discard); err == nil {
 		t.Fatal("deleting a missing profile should fail")
 	}
+
+	if err := run(append([]string{"delete"}, append(at, "web")...), io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := run(append([]string{"export"}, at...), &out); err != nil || out.Len() != 0 {
+		t.Fatalf("export with nothing stored prints nothing: %v %q", err, out.String())
+	}
 }

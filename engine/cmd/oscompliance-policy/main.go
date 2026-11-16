@@ -271,6 +271,9 @@ func export(ctx context.Context, client *indexer.Client, index string, ids []str
 		}
 	}
 
+	if len(list) == 0 {
+		return nil
+	}
 	raw, err := encodeYAML(list)
 	if err != nil {
 		return err
@@ -354,7 +357,7 @@ func explain(ctx context.Context, client *indexer.Client, o options, agentID, on
 				continue
 			}
 			r, ok := config.Explain(agentID, c.Control, paramID)
-			if !ok {
+			if !ok || r.Value == nil {
 				table.printf("%s\t%s\t-\tnot set\n", c.Control, paramID)
 				continue
 			}
