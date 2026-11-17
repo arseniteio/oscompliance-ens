@@ -38,6 +38,13 @@ func hasClam(p *fact.MalwareProtection) bool {
 	return slices.ContainsFunc(p.Products, func(a fact.Antimalware) bool { return a.Product == "clamav" })
 }
 
+// The agent reads the signatures, settings and scans of ClamAV and Microsoft Defender only.
+func stateRead(p *fact.MalwareProtection) bool {
+	return slices.ContainsFunc(p.Products, func(a fact.Antimalware) bool { return a.Product == "clamav" || a.Product == defender })
+}
+
+const defender = "windows-defender"
+
 func JudgeEV01(p *fact.MalwareProtection, expected []string, problem catalog.Message) verdict.Judgement {
 
 	if !problem.IsZero() {
@@ -87,7 +94,7 @@ func JudgeEV02(p *fact.MalwareProtection, maxHours int, problem catalog.Message,
 
 func unread(p *fact.MalwareProtection) (verdict.Judgement, bool) {
 	switch {
-	case hasClam(p):
+	case stateRead(p):
 		return verdict.Judgement{}, false
 	case len(running(p)) == 0:
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp6.no_antimalware")), true

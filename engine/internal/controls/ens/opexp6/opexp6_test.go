@@ -36,6 +36,8 @@ func TestAntimalware(t *testing.T) {
 	check(t, "old signatures", JudgeEV02(clam(), 2, catalog.Message{}, now), verdict.NonCompliant, "", "5 h ago")
 	falcon := &fact.MalwareProtection{Status: fact.SourceRead, Products: []fact.Antimalware{{Product: "falcon-sensor", Running: true}}}
 	check(t, "unread product", JudgeEV02(falcon, 24, catalog.Message{}, now), verdict.NotEvaluable, verdict.CauseCollection, "falcon-sensor")
+	defender := &fact.MalwareProtection{Status: fact.SourceRead, Products: []fact.Antimalware{{Product: "windows-defender", Running: true}}, Signatures: "2026-10-29T06:24:00.0000000Z"}
+	check(t, "defender signatures", JudgeEV02(defender, 24, catalog.Message{}, now), verdict.Compliant, "", "2026-10-29 06:24")
 
 	check(t, "settings", JudgeEV03(clam(), []string{"proteccion_tiempo_real | si", "analisis_comprimidos | si"}, catalog.Message{}), verdict.NonCompliant, "", "proteccion_tiempo_real")
 	check(t, "unknown setting", JudgeEV03(clam(), []string{"heuristica | si"}, catalog.Message{}), verdict.NotEvaluable, verdict.CauseConfiguration, "heuristica")
