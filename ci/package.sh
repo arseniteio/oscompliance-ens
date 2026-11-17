@@ -31,6 +31,11 @@ release_installer() {
   chmod 755 "$1"
 }
 
+release_windows_installer() {
+  sed "s/^\$PackagedRelease = ''\$/\$PackagedRelease = '$version'/" "$root/agent/windows/install.ps1" > "$1"
+  grep -q "^\$PackagedRelease = '$version'\$" "$1" || { echo "install.ps1: cannot set the release version" >&2; exit 1; }
+}
+
 for arch in amd64 arm64; do
   name="oscompliance-ens-wazuh-$version-linux-$arch"
   dir="$dist/$name"
@@ -53,7 +58,8 @@ dir="$dist/$name"
 mkdir -p "$dir/wazuh"
 (cd "$root/agent" && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
   go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$dir/oscompliance-agent.exe" ./cmd/oscompliance-agent)
-cp "$root/agent/windows/install.ps1" "$root/agent/windows/agent.example.json" "$dir/"
+release_windows_installer "$dir/install.ps1"
+cp "$root/agent/windows/agent.example.json" "$dir/"
 cp "$root/catalog/wazuh/oscompliance_facts_rules.xml" "$root/catalog/wazuh/agent.conf.windows.fragment.xml" "$dir/wazuh/"
 cp "$root/LICENSE" "$notices" "$dir/"
 echo "$version" > "$dir/VERSION"
@@ -62,5 +68,6 @@ rm -rf "$dir"
 
 rm "$notices"
 release_installer "$dist/install.sh"
-(cd "$dist" && sha256sum ./*.tar.gz ./*.zip ./install.sh | sed 's# \./# #' > SHA256SUMS)
+release_windows_installer "$dist/install.ps1"
+(cd "$dist" && sha256sum ./*.tar.gz ./*.zip ./install.sh ./install.ps1 | sed 's# \./# #' > SHA256SUMS)
 ls -l "$dist"
