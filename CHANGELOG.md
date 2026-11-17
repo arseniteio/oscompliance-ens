@@ -15,6 +15,12 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 - Profiles give parameter values to every machine whose host profile meets their conditions, in four layers (distro, role, service, site): lists add up across layers and other values come from the most specific one. Each profile is a `PROFILE` document in `wazuh-ens-configuration`. The catalog ships `ubuntu` and `manager-wazuh` with the values of the built-in templates, so verdicts do not change.
 - `-profile-groups` keeps one Wazuh group per profile, `ens-perfil-<id>`, with the machines that get it and the label `ens.perfil.<id>`. The engine API role already allows it (`agent:modify_group`).
 - `oscompliance-policy`, installed with the engine, checks, plans, applies, exports and deletes profiles written in YAML, and explains which profiles and values a machine gets.
+- Windows agent. `oscompliance-agent.exe` for Windows Server 2016 to 2025 and Windows 10 and 11 collects accounts and groups (SAM, or Active Directory on a domain controller), the security, audit and registry policy, BitLocker and the inactivity lock, Windows Firewall, Microsoft Defender and AppLocker, W32Time, Windows Update, services, listening ports, installed programs and ACLs, and writes them to `C:\ProgramData\oscompliance\facts.ndjson` with the existing fact types. `install.ps1` installs it with two scheduled tasks as SYSTEM, and `make dist` packages it as `oscompliance-ens-wazuh-<version>-windows-amd64.zip`.
+- On Windows the `audit` collector sets SACL entries on the read and change watches, and `-guard-audit` forwards event 4663 on them as the new `file_access` fact, oldest first and at most 2,000 per run. A read watch over `audit_read_limit` reads per minute loses its read entry for one hour; rule 119008 alerts on it.
+- The engine reads logins from events 4624 of logon types 2, 10 and 11, failures from 4625 and lockouts from 4740. Type 3 network logons stay out, so a service account that connects over WinRM is not a person logging in. Remote Desktop counts as a remote channel `rdp` next to `ssh`.
+- op.acc.6 judges the Windows lockout, password quality and maximum age from the `secedit` account policy when the machine has no PAM facts. op.exp.6 judges the signatures and settings of Microsoft Defender.
+- The host profile recognises Windows Server 2016 to 2025 and Windows 10 and 11 (family `windows`; Windows 10 and 11 as workstations), and the catalog ships the `windows` profile with Windows paths and the English and Spanish names of the built-in groups.
+- Rule 119007 decodes the Windows facts file. `install.sh` installs it with the other rules.
 
 ### Changed
 
@@ -25,6 +31,7 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 - The installation guide lists the hardware the agent, the engine and the verdicts need, measured in the lab.
 - The configuration guide presents Power ENS > Configuración > Perfiles as the place to manage profiles, and `oscompliance-policy` as the option for automation.
 - `CONTRIBUTING.md` and `CONTRIBUTING.es.md` explain how to propose a change and the contributor license agreement.
+- The group configuration writes one `<agent_config os="...">` block per operating system when a group has Windows machines, so a mixed group no longer sends Linux files and audit watches to Windows agents. Groups with Linux machines only keep the same block. The engine reads the platform of each agent from the Wazuh API.
 
 ## [1.2.0] - 2026-11-16
 
