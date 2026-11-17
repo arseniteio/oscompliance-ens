@@ -1,6 +1,8 @@
 package store
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
@@ -22,5 +24,24 @@ func TestDocumentID(t *testing.T) {
 		if got := DocumentID(v); got != want {
 			t.Errorf("got %s, want %s", got, want)
 		}
+	}
+}
+
+func TestDegreeBucket(t *testing.T) {
+	raw := `{"key":{"agent":"001"},
+	  "controls":{"control":{"buckets":[
+	    {"latest":{"hits":{"hits":[{"_source":{"score":100,"measured_requirements":4}}]}}},
+	    {"latest":{"hits":{"hits":[{"_source":{"score":50,"measured_requirements":0}}]}}},
+	    {"latest":{"hits":{"hits":[{"_source":{"score":75}}]}}},
+	    {"latest":{"hits":{"hits":[]}}}]}},
+	  "unconfigured":{"control":{"buckets":[{"key":"op.exp.9"},{"key":"op.acc.5"}]}}}`
+
+	var b degreeBucket
+	if err := json.Unmarshal([]byte(raw), &b); err != nil {
+		t.Fatal(err)
+	}
+	d := b.degree()
+	if d.Controls != 3 || d.Measured != 1 || d.Score != 75 || strings.Join(d.Unconfigured, ",") != "op.exp.9,op.acc.5" {
+		t.Errorf("degree: %+v", d)
 	}
 }

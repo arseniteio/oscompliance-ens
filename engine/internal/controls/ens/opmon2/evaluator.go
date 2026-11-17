@@ -22,19 +22,27 @@ type Facts interface {
 	AgentPasses(ctx context.Context, since time.Time) (map[string]fact.AgentPass, error)
 }
 
+type Degrees interface {
+	ImplementationDegrees(ctx context.Context, since time.Time) (map[string]verdict.Degree, error)
+}
+
 const control = "op.mon.2"
 
 type Evaluator struct {
-	facts Facts
+	facts   Facts
+	degrees Degrees
 
 	pass      evaluator.Pass
 	manager   *source.Manager
 	reporting map[string]source.Reporting
 	passes    map[string]fact.AgentPass
+
+	measured   map[string]verdict.Degree
+	degreesErr error
 }
 
-func NewEvaluator(facts Facts) *Evaluator {
-	return &Evaluator{facts: facts}
+func NewEvaluator(facts Facts, degrees Degrees) *Evaluator {
+	return &Evaluator{facts: facts, degrees: degrees}
 }
 
 func (e *Evaluator) Control() string { return control }
@@ -49,6 +57,8 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	if e.passes, err = e.facts.AgentPasses(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("agent passes: %w", err)
 	}
+	// The verdicts of the previous passes: this pass writes its own only when it ends.
+	e.measured, e.degreesErr = e.degrees.ImplementationDegrees(ctx, pass.WindowStart)
 	return nil
 }
 
@@ -94,6 +104,14 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		}
 		return JudgeEV03(Period(opexp7.ParseRegister(rows), now.AddDate(0, 0, -days)), indicators)
 	}())
+
+	applicability, applicabilityErr := policy.List(agent.ID, control, "P-01")
+	var degree *verdict.Degree
+	if d, ok := e.measured[agent.ID]; ok {
+		degree = &d
+	}
+	put("EV-01", JudgeEV01(Applicable(applicability), passes.ParamProblem("P-01", applicabilityErr), degree, e.degreesErr))
+	put("EV-05", JudgeEV05(degree, e.degreesErr))
 
 	var last *fact.AgentPass
 	if p, ok := e.passes[agent.ID]; ok {

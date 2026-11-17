@@ -11,7 +11,7 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.7.2. Definition: [`catalog/control
 
 | Requirement | Levels | Evidences |
 |---|---|---|
-| 2.1 implementation data and article 32 report | B/M/A | EV-02, EV-04 |
+| 2.1 implementation data and article 32 report | B/M/A | EV-01, EV-02, EV-04, EV-05 |
 | r1.1 incident management data | M/A | EV-03 |
 | r2.1 efficiency: hours and budget | M/A | EV-06 |
 
@@ -19,6 +19,7 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.7.2. Definition: [`catalog/control
 
 | Source | Content | Used by |
 |---|---|---|
+| `oscompliance-verdicts` | the control verdicts of the previous passes | EV-01, EV-05 |
 | P-06 cycle register | | EV-02, EV-06 |
 | op.exp.7 P-13 incident register ([op.exp.7](op.exp.7.md)) | | EV-03 |
 | `wazuh-monitoring-*` | agent status | EV-04 |
@@ -28,7 +29,7 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.7.2. Definition: [`catalog/control
 
 | ID | Content | Used by |
 |---|---|---|
-| P-01 statement of applicability | documentary | |
+| P-01 statement of applicability `medida \| aplica \| nivel \| refuerzos` | | EV-01 |
 | P-02 days of a cycle | | EV-02, EV-03, EV-06 |
 | P-03 margin days after a cycle | | EV-02, EV-06 |
 | P-04 incident indicators | `incidentes_por_tipo`, `incidentes_por_severidad`, `tiempo_medio_contencion`, `tiempo_medio_resolucion`, `notificados_ccn_cert`, `notificados_aepd` | EV-03 |
@@ -41,6 +42,13 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.7.2. Definition: [`catalog/control
 
 Judges are in `engine/internal/controls/ens/opmon2`.
 
+- EV-01 implementation degree. Not evaluable by CONFIGURATION without
+  P-01. Otherwise, the average score of the machine's applicable control
+  verdicts in the window, with the controls measured and the measures P-01
+  declares applicable. It reads the verdicts the previous passes wrote.
+- EV-05 controls not evaluable for lack of parameters. Lists the controls
+  with an evidence not evaluable by CONFIGURATION on the machine. It is the
+  configuration debt as a number to follow, not a nonconformity.
 - EV-02 cycles. The newest row of P-06 validated by a person of P-05
   for `metricas` must be within P-02 plus P-03 days.
 - EV-03 incident data. Every incident of op.exp.7 opened within P-02

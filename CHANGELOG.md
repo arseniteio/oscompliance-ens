@@ -6,6 +6,7 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ### Added
 
+- op.mon.2 EV-01 gives each machine's implementation degree, the average score of its applicable control verdicts, against the statement of applicability of P-01, which it now needs. EV-05 lists the controls with evidences not evaluable by configuration.
 - Maturity (Anexo II, apdo. 6). Each control verdict carries the CMM level its evidence accredits on that machine, L0 to L2 over 30 days. Each pass writes `organization` verdicts with the lowest level of each control, the level, target and author declared in the configuration, declared measures without engine, and the distribution and global level for the whole ENS.
 - The agent unloads the `oscompliance_*` audit watches the group configuration no longer asks for, only when it holds the engine's block, and the read watches loaded with `-w` before the auid filter. `audit_watch_snapshot` lists them in `unloaded`.
 - `oscompliance-agent -guard-audit`, run by cron every 2 minutes, unloads for one hour a read watch that records more than `audit_read_limit` successful reads per minute (60 by default) over 5 minutes. The next passes report it in `failed` and the controls that judge those reads are NOT_EVALUABLE by COLLECTION until the suspension ends. Rule 119006 alerts at level 10 on every suspension.

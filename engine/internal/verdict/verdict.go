@@ -115,3 +115,10 @@ func (v *Verdict) Explained(m catalog.Message, fallback string) {
 	}
 	v.Reason, v.ReasonCode, v.ReasonArgs = m.Render("en"), m.Code, m.Args
 }
+
+type Degree struct {
+	Controls     int
+	Measured     int
+	Score        int
+	Unconfigured []string
+}

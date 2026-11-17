@@ -179,7 +179,7 @@ func runMain() error {
 		opexp10.NewEvaluator(facts),
 		mpinfo6.NewEvaluator(facts),
 		opmon1.NewEvaluator(facts),
-		opmon2.NewEvaluator(facts),
+		opmon2.NewEvaluator(facts, sink),
 		opmon3.NewEvaluator(facts),
 		opcont2.NewEvaluator(facts),
 		opcont3.NewEvaluator(facts),

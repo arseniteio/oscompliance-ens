@@ -207,3 +207,122 @@ func (s *Verdicts) WorkingDays(ctx context.Context, control string, now time.Tim
 		after = resp.Aggregations.Agents.AfterKey
 	}
 }
+
+func (s *Verdicts) ImplementationDegrees(ctx context.Context, since time.Time) (map[string]verdict.Degree, error) {
+
+	out := map[string]verdict.Degree{}
+	var after any
+
+	for {
+		composite := map[string]any{
+			"size":    pageSize,
+			"sources": []any{map[string]any{"agent": map[string]any{"terms": map[string]any{"field": "agent.id"}}}},
+		}
+		if after != nil {
+			composite["after"] = after
+		}
+		query := map[string]any{
+			"size":  0,
+			"query": map[string]any{"range": map[string]any{"@timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
+			"aggs": map[string]any{"agents": map[string]any{
+				"composite": composite,
+				"aggs": map[string]any{
+					"controls": map[string]any{
+						"filter": map[string]any{"bool": map[string]any{
+							"filter":   []any{map[string]any{"term": map[string]any{"scope": verdict.ScopeControl}}},
+							"must_not": []any{map[string]any{"term": map[string]any{"status": verdict.NotApplicable}}},
+						}},
+						"aggs": map[string]any{"control": map[string]any{
+							"terms": map[string]any{"field": "control", "size": 100},
+							"aggs": map[string]any{"latest": map[string]any{"top_hits": map[string]any{
+								"size": 1, "sort": []any{map[string]any{"@timestamp": "desc"}},
+								"_source": []string{"score", "measured_requirements"},
+							}}},
+						}},
+					},
+					"unconfigured": map[string]any{
+						"filter": map[string]any{"bool": map[string]any{"filter": []any{
+							map[string]any{"term": map[string]any{"scope": verdict.ScopeEvidence}},
+							map[string]any{"term": map[string]any{"cause": verdict.CauseConfiguration}},
+						}}},
+						"aggs": map[string]any{"control": map[string]any{"terms": map[string]any{"field": "control", "size": 100}}},
+					},
+				},
+			}},
+		}
+
+		var resp struct {
+			Aggregations struct {
+				Agents struct {
+					AfterKey any            `json:"after_key"`
+					Buckets  []degreeBucket `json:"buckets"`
+				} `json:"agents"`
+			} `json:"aggregations"`
+		}
+		if err := s.client.Search(ctx, s.index, query, &resp); err != nil {
+			return nil, err
+		}
+
+		buckets := resp.Aggregations.Agents.Buckets
+		for _, b := range buckets {
+			out[b.Key.Agent] = b.degree()
+		}
+		if len(buckets) < pageSize {
+			return out, nil
+		}
+		after = resp.Aggregations.Agents.AfterKey
+	}
+}
+
+type degreeBucket struct {
+	Key      struct{ Agent string } `json:"key"`
+	Controls struct {
+		Control struct {
+			Buckets []struct {
+				Latest struct {
+					Hits struct {
+						Hits []struct {
+							Source struct {
+								Score    *int `json:"score"`
+								Measured *int `json:"measured_requirements"`
+							} `json:"_source"`
+						} `json:"hits"`
+					} `json:"hits"`
+				} `json:"latest"`
+			} `json:"buckets"`
+		} `json:"control"`
+	} `json:"controls"`
+	Unconfigured struct {
+		Control struct {
+			Buckets []struct {
+				Key string `json:"key"`
+			} `json:"buckets"`
+		} `json:"control"`
+	} `json:"unconfigured"`
+}
+
+func (b degreeBucket) degree() verdict.Degree {
+
+	d := verdict.Degree{}
+	sum := 0
+	for _, c := range b.Controls.Control.Buckets {
+		if len(c.Latest.Hits.Hits) == 0 {
+			continue
+		}
+		src := c.Latest.Hits.Hits[0].Source
+		d.Controls++
+		if src.Measured != nil && *src.Measured > 0 {
+			d.Measured++
+		}
+		if src.Score != nil {
+			sum += *src.Score
+		}
+	}
+	if d.Controls > 0 {
+		d.Score = (2*sum + d.Controls) / (2 * d.Controls)
+	}
+	for _, c := range b.Unconfigured.Control.Buckets {
+		d.Unconfigured = append(d.Unconfigured, c.Key)
+	}
+	return d
+}

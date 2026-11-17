@@ -102,3 +102,40 @@ func JudgeEV04(reporting *source.Reporting, pass *fact.AgentPass, windowStart ti
 }
 
 func day(t time.Time) string { return t.UTC().Format("2006-01-02 15:04") }
+
+func Applicable(rows []string) int {
+	n := 0
+	for _, r := range rows {
+		c := passes.Cells(r, 2)
+		if c[0] != "" && strings.EqualFold(strings.TrimSpace(c[1]), "sí") {
+			n++
+		}
+	}
+	return n
+}
+
+func JudgeEV01(applicable int, problem catalog.Message, degree *verdict.Degree, err error) verdict.Judgement {
+	switch {
+	case !problem.IsZero():
+		return passes.Gap(verdict.CauseConfiguration, problem)
+	case err != nil:
+		return passes.Gap(verdict.CauseCollection, catalog.Says("gap.query", "error", err.Error()))
+	case degree == nil || degree.Controls == 0:
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opmon2.no_degree"))
+	}
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon2.degree", "score", degree.Score, "controls", degree.Controls, "measured", degree.Measured, "applicable", applicable))
+}
+
+func JudgeEV05(degree *verdict.Degree, err error) verdict.Judgement {
+	switch {
+	case err != nil:
+		return passes.Gap(verdict.CauseCollection, catalog.Says("gap.query", "error", err.Error()))
+	case degree == nil || degree.Controls == 0:
+		return passes.Gap(verdict.CauseCollection, catalog.Says("opmon2.no_degree"))
+	case len(degree.Unconfigured) == 0:
+		return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon2.all_configured", "controls", degree.Controls))
+	}
+	list := slices.Clone(degree.Unconfigured)
+	slices.Sort(list)
+	return verdict.Explain(verdict.Compliant, "", catalog.Says("opmon2.unconfigured", "count", len(list), "list", list))
+}

@@ -1,12 +1,16 @@
 package opmon2
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/controls/ens/opexp7"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/passes"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/source"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
@@ -58,4 +62,23 @@ func TestJudges(t *testing.T) {
 	check(t, "no pass", JudgeEV04(active, nil, window), verdict.NonCompliant, "", "")
 	check(t, "old pass", JudgeEV04(active, &fact.AgentPass{Envelope: fact.Envelope{TS: "2026-10-20T11:17:00Z"}}, window), verdict.NonCompliant, "", "")
 	check(t, "disconnected", JudgeEV04(&source.Reporting{Status: "disconnected"}, nil, window), verdict.NonCompliant, "", "")
+}
+
+func TestImplementationDegree(t *testing.T) {
+
+	if n := Applicable([]string{"op.acc.1 | sí | MEDIO | R1", "op.cont.2 | no", "op.exp.8 | SÍ", " | sí"}); n != 2 {
+		t.Errorf("applicable measures: %d", n)
+	}
+
+	degree := &verdict.Degree{Controls: 30, Measured: 27, Score: 81, Unconfigured: []string{"op.exp.9", "op.acc.5"}}
+	notSet := passes.Param("P-01", params.ErrNotSet)
+
+	check(t, "no statement of applicability", JudgeEV01(0, notSet, degree, nil), verdict.NotEvaluable, verdict.CauseConfiguration, "P-01")
+	check(t, "verdicts unreadable", JudgeEV01(30, catalog.Message{}, nil, errors.New("down")), verdict.NotEvaluable, verdict.CauseCollection, "down")
+	check(t, "no verdict yet", JudgeEV01(30, catalog.Message{}, nil, nil), verdict.NotEvaluable, verdict.CauseCollection, "no control verdict")
+	check(t, "degree known", JudgeEV01(30, catalog.Message{}, degree, nil), verdict.Compliant, "", "implementation degree 81 % over 30 controls, 27 measured; 30 applicable")
+
+	check(t, "configuration debt listed", JudgeEV05(degree, nil), verdict.Compliant, "", "2 controls with evidences not evaluated by configuration: op.acc.5, op.exp.9")
+	check(t, "no debt", JudgeEV05(&verdict.Degree{Controls: 3}, nil), verdict.Compliant, "", "none of its 3 controls")
+	check(t, "no degree", JudgeEV05(nil, nil), verdict.NotEvaluable, verdict.CauseCollection, "no control verdict")
 }
