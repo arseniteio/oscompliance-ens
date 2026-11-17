@@ -120,7 +120,7 @@ Las vigilancias de auditd que ha pedido el manager en la configuración de grupo
 | `error` | cadena |  |
 | `wanted` | lista | Rutas de audit_watches y read_watches. |
 | `loaded` | lista | Rutas pedidas con todas sus vigilancias cargadas. |
-| `failed` | lista | Rutas pedidas cuya vigilancia no se ha podido cargar, con el motivo. |
+| `failed` | lista | Rutas pedidas cuya vigilancia no se ha podido cargar, con el motivo. Aquí se rechaza una vigilancia de lectura sobre un fichero que lee todo proceso (/etc/passwd, /etc/group, el almacén de CA, /usr…), porque llenaría el disco. |
 | `read_wanted` | lista | Rutas pedidas cuyas lecturas se auditan (read_watches). |
 | `exec_wanted` | lista | Binarios cuyas ejecuciones ha pedido auditar el manager (exec_watches). |
 | `exec_loaded` | lista | Binarios de exec_wanted con su vigilancia de ejecución cargada. |

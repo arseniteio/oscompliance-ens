@@ -63,3 +63,21 @@ func TestWatchRule(t *testing.T) {
 		t.Errorf("a loaded read rule is recognised: %v", got)
 	}
 }
+
+func TestHotReadPath(t *testing.T) {
+
+	for path, hot := range map[string]string{
+		"/etc/group":           "/etc/group",
+		"/etc/ssl":             "/etc/ssl/certs",
+		"/etc/ssl/certs/a.pem": "/etc/ssl/certs",
+		"/usr/share/doc":       "/usr",
+		"/etc/ssl/private":     "",
+		"/etc/shadow":          "",
+		"/etc/groups":          "",
+		"/srv/datos":           "",
+	} {
+		if got := hotReadPath(path); got != hot {
+			t.Errorf("%s: %q, want %q", path, got, hot)
+		}
+	}
+}

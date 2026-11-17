@@ -123,7 +123,7 @@ The auditd watches the manager asked for in the group configuration the engine w
 | `error` | string |  |
 | `wanted` | array | Paths of audit_watches and read_watches. |
 | `loaded` | array | Wanted paths whose watches are all loaded. |
-| `failed` | array | Wanted paths whose watch could not be loaded, with the reason. |
+| `failed` | array | Wanted paths whose watch could not be loaded, with the reason. A read watch on a file every process reads (/etc/passwd, /etc/group, the CA store, /usr…) is refused here, because it would fill the disk. |
 | `read_wanted` | array | Wanted paths whose reads are audited (read_watches). |
 | `exec_wanted` | array | Binaries whose executions the manager asked to audit (exec_watches). |
 | `exec_loaded` | array | exec_wanted binaries whose execution watch is loaded. |

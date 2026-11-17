@@ -57,7 +57,9 @@ Las evidencias de inicio de sesión salen NOT_EVALUABLE por COLLECTION. El regis
 
 EV-06 de op.acc.2, op.acc.3 o EV-07 de op.acc.4 salen NOT_EVALUABLE por COLLECTION. auditd está parado, sus vigilancias no están cargadas o no se lee el registro de auditoría. Instala auditd y comprueba `auditctl -l`. El bloque del motor en la configuración de grupo añade el localfile de auditoría.
 
-Las alertas 119004 con clave `oscompliance_read` inundan el indexador desde una máquina actualizada desde la 1.2.0 o anterior. Esas versiones cargaban vigilancias de lectura en todas las rutas auditadas, incluidos ficheros legibles por todos como /etc/group, y el agente nunca retira una regla. Ejecuta `auditctl -D -k oscompliance_read` y `auditctl -D -k oscompliance_exec` en la máquina; la siguiente pasada del agente carga solo las vigilancias que pide la configuración de grupo.
+Las alertas 119004 con clave `oscompliance_read` inundan el indexador desde una máquina actualizada desde la 1.2.0 o anterior. Esas versiones cargaban vigilancias de lectura en todas las rutas auditadas, incluidos ficheros legibles por todos como /etc/group, y el agente nunca retira una regla. Ejecuta `auditctl -D -k oscompliance_read` y `auditctl -D -k oscompliance_exec` en la máquina; la siguiente pasada del agente carga solo las vigilancias que pide la configuración de grupo. La regla 119005 ya descarta en el manager las lecturas de los ficheros que lee todo proceso.
+
+`failed` de `audit_watch_snapshot` dice "a read watch would fill the disk". Una ruta de P-06 de op.acc.2, P-07 de op.acc.4 o P-02 de op.exp.10 es un fichero que lee todo proceso, o un directorio que contiene uno. Declara en su lugar el fichero o directorio concreto con los datos protegidos.
 
 Un control sale NOT_EVALUABLE por CONFIGURATION. Falta un parámetro. El veredicto lo nombra: defínelo en Power ENS.
 

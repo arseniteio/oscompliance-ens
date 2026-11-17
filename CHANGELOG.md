@@ -14,6 +14,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ### Changed
 
+- Rule 119005 drops on the manager the 119004 reads (`oscompliance_read`) of files every process reads: the NSS files, the loader cache, the CA store, the time zone, `/usr` and `/lib`. Agents of 1.2.0 and earlier loaded such watches and filled disks within minutes. `install.sh` checks IDs 119000 to 119005.
+- The agent does not load a read rule on a path from `catalog.HotReadPaths`, under one, or on a directory that holds one, and reports it in `failed` of `audit_watch_snapshot`. The path stays out of `loaded`, so the controls that judge reads show it as a collection gap. Writes, executions and attribute changes are still audited.
 - The group configuration splits the auditd watches in two. `audit_watches` (op.exp.3 P-04) records only writes and attribute changes. The new `read_watches` (op.acc.2 P-06, op.acc.3 P-03 paths and the security paths, op.acc.4 P-07, op.exp.10 P-02) adds reads, recorded only for sessions with a login UID (`auid!=-1`). Read watches on world-readable files such as /etc/group made every NSS lookup an alert 119004. `audit_watch_snapshot` gains `read_wanted`. Machines upgraded from 1.2.0 keep their old watches until `auditctl -D -k oscompliance_read` and `auditctl -D -k oscompliance_exec` run once.
 - The repository is now `arseniteio/oscompliance-ens-wazuh`, to leave room for other SIEMs. The Go module paths and schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.
 - The installation guide lists the hardware the agent, the engine and the verdicts need, measured in the lab.

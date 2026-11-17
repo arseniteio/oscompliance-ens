@@ -12,6 +12,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/wazuh"
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/host"
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
@@ -161,6 +162,13 @@ func loadPathWatches(snapshot *fact.AuditWatchSnapshot, auditctl string, loaded 
 		if slices.Contains(loaded, path+" "+w.Key) {
 			continue
 		}
+		if w == readWatch {
+			if hot := hotReadPath(path); hot != "" {
+				snapshot.Failed = append(snapshot.Failed, path+" r: every process reads "+hot+", a read watch would fill the disk")
+				ok = false
+				continue
+			}
+		}
 		if _, err := host.Run(auditctl, watchRule(path, w, isDir(path))...); err != nil {
 			snapshot.Failed = append(snapshot.Failed, path+" "+w.Perm+": "+err.Error())
 			ok = false
@@ -185,6 +193,15 @@ func watchRule(path string, w watch, dir bool) []string {
 		field = "dir=" + path
 	}
 	return []string{"-a", "always,exit", "-F", field, "-F", "perm=r", "-F", "auid!=-1", "-k", w.Key}
+}
+
+func hotReadPath(path string) string {
+	for _, hot := range catalog.HotReadPaths {
+		if path == hot || strings.HasPrefix(path, hot+"/") || strings.HasPrefix(hot, path+"/") {
+			return hot
+		}
+	}
+	return ""
 }
 
 func isDir(path string) bool {
