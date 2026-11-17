@@ -544,6 +544,8 @@
   "opacc6.unlocks_by_itself": "{service}: {module} unlocks by itself after {seconds} s",
   "opacc6.unreadable": "{file} unreadable",
   "opacc6.wheel_trust": "pam_wheel trust in {file}:{line}",
+  "opacc6.windows_max_age": "password policy: MaximumPasswordAge={days} days, P-04 allows {max}",
+  "opacc6.windows_never_expires": "password policy: MaximumPasswordAge=0, passwords never expire",
   "opacc6.within_deadline": "{notice}: within the deadline, not disabled yet",
   "opacc6.without_deny": "{service}: {module} without deny",
   "opcont2.item_contract": "{name} ({contract} until {until})",
