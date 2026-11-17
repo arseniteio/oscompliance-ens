@@ -89,7 +89,7 @@ func Collect(e *emit.Emitter, run winps.Runner, cfg Config, now time.Time) error
 		}
 	}
 
-	out, err := winps.Decode[saclOutput](run, input(saclInput{Set: set, Unset: unset})+saclScript)
+	out, err := applySACL(run, saclInput{Set: set, Unset: unset})
 	if err != nil {
 		s.Auditd, s.Error = fact.AuditdError, err.Error()
 		return e.Emit(s)
@@ -150,9 +150,12 @@ func Plan(wanted, managed []Watch, suspended map[string]time.Time, now time.Time
 	return set, unset
 }
 
-func input(v any) string {
-	data, _ := json.Marshal(v)
-	return "$in = ConvertFrom-Json '" + strings.ReplaceAll(string(data), "'", "''") + "'\n"
+func applySACL(run winps.Runner, in saclInput) (saclOutput, error) {
+	script, err := winps.WithInput(in, saclScript)
+	if err != nil {
+		return saclOutput{}, err
+	}
+	return winps.Decode[saclOutput](run, script)
 }
 
 func readJSON(path string, v any) error {
@@ -188,10 +191,9 @@ func parseMask(s string) uint64 {
 	return n
 }
 
+// Absolute accepts only local drive paths: a UNC path would make SYSTEM
+// authenticate to whatever server the path names.
 func Absolute(path string) bool {
-	if strings.HasPrefix(path, `\\`) {
-		return true
-	}
 	return len(path) >= 3 && path[1] == ':' && (path[2] == '\\' || path[2] == '/') &&
 		(path[0] >= 'A' && path[0] <= 'Z' || path[0] >= 'a' && path[0] <= 'z')
 }

@@ -1,12 +1,10 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
@@ -104,13 +102,12 @@ func guardWithAlerts(opts options) error {
 }
 
 func writeEvent(message string) error {
-	_, err := winps.Run("$m = ConvertFrom-Json '" + jsonString(message) + "'\nWrite-EventLog -LogName Application -Source '" + eventSource + "' -EventId 1006 -EntryType Warning -Message $m\n'{}'")
+	script, err := winps.WithInput(map[string]string{"message": message}, "Write-EventLog -LogName Application -Source '"+eventSource+"' -EventId 1006 -EntryType Warning -Message $in.message")
+	if err != nil {
+		return err
+	}
+	_, err = winps.Run(script)
 	return err
-}
-
-func jsonString(s string) string {
-	data, _ := json.Marshal(s)
-	return strings.ReplaceAll(string(data), "'", "''")
 }
 
 func lockPass(path string) (func(), error) {

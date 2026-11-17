@@ -12,8 +12,7 @@ import (
 
 const (
 	DefaultSuspend = time.Hour
-	MaxEvents      = 5000
-	MaxFacts       = 500
+	MaxEvents      = 2000
 
 	maskReadData = 0x1
 )
@@ -25,6 +24,7 @@ type GuardState struct {
 }
 
 type event struct {
+	Record  int64  `json:"record"`
 	Time    string `json:"time"`
 	Account string `json:"account"`
 	Domain  string `json:"domain"`
@@ -52,7 +52,8 @@ type GuardConfig struct {
 }
 
 // Guard forwards the accesses Windows logged on the watched paths since the
-// last run as file_access facts, and removes the read entry of a watch whose
+// last run as file_access facts, oldest first and at most MaxEvents a run so
+// the bookmark never skips one, and removes the read entry of a watch whose
 // reads go over Limit per minute: event 4663 has no rate limit of its own.
 func Guard(e *emit.Emitter, run winps.Runner, cfg GuardConfig, now time.Time) ([]Suspension, error) {
 
@@ -73,13 +74,21 @@ func Guard(e *emit.Emitter, run winps.Runner, cfg GuardConfig, now time.Time) ([
 		}
 	}
 
-	out, err := winps.Decode[guardOutput](run, input(map[string]int64{"since": state.Bookmark, "max": MaxEvents})+guardScript)
+	script, err := winps.WithInput(map[string]int64{"since": state.Bookmark, "max": MaxEvents}, guardScript)
+	if err != nil {
+		return nil, err
+	}
+	out, err := winps.Decode[guardOutput](run, script)
 	if err != nil {
 		return nil, err
 	}
 
+	bookmark := out.Newest
+	if len(out.Events) == MaxEvents {
+		bookmark = out.Events[len(out.Events)-1].Record
+	}
+
 	reads := map[string]int{}
-	forwarded := 0
 	for _, ev := range out.Events {
 		w, ok := watchOf(ev.Object, managed.Watches)
 		if !ok {
@@ -90,10 +99,6 @@ func Guard(e *emit.Emitter, run winps.Runner, cfg GuardConfig, now time.Time) ([
 			access = fact.AccessRead
 			reads[w.Path]++
 		}
-		if forwarded == MaxFacts {
-			continue
-		}
-		forwarded++
 		if err := e.Emit(fact.FileAccess{Envelope: e.Envelope(fact.FileAccessFact), Time: ev.Time, Watch: w.Path, Path: ev.Object, Access: access, Account: ev.Account, Domain: ev.Domain, Process: ev.Process}); err != nil {
 			return nil, err
 		}
@@ -115,12 +120,12 @@ func Guard(e *emit.Emitter, run winps.Runner, cfg GuardConfig, now time.Time) ([
 		}
 	}
 	if len(unset) > 0 {
-		if _, err := winps.Decode[saclOutput](run, input(saclInput{Set: []Watch{}, Unset: unset})+saclScript); err != nil {
+		if _, err := applySACL(run, saclInput{Set: []Watch{}, Unset: unset}); err != nil {
 			return suspended, fmt.Errorf("suspend: %w", err)
 		}
 	}
 
-	state.Bookmark, state.Last = out.Newest, now
+	state.Bookmark, state.Last = bookmark, now
 	return suspended, writeJSON(cfg.State, state)
 }
 

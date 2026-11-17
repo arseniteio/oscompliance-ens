@@ -2,8 +2,6 @@ package winacl
 
 import (
 	_ "embed"
-	"encoding/json"
-	"strings"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/wazuh"
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/winaudit"
@@ -47,10 +45,14 @@ func Collect(e *emit.Emitter, run winps.Runner, paths wazuh.AgentConfigPaths) er
 		return e.Emit(s)
 	}
 
-	data, _ := json.Marshal(map[string][]string{"paths": wanted})
+	input, err := winps.WithInput(map[string][]string{"paths": wanted}, script)
+	if err != nil {
+		s.Status, s.Error = fact.SourceUnreadable, err.Error()
+		return e.Emit(s)
+	}
 	out, err := winps.Decode[struct {
 		Records []record `json:"records"`
-	}](run, "$in = ConvertFrom-Json '"+strings.ReplaceAll(string(data), "'", "''")+"'\n"+script)
+	}](run, input)
 	if err != nil {
 		s.Status, s.Error = fact.SourceUnreadable, err.Error()
 		return e.Emit(s)

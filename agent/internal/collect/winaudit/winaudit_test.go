@@ -2,8 +2,10 @@ package winaudit
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +32,15 @@ func (r *recorder) run(script string) ([]byte, error) {
 
 func (r *recorder) input(t *testing.T, i int) map[string]any {
 	t.Helper()
-	line, _, _ := strings.Cut(r.scripts[i], "\n")
-	raw := strings.ReplaceAll(strings.TrimSuffix(strings.TrimPrefix(line, "$in = ConvertFrom-Json '"), "'"), "''", "'")
+	_, rest, _ := strings.Cut(r.scripts[i], "FromBase64String('")
+	encoded, _, _ := strings.Cut(rest, "'")
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var v map[string]any
-	if err := json.Unmarshal([]byte(raw), &v); err != nil {
-		t.Fatalf("input %q: %v", line, err)
+	if err := json.Unmarshal(raw, &v); err != nil {
+		t.Fatalf("input %s: %v", raw, err)
 	}
 	return v
 }
@@ -155,9 +161,30 @@ func TestGuardFirstRunOnlyTakesTheBookmark(t *testing.T) {
 }
 
 func TestAbsolute(t *testing.T) {
-	for p, want := range map[string]bool{`C:\x`: true, `d:/y`: true, `\\server\share`: true, `x\y`: false, `/etc`: false, `C:`: false} {
+	for p, want := range map[string]bool{`C:\x`: true, `d:/y`: true, `\\server\share`: false, `x\y`: false, `/etc`: false, `C:`: false} {
 		if Absolute(p) != want {
 			t.Errorf("Absolute(%q) != %v", p, want)
 		}
+	}
+}
+
+func TestGuardKeepsItsPlaceWhenTheBatchIsFull(t *testing.T) {
+
+	cfg := guardConfig(t)
+	if err := writeJSON(cfg.State, GuardState{Bookmark: 10}); err != nil {
+		t.Fatal(err)
+	}
+	events := make([]string, MaxEvents)
+	for i := range events {
+		events[i] = `{"record":` + strconv.Itoa(11+i) + `,"time":"2026-11-17T11:59:30Z","account":"x","object":"C:\\other","mask":"0x1"}`
+	}
+	r := &recorder{outputs: []string{`{"newest":99999,"events":[` + strings.Join(events, ",") + `]}`}}
+	var buf bytes.Buffer
+	if _, err := Guard(emit.New(&buf, "h", "test", "run"), r.run, cfg, now); err != nil {
+		t.Fatal(err)
+	}
+	var state GuardState
+	if err := readJSON(cfg.State, &state); err != nil || state.Bookmark != int64(10+MaxEvents) {
+		t.Errorf("bookmark %d, want %d", state.Bookmark, 10+MaxEvents)
 	}
 }
