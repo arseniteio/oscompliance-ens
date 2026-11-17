@@ -197,6 +197,8 @@ func TestGoTypesRoundTrip(t *testing.T) {
 			v = &SnapshotList{}
 		case MalwareProtectionFact:
 			v = &MalwareProtection{}
+		case FileAccessFact:
+			v = &FileAccess{}
 		case TimeSyncFact:
 			v = &TimeSync{}
 		case KeyRecordFact:

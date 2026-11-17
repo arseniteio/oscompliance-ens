@@ -20,6 +20,7 @@
       "enum": [
         "chrony",
         "timesyncd",
+        "w32time",
         "none"
       ]
     },

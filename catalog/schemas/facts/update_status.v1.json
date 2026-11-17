@@ -17,6 +17,7 @@
     "manager": {
       "enum": [
         "apt",
+        "windows-update",
         "none"
       ]
     },

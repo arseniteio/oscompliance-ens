@@ -18,6 +18,7 @@
       "enum": [
         "nft",
         "iptables",
+        "windows-firewall",
         "none"
       ]
     },

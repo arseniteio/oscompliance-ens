@@ -24,3 +24,21 @@ type AuditWatchSnapshot struct {
 	ExecLoaded []string `json:"exec_loaded,omitempty"`
 	PermRules  int      `json:"perm_rules,omitempty"`
 }
+
+const (
+	FileAccessFact = "file_access"
+
+	AccessRead  = "read"
+	AccessWrite = "write"
+)
+
+type FileAccess struct {
+	Envelope
+	Time    string `json:"time"`
+	Watch   string `json:"watch"`
+	Path    string `json:"path"`
+	Access  string `json:"access"`
+	Account string `json:"account"`
+	Domain  string `json:"domain,omitempty"`
+	Process string `json:"process_name,omitempty"`
+}

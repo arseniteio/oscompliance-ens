@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/arseniteio/oscompliance-ens-wazuh/catalog/schemas/facts/file_access.v1.json",
+  "title": "file_access v1",
+  "description": "One audited access to a watched path on Windows, read by the agent from event 4663 of the Security log: when, which watch it falls under, the object, read or write, the account and the process.",
+  "type": "object",
+  "required": [
+    "time",
+    "watch",
+    "path",
+    "access",
+    "account"
+  ],
+  "properties": {
+    "fact": {
+      "const": "file_access"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "watch": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "access": {
+      "enum": [
+        "read",
+        "write"
+      ]
+    },
+    "account": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "process_name": {
+      "type": "string"
+    }
+  },
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ]
+}
