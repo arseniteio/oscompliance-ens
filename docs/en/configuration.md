@@ -89,7 +89,7 @@ values:
 |---|---|
 | `id` | lowercase letters, digits and hyphens |
 | `layer` | `distro`, `role`, `service` or `site`, from least to most specific |
-| `match` | conditions that must all hold: `distro`, `family`, `role` and `hostname` take `is`, `is_not` or `matches` (shell pattern such as `web-*`); `service` and `group` take `has` or `has_not` |
+| `match` | conditions that must all hold: `distro`, `family`, `role` and `hostname` take `is`, `is_not`, `matches` (shell pattern such as `web-*`) or `in` (comma-separated list, for a group of machines chosen by hand); `service` and `group` take `has` or `has_not` |
 | `values` | parameters by control, with the types of the [ENS policy](#ens-policy); `organisation` parameters are not accepted |
 | `match_modes` | `regex` for a parameter given as a regular expression |
 | `replace` | parameters, by control, for which this profile drops the values of less specific layers |
@@ -219,7 +219,7 @@ Every parameter has a class that decides where its value comes from:
 | Class | Value |
 |---|---|
 | `organisation` | the control's common value; per-machine values are ignored |
-| `system` | the machine's own value, else the template assigned to it, else its profiles, else the template of its system type, else the common value |
+| `system` | the machine's own value, else the template assigned to it, else its profiles, else the template of its system type (none when its type is `none`, «Sin plantilla»), else the common value |
 | `platform` | as `system`; built-in templates per system type ship values for it |
 
 Templates: the one assigned to the machine, built-in (`catalog/templates/`)

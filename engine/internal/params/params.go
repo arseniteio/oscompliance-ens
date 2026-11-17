@@ -427,7 +427,8 @@ func (c *Config) assignedTemplate(id, controlID string) (map[string]any, map[str
 
 func (c *Config) template(typeOverride, detectedType, assigned, controlID string) (map[string]any, map[string]string, bool) {
 
-	if assigned == NoTemplate {
+	// "none" as the type of a machine means it takes no type template, only its groups.
+	if assigned == NoTemplate || typeOverride == NoTemplate {
 		return nil, nil, false
 	}
 

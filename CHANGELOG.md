@@ -6,6 +6,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ### Added
 
+- A profile condition on `distro`, `family`, `role` or `hostname` takes `in` with a comma-separated list, for a group of machines chosen by hand.
+- A machine whose type is set to `none` takes no type template, only the values of its groups and its own.
 - op.mon.2 EV-01 gives each machine's implementation degree, the average score of its applicable control verdicts, against the statement of applicability of P-01, which it now needs. EV-05 lists the controls with evidences not evaluable by configuration.
 - Maturity (Anexo II, apdo. 6). Each control verdict carries the CMM level its evidence accredits on that machine, L0 to L2 over 30 days. Each pass writes `organization` verdicts with the lowest level of each control, the level, target and author declared in the configuration, declared measures without engine, and the distribution and global level for the whole ENS.
 - The agent unloads the `oscompliance_*` audit watches the group configuration no longer asks for, only when it holds the engine's block, and the read watches loaded with `-w` before the auid filter. `audit_watch_snapshot` lists them in `unloaded`.

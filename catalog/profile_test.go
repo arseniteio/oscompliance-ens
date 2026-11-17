@@ -51,6 +51,8 @@ func TestProfileMatches(t *testing.T) {
 		{[]Condition{{"family", "is_not", "debian"}}, true},
 		{[]Condition{{"group", "has", "ens-madrid"}, {"hostname", "matches", "mail-*"}}, true},
 		{[]Condition{{"role", "is", "workstation"}}, false},
+		{[]Condition{{"hostname", "in", "web-01, Mail-Mad-01"}}, true},
+		{[]Condition{{"hostname", "in", "web-01,mail-mad"}}, false},
 		{nil, false},
 	}
 
@@ -65,7 +67,7 @@ func TestProfileValidate(t *testing.T) {
 
 	p := Profile{
 		ID: "Zimbra Mail", Layer: "servicios",
-		Match: []Condition{{"service", "is", "zimbra"}, {"colour", "is", "red"}, {"distro", "matches", ""}, {"group", "has", "ens-perfil-web"}},
+		Match: []Condition{{"service", "is", "zimbra"}, {"colour", "is", "red"}, {"distro", "matches", ""}, {"group", "has", "ens-perfil-web"}, {"hostname", "in", " , "}},
 		Values: map[string]map[string]any{
 			"op.acc.1": {"P-03": 3.0, "P-99": []any{"x"}, "P-04": []any{"guest"}, "P-10": "mil"},
 			"op.zz.9":  {"P-01": 1.0},
@@ -81,6 +83,7 @@ func TestProfileValidate(t *testing.T) {
 		`match 2: unknown field "colour"`,
 		"match 3: value is empty",
 		"match 4: the ens-perfil-* groups follow the profiles",
+		"match 5: in takes a comma-separated list",
 		"op.acc.1 P-03: must be a list",
 		"op.acc.1 P-04 is set once for the organisation",
 		"op.acc.1 P-10: must be a number",

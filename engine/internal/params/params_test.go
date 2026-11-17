@@ -38,7 +38,8 @@ const active = `{
     "004": {"detectedType": "linux", "controls": {"op.acc.1": {"templateId": "none"}}},
     "005": {"detectedType": "linux", "controls": {"op.acc.1": {"templateId": "custom-svc"}}},
     "006": {"typeOverride": "windows", "detectedType": "linux"},
-    "007": {"detectedType": "router"}
+    "007": {"detectedType": "router"},
+    "010": {"typeOverride": "none", "detectedType": "linux"}
   }
 }`
 
@@ -79,6 +80,9 @@ func TestResolution(t *testing.T) {
 		{"006", "P-11", []string{"Administrators"}, nil},
 
 		{"007", "P-01", nil, ErrNotSet},
+
+		{"010", "P-11", nil, ErrNotSet},
+		{"010", "P-03", []string{"common-svc"}, nil},
 
 		{"999", "P-03", []string{"common-svc"}, nil},
 

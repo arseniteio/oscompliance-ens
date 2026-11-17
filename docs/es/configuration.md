@@ -85,7 +85,7 @@ values:
 |---|---|
 | `id` | minúsculas, dígitos y guiones |
 | `layer` | `distro`, `role`, `service` o `site`, de menos a más específica |
-| `match` | condiciones que deben cumplirse todas: `distro`, `family`, `role` y `hostname` admiten `is`, `is_not` o `matches` (patrón de shell como `web-*`); `service` y `group` admiten `has` o `has_not` |
+| `match` | condiciones que deben cumplirse todas: `distro`, `family`, `role` y `hostname` admiten `is`, `is_not`, `matches` (patrón de shell como `web-*`) o `in` (lista separada por comas, para un grupo de máquinas elegidas a mano); `service` y `group` admiten `has` o `has_not` |
 | `values` | parámetros por control, con los tipos de la [política ENS](#política-ens); no se aceptan parámetros `organisation` |
 | `match_modes` | `regex` para un parámetro dado como expresión regular |
 | `replace` | parámetros, por control, para los que este perfil descarta los valores de las capas menos específicas |
@@ -198,7 +198,7 @@ Cada parámetro tiene una clase que decide de dónde sale su valor:
 | Clase | Valor |
 |---|---|
 | `organisation` | el valor común del control; se ignoran los valores por máquina |
-| `system` | el valor propio de la máquina o, si no, la plantilla asignada o, si no, sus perfiles o, si no, la plantilla de su tipo de sistema o, si no, el valor común |
+| `system` | el valor propio de la máquina o, si no, la plantilla asignada o, si no, sus perfiles o, si no, la plantilla de su tipo de sistema (ninguna si su tipo es `none`, «Sin plantilla») o, si no, el valor común |
 | `platform` | como `system`; las plantillas integradas por tipo de sistema traen valores para él |
 
 Plantillas: la asignada a la máquina, integrada (`catalog/templates/`) o propia; `none` la desactiva; sin ninguna asignada, la plantilla integrada del tipo de sistema de la máquina. El tipo de sistema es el definido a mano o, si no, el que implica la plataforma del inventario de Wazuh (`catalog/system-types.json`).

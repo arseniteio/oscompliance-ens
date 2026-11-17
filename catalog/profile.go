@@ -51,7 +51,7 @@ type HostFacts struct {
 var (
 	scalarFields = []string{"distro", "family", "role", "hostname"}
 	listFields   = []string{"service", "group"}
-	scalarOps    = []string{"is", "is_not", "matches"}
+	scalarOps    = []string{"is", "is_not", "matches", "in"}
 	listOps      = []string{"has", "has_not"}
 	profileID    = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 )
@@ -96,8 +96,21 @@ func (c Condition) holds(h HostFacts) bool {
 	case "matches":
 		ok, _ := path.Match(want, got)
 		return ok
+	case "in":
+		return slices.Contains(listOf(want), got)
 	}
 	return false
+}
+
+// A group of machines chosen by hand lists their host names, comma-separated.
+func listOf(value string) []string {
+	var out []string
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 func containsFold(list []string, want string) bool {
@@ -130,6 +143,8 @@ func (p Profile) Validate() []string {
 				if _, err := path.Match(c.Value, ""); err != nil {
 					add("%s: match %d: bad pattern %q", p.ID, i+1, c.Value)
 				}
+			} else if c.Op == "in" && len(listOf(c.Value)) == 0 {
+				add("%s: match %d: in takes a comma-separated list", p.ID, i+1)
 			}
 		case slices.Contains(listFields, c.Field):
 			if !slices.Contains(listOps, c.Op) {
