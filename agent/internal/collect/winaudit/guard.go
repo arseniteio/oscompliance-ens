@@ -26,6 +26,7 @@ type GuardState struct {
 type event struct {
 	Record  int64  `json:"record"`
 	Time    string `json:"time"`
+	SID     string `json:"sid"`
 	Account string `json:"account"`
 	Domain  string `json:"domain"`
 	Object  string `json:"object"`
@@ -99,7 +100,7 @@ func Guard(e *emit.Emitter, run winps.Runner, cfg GuardConfig, now time.Time) ([
 			access = fact.AccessRead
 			reads[w.Path]++
 		}
-		if err := e.Emit(fact.FileAccess{Envelope: e.Envelope(fact.FileAccessFact), Time: ev.Time, Watch: w.Path, Path: ev.Object, Access: access, Account: ev.Account, Domain: ev.Domain, Process: ev.Process}); err != nil {
+		if err := e.Emit(fact.FileAccess{Envelope: e.Envelope(fact.FileAccessFact), Time: ev.Time, Watch: w.Path, Path: ev.Object, Access: access, Account: account(ev), Domain: ev.Domain, Process: ev.Process}); err != nil {
 			return nil, err
 		}
 	}
@@ -127,6 +128,17 @@ func Guard(e *emit.Emitter, run winps.Runner, cfg GuardConfig, now time.Time) ([
 
 	state.Bookmark, state.Last = bookmark, now
 	return suspended, writeJSON(cfg.State, state)
+}
+
+// Services of the operating system log the computer account (HOST$) as the
+// subject; their well-known SIDs give the name an administrator authorises.
+var serviceAccounts = map[string]string{"S-1-5-18": "SYSTEM", "S-1-5-19": "LOCAL SERVICE", "S-1-5-20": "NETWORK SERVICE"}
+
+func account(ev event) string {
+	if name, ok := serviceAccounts[ev.SID]; ok {
+		return name
+	}
+	return ev.Account
 }
 
 func watchOf(object string, watches []Watch) (Watch, bool) {

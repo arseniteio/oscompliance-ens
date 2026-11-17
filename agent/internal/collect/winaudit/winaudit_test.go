@@ -117,6 +117,7 @@ func TestGuardForwardsAccessesAndSuspendsAFlood(t *testing.T) {
 	}
 	events := []string{ev(`C:\ProgramData\ssh\private\key`, "0x1"), ev(`C:\ProgramData\ssh\private\key`, "0x1"), ev(`C:\ProgramData\ssh\private\key`, "0x1"),
 		ev(`C:\ProgramData\SSH\sshd_config`, "0x1"), ev(`C:\etc\hosts`, "0x2"), ev(`C:\Windows\win.ini`, "0x1")}
+	events[3] = strings.Replace(events[3], `"account":"ana"`, `"sid":"S-1-5-18","account":"WS01$"`, 1)
 	r := &recorder{outputs: []string{`{"newest":250,"events":[` + strings.Join(events, ",") + `]}`, `{"loaded":[],"failed":[],"removed":["C:\\ProgramData\\ssh\\private"]}`}}
 
 	var suspended []Suspension
@@ -130,6 +131,9 @@ func TestGuardForwardsAccessesAndSuspendsAFlood(t *testing.T) {
 	}
 	if facts[0]["watch"] != `C:\ProgramData\ssh\private` || facts[0]["access"] != fact.AccessRead || facts[0]["account"] != "ana" {
 		t.Errorf("first %v", facts[0])
+	}
+	if facts[3]["account"] != "SYSTEM" {
+		t.Errorf("computer account %v", facts[3])
 	}
 	if facts[4]["access"] != fact.AccessWrite || facts[4]["watch"] != `C:\etc` {
 		t.Errorf("write %v", facts[4])
