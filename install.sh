@@ -339,8 +339,8 @@ warn_missing_services() {
 
 install_rules() {
   local clash
-  clash="$(grep -rlE 'id="11900[0-4]"' "$OSSEC/etc/rules/" | grep -v "$RULES_FILE" || true)"
-  [ -z "$clash" ] || die "rule IDs 119000 to 119004 are already used in: $clash"
+  clash="$(grep -rlE 'id="11900[0-5]"' "$OSSEC/etc/rules/" | grep -v "$RULES_FILE" || true)"
+  [ -z "$clash" ] || die "rule IDs 119000 to 119005 are already used in: $clash"
   install -o wazuh -g wazuh -m 660 "$PKG/wazuh/oscompliance_facts_rules.xml" "$RULES_FILE"
   "$OSSEC/bin/wazuh-analysisd" -t || die "wazuh-analysisd rejected the rules"
 }

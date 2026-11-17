@@ -2,7 +2,7 @@
 
 OSCompliance ENS mide los controles del Esquema Nacional de Seguridad (Real Decreto 311/2022, Anexo II) sobre un despliegue de Wazuh existente. Añade dos binarios y cinco reglas de Wazuh. No sustituye ningún componente de Wazuh ni ejecuta su propio canal de recogida, base de datos o bus de mensajes.
 
-En la máquina auditada, `oscompliance-agent` escribe `facts.ndjson` y el agente de Wazuh lo envía junto con los registros de autenticación y auditoría, FIM, SCA e inventario. En el host del manager, las reglas 119000-119004 indexan los hechos. Cada 15 minutos, `oscompliance-engine` lee el indexer, escribe en él los veredictos y actualiza el `agent.conf` de los grupos mediante la API de Wazuh. El plugin Power ENS muestra los veredictos en el dashboard.
+En la máquina auditada, `oscompliance-agent` escribe `facts.ndjson` y el agente de Wazuh lo envía junto con los registros de autenticación y auditoría, FIM, SCA e inventario. En el host del manager, las reglas 119000-119005 indexan los hechos. Cada 15 minutos, `oscompliance-engine` lee el indexer, escribe en él los veredictos y actualiza el `agent.conf` de los grupos mediante la API de Wazuh. El plugin Power ENS muestra los veredictos en el dashboard.
 
 ## Componentes
 
@@ -10,7 +10,7 @@ En la máquina auditada, `oscompliance-agent` escribe `facts.ndjson` y el agente
 
 El agente de Wazuh envía ese fichero junto con los registros de autenticación y auditoría, el inventario, FIM y SCA. Nada en él es específico de OSCompliance.
 
-Las reglas de Wazuh 119000 a 119004 se ejecutan en el manager. Indexan hechos, la sonda de autenticación, eventos de servicio y accesos auditados. No llevan ningún veredicto.
+Las reglas de Wazuh 119000 a 119005 se ejecutan en el manager. Indexan hechos, la sonda de autenticación, eventos de servicio y accesos auditados. No llevan ningún veredicto.
 
 `oscompliance-engine` se ejecuta en el manager maestro, uno por despliegue. Llega a los indexers por la red, con conmutación entre ellos, y a la API de Wazuh en su propio host. Juzga cada evidencia, requisito y control y escribe los veredictos. No cambia nada en las máquinas auditadas salvo mediante la configuración de grupo.
 

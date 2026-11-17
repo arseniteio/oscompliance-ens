@@ -46,7 +46,7 @@ For Wazuh on Docker or the detail of each step, follow the full guides:
 
 ## How it works
 
-The agent writes facts to a local file. The Wazuh agent ships that file with the logs, FIM, SCA and inventory to the manager, which indexes the facts through rules 119000 to 119004. Every 15 minutes the engine reads the indexer and writes verdicts, and Power ENS shows them.
+The agent writes facts to a local file. The Wazuh agent ships that file with the logs, FIM, SCA and inventory to the manager, which indexes the facts through rules 119000 to 119005. Every 15 minutes the engine reads the indexer and writes verdicts, and Power ENS shows them.
 
 The agent reports facts, never verdicts: accounts, PAM, sshd, sudoers, listeners, packages, backups and keys, as they are.
 
