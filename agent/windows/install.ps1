@@ -98,6 +98,8 @@ function Install-Agent {
   Assert-Trusted $DataDir
   Protect-Folder $DataDir
   Protect-Folder $StateDir
+  # Anything created between the first check and the lockdown is caught here.
+  Assert-Trusted $DataDir
   New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
   Copy-Item -LiteralPath $exe -Destination $Binary -Force
 
