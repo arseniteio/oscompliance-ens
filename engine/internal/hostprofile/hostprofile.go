@@ -52,12 +52,13 @@ func Build(agent verdict.Agent, groups []string, inv *source.HostInventory, sign
 	p.Hostname = inv.Hostname
 	p.OS = OS{Name: inv.OS, Version: inv.Version, Platform: inv.Platform, Architecture: inv.Architecture}
 
-	if d, from, ok := distro(inv, signals.Distros); ok {
+	d, distroFrom, distroOK := distro(inv, signals.Distros)
+	if distroOK {
 		p.Distro, p.Family = d.ID, d.Family
 		if v := version(inv.Version, d.Version); v != "" {
 			p.Distro += "-" + v
 		}
-		p.Signals = append(p.Signals, Signal{Field: "distro", Value: p.Distro, From: from})
+		p.Signals = append(p.Signals, Signal{Field: "distro", Value: p.Distro, From: distroFrom})
 	}
 
 	packages := slices.Sorted(slices.Values(inv.Packages))
@@ -73,6 +74,10 @@ func Build(agent verdict.Agent, groups []string, inv *source.HostInventory, sign
 				p.Signals = append(p.Signals, Signal{Field: "role", Value: r.ID, From: "package:" + pkg})
 				break
 			}
+		}
+		if p.Role == RoleServer && d.Role != "" {
+			p.Role = d.Role
+			p.Signals = append(p.Signals, Signal{Field: "role", Value: d.Role, From: distroFrom})
 		}
 	}
 
@@ -121,6 +126,9 @@ func distro(inv *source.HostInventory, distros []catalog.DistroSignal) (catalog.
 
 func version(full, precision string) string {
 
+	if precision == "none" {
+		return ""
+	}
 	parts := strings.FieldsFunc(full, func(r rune) bool { return r == '.' || r == ' ' || r == '-' })
 	if len(parts) == 0 || !isNumber(parts[0]) {
 		return ""

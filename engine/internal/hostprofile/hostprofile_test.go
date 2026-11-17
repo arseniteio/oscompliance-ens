@@ -48,6 +48,18 @@ func TestBuild(t *testing.T) {
 			distro: "rhel-9", family: "rhel", role: RoleManager, services: []string{},
 		},
 		{
+			name:   "windows server by name",
+			agent:  "006",
+			inv:    &source.HostInventory{OS: "Microsoft Windows Server 2022 Datacenter", Version: "10.0.20348.2849", Platform: "windows"},
+			distro: "windows-server-2022", family: "windows", role: RoleServer, services: []string{},
+		},
+		{
+			name:   "windows 11 is a workstation",
+			agent:  "007",
+			inv:    &source.HostInventory{OS: "Microsoft Windows 11 Pro", Version: "10.0.26100.2314", Platform: "windows"},
+			distro: "windows-11", family: "windows", role: RoleWorkstation, services: []string{},
+		},
+		{
 			name:  "agent without inventory",
 			agent: "004",
 			role:  RoleServer, services: []string{},
