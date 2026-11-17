@@ -45,7 +45,7 @@
   <rule id="119005" level="0">
     <if_sid>119004</if_sid>
     <field name="audit.key" type="pcre2">^oscompliance_read$</field>
-    <field name="audit.file.name" type="pcre2">^/etc/(passwd|group|nsswitch\.conf|hosts|host\.conf|resolv\.conf|gai\.conf|services|protocols|shells|login\.defs|localtime|ld\.so\.cache|ld\.so\.conf)$|^/etc/(ld\.so\.conf\.d|ssl/certs|ca-certificates|pki/ca-trust)(/|$)|^/(usr|lib|lib64)(/|$)</field>
+    <field name="audit.file.name" type="pcre2">^(?!.*(/\.\.?(/|$)|//))(/etc/(passwd|group|nsswitch\.conf|hosts|host\.conf|resolv\.conf|gai\.conf|services|protocols|shells|login\.defs|localtime|ld\.so\.cache|ld\.so\.conf)$|/etc/(ld\.so\.conf\.d|ssl/certs|ca-certificates|pki/ca-trust)(/|$)|/(usr|lib|lib64)(/|$))</field>
     <description>OSCompliance read of a file every process reads, dropped to protect the disk</description>
   </rule>
 
