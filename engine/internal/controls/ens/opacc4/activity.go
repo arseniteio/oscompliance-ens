@@ -135,7 +135,7 @@ func JudgeEV06(logins []source.Login, authorised []string, problem catalog.Messa
 	remote := 0
 
 	for _, l := range logins {
-		if l.Method != source.MethodSSHD {
+		if !source.Remote(l.Method) {
 			continue
 		}
 		remote++

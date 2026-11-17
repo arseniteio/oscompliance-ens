@@ -242,7 +242,7 @@ func accesses(logins []source.Login, zones Zones, sshd SSHD, pam PAM) []access {
 	for _, l := range logins {
 
 		origin := l.SourceIP
-		if l.Method != source.MethodSSHD {
+		if !source.Remote(l.Method) {
 			origin = "local"
 		}
 
@@ -931,7 +931,7 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 	return verdict.Explain(verdict.Compliant, "", catalog.Says("opacc6.disabled_within_a_hours_of_the_notice_b", "a", in.MaxHours, "b", onTime))
 }
 
-var channels = map[string]string{source.MethodSSHD: "ssh"}
+var channels = map[string]string{source.MethodSSHD: "ssh", source.MethodRDP: "rdp"}
 
 type EV07Input struct {
 	Logins []source.Login

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
@@ -19,7 +20,50 @@ const (
 	MethodConsole   = "console"
 	MethodSU        = "su"
 	MethodGraphical = "graphical"
+	MethodRDP       = "rdp"
 )
+
+func Remote(method string) bool {
+	return method == MethodSSHD || method == MethodRDP
+}
+
+// Logon types 2 and 11 are interactive and cached interactive, 10 is Remote
+// Desktop. Type 3 (network, WinRM, SMB) and 5 (service) are not logins of a
+// person and would mark every service account as one.
+var windowsLogonTypes = map[string]string{"2": MethodConsole, "11": MethodConsole, "10": MethodRDP}
+
+const (
+	eventLogon   = "4624"
+	eventFailure = "4625"
+	eventLockout = "4740"
+)
+
+type winEventData struct {
+	TargetUserName   string `json:"targetUserName"`
+	TargetDomainName string `json:"targetDomainName"`
+	SubjectUserName  string `json:"subjectUserName"`
+	IPAddress        string `json:"ipAddress"`
+	LogonType        string `json:"logonType"`
+	AuthPackage      string `json:"authenticationPackageName"`
+}
+
+type winAlert struct {
+	System struct {
+		EventID string `json:"eventID"`
+	} `json:"system"`
+	EventData winEventData `json:"eventdata"`
+}
+
+func windowsAccount(name string) bool {
+	return name != "" && name != "-" && !strings.HasSuffix(name, "$")
+}
+
+func windowsIP(ip string) string {
+	if ip == "-" || ip == "::1" || ip == "127.0.0.1" {
+		return ""
+	}
+	return ip
+}
 
 var pamPrograms = map[string]string{
 	"login":        MethodConsole,
@@ -56,18 +100,27 @@ func (s *Source) logins(ctx context.Context, ids []string, since time.Time) (map
 	for program := range pamPrograms {
 		programs = append(programs, program)
 	}
+	var logonTypes []any
+	for t := range windowsLogonTypes {
+		logonTypes = append(logonTypes, t)
+	}
 
+	success := map[string]any{"term": map[string]any{"rule.groups": "authentication_success"}}
 	filter := []any{
 		agentFilter(ids),
-		map[string]any{"term": map[string]any{"rule.groups": "authentication_success"}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 		map[string]any{"bool": map[string]any{
 			"minimum_should_match": 1,
 			"should": []any{
-				map[string]any{"term": map[string]any{"decoder.parent": "sshd"}},
+				map[string]any{"bool": map[string]any{"filter": []any{success, map[string]any{"term": map[string]any{"decoder.parent": "sshd"}}}}},
 				map[string]any{"bool": map[string]any{"filter": []any{
+					success,
 					map[string]any{"term": map[string]any{"decoder.parent": "pam"}},
 					map[string]any{"terms": map[string]any{"predecoder.program_name": programs}},
+				}}},
+				map[string]any{"bool": map[string]any{"filter": []any{
+					map[string]any{"term": map[string]any{"data.win.system.eventID": eventLogon}},
+					map[string]any{"terms": map[string]any{"data.win.eventdata.logonType": logonTypes}},
 				}}},
 			},
 		}},
@@ -90,9 +143,10 @@ func (s *Source) logins(ctx context.Context, ids []string, since time.Time) (map
 				Parent string `json:"parent"`
 			} `json:"decoder"`
 			Data struct {
-				DstUser string `json:"dstuser"`
-				SrcUser string `json:"srcuser"`
-				SrcIP   string `json:"srcip"`
+				DstUser string   `json:"dstuser"`
+				SrcUser string   `json:"srcuser"`
+				SrcIP   string   `json:"srcip"`
+				Win     winAlert `json:"win"`
 			} `json:"data"`
 			FullLog string `json:"full_log"`
 		}
@@ -104,6 +158,14 @@ func (s *Source) logins(ctx context.Context, ids []string, since time.Time) (map
 		ts, err := time.Parse("2006-01-02T15:04:05.000-0700", a.Timestamp)
 		if err != nil {
 			return fmt.Errorf("alert %s: timestamp: %w", h.ID, err)
+		}
+
+		if w := a.Data.Win; w.System.EventID == eventLogon {
+			d := w.EventData
+			if method, ok := windowsLogonTypes[d.LogonType]; ok && windowsAccount(d.TargetUserName) {
+				logins[a.Agent.ID] = append(logins[a.Agent.ID], Login{Time: ts, Account: d.TargetUserName, SourceIP: windowsIP(d.IPAddress), Method: method, Auth: d.AuthPackage, AlertID: a.ID})
+			}
+			return nil
 		}
 
 		method := MethodSSHD
@@ -212,7 +274,10 @@ func (s *Source) failures(ctx context.Context, ids []string, since time.Time) (m
 	filter := []any{
 		agentFilter(ids),
 		map[string]any{"term": map[string]any{"rule.groups": "authentication_failed"}},
-		map[string]any{"exists": map[string]any{"field": "data.dstuser"}},
+		map[string]any{"bool": map[string]any{"minimum_should_match": 1, "should": []any{
+			map[string]any{"exists": map[string]any{"field": "data.dstuser"}},
+			map[string]any{"term": map[string]any{"data.win.system.eventID": eventFailure}},
+		}}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 		map[string]any{"bool": map[string]any{"must_not": []any{
 			map[string]any{"term": map[string]any{"rule.groups": "invalid_login"}},
@@ -232,8 +297,9 @@ func (s *Source) failures(ctx context.Context, ids []string, since time.Time) (m
 				ID string `json:"id"`
 			} `json:"rule"`
 			Data struct {
-				DstUser string `json:"dstuser"`
-				SrcIP   string `json:"srcip"`
+				DstUser string   `json:"dstuser"`
+				SrcIP   string   `json:"srcip"`
+				Win     winAlert `json:"win"`
 			} `json:"data"`
 		}
 
@@ -246,7 +312,15 @@ func (s *Source) failures(ctx context.Context, ids []string, since time.Time) (m
 			return fmt.Errorf("alert %s: %w", h.ID, err)
 		}
 
-		failures[a.Agent.ID] = append(failures[a.Agent.ID], Failure{Time: ts, Account: a.Data.DstUser, SourceIP: a.Data.SrcIP, Rule: a.Rule.ID})
+		account, ip := a.Data.DstUser, a.Data.SrcIP
+		if w := a.Data.Win; w.System.EventID == eventFailure {
+			account, ip = w.EventData.TargetUserName, windowsIP(w.EventData.IPAddress)
+		}
+		if account == "" {
+			return nil
+		}
+
+		failures[a.Agent.ID] = append(failures[a.Agent.ID], Failure{Time: ts, Account: account, SourceIP: ip, Rule: a.Rule.ID})
 		return nil
 	})
 
@@ -276,6 +350,7 @@ func (s *Source) lockouts(ctx context.Context, ids []string, since time.Time) (m
 			"should": []any{
 				map[string]any{"match_phrase": map[string]any{"full_log": "account temporarily locked"}},
 				map[string]any{"match_phrase": map[string]any{"full_log": "pam_tally2"}},
+				map[string]any{"term": map[string]any{"data.win.system.eventID": eventLockout}},
 			},
 		}},
 	}
@@ -290,15 +365,13 @@ func (s *Source) lockouts(ctx context.Context, ids []string, since time.Time) (m
 				ID string `json:"id"`
 			} `json:"agent"`
 			FullLog string `json:"full_log"`
+			Data    struct {
+				Win winAlert `json:"win"`
+			} `json:"data"`
 		}
 
 		if err := json.Unmarshal(h.Source, &a); err != nil {
 			return fmt.Errorf("alert %s: %w", h.ID, err)
-		}
-
-		m := lockoutLine.FindStringSubmatch(a.FullLog)
-		if m == nil {
-			return nil
 		}
 
 		ts, err := alertTime(a.Timestamp)
@@ -306,9 +379,17 @@ func (s *Source) lockouts(ctx context.Context, ids []string, since time.Time) (m
 			return fmt.Errorf("alert %s: %w", h.ID, err)
 		}
 
-		account := m[1]
+		var account string
+		if w := a.Data.Win; w.System.EventID == eventLockout {
+			account = w.EventData.TargetUserName
+		} else if m := lockoutLine.FindStringSubmatch(a.FullLog); m != nil {
+			account = m[1]
+			if account == "" {
+				account = m[2]
+			}
+		}
 		if account == "" {
-			account = m[2]
+			return nil
 		}
 
 		lockouts[a.Agent.ID] = append(lockouts[a.Agent.ID], Lockout{Time: ts, Account: account})
