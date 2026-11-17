@@ -24,12 +24,6 @@ type AgentConfigPaths struct {
 	ClientKeys string
 }
 
-var DefaultAgentConfig = AgentConfigPaths{
-	OssecConf:  "/var/ossec/etc/ossec.conf",
-	SharedConf: "/var/ossec/etc/shared/agent.conf",
-	ClientKeys: "/var/ossec/etc/client.keys",
-}
-
 func CollectAgentConfig(e *emit.Emitter, cfg AgentConfigPaths) error {
 
 	out := fact.WazuhAgentConfig{Envelope: e.Envelope(fact.WazuhAgentConfigFact), Status: fact.SourceRead,

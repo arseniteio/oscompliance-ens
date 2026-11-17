@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/fsread"
@@ -189,7 +188,7 @@ func applicableBlocks(data []byte, element, name string) ([]agentConfig, error) 
 		switch {
 		case b.Profile != "":
 		case b.Name != "" && !nameMatches(b.Name, name):
-		case b.OS != "" && !strings.Contains(strings.ToLower(b.OS), "linux"):
+		case b.OS != "" && !strings.Contains(strings.ToLower(b.OS), blockOS):
 		default:
 			out = append(out, b)
 		}
@@ -263,9 +262,7 @@ func statLog(path string) (fact.LogFile, error) {
 	}
 
 	f := fact.LogFile{Path: path, Size: info.Size(), Modified: info.ModTime().UTC().Format(time.RFC3339)}
-	if st, ok := info.Sys().(*syscall.Stat_t); ok {
-		f.Inode = uint64(st.Ino)
-	}
+	f.Inode = inode(info)
 
 	return f, nil
 }
