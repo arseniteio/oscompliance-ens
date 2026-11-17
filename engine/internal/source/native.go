@@ -214,7 +214,10 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 
 	filter := []any{
 		agentFilter(ids),
-		map[string]any{"term": map[string]any{"rule.id": AuditRule}},
+		map[string]any{"bool": map[string]any{"minimum_should_match": 1, "should": []any{
+			map[string]any{"term": map[string]any{"rule.id": AuditRule}},
+			map[string]any{"term": map[string]any{"data.fact": fact.FileAccessFact}},
+		}}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	}
 
@@ -228,6 +231,7 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 				ID string `json:"id"`
 			} `json:"agent"`
 			Data struct {
+				fact.FileAccess
 				Audit struct {
 					Key     string `json:"key"`
 					Success string `json:"success"`
@@ -247,6 +251,14 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 		ts, err := alertTime(a.Timestamp)
 		if err != nil {
 			return fmt.Errorf("alert %s: %w", h.ID, err)
+		}
+
+		if w := a.Data.FileAccess; w.Fact == fact.FileAccessFact {
+			if at, err := time.Parse(time.RFC3339Nano, w.Time); err == nil {
+				ts = at
+			}
+			out[a.Agent.ID] = append(out[a.Agent.ID], AuditAccess{Time: ts, Key: "oscompliance_" + w.Access, Success: "yes", AUID: w.Account, UID: w.Account, Path: w.Path, Exe: w.Process})
+			return nil
 		}
 
 		x := a.Data.Audit
