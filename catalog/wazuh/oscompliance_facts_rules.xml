@@ -11,8 +11,15 @@
     <description>OSCompliance fact envelope v1</description>
   </rule>
 
+  <rule id="119007" level="0">
+    <decoded_as>json</decoded_as>
+    <location type="pcre2">^C:\\ProgramData\\oscompliance\\facts\.ndjson$</location>
+    <field name="oscompliance" type="pcre2">^1$</field>
+    <description>OSCompliance fact envelope v1 from a Windows agent</description>
+  </rule>
+
   <rule id="119001" level="3">
-    <if_sid>119000</if_sid>
+    <if_sid>119000, 119007</if_sid>
     <field name="fact" type="pcre2">^[a-z][a-z0-9_]*$</field>
     <field name="run_id" type="pcre2">^[0-9a-f-]{36}$</field>
     <description>OSCompliance fact $(fact)</description>
@@ -28,7 +35,7 @@
 
   <rule id="119003" level="3">
     <decoded_as>json</decoded_as>
-    <location negate="yes" type="pcre2">journald$|syslog|auth\.log|messages|secure|/var/log/oscompliance/</location>
+    <location negate="yes" type="pcre2">journald$|syslog|auth\.log|messages|secure|/var/log/oscompliance/|\\oscompliance\\</location>
     <field name="oscompliance_service" type="pcre2">^[A-Za-z0-9][A-Za-z0-9_.-]*$</field>
     <field name="tipo" type="pcre2">^[a-z_]+$</field>
     <description>OSCompliance external authentication event $(tipo) of $(oscompliance_service)</description>
@@ -53,6 +60,14 @@
     <program_name>^oscompliance-agent$</program_name>
     <match>^read watch suspended </match>
     <description>OSCompliance read watch suspended for its volume: reads on that path are not audited for one hour</description>
+    <group>oscompliance_audit,</group>
+  </rule>
+
+  <rule id="119008" level="10">
+    <if_sid>60601</if_sid>
+    <field name="win.system.providerName" type="pcre2">^oscompliance-agent$</field>
+    <field name="win.system.eventID" type="pcre2">^1006$</field>
+    <description>OSCompliance read watch suspended on Windows for its volume: reads on that path are not audited for one hour</description>
     <group>oscompliance_audit,</group>
   </rule>
 
