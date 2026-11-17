@@ -521,3 +521,55 @@ func TestJudgeEV06(t *testing.T) {
 		t.Error("bad date must make the register unusable")
 	}
 }
+
+func secedit(kv ...string) fact.ConfigFile {
+	f := file("secedit", kv...)
+	f.Kind = fact.ConfigKindCommand
+	for i := range f.Entries {
+		f.Entries[i].Section = "System Access"
+	}
+	return f
+}
+
+func TestWindowsAccountPolicy(t *testing.T) {
+
+	p10 := map[string]int{CriterionLength: 12, CriterionClasses: 3, CriterionHistory: 5}
+	hardened := secedit("LockoutBadCount", "5", "LockoutDuration", "-1", "MinimumPasswordLength", "14", "PasswordComplexity", "1", "PasswordHistorySize", "24", "MaximumPasswordAge", "60")
+	stock := secedit("LockoutBadCount", "0", "MinimumPasswordLength", "0", "PasswordComplexity", "0", "PasswordHistorySize", "0", "MaximumPasswordAge", "42")
+	selfUnlock := secedit("LockoutBadCount", "10", "LockoutDuration", "30")
+
+	cases := []struct {
+		name   string
+		got    verdict.Judgement
+		status verdict.Status
+		reason string
+	}{
+		{"lockout hardened", JudgeEV03(EV03Input{Settings: config(hardened), MaxAttempts: 5}), verdict.Compliant, "windows"},
+		{"no lockout", JudgeEV03(EV03Input{Settings: config(stock), MaxAttempts: 5}), verdict.NonCompliant, "windows: no lockout module"},
+		{"deny too high and unlocks", JudgeEV03(EV03Input{Settings: config(selfUnlock), MaxAttempts: 5}), verdict.NonCompliant, "secpol deny=10"},
+		{"quality hardened", JudgeEV11(EV11Input{Settings: config(hardened), Minimums: p10}), verdict.Compliant, "secpol"},
+		{"quality stock", JudgeEV11(EV11Input{Settings: config(stock), Minimums: p10}), verdict.NonCompliant, "minimum length 0 (P-10 12)"},
+	}
+	for _, c := range cases {
+		check(t, c.name, c.got, c.status, "", c.reason)
+	}
+
+	if m := (accountPolicyOf(t, stock)).maxAge(30); m.IsZero() {
+		t.Error("42 days accepted with P-04 30")
+	}
+	if m := (accountPolicyOf(t, secedit("MaximumPasswordAge", "0"))).maxAge(30); m.IsZero() {
+		t.Error("passwords that never expire accepted")
+	}
+	if m := (accountPolicyOf(t, hardened)).maxAge(90); !m.IsZero() {
+		t.Errorf("60 days refused with P-04 90: %v", m)
+	}
+}
+
+func accountPolicyOf(t *testing.T, f fact.ConfigFile) accountPolicy {
+	t.Helper()
+	p, ok := windowsPolicy(config(f))
+	if !ok {
+		t.Fatal("no Windows policy")
+	}
+	return p
+}

@@ -425,7 +425,8 @@ type Lockout struct {
 
 func JudgeEV03(in EV03Input) verdict.Judgement {
 
-	if gap, found := in.PAM.Gap(); found {
+	policy, windows := windowsPolicy(in.Settings)
+	if gap, found := in.PAM.Gap(); found && !windows {
 		return gap
 	}
 	if gap, found := in.Settings.Gap(); found {
@@ -436,13 +437,18 @@ func JudgeEV03(in EV03Input) verdict.Judgement {
 	}
 
 	paths, unknown := passwordPaths(in.Settings, in.PAM)
+	lockout := func(service string) Lockout { return lockoutOf(service, in.PAM, in.Settings) }
+	if windows {
+		paths, unknown = []string{windowsService}, nil
+		lockout = func(string) Lockout { return policy.lockout() }
+	}
 
 	var failing []catalog.Message
 	var judged []string
 
 	for _, service := range paths {
 
-		l := lockoutOf(service, in.PAM, in.Settings)
+		l := lockout(service)
 		judged = append(judged, service)
 
 		switch {
@@ -738,6 +744,11 @@ func JudgeEV05(in EV05Input) verdict.Judgement {
 
 	if f := loginDefsMax(in.Settings, in.MaxAge); !f.IsZero() {
 		failing = append(failing, f)
+	}
+	if policy, windows := windowsPolicy(in.Settings); windows {
+		if f := policy.maxAge(in.MaxAge); !f.IsZero() {
+			failing = append(failing, f)
+		}
 	}
 
 	if len(failing) > 0 {
@@ -1358,7 +1369,8 @@ type Quality struct {
 
 func JudgeEV11(in EV11Input) verdict.Judgement {
 
-	if gap, found := in.PAM.Gap(); found {
+	policy, windows := windowsPolicy(in.Settings)
+	if gap, found := in.PAM.Gap(); found && !windows {
 		return gap
 	}
 	if gap, found := in.Settings.Gap(); found {
@@ -1368,12 +1380,17 @@ func JudgeEV11(in EV11Input) verdict.Judgement {
 		return passes.Gap(verdict.CauseConfiguration, in.MinimumsProblem)
 	}
 
-	stack := in.PAM.Stack("passwd", "password")
-	if len(stack) == 0 {
-		return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.no_password_stack_for_passwd_in_etc_pam"))
+	var q Quality
+	var problem catalog.Message
+	if windows {
+		q, problem = policy.quality()
+	} else {
+		stack := in.PAM.Stack("passwd", "password")
+		if len(stack) == 0 {
+			return passes.Gap(verdict.CauseCollection, catalog.Says("opacc6.no_password_stack_for_passwd_in_etc_pam"))
+		}
+		q, problem = qualityOf(stack, in.Settings)
 	}
-
-	q, problem := qualityOf(stack, in.Settings)
 	if !problem.IsZero() {
 		return passes.Gap(verdict.CauseCollection, problem)
 	}
