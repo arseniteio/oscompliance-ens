@@ -94,6 +94,10 @@ func Guard(cfg GuardConfig, now time.Time) ([]Suspension, error) {
 
 	// Cron runs this every few minutes: the hourly pass is too late, a noisy read watch fills
 	// a disk in minutes. The throttle file keeps Collect from loading the watch again.
+	// Without auditd there is no watch to guard; the hourly pass reports auditd absent.
+	if _, err := os.Stat(cfg.Auditctl); errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
 
 	rules, err := loadedRules(cfg.Auditctl)
 	if err != nil {

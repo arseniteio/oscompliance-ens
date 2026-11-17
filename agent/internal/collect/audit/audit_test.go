@@ -170,3 +170,11 @@ func TestThrottleKeepsOnlyActiveSuspensions(t *testing.T) {
 		t.Errorf("no file is no suspension: %v %v", got, err)
 	}
 }
+
+func TestGuardWithoutAuditdDoesNothing(t *testing.T) {
+	dir := t.TempDir()
+	suspended, err := Guard(GuardConfig{Auditctl: filepath.Join(dir, "auditctl"), Throttle: filepath.Join(dir, "throttle.json"), Limit: 60, Window: time.Minute}, time.Now())
+	if err != nil || suspended != nil {
+		t.Errorf("no auditctl: %v %v", suspended, err)
+	}
+}
