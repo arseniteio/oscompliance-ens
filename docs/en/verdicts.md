@@ -94,7 +94,8 @@ Each pass also writes `organization` verdicts, with `agent.id` set to
 - one with `control` `ENS`: the distribution of accredited and declared levels
   over the applicable measures, the measures without measurement, without a
   declared level and below their target, and two global levels. A global level
-  is the highest one reached by at least 80 % of the measures.
+  is the highest one reached by at least 80 % of the measures; the accredited
+  one counts only the measures the engine judges.
 
 ## Scope
 

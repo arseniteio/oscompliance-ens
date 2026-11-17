@@ -79,7 +79,8 @@ Cada pasada escribe además veredictos `organization`, con `agent.id`
 - uno con `control` `ENS`: la distribución de niveles acreditados y declarados
   sobre las medidas aplicables, las medidas sin medición, sin nivel declarado y
   por debajo de su objetivo, y dos niveles globales. Un nivel global es el más
-  alto que alcanza al menos el 80 % de las medidas.
+  alto que alcanza al menos el 80 % de las medidas; el acreditado solo cuenta
+  las medidas que juzga el motor.
 
 ## Alcance
 

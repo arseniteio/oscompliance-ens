@@ -99,6 +99,7 @@ func Summarize(measures []Measure) Summary {
 			s.Unmeasured++
 		} else {
 			s.Accredited[*m.Accredited]++
+			accredited = append(accredited, *m.Accredited)
 		}
 		a := 0
 		if m.Assessed == nil {
@@ -107,7 +108,6 @@ func Summarize(measures []Measure) Summary {
 			s.Assessed[*m.Assessed]++
 			a = *m.Assessed
 		}
-		accredited = append(accredited, valueOr(m.Accredited))
 		assessed = append(assessed, a)
 		if m.Target != nil && m.effective() < *m.Target {
 			s.BelowTarget = append(s.BelowTarget, m.ID)
@@ -138,11 +138,4 @@ func Global(levels []int) int {
 		}
 	}
 	return 0
-}
-
-func valueOr(l *int) int {
-	if l == nil {
-		return 0
-	}
-	return *l
 }

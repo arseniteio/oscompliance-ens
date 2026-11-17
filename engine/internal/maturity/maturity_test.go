@@ -79,8 +79,14 @@ func TestSummarize(t *testing.T) {
 	if !slices.Equal(s.BelowTarget, []string{"op.exp.8", "org.2"}) {
 		t.Errorf("below target: %v", s.BelowTarget)
 	}
-	if s.GlobalAccredited != 0 || s.GlobalAssessed != 0 {
+	if s.GlobalAccredited != 1 || s.GlobalAssessed != 0 {
 		t.Errorf("global: L%d L%d", s.GlobalAccredited, s.GlobalAssessed)
+	}
+
+	// A measure without engine has no accredited level: it must not pull the accredited global down.
+	judged := Summarize([]Measure{{ID: "op.acc.1", Accredited: level(1)}, {ID: "org.2", Assessed: level(2)}})
+	if judged.GlobalAccredited != 1 {
+		t.Errorf("declared-only measure lowered the accredited global to L%d", judged.GlobalAccredited)
 	}
 }
 
