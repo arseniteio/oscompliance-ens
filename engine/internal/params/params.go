@@ -14,6 +14,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/maturity"
 )
 
 var (
@@ -61,6 +62,10 @@ type Config struct {
 			MatchModes map[string]string `json:"matchModes"`
 		} `json:"controls"`
 	} `json:"agents"`
+
+	Maturity struct {
+		Assessments []maturity.Assessment `json:"assessments"`
+	} `json:"maturity"`
 
 	inventoryTypes map[string]string
 	profiles       []catalog.Profile

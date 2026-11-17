@@ -62,6 +62,31 @@ func TestVerdictSchema(t *testing.T) {
 		{"control score out of range", ct + `"status":"COMPLIANT","score":101`, false},
 		{"control never NOT_EVALUABLE", ct + `"status":"NOT_EVALUABLE","cause":"COLLECTION","reason":"x"`, false},
 		{"partial evidence", ev + `"status":"PARTIAL","reason":"x"`, false},
+		{"control with accredited maturity", ct + `"status":"COMPLIANT","score":100,"maturity":{"accredited":2,"working_days":30,"period_days":30}`, true},
+		{"accredited maturity above 2", ct + `"status":"COMPLIANT","maturity":{"accredited":3}`, false},
+		{"evidence without status", ev + `"reason":"x"`, false},
+	}
+
+	const org = `"oscompliance_verdict":"1","@timestamp":"2026-10-22T12:00:00Z","agent":{"id":"organization","name":""},"window_start":"2026-10-22T12:00:00Z","window_end":"2026-10-22T12:00:00Z","engine_version":"x","scope":"organization",`
+	orgCases := []struct {
+		name  string
+		extra string
+		valid bool
+	}{
+		{"measure", `"control":"op.acc.1","maturity":{"accredited":1,"assessed":3,"target":3,"incoherent":true,"machines":4}`, true},
+		{"summary", `"control":"ENS","maturity":{"applicable":2,"unmeasured":0,"unassessed":1,"accredited_counts":[0,1,1,0,0,0],"assessed_counts":[0,0,0,1,0,0],"global_accredited":1,"global_assessed":0}`, true},
+		{"organization with status", `"control":"op.acc.1","status":"COMPLIANT","maturity":{"accredited":1}`, false},
+		{"organization without maturity", `"control":"op.acc.1"`, false},
+		{"assessed above 5", `"control":"org.2","maturity":{"assessed":6}`, false},
+	}
+	for _, tc := range orgCases {
+		v, err := jsonschema.UnmarshalJSON(strings.NewReader("{" + org + tc.extra + "}"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := schema.Validate(v); (err == nil) != tc.valid {
+			t.Errorf("%s: valid=%v, error %v", tc.name, tc.valid, err)
+		}
 	}
 
 	for _, tc := range cases {

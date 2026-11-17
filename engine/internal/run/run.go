@@ -12,6 +12,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/aggregate"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/batch"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/evaluator"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/maturity"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
@@ -41,6 +42,10 @@ type Config struct {
 	Plan func(agents []verdict.Agent)
 
 	Flush func(ctx context.Context) error
+
+	WorkingDays func(ctx context.Context, control string, now time.Time) (map[string]int, error)
+
+	Assessments []maturity.Assessment
 }
 
 func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator, policy params.Lister, sink Sink, cfg Config, now time.Time) (int, error) {
@@ -87,6 +92,8 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		written++
 	}
 
+	levels := newLevels()
+
 	judge := func(ctx context.Context, ev evaluator.Evaluator) {
 
 		control, ok := catalog.LookupControl(ev.Control())
@@ -111,6 +118,14 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 				WindowStart:         pass.WindowStart.UTC().Format(time.RFC3339),
 				WindowEnd:           now.UTC().Format(time.RFC3339),
 				EngineVersion:       cfg.EngineVersion,
+			}
+		}
+
+		var history map[string]int
+		if cfg.WorkingDays != nil {
+			var err error
+			if history, err = cfg.WorkingDays(ctx, control.Control, now); err != nil {
+				fail(fmt.Errorf("%s: maturity history: %w", control.Control, err))
 			}
 		}
 
@@ -161,6 +176,10 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 				if out && v.Scope == verdict.ScopeControl {
 					v.Explained(why, "")
 				}
+				if v.Scope == verdict.ScopeControl && history != nil {
+					accredit(&v, history[agent.ID])
+					levels.add(control.Control, v.Maturity)
+				}
 				store(v)
 			}
 		}
@@ -188,6 +207,12 @@ func Once(ctx context.Context, agentList Agents, controls []evaluator.Evaluator,
 		}()
 	}
 	wg.Wait()
+
+	if cfg.WorkingDays != nil {
+		for _, v := range organizationVerdicts(controls, levels, cfg.Assessments, organizationBase(now, cfg.EngineVersion)) {
+			store(v)
+		}
+	}
 
 	if f, ok := sink.(interface{ Flush(context.Context) error }); ok {
 		if err := f.Flush(ctx); err != nil {

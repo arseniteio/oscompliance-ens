@@ -1,0 +1,134 @@
+package run
+
+import (
+	"slices"
+	"sync"
+	"time"
+
+	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/evaluator"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/maturity"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
+)
+
+func accredit(v *verdict.Verdict, workingDaysBefore int) {
+
+	if v.Status == verdict.NotApplicable {
+		return
+	}
+	workingToday := v.MeasuredRequirements != nil && *v.MeasuredRequirements > 0 && v.Score != nil && *v.Score > 0
+	level := maturity.Accredit(workingToday, workingDaysBefore)
+	days := workingDaysBefore
+	if workingToday {
+		days++
+	}
+	v.Maturity = &verdict.Maturity{Accredited: &level, WorkingDays: &days, PeriodDays: maturity.PeriodDays}
+}
+
+type levels struct {
+	mu        sync.Mutex
+	byControl map[string][]int
+}
+
+func newLevels() *levels {
+	return &levels{byControl: map[string][]int{}}
+}
+
+func (l *levels) add(control string, m *verdict.Maturity) {
+	if m == nil || m.Accredited == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.byControl[control] = append(l.byControl[control], *m.Accredited)
+}
+
+func organizationBase(now time.Time, engineVersion string) verdict.Verdict {
+	stamp := now.UTC().Format(time.RFC3339)
+	return verdict.Verdict{
+		OSComplianceVerdict: verdict.SchemaVersion,
+		Timestamp:           stamp,
+		Scope:               verdict.ScopeOrganization,
+		Agent:               verdict.Agent{ID: verdict.OrganizationAgent},
+		WindowStart:         stamp,
+		WindowEnd:           stamp,
+		EngineVersion:       engineVersion,
+	}
+}
+
+func organizationVerdicts(controls []evaluator.Evaluator, judged *levels, assessments []maturity.Assessment, base verdict.Verdict) []verdict.Verdict {
+
+	// One verdict per judged control with the lowest level of its machines and the declared
+	// assessment, one per assessed measure the engine does not judge, and one for the ENS.
+
+	declared := map[string]maturity.Assessment{}
+	for _, a := range assessments {
+		if a.Valid() {
+			declared[a.Measure] = a
+		}
+	}
+
+	var out []verdict.Verdict
+	var measures []maturity.Measure
+	seen := map[string]bool{}
+
+	for _, ev := range controls {
+		id := ev.Control()
+		seen[id] = true
+		perMachine := judged.byControl[id]
+		if len(perMachine) == 0 {
+			continue
+		}
+		level, _ := maturity.Organization(perMachine)
+		m := measureVerdict(base, id, &level, declared[id])
+		m.Maturity.Machines = len(perMachine)
+		out = append(out, m)
+		measures = append(measures, maturity.Measure{ID: id, Accredited: &level, Assessed: declared[id].Level, Target: declared[id].Target})
+	}
+
+	var undeclared []string
+	for id := range declared {
+		if !seen[id] {
+			undeclared = append(undeclared, id)
+		}
+	}
+	slices.Sort(undeclared)
+	for _, id := range undeclared {
+		if _, judgedByEngine := catalog.LookupControl(id); judgedByEngine {
+			continue
+		}
+		out = append(out, measureVerdict(base, id, nil, declared[id]))
+		measures = append(measures, maturity.Measure{ID: id, Assessed: declared[id].Level, Target: declared[id].Target})
+	}
+
+	return append(out, summaryVerdict(base, maturity.Summarize(measures)))
+}
+
+func measureVerdict(base verdict.Verdict, id string, accredited *int, a maturity.Assessment) verdict.Verdict {
+	v := base
+	v.Control = id
+	v.Maturity = &verdict.Maturity{
+		Accredited: accredited, PeriodDays: maturity.PeriodDays,
+		Assessed: a.Level, Target: a.Target, AssessedBy: a.AssessedBy, AssessedAt: a.AssessedAt,
+		References: a.References, Note: a.Note,
+		Incoherent: maturity.Incoherent(accredited, a.Level),
+	}
+	return v
+}
+
+func summaryVerdict(base verdict.Verdict, s maturity.Summary) verdict.Verdict {
+	v := base
+	v.Control = verdict.AllMeasures
+	v.Maturity = &verdict.Maturity{
+		PeriodDays:       maturity.PeriodDays,
+		Applicable:       &s.Applicable,
+		Unmeasured:       &s.Unmeasured,
+		Unassessed:       &s.Unassessed,
+		BelowTarget:      s.BelowTarget,
+		AccreditedCounts: s.Accredited[:],
+		AssessedCounts:   s.Assessed[:],
+		GlobalAccredited: &s.GlobalAccredited,
+		GlobalAssessed:   &s.GlobalAssessed,
+	}
+	return v
+}

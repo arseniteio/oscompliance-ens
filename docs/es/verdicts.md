@@ -48,6 +48,39 @@ Algunos controles deciden un requisito directamente donde la norma pide elegir: 
 
 `score` es la proporción de requisitos aplicables que se cumplen, de 0 a 100. `coverage` es la proporción de requisitos aplicables que se han medido, frente a los fallados por falta de prueba. Un control con 60 y cobertura 100 es un 60 medido; con cobertura 40, la mayor parte de la diferencia es configuración o recogida.
 
+## Madurez
+
+El apdo. 6 del Anexo II valora cada medida como un proceso con los niveles CMM
+L0 a L5. El semáforo y la puntuación anteriores son indicadores operativos; el
+nivel de madurez es la valoración del ENS.
+
+La evidencia solo puede mostrar que una práctica existe y que se repite. Cada
+veredicto de control lleva `maturity.accredited` para esa máquina:
+
+| Nivel | Condición en los últimos 30 días, hoy incluido |
+|---|---|
+| L0 | ningún día con un requisito cumplido con evidencia |
+| L1 | algún día así, o no hoy |
+| L2 | hoy y al menos 27 de los 30 días |
+
+`working_days` es el número de esos días. L3 a L5 exigen un proceso escrito,
+medido y mejorado. Las personas los declaran en Power ENS (`maturity` en la
+configuración: nivel, objetivo, autor, fecha y referencias); el motor nunca
+sube un nivel por encima de L2 a partir de la evidencia.
+
+Cada pasada escribe además veredictos `organization`, con `agent.id`
+`organization`:
+
+- uno por control juzgado: el nivel acreditado más bajo de sus máquinas, el
+  nivel y el objetivo declarados, el número de máquinas e `incoherent` cuando
+  el nivel declarado es L3 o más y la evidencia acredita L0 o L1;
+- uno por medida declarada que el motor no juzga, como org.2: solo el nivel
+  declarado;
+- uno con `control` `ENS`: la distribución de niveles acreditados y declarados
+  sobre las medidas aplicables, las medidas sin medición, sin nivel declarado y
+  por debajo de su objetivo, y dos niveles globales. Un nivel global es el más
+  alto que alcanza al menos el 80 % de las medidas.
+
 ## Alcance
 
 Algunas medidas solo se aplican a algunas máquinas: la protección del correo a los servidores de correo, el bloqueo de pantalla a los puestos de trabajo, el cifrado a los dispositivos portátiles, las copias a las máquinas con copias declaradas. Cada página de control indica su alcance. Las máquinas fuera de él reciben `NOT_APPLICABLE`.

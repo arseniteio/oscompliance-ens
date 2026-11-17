@@ -15,9 +15,15 @@ const (
 )
 
 const (
-	ScopeEvidence    = "evidence"
-	ScopeRequirement = "requirement"
-	ScopeControl     = "control"
+	ScopeEvidence     = "evidence"
+	ScopeRequirement  = "requirement"
+	ScopeControl      = "control"
+	ScopeOrganization = "organization"
+)
+
+const (
+	OrganizationAgent = "organization"
+	AllMeasures       = "ENS"
 )
 
 type Cause string
@@ -69,6 +75,32 @@ type Verdict struct {
 	ApplicableRequirements *int     `json:"applicable_requirements,omitempty"`
 	MeasuredRequirements   *int     `json:"measured_requirements,omitempty"`
 	UnmeasuredRequirements []string `json:"unmeasured_requirements,omitempty"`
+
+	Maturity *Maturity `json:"maturity,omitempty"`
+}
+
+type Maturity struct {
+	Accredited  *int `json:"accredited,omitempty"`
+	WorkingDays *int `json:"working_days,omitempty"`
+	PeriodDays  int  `json:"period_days,omitempty"`
+
+	Assessed   *int   `json:"assessed,omitempty"`
+	Target     *int   `json:"target,omitempty"`
+	AssessedBy string `json:"assessed_by,omitempty"`
+	AssessedAt string `json:"assessed_at,omitempty"`
+	References string `json:"references,omitempty"`
+	Note       string `json:"note,omitempty"`
+	Incoherent bool   `json:"incoherent,omitempty"`
+	Machines   int    `json:"machines,omitempty"`
+
+	Applicable       *int     `json:"applicable,omitempty"`
+	Unmeasured       *int     `json:"unmeasured,omitempty"`
+	Unassessed       *int     `json:"unassessed,omitempty"`
+	BelowTarget      []string `json:"below_target,omitempty"`
+	AccreditedCounts []int    `json:"accredited_counts,omitempty"`
+	AssessedCounts   []int    `json:"assessed_counts,omitempty"`
+	GlobalAccredited *int     `json:"global_accredited,omitempty"`
+	GlobalAssessed   *int     `json:"global_assessed,omitempty"`
 }
 
 type Agent struct {

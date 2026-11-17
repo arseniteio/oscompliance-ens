@@ -10,6 +10,7 @@ import (
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/catalog"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/evaluator"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/maturity"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
@@ -336,5 +337,66 @@ func TestOnceFollowerWaits(t *testing.T) {
 
 	if strings.Join(log, " ") != "op.acc.1 op.acc.1 op.acc.6 op.acc.6" {
 		t.Fatalf("order: %v", log)
+	}
+}
+
+func TestOnceWritesMaturity(t *testing.T) {
+	control := &fakeControl{results: map[string]map[string]evaluator.Result{"001": allCompliant(), "002": allCompliant()}}
+	sink := &fakeSink{}
+	three := 3
+	withMaturity := cfg
+	withMaturity.WorkingDays = func(context.Context, string, time.Time) (map[string]int, error) {
+		return map[string]int{"001": 29, "002": 3}, nil
+	}
+	withMaturity.Assessments = []maturity.Assessment{
+		{Measure: "op.acc.1", Level: &three, Target: &three, AssessedBy: "dioni"},
+		{Measure: "org.2", Level: &three},
+		{Measure: "", Level: &three},
+	}
+
+	_, err := Once(context.Background(), fakeAgents{senders: []verdict.Agent{{ID: "001"}, {ID: "002"}}}, []evaluator.Evaluator{control}, noParams{level: "MEDIO"}, sink, withMaturity, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := index(sink.got)
+	if m := got["001 control "].Maturity; m == nil || *m.Accredited != 2 || *m.WorkingDays != 30 {
+		t.Errorf("001: %+v", m)
+	}
+	if m := got["002 control "].Maturity; m == nil || *m.Accredited != 1 {
+		t.Errorf("002: %+v", m)
+	}
+
+	organization := map[string]verdict.Verdict{}
+	for _, v := range sink.got {
+		if v.Scope == verdict.ScopeOrganization {
+			organization[v.Control] = v
+		}
+	}
+	if m := organization["op.acc.1"].Maturity; m == nil || *m.Accredited != 1 || *m.Assessed != 3 || !m.Incoherent || m.Machines != 2 || m.AssessedBy != "dioni" {
+		t.Errorf("op.acc.1 organization: %+v", m)
+	}
+	if m := organization["org.2"].Maturity; m == nil || m.Accredited != nil || *m.Assessed != 3 {
+		t.Errorf("org.2 organization: %+v", m)
+	}
+	if m := organization["ENS"].Maturity; m == nil || *m.Applicable != 2 || *m.Unmeasured != 1 || len(m.BelowTarget) != 0 || m.AccreditedCounts[1] != 1 {
+		t.Errorf("ENS summary: %+v", m)
+	}
+	if v := organization["ENS"]; v.Agent.ID != verdict.OrganizationAgent || v.Status != "" {
+		t.Errorf("summary verdict: %+v", v)
+	}
+}
+
+func TestOnceWithoutHistoryWritesNoMaturity(t *testing.T) {
+	control := &fakeControl{results: map[string]map[string]evaluator.Result{"001": allCompliant()}}
+	sink := &fakeSink{}
+
+	if _, err := Once(context.Background(), fakeAgents{senders: []verdict.Agent{{ID: "001"}}}, []evaluator.Evaluator{control}, noParams{level: "MEDIO"}, sink, cfg, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range sink.got {
+		if v.Maturity != nil || v.Scope == verdict.ScopeOrganization {
+			t.Fatalf("no history, no maturity: %+v", v)
+		}
 	}
 }

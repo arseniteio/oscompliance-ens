@@ -1,0 +1,148 @@
+package maturity
+
+import (
+	"slices"
+	"strings"
+)
+
+const (
+	PeriodDays    = 30
+	MaxAccredited = 2
+	MaxLevel      = 5
+
+	continuousShare = 0.9
+	globalShare     = 0.8
+)
+
+func Accredit(workingToday bool, workingDaysBefore int) int {
+
+	// The evidence alone shows a practice that exists (L1) or one that repeats without gaps
+	// (L2). From L3 up the ENS asks for a written, measured and improved process: people
+	// declare those levels and the engine only checks them against the evidence.
+
+	days := workingDaysBefore
+	if workingToday {
+		days++
+	}
+	switch {
+	case days == 0:
+		return 0
+	case workingToday && float64(days) >= continuousShare*PeriodDays:
+		return MaxAccredited
+	}
+	return 1
+}
+
+type Assessment struct {
+	Measure    string `json:"measureId"`
+	Level      *int   `json:"level"`
+	Target     *int   `json:"target"`
+	AssessedBy string `json:"assessedBy"`
+	AssessedAt string `json:"assessedAt"`
+	References string `json:"references"`
+	Note       string `json:"note"`
+}
+
+func (a Assessment) Valid() bool {
+	inRange := func(l *int) bool { return l == nil || (*l >= 0 && *l <= MaxLevel) }
+	return strings.TrimSpace(a.Measure) != "" && inRange(a.Level) && inRange(a.Target)
+}
+
+func Incoherent(accredited, assessed *int) bool {
+	// A declared L3 or higher needs a practice the evidence sees repeating; on L0 or L1 it is
+	// reported, not corrected.
+	return accredited != nil && assessed != nil && *assessed >= 3 && *accredited < MaxAccredited
+}
+
+func Organization(perMachine []int) (int, bool) {
+	if len(perMachine) == 0 {
+		return 0, false
+	}
+	return slices.Min(perMachine), true
+}
+
+type Measure struct {
+	ID         string
+	Accredited *int
+	Assessed   *int
+	Target     *int
+}
+
+func (m Measure) effective() int {
+	switch {
+	case m.Assessed != nil:
+		return *m.Assessed
+	case m.Accredited != nil:
+		return *m.Accredited
+	}
+	return 0
+}
+
+type Summary struct {
+	Applicable       int
+	Unmeasured       int
+	Unassessed       int
+	BelowTarget      []string
+	Accredited       [MaxLevel + 1]int
+	Assessed         [MaxLevel + 1]int
+	GlobalAccredited int
+	GlobalAssessed   int
+}
+
+func Summarize(measures []Measure) Summary {
+
+	s := Summary{Applicable: len(measures)}
+	var accredited, assessed []int
+
+	for _, m := range measures {
+		if m.Accredited == nil {
+			s.Unmeasured++
+		} else {
+			s.Accredited[*m.Accredited]++
+		}
+		a := 0
+		if m.Assessed == nil {
+			s.Unassessed++
+		} else {
+			s.Assessed[*m.Assessed]++
+			a = *m.Assessed
+		}
+		accredited = append(accredited, valueOr(m.Accredited))
+		assessed = append(assessed, a)
+		if m.Target != nil && m.effective() < *m.Target {
+			s.BelowTarget = append(s.BelowTarget, m.ID)
+		}
+	}
+
+	slices.Sort(s.BelowTarget)
+	s.GlobalAccredited = Global(accredited)
+	s.GlobalAssessed = Global(assessed)
+	return s
+}
+
+func Global(levels []int) int {
+	// The level reached by at least 80 % of the applicable measures: an average such as L2.6
+	// is not a CMM level, and one lagging measure should not sink the whole organization.
+	if len(levels) == 0 {
+		return 0
+	}
+	for level := MaxLevel; level > 0; level-- {
+		reached := 0
+		for _, l := range levels {
+			if l >= level {
+				reached++
+			}
+		}
+		if float64(reached) >= globalShare*float64(len(levels)) {
+			return level
+		}
+	}
+	return 0
+}
+
+func valueOr(l *int) int {
+	if l == nil {
+		return 0
+	}
+	return *l
+}

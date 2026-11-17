@@ -10,7 +10,6 @@
     "scope",
     "control",
     "agent",
-    "status",
     "window_start",
     "window_end",
     "engine_version"
@@ -28,7 +27,8 @@
       "enum": [
         "evidence",
         "requirement",
-        "control"
+        "control",
+        "organization"
       ]
     },
     "control": {
@@ -136,6 +136,102 @@
       "items": {
         "type": "string"
       }
+    },
+    "maturity": {
+      "description": "CMM maturity (Anexo II, apdo. 6). On a control verdict: the level the evidence accredits on that machine (0 to 2) and the working days of the period. On an organization verdict of a measure: the lowest accredited level of its machines and the level, target and author declared in the configuration. On the organization verdict of control ENS: the distribution and global levels.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "accredited": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "working_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "period_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "assessed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "target": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "assessed_by": {
+          "type": "string"
+        },
+        "assessed_at": {
+          "type": "string"
+        },
+        "references": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "incoherent": {
+          "type": "boolean",
+          "description": "A declared level of 3 or more on a measure whose evidence accredits less than 2."
+        },
+        "machines": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applicable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmeasured": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unassessed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "below_target": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "accredited_counts": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "assessed_counts": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "global_accredited": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "global_assessed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        }
+      }
     }
   },
   "additionalProperties": false,
@@ -146,7 +242,10 @@
           "status": {
             "const": "NOT_EVALUABLE"
           }
-        }
+        },
+        "required": [
+          "status"
+        ]
       },
       "then": {
         "required": [
@@ -169,7 +268,10 @@
                 "PARTIAL"
               ]
             }
-          }
+          },
+          "required": [
+            "status"
+          ]
         },
         "then": {
           "required": [
@@ -286,6 +388,53 @@
             }
           ]
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "scope": {
+            "const": "organization"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "maturity"
+        ],
+        "properties": {
+          "agent": {
+            "properties": {
+              "id": {
+                "const": "organization"
+              }
+            }
+          }
+        },
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "status"
+              ]
+            },
+            {
+              "required": [
+                "evidence"
+              ]
+            },
+            {
+              "required": [
+                "requirement"
+              ]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "status"
+        ]
       }
     }
   ]

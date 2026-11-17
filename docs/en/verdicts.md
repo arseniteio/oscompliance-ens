@@ -63,6 +63,39 @@ applicability on machines with no external service.
 opposed to failed for lack of proof. A control at 60 with coverage 100 is a
 measured 60; at coverage 40 most of the gap is configuration or collection.
 
+## Maturity
+
+Anexo II, apdo. 6 values each measure as a process with the CMM levels L0 to
+L5. The traffic light and the score above are operational indicators; the
+maturity level is the ENS valuation.
+
+The evidence can only show that a practice exists and that it repeats. Each
+control verdict carries `maturity.accredited` for that machine:
+
+| Level | Condition over the last 30 days, today included |
+|---|---|
+| L0 | no day with a requirement met with evidence |
+| L1 | some such days, or not today |
+| L2 | today and at least 27 of the 30 days |
+
+`working_days` is the number of those days. L3 to L5 need a written,
+measured and improved process. People declare them in Power ENS (`maturity`
+in the configuration: level, target, author, date and references); the engine
+never raises a level from the evidence above L2.
+
+Each pass also writes `organization` verdicts, with `agent.id` set to
+`organization`:
+
+- one per judged control: the lowest accredited level of its machines, the
+  declared level and target, the number of machines, and `incoherent` when
+  the declared level is L3 or more and the evidence accredits L0 or L1;
+- one per declared measure the engine does not judge, such as org.2: only the
+  declared level;
+- one with `control` `ENS`: the distribution of accredited and declared levels
+  over the applicable measures, the measures without measurement, without a
+  declared level and below their target, and two global levels. A global level
+  is the highest one reached by at least 80 % of the measures.
+
 ## Scope
 
 Some measures apply only to some machines: mail protection to mail servers,

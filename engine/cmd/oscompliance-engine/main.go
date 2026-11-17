@@ -51,6 +51,7 @@ import (
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/groupconf"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/hostprofile"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/maturity"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/run"
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/scope"
@@ -220,6 +221,9 @@ func runMain() error {
 			hist.Plan(agents)
 		},
 		Flush: hist.Flush,
+		WorkingDays: func(ctx context.Context, control string, now time.Time) (map[string]int, error) {
+			return sink.WorkingDays(ctx, control, now, maturity.PeriodDays-1)
+		},
 	}
 
 	for {
@@ -246,6 +250,7 @@ func runMain() error {
 			loaded.UseProfiles(custom)
 			loaded.UseHostFacts(profileHosts(ctx, facts, profiles, time.Now().Add(-*lookback)))
 			policy, current = loaded, loaded
+			cfg.Assessments = loaded.Maturity.Assessments
 			groups.run(ctx, loaded, time.Now())
 		}
 
