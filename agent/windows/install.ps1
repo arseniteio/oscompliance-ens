@@ -47,12 +47,33 @@ function Assert-Administrator {
   }
 }
 
+$TrustedOwners = 'S-1-5-18', 'S-1-5-32-544'
+
+function Assert-Trusted([string]$Path) {
+  # ProgramData lets any user create folders: a folder or file planted before
+  # the installation must not reach the agent, which runs as SYSTEM.
+  if (-not (Test-Path -LiteralPath $Path)) { return }
+  $items = @(Get-Item -LiteralPath $Path -Force) + @(Get-ChildItem -LiteralPath $Path -Recurse -Force -ErrorAction SilentlyContinue)
+  foreach ($item in $items) {
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "$($item.FullName) is a link; remove it and run the installer again." }
+    $owner = (Get-Acl -LiteralPath $item.FullName).GetOwner([Security.Principal.SecurityIdentifier]).Value
+    if ($TrustedOwners -notcontains $owner) { throw "$($item.FullName) belongs to $owner, not to SYSTEM or Administrators; remove it and run the installer again." }
+  }
+}
+
 function Protect-Folder([string]$Path) {
-  # SYSTEM and Administrators only: the agent reads its state and the shared
-  # paths from here as SYSTEM, so nobody else may write to it.
   New-Item -ItemType Directory -Force -Path $Path | Out-Null
-  & icacls.exe $Path /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C /Q | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw "icacls $Path exited with $LASTEXITCODE" }
+  $acl = New-Object Security.AccessControl.DirectorySecurity
+  $acl.SetAccessRuleProtection($true, $false)
+  $acl.SetOwner((New-Object Security.Principal.SecurityIdentifier('S-1-5-32-544')))
+  foreach ($sid in $TrustedOwners) {
+    $acl.AddAccessRule((New-Object Security.AccessControl.FileSystemAccessRule((New-Object Security.Principal.SecurityIdentifier($sid)), 'FullControl', 'ContainerInherit, ObjectInherit', 'None', 'Allow')))
+  }
+  Set-Acl -LiteralPath $Path -AclObject $acl
+  if (Get-ChildItem -LiteralPath $Path -Force) {
+    & icacls.exe "$Path\*" /reset /T /C /Q | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "icacls $Path exited with $LASTEXITCODE" }
+  }
 }
 
 function Register-Tasks {
@@ -74,6 +95,7 @@ function Install-Agent {
   $exe = Join-Path $Source 'oscompliance-agent.exe'
   if (-not (Test-Path -LiteralPath $exe)) { throw "oscompliance-agent.exe not found in $Source" }
 
+  Assert-Trusted $DataDir
   Protect-Folder $DataDir
   Protect-Folder $StateDir
   New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -107,7 +129,7 @@ function Uninstall-Agent {
   if ([System.Diagnostics.EventLog]::SourceExists($EventSource)) { Remove-EventLog -Source $EventSource }
   if (Test-Path -LiteralPath $InstallDir) { Remove-Item -LiteralPath $InstallDir -Recurse -Force }
   if ($Purge -and (Test-Path -LiteralPath $DataDir)) { Remove-Item -LiteralPath $DataDir -Recurse -Force }
-  Write-Output 'Removed. The SACL entries the agent added stay until the next pass of a new install or until removed by hand; see docs/en/install-windows.md.'
+  Write-Output 'Removed. The SACL entries the agent added stay on the watched paths; see docs/en/install-windows.md.'
 }
 
 Assert-Administrator
