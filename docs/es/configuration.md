@@ -65,7 +65,7 @@ El perfil de máquina decide qué [perfiles](#perfiles) recibe cada máquina.
 
 ## Perfiles
 
-Un perfil da valores de parámetros a todas las máquinas cuyo perfil de máquina cumple sus condiciones, de modo que un valor se define una vez por tipo de máquina y no una vez por máquina. Cada perfil es un documento de `wazuh-ens-configuration` con `documentType` `PROFILE`. El catálogo trae `ubuntu` y `manager-wazuh` en [`catalog/profiles/`](../../catalog/profiles/), con los mismos valores que las plantillas integradas; un perfil guardado con el mismo `id` sustituye al integrado.
+Un perfil da valores de parámetros a todas las máquinas cuyo perfil de máquina cumple sus condiciones, de modo que un valor se define una vez por tipo de máquina y no una vez por máquina. Cada perfil es un documento de `wazuh-ens-configuration` con `documentType` `PROFILE`. Los perfiles se gestionan en Power ENS > Configuración > Perfiles, que muestra a cuántas máquinas llega cada uno mientras se edita, importa y exporta YAML, y lista en Máquinas los perfiles y el origen de cada valor de cada máquina. `oscompliance-policy`, más abajo, es la opción para automatizar. El catálogo trae `ubuntu` y `manager-wazuh` en [`catalog/profiles/`](../../catalog/profiles/), con los mismos valores que las plantillas integradas; un perfil guardado con el mismo `id` sustituye al integrado.
 
 ```yaml
 id: web
@@ -94,7 +94,7 @@ Cuando varios perfiles encajan con una máquina, las listas y las tablas se suma
 
 Con `-profile-groups`, el motor mantiene además un grupo de Wazuh por perfil, `ens-perfil-<id>`, con las máquinas que lo reciben, y da al grupo la etiqueta `ens.perfil.<id>`. Así las alertas llevan `agent.labels.ens.perfil.<id>`, y las reglas, los dashboards o el `agent.conf` de un grupo pueden distinguir las máquinas por perfil. Una máquina que deja de encajar sale del grupo; el manager nunca se añade. Una condición de perfil no puede usar estos grupos.
 
-`oscompliance-policy`, que se instala con el motor, lee perfiles de ficheros YAML y los escribe. Usa el usuario y la contraseña del indexer, como el motor: ejecútalo en el manager con un usuario administrador.
+Para automatizar, `oscompliance-policy`, que se instala con el motor, lee perfiles de ficheros YAML y los escribe. Sus ficheros tienen el mismo formato que Exportar e Importar en Power ENS. Usa el usuario y la contraseña del indexer, como el motor: ejecútalo en el manager con un usuario administrador.
 
 ```bash
 export OSC_INDEXER_PASSWORD='...'

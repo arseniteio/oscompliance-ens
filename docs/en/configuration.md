@@ -69,7 +69,7 @@ The host profile decides which [profiles](#profiles) a machine gets.
 
 ## Profiles
 
-A profile gives parameter values to every machine whose host profile meets its conditions, so a value is set once per machine type instead of once per machine. Each profile is one document in `wazuh-ens-configuration` with `documentType` `PROFILE`. The catalog ships `ubuntu` and `manager-wazuh` in [`catalog/profiles/`](../../catalog/profiles/), with the same values as the built-in templates; a stored profile with the same `id` replaces the built-in one.
+A profile gives parameter values to every machine whose host profile meets its conditions, so a value is set once per machine type instead of once per machine. Each profile is one document in `wazuh-ens-configuration` with `documentType` `PROFILE`. Profiles are managed in Power ENS > Configuración > Perfiles, which shows how many machines each one reaches while it is edited, imports and exports YAML, and lists in Máquinas the profiles and the origin of every value of each machine. `oscompliance-policy`, below, is the option for automation. The catalog ships `ubuntu` and `manager-wazuh` in [`catalog/profiles/`](../../catalog/profiles/), with the same values as the built-in templates; a stored profile with the same `id` replaces the built-in one.
 
 ```yaml
 id: web
@@ -98,7 +98,7 @@ When several profiles match a machine, lists and tables add up from every layer 
 
 With `-profile-groups`, the engine also keeps one Wazuh group per profile, `ens-perfil-<id>`, with the machines that get it, and gives the group the label `ens.perfil.<id>`. Alerts then carry `agent.labels.ens.perfil.<id>`, and rules, dashboards or a group `agent.conf` can tell machines apart by profile. A machine that stops matching leaves the group; the manager is never added. A profile condition cannot use these groups.
 
-`oscompliance-policy`, installed with the engine, reads profiles from YAML files and writes them. It uses the indexer user and password, like the engine: run it on the manager with an admin user.
+For automation, `oscompliance-policy`, installed with the engine, reads profiles from YAML files and writes them. Its files use the same format as Exportar and Importar in Power ENS. It uses the indexer user and password, like the engine: run it on the manager with an admin user.
 
 ```bash
 export OSC_INDEXER_PASSWORD='...'
