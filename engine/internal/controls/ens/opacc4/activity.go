@@ -51,6 +51,10 @@ func AuditChain(w *fact.AuditWatchSnapshot, c *fact.WazuhAgentConfig, perm bool,
 
 func Person(a source.AuditAccess, accounts Accounts) string {
 
+	if a.Account != "" {
+		return a.Account
+	}
+
 	for _, id := range []string{a.AUID, a.UID} {
 		if id == "" || id == "unset" || id == "-1" || id == "4294967295" {
 			continue

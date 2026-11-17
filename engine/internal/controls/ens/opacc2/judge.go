@@ -729,6 +729,9 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 }
 
 func person(a source.AuditAccess, byUID map[int]string) string {
+	if a.Account != "" {
+		return a.Account
+	}
 	for _, id := range []string{a.AUID, a.UID} {
 		if id == "" || id == "unset" || id == "-1" || id == "4294967295" {
 			continue

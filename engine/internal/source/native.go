@@ -200,6 +200,7 @@ type AuditAccess struct {
 	Success string
 	AUID    string
 	UID     string
+	Account string
 	Path    string
 	Exe     string
 }
@@ -216,7 +217,10 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 		agentFilter(ids),
 		map[string]any{"bool": map[string]any{"minimum_should_match": 1, "should": []any{
 			map[string]any{"term": map[string]any{"rule.id": AuditRule}},
-			map[string]any{"term": map[string]any{"data.fact": fact.FileAccessFact}},
+			map[string]any{"bool": map[string]any{"filter": []any{
+				map[string]any{"term": map[string]any{"rule.id": FactRule}},
+				map[string]any{"term": map[string]any{"data.fact": fact.FileAccessFact}},
+			}}},
 		}}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	}
@@ -230,6 +234,9 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 			Agent     struct {
 				ID string `json:"id"`
 			} `json:"agent"`
+			Rule struct {
+				ID string `json:"id"`
+			} `json:"rule"`
 			Data struct {
 				fact.FileAccess
 				Audit struct {
@@ -253,11 +260,14 @@ func (s *Source) auditAccesses(ctx context.Context, ids []string, since time.Tim
 			return fmt.Errorf("alert %s: %w", h.ID, err)
 		}
 
-		if w := a.Data.FileAccess; w.Fact == fact.FileAccessFact {
+		if w := a.Data.FileAccess; a.Rule.ID == FactRule && w.Fact == fact.FileAccessFact {
+			if w.Access != fact.AccessRead && w.Access != fact.AccessWrite {
+				return nil
+			}
 			if at, err := time.Parse(time.RFC3339Nano, w.Time); err == nil {
 				ts = at
 			}
-			out[a.Agent.ID] = append(out[a.Agent.ID], AuditAccess{Time: ts, Key: "oscompliance_" + w.Access, Success: "yes", AUID: w.Account, UID: w.Account, Path: w.Path, Exe: w.Process})
+			out[a.Agent.ID] = append(out[a.Agent.ID], AuditAccess{Time: ts, Key: "oscompliance_" + w.Access, Success: "yes", Account: w.Account, Path: w.Path, Exe: w.Process})
 			return nil
 		}
 

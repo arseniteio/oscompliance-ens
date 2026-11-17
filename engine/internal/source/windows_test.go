@@ -90,7 +90,7 @@ func TestWindowsFailuresAndLockouts(t *testing.T) {
 func TestWindowsFileAccessesAreAuditAccesses(t *testing.T) {
 
 	s := hitsIndexer(t, map[string]any{
-		"timestamp": "2026-11-17T10:00:05.000+0000", "agent": map[string]any{"id": "045"},
+		"timestamp": "2026-11-17T10:00:05.000+0000", "agent": map[string]any{"id": "045"}, "rule": map[string]any{"id": FactRule},
 		"data": map[string]any{"fact": "file_access", "time": "2026-11-17T09:59:30.1234567Z", "watch": `C:\ProgramData\ssh`, "path": `C:\ProgramData\ssh\ssh_host_ed25519_key`, "access": "read", "account": "ana", "process_name": `C:\Windows\notepad.exe`},
 	})
 
@@ -99,7 +99,7 @@ func TestWindowsFileAccessesAreAuditAccesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	a := got["045"]
-	if len(a) != 1 || a[0].Key != "oscompliance_read" || a[0].AUID != "ana" || a[0].Exe != `C:\Windows\notepad.exe` || a[0].Time.Second() != 30 {
+	if len(a) != 1 || a[0].Key != "oscompliance_read" || a[0].Account != "ana" || a[0].AUID != "" || a[0].Exe != `C:\Windows\notepad.exe` || a[0].Time.Second() != 30 {
 		t.Errorf("got %+v", a)
 	}
 }
