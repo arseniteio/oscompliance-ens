@@ -2,6 +2,7 @@ package winps
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -22,5 +23,15 @@ func TestDecodePassesTheRunError(t *testing.T) {
 	want := errors.New("boom")
 	if _, err := Decode[map[string]int](Failing(want), ""); !errors.Is(err, want) {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestWithInputKeepsQuotesOutOfTheScript(t *testing.T) {
+	script, err := WithInput(map[string]string{"path": `C:\a'; Remove-Item C:\ -Recurse; '`}, "$in.path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(script, "Remove-Item") || strings.Count(script, "'") != 2 {
+		t.Errorf("value reached the script text: %s", script)
 	}
 }

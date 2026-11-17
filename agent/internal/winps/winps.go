@@ -1,6 +1,7 @@
 package winps
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,16 @@ type Runner func(script string) ([]byte, error)
 const Timeout = 3 * time.Minute
 
 var ErrUnsupported = errors.New("PowerShell collectors run only on Windows")
+
+// WithInput hands v to the script as $in. Base64 keeps quotes and other
+// characters of the value out of the PowerShell parser.
+func WithInput(v any, script string) (string, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return "$in = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('" + base64.StdEncoding.EncodeToString(data) + "')) | ConvertFrom-Json\n" + script, nil
+}
 
 func Decode[T any](run Runner, script string) (T, error) {
 
