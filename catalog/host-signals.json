@@ -10,7 +10,13 @@
     {"id": "amazon", "family": "rhel", "platforms": ["amzn"], "names": ["amazon linux"], "version": "major"},
     {"id": "fedora", "family": "rhel", "platforms": ["fedora"], "names": ["fedora"], "version": "major"},
     {"id": "sles", "family": "suse", "platforms": ["sles"], "names": ["suse linux enterprise"], "version": "major"},
-    {"id": "opensuse", "family": "suse", "platforms": ["opensuse", "opensuse-leap", "opensuse-tumbleweed"], "names": ["opensuse"], "version": "major.minor"}
+    {"id": "opensuse", "family": "suse", "platforms": ["opensuse", "opensuse-leap", "opensuse-tumbleweed"], "names": ["opensuse"], "version": "major.minor"},
+    {"id": "windows-server-2025", "family": "windows", "platforms": [], "names": ["windows server 2025"], "version": "none"},
+    {"id": "windows-server-2022", "family": "windows", "platforms": [], "names": ["windows server 2022"], "version": "none"},
+    {"id": "windows-server-2019", "family": "windows", "platforms": [], "names": ["windows server 2019"], "version": "none"},
+    {"id": "windows-server-2016", "family": "windows", "platforms": [], "names": ["windows server 2016"], "version": "none"},
+    {"id": "windows-11", "family": "windows", "platforms": [], "names": ["windows 11"], "version": "none", "role": "workstation"},
+    {"id": "windows-10", "family": "windows", "platforms": [], "names": ["windows 10"], "version": "none", "role": "workstation"}
   ],
   "roles": [
     {"id": "manager", "packages": ["wazuh-manager"]},

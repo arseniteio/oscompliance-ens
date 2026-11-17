@@ -8,7 +8,8 @@ import (
 func TestHostSignals(t *testing.T) {
 
 	s := Signals()
-	families := []string{"debian", "rhel", "suse"}
+	families := []string{"debian", "rhel", "suse", "windows"}
+	roles := []string{"", "workstation"}
 	seen := map[string]bool{}
 
 	for _, d := range s.Distros {
@@ -19,8 +20,11 @@ func TestHostSignals(t *testing.T) {
 		if !slices.Contains(families, d.Family) {
 			t.Errorf("distro %s: unknown family %q", d.ID, d.Family)
 		}
-		if d.Version != "major" && d.Version != "major.minor" {
-			t.Errorf("distro %s: version must be major or major.minor, got %q", d.ID, d.Version)
+		if !slices.Contains([]string{"major", "major.minor", "none"}, d.Version) {
+			t.Errorf("distro %s: version must be major, major.minor or none, got %q", d.ID, d.Version)
+		}
+		if !slices.Contains(roles, d.Role) {
+			t.Errorf("distro %s: unknown role %q", d.ID, d.Role)
 		}
 		if len(d.Platforms) == 0 && len(d.Names) == 0 {
 			t.Errorf("distro %s matches nothing", d.ID)

@@ -17,6 +17,7 @@ type DistroSignal struct {
 	Platforms []string `json:"platforms"`
 	Names     []string `json:"names"`
 	Version   string   `json:"version"`
+	Role      string   `json:"role,omitempty"`
 }
 
 type PackageSignal struct {
