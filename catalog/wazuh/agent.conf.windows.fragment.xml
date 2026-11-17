@@ -1,0 +1,9 @@
+<!-- Inside <agent_config os="Windows"> of the group agent.conf on the manager. The engine writes it on its own; this is for a manual setup. -->
+<localfile>
+  <log_format>json</log_format>
+  <location>C:\ProgramData\oscompliance\facts.ndjson</location>
+</localfile>
+<localfile>
+  <log_format>eventchannel</log_format>
+  <location>Microsoft-Windows-Windows Defender/Operational</location>
+</localfile>
