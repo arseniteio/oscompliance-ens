@@ -24,6 +24,12 @@ On each machine to audit:
 curl -fsSL https://github.com/arseniteio/oscompliance-ens-wazuh/releases/latest/download/install.sh | sudo bash -s -- agent --group ens
 ```
 
+On Windows, from an elevated PowerShell (see [Windows agent](docs/en/install-windows.md)):
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((irm https://github.com/arseniteio/oscompliance-ens-wazuh/releases/latest/download/install.ps1))) -Group ens
+```
+
 The engine adds each machine to the `ens` group within 15 minutes, and the first verdicts appear in Power ENS after its next pass. Until a configuration is saved in Power ENS, the engine judges at level MEDIO with the `ens` group in scope. Run the same commands with a newer release to upgrade, and with `uninstall` on each node to remove everything.
 
 To check the files before running anything, download the package and verify it. `install.sh` inside the package uses the files next to it.

@@ -11,22 +11,24 @@ The OSCompliance agent for Windows collects the same kind of facts as the Linux 
 
 ## Install
 
-1. Copy `oscompliance-ens-wazuh-<version>-windows-amd64.zip` to the machine and extract it.
-2. From an elevated PowerShell in the extracted folder, run:
+Run one command from an elevated PowerShell, the same as `install.sh agent --group ens` on Linux:
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\install.ps1 -RunNow
-   ```
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = 'Tls12'; & ([scriptblock]::Create((irm https://github.com/arseniteio/oscompliance-ens-wazuh/releases/latest/download/install.ps1))) -Group ens
+```
+
+The script downloads the Windows package of the release and checks it against `SHA256SUMS`. To check the files before running anything, download `oscompliance-ens-wazuh-<version>-windows-amd64.zip` and `SHA256SUMS`, verify the zip with `Get-FileHash`, extract it and run `.\install.ps1 -Group ens` from the extracted folder: the script uses the binary next to it. `-Release 1.3.0` installs another release. Run the same command again to upgrade.
 
 The script:
 
 - copies `oscompliance-agent.exe` to `C:\Program Files\OSCompliance`;
 - creates `C:\ProgramData\oscompliance` and its `state` folder with access for SYSTEM and Administrators only;
-- copies `agent.example.json` to `C:\ProgramData\oscompliance\agent.json` when that file does not exist;
+- writes the requested group to `C:\ProgramData\oscompliance\agent.json`, which the engine reads to add the machine to that group;
+- adds the facts file to the local `ossec.conf` of the Wazuh agent and restarts it, so the first facts reach the manager before the group configuration does;
 - registers the `oscompliance-agent` source in the Application log;
-- schedules `\OSCompliance\agent-pass` every hour and `\OSCompliance\audit-guard` every 2 minutes, both as SYSTEM.
+- schedules `\OSCompliance\agent-pass` every hour and `\OSCompliance\audit-guard` every 2 minutes, both as SYSTEM, and starts the first pass.
 
-Add the machine to the `ens` group as for Linux. The engine writes an `<agent_config os="Windows">` block to the group configuration with the facts file, the Microsoft Defender channel, the managed paths and the file integrity paths. A group with Linux and Windows machines gets one block per operating system, so no machine reads the paths of the other one. For a manual setup, `wazuh/agent.conf.windows.fragment.xml` holds the two `localfile` entries.
+The engine adds the machine to the group within 15 minutes and writes an `<agent_config os="Windows">` block to the group configuration with the facts file, the Microsoft Defender channel, the managed paths and the file integrity paths. A group with Linux and Windows machines gets one block per operating system, so no machine reads the paths of the other one. For a manual setup, `wazuh/agent.conf.windows.fragment.xml` holds the two `localfile` entries.
 
 The manager needs the rules of this release: rule 119007 decodes the Windows facts file and rule 119008 alerts on suspended read watches.
 
@@ -76,10 +78,10 @@ The Wazuh agent does not forward event 4663: its default query excludes it, and 
 ## Uninstall
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall
+& ([scriptblock]::Create((irm https://github.com/arseniteio/oscompliance-ens-wazuh/releases/latest/download/install.ps1))) -Uninstall
 ```
 
-Add `-Purge` to delete `C:\ProgramData\oscompliance`. The SACL entries the agent added stay on the watched paths; remove them with `Get-Acl -Audit` and `Set-Acl`.
+The script also removes the facts entry it added to `ossec.conf`. Add `-Purge` to delete `C:\ProgramData\oscompliance`. The SACL entries the agent added stay on the watched paths; remove them with `Get-Acl -Audit` and `Set-Acl`.
 
 ## Limits
 
