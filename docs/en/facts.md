@@ -115,7 +115,7 @@ Last fact of every collection pass. A collector whose records and snapshot did n
 
 ### audit_watch_snapshot
 
-The auditd watches the manager asked for in the group configuration the engine writes, and whether they are loaded. Paths in audit_watches get two watches, one per permission (w, a), with keys oscompliance_write and oscompliance_attr. Paths in read_watches get four, one per permission (r, w, x, a), with keys oscompliance_read, oscompliance_write, oscompliance_exec and oscompliance_attr. The read rule only records sessions with a login UID (auid!=-1). Each access carries its kind. The agent loads a missing watch with auditctl and never removes one. Binaries in exec_watches (op.acc.3 P-03) get one execution watch each, key oscompliance_exec.
+The auditd watches the manager asked for in the group configuration the engine writes, and whether they are loaded. Paths in audit_watches get two watches, one per permission (w, a), with keys oscompliance_write and oscompliance_attr. Paths in read_watches get four, one per permission (r, w, x, a), with keys oscompliance_read, oscompliance_write, oscompliance_exec and oscompliance_attr. The read rule only records sessions with a login UID (auid!=-1). Each access carries its kind. The agent loads a missing watch with auditctl and unloads, listed in `unloaded`, the watches no longer asked for, the read watches loaded with -w before the auid filter, and the read watches suspended for their volume. Binaries in exec_watches (op.acc.3 P-03) get one execution watch each, key oscompliance_exec.
 
 | Field | Type | Meaning |
 |---|---|---|

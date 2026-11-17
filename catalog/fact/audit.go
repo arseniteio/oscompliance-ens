@@ -16,6 +16,8 @@ type AuditWatchSnapshot struct {
 	Loaded []string `json:"loaded"`
 	Failed []string `json:"failed,omitempty"`
 
+	Unloaded []string `json:"unloaded,omitempty"`
+
 	ReadWanted []string `json:"read_wanted,omitempty"`
 
 	ExecWanted []string `json:"exec_wanted,omitempty"`

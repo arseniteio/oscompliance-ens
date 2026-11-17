@@ -7,7 +7,7 @@ does not run its own collection channel, database or message bus.
 
 On the audited machine, `oscompliance-agent` writes `facts.ndjson` and the
 Wazuh agent ships it with the authentication and audit logs, FIM, SCA and
-inventory. On the manager host, rules 119000-119005 index the facts. Every 15
+inventory. On the manager host, rules 119000-119006 index the facts. Every 15
 minutes `oscompliance-engine` reads the indexer, writes verdicts back to it and
 updates the group `agent.conf` through the Wazuh API. The Power ENS plugin in
 the dashboard shows the verdicts.
@@ -18,7 +18,7 @@ the dashboard shows the verdicts.
 
 The Wazuh agent ships that file with the authentication and audit logs, inventory, FIM and SCA. Nothing in it is specific to OSCompliance.
 
-Wazuh rules 119000 to 119005 run on the manager. They index facts, the authentication probe, service events and audited accesses. They carry no verdict.
+Wazuh rules 119000 to 119006 run on the manager. They index facts, the authentication probe, service events and audited accesses. They carry no verdict.
 
 `oscompliance-engine` runs on the master manager, one per deployment. It reaches the indexers over the network, with failover between them, and the Wazuh API on its own host. It judges every evidence, requirement and control and writes the verdicts. It changes nothing on the audited machines except through the group configuration.
 

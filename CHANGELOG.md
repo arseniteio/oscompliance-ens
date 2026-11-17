@@ -6,6 +6,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ### Added
 
+- The agent unloads the `oscompliance_*` audit watches the group configuration no longer asks for, only when it holds the engine's block, and the read watches loaded with `-w` before the auid filter. `audit_watch_snapshot` lists them in `unloaded`.
+- `oscompliance-agent -guard-audit`, run by cron every 2 minutes, unloads for one hour a read watch that records more than `audit_read_limit` successful reads per minute (60 by default) over 5 minutes. The next passes report it in `failed` and the controls that judge those reads are NOT_EVALUABLE by COLLECTION until the suspension ends. Rule 119006 alerts at level 10 on every suspension.
 - The engine deduces each machine's distro, role (manager, server or workstation) and services from the Wazuh inventory on every pass, and writes them to `oscompliance-host-profile` with the signal behind each one. The rules are in `catalog/host-signals.json`. Verdicts do not change.
 - `-host-profile-index` names that index.
 - Profiles give parameter values to every machine whose host profile meets their conditions, in four layers (distro, role, service, site): lists add up across layers and other values come from the most specific one. Each profile is a `PROFILE` document in `wazuh-ens-configuration`. The catalog ships `ubuntu` and `manager-wazuh` with the values of the built-in templates, so verdicts do not change.

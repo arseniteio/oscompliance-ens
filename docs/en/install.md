@@ -122,10 +122,10 @@ To build the packages and the plugin instead, see [Build from source](#build-fro
 
 Run this on the master manager or the all-in-one server.
 
-The rules use IDs 119000 to 119005. They index facts, the authentication probe, service events and audited accesses, and raise nothing above level 3. No other rule may use those IDs: the first command must print nothing, or only `oscompliance_facts_rules.xml` on a reinstallation. `wazuh-analysisd -t` must print no errors.
+The rules use IDs 119000 to 119006. They index facts, the authentication probe, service events and audited accesses, and raise nothing above level 3. No other rule may use those IDs: the first command must print nothing, or only `oscompliance_facts_rules.xml` on a reinstallation. `wazuh-analysisd -t` must print no errors.
 
 ```bash
-grep -rlE 'id="11900[0-5]"' /var/ossec/etc/rules/
+grep -rlE 'id="11900[0-6]"' /var/ossec/etc/rules/
 install -o wazuh -g wazuh -m 660 wazuh/oscompliance_facts_rules.xml /var/ossec/etc/rules/
 /var/ossec/bin/wazuh-analysisd -t
 systemctl restart wazuh-manager
@@ -317,7 +317,7 @@ The last line of the facts file must be JSON with `"oscompliance":"1"`.
 tail -n 1 /var/log/oscompliance/facts.ndjson
 ```
 
-The agent adds its audit watches at runtime with `auditctl`, tagged `oscompliance_*`. It never removes a rule and never writes to `/etc/audit`. With SELinux enforcing, also run `restorecon -R /usr/local/bin/oscompliance-agent /etc/cron.d/oscompliance /var/log/oscompliance`.
+The agent adds its audit watches at runtime with `auditctl`, tagged `oscompliance_*`. It unloads the `oscompliance_*` watches the group configuration no longer asks for and never writes to `/etc/audit`. With SELinux enforcing, also run `restorecon -R /usr/local/bin/oscompliance-agent /etc/cron.d/oscompliance /var/log/oscompliance`.
 
 On RHEL and Rocky, `cron` is the `cronie` package.
 

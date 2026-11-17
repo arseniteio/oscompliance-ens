@@ -8,7 +8,7 @@ an attacker gains by compromising it.
 
 The agent runs as root from cron, one pass at a time, with a lock file that prevents overlap. It reads local system files and the output of local commands, listed per collector in [Facts](facts.md).
 
-It writes `/var/log/oscompliance/facts.ndjson` (0640), `/var/lib/oscompliance/` (0700) and one syslog line per pass. Its only change to the system is adding auditd watches at runtime, tagged `oscompliance_*`, for the paths in the group configuration. It never removes a rule and never writes to `/etc/audit`.
+It writes `/var/log/oscompliance/facts.ndjson` (0640), `/var/lib/oscompliance/` (0700) and one syslog line per pass. Its only change to the system is adding auditd watches at runtime, tagged `oscompliance_*`, for the paths in the group configuration. It unloads the `oscompliance_*` watches the group configuration no longer asks for and never writes to `/etc/audit`. Every 2 minutes, `-guard-audit` unloads a read watch whose reads go over `audit_read_limit`.
 
 It opens no socket and listens on nothing. Facts travel through the Wazuh agent's existing channel. It never sends password hashes, private keys, file contents or configuration values the controls do not judge.
 

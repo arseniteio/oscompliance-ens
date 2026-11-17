@@ -54,10 +54,10 @@ Para compilar los paquetes y el plugin, consulta [Compilar desde el código](ins
 
 ## 3. Instalar las reglas y crear el grupo
 
-Las reglas usan los identificadores 119000 a 119005. Ninguna otra regla puede usarlos: el primer comando no debe mostrar nada, o solo `oscompliance_facts_rules.xml` en una reinstalación. `wazuh-analysisd -t` no debe mostrar errores.
+Las reglas usan los identificadores 119000 a 119006. Ninguna otra regla puede usarlos: el primer comando no debe mostrar nada, o solo `oscompliance_facts_rules.xml` en una reinstalación. `wazuh-analysisd -t` no debe mostrar errores.
 
 ```bash
-docker exec "$MGR" grep -rlE 'id="11900[0-5]"' /var/ossec/etc/rules/
+docker exec "$MGR" grep -rlE 'id="11900[0-6]"' /var/ossec/etc/rules/
 docker cp wazuh/oscompliance_facts_rules.xml "$MGR:/var/ossec/etc/rules/"
 docker exec "$MGR" chown wazuh:wazuh /var/ossec/etc/rules/oscompliance_facts_rules.xml
 docker exec "$MGR" chmod 660 /var/ossec/etc/rules/oscompliance_facts_rules.xml

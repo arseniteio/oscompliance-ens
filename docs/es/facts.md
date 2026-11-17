@@ -112,7 +112,7 @@ Resumen de una lectura de las rutas de la configuración de grupo, emitido despu
 
 ### audit_watch_snapshot
 
-Las vigilancias de auditd que ha pedido el manager en la configuración de grupo que escribe el motor, y si están cargadas. Las rutas de audit_watches reciben dos, una por permiso (w, a), con las claves oscompliance_write y oscompliance_attr. Las rutas de read_watches reciben cuatro, una por permiso (r, w, x, a), con las claves oscompliance_read, oscompliance_write, oscompliance_exec y oscompliance_attr. La regla de lectura solo registra sesiones con UID de inicio de sesión (auid!=-1). Cada acceso lleva su tipo. El agente carga con auditctl una vigilancia que falta y nunca retira ninguna. Los binarios de exec_watches (P-03 de op.acc.3) reciben una vigilancia de ejecución cada uno, clave oscompliance_exec.
+Las vigilancias de auditd que ha pedido el manager en la configuración de grupo que escribe el motor, y si están cargadas. Las rutas de audit_watches reciben dos, una por permiso (w, a), con las claves oscompliance_write y oscompliance_attr. Las rutas de read_watches reciben cuatro, una por permiso (r, w, x, a), con las claves oscompliance_read, oscompliance_write, oscompliance_exec y oscompliance_attr. La regla de lectura solo registra sesiones con UID de inicio de sesión (auid!=-1). Cada acceso lleva su tipo. El agente carga con auditctl una vigilancia que falta y retira, listadas en `unloaded`, las que ya no se piden, las de lectura cargadas con -w antes del filtro de auid y las de lectura suspendidas por su volumen. Los binarios de exec_watches (P-03 de op.acc.3) reciben una vigilancia de ejecución cada uno, clave oscompliance_exec.
 
 | Campo | Tipo | Significado |
 |---|---|---|

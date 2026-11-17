@@ -2,7 +2,7 @@
 
 ## What runs, and when
 
-Every audited machine runs an agent pass each hour at minute 17, and the file system sweep each day at 03:23, limited by `sweep_timeout` (15 minutes). The engine runs a pass every 15 minutes. It syncs the group configuration at most every 15 minutes, and only when something changed.
+Every audited machine runs an agent pass each hour at minute 17, the file system sweep each day at 03:23, limited by `sweep_timeout` (15 minutes), and the read volume guard every 2 minutes. The engine runs a pass every 15 minutes. It syncs the group configuration at most every 15 minutes, and only when something changed.
 
 ## Engine logs
 
@@ -59,9 +59,11 @@ Login evidences are NOT_EVALUABLE by COLLECTION. The authentication log does not
 
 op.acc.2 EV-06, op.acc.3 or op.acc.4 EV-07 are NOT_EVALUABLE by COLLECTION. auditd is not running, its watches are not loaded, or the audit log is not read. Install auditd and check `auditctl -l`. The engine's block in the group configuration adds the audit localfile.
 
-Alerts 119004 with key `oscompliance_read` flood the indexer from a machine upgraded from 1.2.0 or earlier. Those versions loaded read watches on every audited path, including world-readable files such as /etc/group, and the agent never removes a rule. Run `auditctl -D -k oscompliance_read` and `auditctl -D -k oscompliance_exec` on the machine; the next agent pass loads only the watches the group configuration asks for. Rule 119005 already drops the reads of the files every process reads on the manager.
+Alerts 119004 with key `oscompliance_read` flood the indexer from a machine upgraded from 1.2.0 or earlier. Those versions loaded read watches on every audited path, including world-readable files such as /etc/group, Upgrade the agent: its next pass unloads the read watches loaded with -w, which have no auid filter, and every watch the group configuration no longer asks for. Rule 119005 already drops the reads of the files every process reads on the manager.
 
 `failed` of `audit_watch_snapshot` says "a read watch would fill the disk". A path of op.acc.2 P-06, op.acc.4 P-07 or op.exp.10 P-02 is a file every process reads, or a directory that holds one. Declare the specific file or directory that holds the protected data instead.
+
+`failed` of `audit_watch_snapshot` says "suspended until". The guard counted more than `audit_read_limit` successful reads per minute on that read watch over the last 5 minutes and unloaded it for one hour to protect the disk. Each suspension writes a line to the authentication log, and rule 119006 raises a level 10 alert with the path. Failed reads do not count, and a flood on one path never suspends another. While suspended, the controls that judge reads on that path are NOT_EVALUABLE by COLLECTION. The suspensions are in `/var/lib/oscompliance/audit-throttle.json`. Narrow the path in op.acc.2 P-06, op.acc.4 P-07 or op.exp.10 P-02 to the files people read, or raise `audit_read_limit` if the volume is expected. Deleting the file ends the suspensions at the next pass.
 
 A control is NOT_EVALUABLE by CONFIGURATION. A parameter is not set. The verdict names it: set it in Power ENS.
 

@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/audit"
 )
 
 const defaultConfigPath = "/etc/oscompliance/agent.json"
@@ -27,8 +29,11 @@ type options struct {
 	Paths        paths    `json:"paths"`
 	WazuhGroup   string   `json:"wazuh_group"`
 
-	full     bool
-	selected map[string]bool
+	AuditReadLimit int `json:"audit_read_limit"`
+
+	full       bool
+	guardAudit bool
+	selected   map[string]bool
 }
 
 type paths struct {
@@ -56,10 +61,11 @@ func (d *duration) UnmarshalJSON(b []byte) error {
 
 func defaultOptions() options {
 	return options{
-		Output:       "/var/log/oscompliance/facts.ndjson",
-		State:        "/var/lib/oscompliance/state.json",
-		Collectors:   slices.DeleteFunc(slices.Clone(allCollectors), func(c string) bool { return c == "sweep" }),
-		SweepTimeout: duration{15 * time.Minute},
+		Output:         "/var/log/oscompliance/facts.ndjson",
+		State:          "/var/lib/oscompliance/state.json",
+		Collectors:     slices.DeleteFunc(slices.Clone(allCollectors), func(c string) bool { return c == "sweep" }),
+		SweepTimeout:   duration{15 * time.Minute},
+		AuditReadLimit: audit.DefaultReadLimit,
 		Paths: paths{
 			Passwd:          "/etc/passwd",
 			Shadow:          "/etc/shadow",
@@ -78,6 +84,7 @@ func parseOptions() (options, error) {
 	configPath := flag.String("config", defaultConfigPath, "configuration file; without it the defaults apply")
 	collect := flag.String("collect", "", "comma-separated collectors for this run, instead of the configured ones (cron runs sweep daily with -collect sweep)")
 	full := flag.Bool("full", false, "send everything even when nothing changed")
+	guardAudit := flag.Bool("guard-audit", false, "only unload the read watches whose reads go over audit_read_limit per minute (cron runs it every 2 minutes)")
 	flag.Parse()
 
 	opts, err := loadOptions(*configPath, *configPath != defaultConfigPath)
@@ -85,6 +92,7 @@ func parseOptions() (options, error) {
 		return opts, err
 	}
 	opts.full = *full
+	opts.guardAudit = *guardAudit
 
 	if *collect != "" {
 		opts.Collectors = strings.Split(*collect, ",")
@@ -118,6 +126,9 @@ func loadOptions(path string, required bool) (options, error) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&opts); err != nil {
 		return opts, fmt.Errorf("configuration %s: %w", path, err)
+	}
+	if opts.AuditReadLimit < 1 {
+		return opts, fmt.Errorf("configuration %s: audit_read_limit must be 1 or more reads per minute", path)
 	}
 	if opts.WazuhGroup != "" && !wazuhGroupName.MatchString(opts.WazuhGroup) {
 		return opts, fmt.Errorf("configuration %s: wazuh_group %q is not a Wazuh group name", path, opts.WazuhGroup)

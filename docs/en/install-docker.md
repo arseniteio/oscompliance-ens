@@ -54,10 +54,10 @@ To build the packages and the plugin instead, see [Build from source](install.md
 
 ## 3. Install the rules and create the group
 
-The rules use IDs 119000 to 119005. No other rule may use them: the first command must print nothing, or only `oscompliance_facts_rules.xml` on a reinstallation. `wazuh-analysisd -t` must print no errors.
+The rules use IDs 119000 to 119006. No other rule may use them: the first command must print nothing, or only `oscompliance_facts_rules.xml` on a reinstallation. `wazuh-analysisd -t` must print no errors.
 
 ```bash
-docker exec "$MGR" grep -rlE 'id="11900[0-5]"' /var/ossec/etc/rules/
+docker exec "$MGR" grep -rlE 'id="11900[0-6]"' /var/ossec/etc/rules/
 docker cp wazuh/oscompliance_facts_rules.xml "$MGR:/var/ossec/etc/rules/"
 docker exec "$MGR" chown wazuh:wazuh /var/ossec/etc/rules/oscompliance_facts_rules.xml
 docker exec "$MGR" chmod 660 /var/ossec/etc/rules/oscompliance_facts_rules.xml

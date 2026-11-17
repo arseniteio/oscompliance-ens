@@ -122,10 +122,10 @@ Para compilar los paquetes y el plugin, consulta [Compilar desde el código](#co
 
 Ejecuta esto en el manager maestro o en el servidor todo en uno.
 
-Las reglas usan los identificadores 119000 a 119005. Indexan hechos, la sonda de autenticación, eventos de servicio y accesos auditados, y no generan nada por encima del nivel 3. Ninguna otra regla puede usar esos identificadores: el primer comando no debe mostrar nada, o solo `oscompliance_facts_rules.xml` en una reinstalación. `wazuh-analysisd -t` no debe mostrar errores.
+Las reglas usan los identificadores 119000 a 119006. Indexan hechos, la sonda de autenticación, eventos de servicio y accesos auditados, y no generan nada por encima del nivel 3. Ninguna otra regla puede usar esos identificadores: el primer comando no debe mostrar nada, o solo `oscompliance_facts_rules.xml` en una reinstalación. `wazuh-analysisd -t` no debe mostrar errores.
 
 ```bash
-grep -rlE 'id="11900[0-5]"' /var/ossec/etc/rules/
+grep -rlE 'id="11900[0-6]"' /var/ossec/etc/rules/
 install -o wazuh -g wazuh -m 660 wazuh/oscompliance_facts_rules.xml /var/ossec/etc/rules/
 /var/ossec/bin/wazuh-analysisd -t
 systemctl restart wazuh-manager
@@ -317,7 +317,7 @@ La última línea del fichero de hechos debe ser JSON con `"oscompliance":"1"`.
 tail -n 1 /var/log/oscompliance/facts.ndjson
 ```
 
-El agente añade sus vigilancias de auditoría en tiempo de ejecución con `auditctl`, etiquetadas `oscompliance_*`. Nunca retira una regla y nunca escribe en `/etc/audit`. Con SELinux en enforcing, ejecuta también `restorecon -R /usr/local/bin/oscompliance-agent /etc/cron.d/oscompliance /var/log/oscompliance`.
+El agente añade sus vigilancias de auditoría en tiempo de ejecución con `auditctl`, etiquetadas `oscompliance_*`. Retira las vigilancias `oscompliance_*` que la configuración de grupo ya no pide y nunca escribe en `/etc/audit`. Con SELinux en enforcing, ejecuta también `restorecon -R /usr/local/bin/oscompliance-agent /etc/cron.d/oscompliance /var/log/oscompliance`.
 
 En RHEL y Rocky, `cron` es el paquete `cronie`.
 

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/collect/wazuh"
 	"github.com/arseniteio/oscompliance-ens-wazuh/agent/internal/emit"
@@ -65,13 +66,14 @@ func permRules(arch string) [][]string {
 type Config struct {
 	Auditctl string
 	Wazuh    wazuh.AgentConfigPaths
+	Throttle string
 }
 
 func Collect(e *emit.Emitter, cfg Config) error {
 
 	snapshot := fact.AuditWatchSnapshot{Envelope: e.Envelope(fact.AuditWatchSnapshotFact), Auditd: fact.AuditdRunning, Wanted: []string{}, Loaded: []string{}}
 
-	paths, _, err := wazuh.ReadSharedPaths(cfg.Wazuh)
+	paths, configured, err := wazuh.ReadSharedPaths(cfg.Wazuh)
 	if err != nil {
 		snapshot.Auditd, snapshot.Error = fact.AuditdError, cfg.Wazuh.SharedConf+": "+err.Error()
 		return e.Emit(snapshot)
@@ -96,11 +98,18 @@ func Collect(e *emit.Emitter, cfg Config) error {
 		return e.Emit(snapshot)
 	}
 
-	loaded, err := loadedWatches(cfg.Auditctl)
+	rules, err := loadedRules(cfg.Auditctl)
 	if err != nil {
 		snapshot.Auditd, snapshot.Error = fact.AuditdError, err.Error()
 		return e.Emit(snapshot)
 	}
+	loaded := watchesOf(slices.DeleteFunc(slices.Clone(rules), loadedRule.unfiltered))
+
+	suspended, err := LoadThrottle(cfg.Throttle)
+	if err != nil {
+		snapshot.Failed = append(snapshot.Failed, cfg.Throttle+": "+err.Error())
+	}
+	suspended = suspended.Active(time.Now())
 
 	perm, err := loadedPermRules(cfg.Auditctl)
 	if err != nil {
@@ -108,10 +117,10 @@ func Collect(e *emit.Emitter, cfg Config) error {
 		return e.Emit(snapshot)
 	}
 
-	rules := permRules(runtime.GOARCH)
-	if perm < len(rules) {
+	wantedPerm := permRules(runtime.GOARCH)
+	if perm < len(wantedPerm) {
 		perm = 0
-		for _, rule := range rules {
+		for _, rule := range wantedPerm {
 			if _, err := host.Run(cfg.Auditctl, rule...); err != nil && !strings.Contains(err.Error(), "exist") {
 				snapshot.Failed = append(snapshot.Failed, strings.Join(rule, " ")+": "+err.Error())
 				continue
@@ -120,15 +129,15 @@ func Collect(e *emit.Emitter, cfg Config) error {
 		}
 	}
 
-	if perm >= len(rules) {
+	if perm >= len(wantedPerm) {
 		snapshot.PermRules = perm
 	}
 
 	for _, p := range paths.AuditWatches {
-		loadPathWatches(&snapshot, cfg.Auditctl, loaded, p, changeWatches)
+		loadPathWatches(&snapshot, cfg.Auditctl, loaded, p, changeWatches, suspended)
 	}
 	for _, p := range paths.ReadWatches {
-		loadPathWatches(&snapshot, cfg.Auditctl, loaded, p, allWatches)
+		loadPathWatches(&snapshot, cfg.Auditctl, loaded, p, allWatches, suspended)
 	}
 
 	for _, b := range paths.ExecWatches {
@@ -147,10 +156,22 @@ func Collect(e *emit.Emitter, cfg Config) error {
 		snapshot.ExecLoaded = append(snapshot.ExecLoaded, b)
 	}
 
+	// Without the engine's block nothing says which watches are stale: keep them all.
+	if !configured {
+		return e.Emit(snapshot)
+	}
+	for _, r := range staleRules(rules, paths, suspended) {
+		if _, err := host.Run(cfg.Auditctl, r.deletion()...); err != nil {
+			snapshot.Failed = append(snapshot.Failed, r.Path+" "+r.Key+": not unloaded: "+err.Error())
+			continue
+		}
+		snapshot.Unloaded = append(snapshot.Unloaded, r.Path+" "+r.Key)
+	}
+
 	return e.Emit(snapshot)
 }
 
-func loadPathWatches(snapshot *fact.AuditWatchSnapshot, auditctl string, loaded []string, path string, watches []watch) {
+func loadPathWatches(snapshot *fact.AuditWatchSnapshot, auditctl string, loaded []string, path string, watches []watch, suspended Throttle) {
 
 	if why := unsafeWatch(path); why != "" {
 		snapshot.Failed = append(snapshot.Failed, path+": "+why)
@@ -163,6 +184,11 @@ func loadPathWatches(snapshot *fact.AuditWatchSnapshot, auditctl string, loaded 
 			continue
 		}
 		if w == readWatch {
+			if until, found := suspended[path]; found {
+				snapshot.Failed = append(snapshot.Failed, path+" r: suspended until "+until.UTC().Format(time.RFC3339)+", its reads went over the volume limit")
+				ok = false
+				continue
+			}
 			if hot := hotReadPath(path); hot != "" {
 				snapshot.Failed = append(snapshot.Failed, path+" r: every process reads "+hot+", a read watch would fill the disk")
 				ok = false
@@ -226,19 +252,38 @@ func auditRunning(status string) bool {
 	return enabled && pid
 }
 
-func loadedWatches(auditctl string) ([]string, error) {
+type loadedRule struct {
+	Path    string
+	Key     string
+	Syscall bool
+	Dir     bool
+}
+
+func loadedRules(auditctl string) ([]loadedRule, error) {
 
 	out, err := host.Run(auditctl, "-l")
 	if err != nil {
 		return nil, err
 	}
 
-	return parseWatches(out), nil
+	return parseRules(out), nil
 }
 
 func parseWatches(listing string) []string {
+	return watchesOf(parseRules(listing))
+}
 
-	var out []string
+func watchesOf(rules []loadedRule) []string {
+	out := make([]string, 0, len(rules))
+	for _, r := range rules {
+		out = append(out, r.Path+" "+r.Key)
+	}
+	return out
+}
+
+func parseRules(listing string) []loadedRule {
+
+	var out []loadedRule
 
 	for _, line := range strings.Split(listing, "\n") {
 
@@ -247,7 +292,7 @@ func parseWatches(listing string) []string {
 		for _, w := range allWatches {
 
 			if len(f) >= 2 && f[0] == "-w" && slices.Contains(f, "-k") && f[len(f)-1] == w.Key {
-				out = append(out, f[1]+" "+w.Key)
+				out = append(out, loadedRule{Path: f[1], Key: w.Key})
 				continue
 			}
 
@@ -256,15 +301,67 @@ func parseWatches(listing string) []string {
 			}
 			for _, field := range f {
 				if v, ok := strings.CutPrefix(field, "dir="); ok {
-					out = append(out, v+" "+w.Key)
+					out = append(out, loadedRule{Path: v, Key: w.Key, Syscall: true, Dir: true})
 				} else if v, ok := strings.CutPrefix(field, "path="); ok {
-					out = append(out, v+" "+w.Key)
+					out = append(out, loadedRule{Path: v, Key: w.Key, Syscall: true})
 				}
 			}
 		}
 	}
 
 	return out
+}
+
+func (r loadedRule) deletion() []string {
+
+	perm := permOf(r.Key)
+	if !r.Syscall {
+		return []string{"-W", r.Path, "-p", perm, "-k", r.Key}
+	}
+
+	field := "path=" + r.Path
+	if r.Dir {
+		field = "dir=" + r.Path
+	}
+	rule := []string{"-d", "always,exit", "-F", field, "-F", "perm=" + perm}
+	if r.Key == readWatch.Key {
+		rule = append(rule, "-F", "auid!=-1")
+	}
+	return append(rule, "-k", r.Key)
+}
+
+// A read watch loaded with -w predates the auid filter: it fires for every daemon read.
+func (r loadedRule) unfiltered() bool {
+	return r.Key == readWatch.Key && !r.Syscall
+}
+
+func permOf(key string) string {
+	for _, w := range allWatches {
+		if w.Key == key {
+			return w.Perm
+		}
+	}
+	return ""
+}
+
+// The exec key is shared by the execution watch of read_watches paths and by exec_watches
+// binaries, and the write and attribute keys by audit_watches and read_watches.
+func staleRules(rules []loadedRule, paths wazuh.SharedPaths, suspended Throttle) []loadedRule {
+
+	wanted := map[string][]string{
+		readWatch.Key:  slices.DeleteFunc(slices.Clone(paths.ReadWatches), func(p string) bool { _, s := suspended[p]; return s }),
+		writeWatch.Key: append(slices.Clone(paths.AuditWatches), paths.ReadWatches...),
+		attrWatch.Key:  append(slices.Clone(paths.AuditWatches), paths.ReadWatches...),
+		execWatch.Key:  append(slices.Clone(paths.ReadWatches), paths.ExecWatches...),
+	}
+
+	var stale []loadedRule
+	for _, r := range rules {
+		if r.unfiltered() || !slices.Contains(wanted[r.Key], r.Path) {
+			stale = append(stale, r)
+		}
+	}
+	return stale
 }
 
 func loadedPermRules(auditctl string) (int, error) {

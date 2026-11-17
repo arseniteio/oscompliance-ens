@@ -156,6 +156,7 @@ Con la opción activada en Power ENS (`scope.controlGroups`), el motor crea un g
 | `state` | `/var/lib/oscompliance/state.json` | lo último que envió cada colector, para enviar solo los cambios |
 | `collectors` | todos menos `sweep` | colectores de la pasada horaria |
 | `sweep_timeout` | `15m` | límite de tiempo del barrido diario del sistema de ficheros |
+| `audit_read_limit` | `60` | lecturas por minuto que puede registrar una vigilancia de lectura antes de que `-guard-audit` la retire una hora |
 | `paths.passwd` | `/etc/passwd` | base de datos de cuentas |
 | `paths.shadow` | `/etc/shadow` | caducidad y bloqueo de contraseñas |
 | `paths.group` | `/etc/group` | base de datos de grupos |

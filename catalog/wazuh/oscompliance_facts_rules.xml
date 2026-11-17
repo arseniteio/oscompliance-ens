@@ -49,4 +49,11 @@
     <description>OSCompliance read of a file every process reads, dropped to protect the disk</description>
   </rule>
 
+  <rule id="119006" level="10">
+    <program_name>^oscompliance-agent$</program_name>
+    <match>^read watch suspended </match>
+    <description>OSCompliance read watch suspended for its volume: reads on that path are not audited for one hour</description>
+    <group>oscompliance_audit,</group>
+  </rule>
+
 </group>

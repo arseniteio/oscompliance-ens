@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/syslog"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -46,7 +47,10 @@ var allCollectors = []string{"identity", "groups", "umask", "sudoers", "config",
 
 func main() {
 	opts, err := parseOptions()
-	if err == nil {
+	switch {
+	case err == nil && opts.guardAudit:
+		err = guardWithAlerts(opts)
+	case err == nil:
 		err = runPass(opts)
 	}
 	if err != nil {
@@ -143,7 +147,7 @@ func collectorsFor(e *emit.Emitter, opts options) map[string]func() error {
 		"wazuh": func() error { return wazuh.CollectAgentConfig(e, wazuhPaths) },
 		"acl":   func() error { return acl.Collect(e, acl.Config{Wazuh: wazuhPaths}) },
 		"audit": func() error {
-			return audit.Collect(e, audit.Config{Auditctl: "/usr/sbin/auditctl", Wazuh: wazuhPaths})
+			return audit.Collect(e, audit.Config{Auditctl: auditctl, Wazuh: wazuhPaths, Throttle: auditThrottle(opts)})
 		},
 		"services": func() error {
 			return wazuh.CollectServiceLogs(e, wazuh.ServiceLogConfig{SharedConf: wazuhPaths.SharedConf, ClientKeys: wazuhPaths.ClientKeys})
@@ -235,6 +239,46 @@ func writeAgentPass(out io.Writer, buf *bytes.Buffer, e *emit.Emitter, inForce [
 	}
 
 	_, err := out.Write(buf.Bytes())
+	return err
+}
+
+const (
+	auditctl = "/usr/sbin/auditctl"
+	auditLog = "/var/log/audit/audit.log"
+)
+
+func auditThrottle(opts options) string {
+	return filepath.Join(filepath.Dir(opts.State), "audit-throttle.json")
+}
+
+// Each suspension goes to the authentication log, which Wazuh reads: rule 119006 alerts on it.
+func guardWithAlerts(opts options) error {
+	w, err := syslog.New(syslog.LOG_AUTHPRIV|syslog.LOG_WARNING, authprobe.ProbeTag)
+	if err != nil {
+		return errors.Join(fmt.Errorf("syslog: %w", err), runAuditGuard(opts, os.Stderr))
+	}
+	defer w.Close()
+	return runAuditGuard(opts, w)
+}
+
+// Own lock: the guard must keep running while an hourly pass holds agent.lock.
+func runAuditGuard(opts options, alert io.Writer) error {
+
+	unlock, err := lockPass(filepath.Join(filepath.Dir(opts.State), "audit-guard.lock"))
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
+	suspended, err := audit.Guard(audit.GuardConfig{
+		Auditctl: auditctl, Log: auditLog, Throttle: auditThrottle(opts),
+		Limit: opts.AuditReadLimit, Window: audit.DefaultGuardWindow, Suspend: audit.DefaultGuardSuspend,
+	}, time.Now())
+	for _, s := range suspended {
+		if _, werr := fmt.Fprintf(alert, "read watch suspended %s until %s: %d reads in %s\n", s.Path, s.Until.UTC().Format(time.RFC3339), s.Reads, audit.DefaultGuardWindow); werr != nil {
+			return errors.Join(err, werr)
+		}
+	}
 	return err
 }
 

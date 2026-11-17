@@ -46,7 +46,7 @@ Para Wazuh en Docker o el detalle de cada paso, sigue las guías completas:
 
 ## Cómo funciona
 
-El agente escribe hechos en un fichero local. El agente de Wazuh envía ese fichero al manager junto con los registros, FIM, SCA e inventario, y el manager indexa los hechos mediante las reglas 119000 a 119005. Cada 15 minutos, el motor lee el indexer y escribe veredictos, y Power ENS los muestra.
+El agente escribe hechos en un fichero local. El agente de Wazuh envía ese fichero al manager junto con los registros, FIM, SCA e inventario, y el manager indexa los hechos mediante las reglas 119000 a 119006. Cada 15 minutos, el motor lee el indexer y escribe veredictos, y Power ENS los muestra.
 
 El agente informa de hechos, nunca de veredictos: cuentas, PAM, sshd, sudoers, puertos en escucha, paquetes, copias y claves, tal como están.
 

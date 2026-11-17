@@ -6,7 +6,7 @@ Una herramienta de cumplimiento se ejecuta como root en cada máquina y guarda c
 
 El agente se ejecuta como root desde cron, con una sola pasada a la vez y un fichero de bloqueo que evita solapamientos. Lee ficheros locales del sistema y la salida de comandos locales, listados por colector en [Hechos](facts.md).
 
-Escribe `/var/log/oscompliance/facts.ndjson` (0640), `/var/lib/oscompliance/` (0700) y una línea de syslog por pasada. Su único cambio en el sistema es añadir vigilancias de auditd en tiempo de ejecución, etiquetadas `oscompliance_*`, para las rutas de la configuración de grupo. Nunca retira una regla y nunca escribe en `/etc/audit`.
+Escribe `/var/log/oscompliance/facts.ndjson` (0640), `/var/lib/oscompliance/` (0700) y una línea de syslog por pasada. Su único cambio en el sistema es añadir vigilancias de auditd en tiempo de ejecución, etiquetadas `oscompliance_*`, para las rutas de la configuración de grupo. Retira las vigilancias `oscompliance_*` que la configuración de grupo ya no pide y nunca escribe en `/etc/audit`. Cada 2 minutos, `-guard-audit` retira una vigilancia de lectura cuyas lecturas superan `audit_read_limit`.
 
 No abre ningún socket ni escucha en ningún puerto. Los hechos viajan por el canal existente del agente de Wazuh. Nunca envía hashes de contraseñas, claves privadas, contenido de ficheros ni valores de configuración que los controles no juzgan.
 

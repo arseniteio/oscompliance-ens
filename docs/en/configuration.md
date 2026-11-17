@@ -171,6 +171,7 @@ agent with an error. The file is read on every run.
 | `state` | `/var/lib/oscompliance/state.json` | what each collector last sent, to send only changes |
 | `collectors` | all except `sweep` | collectors of the hourly pass |
 | `sweep_timeout` | `15m` | time limit of the daily file system sweep |
+| `audit_read_limit` | `60` | reads per minute a read watch may record before `-guard-audit` unloads it for one hour |
 | `paths.passwd` | `/etc/passwd` | account database |
 | `paths.shadow` | `/etc/shadow` | password aging and locking |
 | `paths.group` | `/etc/group` | group database |

@@ -2,7 +2,7 @@
 
 ## Qué se ejecuta y cuándo
 
-Cada máquina auditada ejecuta una pasada del agente cada hora en el minuto 17, y el barrido del sistema de ficheros cada día a las 03:23, limitado por `sweep_timeout` (15 minutos). El motor ejecuta una pasada cada 15 minutos. Sincroniza la configuración de grupo como máximo cada 15 minutos, y solo cuando algo ha cambiado.
+Cada máquina auditada ejecuta una pasada del agente cada hora en el minuto 17, el barrido del sistema de ficheros cada día a las 03:23, limitado por `sweep_timeout` (15 minutos), y el control de volumen de lecturas cada 2 minutos. El motor ejecuta una pasada cada 15 minutos. Sincroniza la configuración de grupo como máximo cada 15 minutos, y solo cuando algo ha cambiado.
 
 ## Registros del motor
 
@@ -57,9 +57,11 @@ Las evidencias de inicio de sesión salen NOT_EVALUABLE por COLLECTION. El regis
 
 EV-06 de op.acc.2, op.acc.3 o EV-07 de op.acc.4 salen NOT_EVALUABLE por COLLECTION. auditd está parado, sus vigilancias no están cargadas o no se lee el registro de auditoría. Instala auditd y comprueba `auditctl -l`. El bloque del motor en la configuración de grupo añade el localfile de auditoría.
 
-Las alertas 119004 con clave `oscompliance_read` inundan el indexador desde una máquina actualizada desde la 1.2.0 o anterior. Esas versiones cargaban vigilancias de lectura en todas las rutas auditadas, incluidos ficheros legibles por todos como /etc/group, y el agente nunca retira una regla. Ejecuta `auditctl -D -k oscompliance_read` y `auditctl -D -k oscompliance_exec` en la máquina; la siguiente pasada del agente carga solo las vigilancias que pide la configuración de grupo. La regla 119005 ya descarta en el manager las lecturas de los ficheros que lee todo proceso.
+Las alertas 119004 con clave `oscompliance_read` inundan el indexador desde una máquina actualizada desde la 1.2.0 o anterior. Esas versiones cargaban vigilancias de lectura en todas las rutas auditadas, incluidos ficheros legibles por todos como /etc/group, Actualiza el agente: su siguiente pasada retira las vigilancias de lectura cargadas con -w, que no tienen filtro de auid, y toda vigilancia que la configuración de grupo ya no pide. La regla 119005 ya descarta en el manager las lecturas de los ficheros que lee todo proceso.
 
 `failed` de `audit_watch_snapshot` dice "a read watch would fill the disk". Una ruta de P-06 de op.acc.2, P-07 de op.acc.4 o P-02 de op.exp.10 es un fichero que lee todo proceso, o un directorio que contiene uno. Declara en su lugar el fichero o directorio concreto con los datos protegidos.
+
+`failed` de `audit_watch_snapshot` dice "suspended until". El control contó más de `audit_read_limit` lecturas con éxito por minuto en esa vigilancia de lectura durante los últimos 5 minutos y la retiró una hora para proteger el disco. Cada suspensión escribe una línea en el registro de autenticación, y la regla 119006 levanta una alerta de nivel 10 con la ruta. Las lecturas fallidas no cuentan, y una avalancha en una ruta nunca suspende otra. Mientras dura la suspensión, los controles que juzgan lecturas en esa ruta salen NOT_EVALUABLE por COLLECTION. Las suspensiones están en `/var/lib/oscompliance/audit-throttle.json`. Acota la ruta de P-06 de op.acc.2, P-07 de op.acc.4 o P-02 de op.exp.10 a los ficheros que leen las personas, o sube `audit_read_limit` si el volumen es el esperado. Borrar el fichero termina las suspensiones en la siguiente pasada.
 
 Un control sale NOT_EVALUABLE por CONFIGURATION. Falta un parámetro. El veredicto lo nombra: defínelo en Power ENS.
 
