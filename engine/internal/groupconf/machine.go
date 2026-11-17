@@ -4,11 +4,13 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/params"
 )
 
 type Machine struct {
+	Windows  bool
 	Paths    Paths
 	FIM      []string
 	Services []Service
@@ -32,27 +34,56 @@ type Service struct {
 
 var serviceConfigurations = []struct{ control, param string }{{"mp.com.3", "P-06"}, {"mp.s.1", "P-09"}}
 
-var securityPaths = []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"}
+type platform struct {
+	securityPaths      []string
+	agentConfiguration []string
+	keyTools           []string
+	fimDefaults        []string
+	windows            bool
+}
 
-const agentConfiguration = "/var/ossec/etc"
+var linux = platform{
+	securityPaths:      []string{"/var/ossec/etc", "/etc/audit", "/var/log/audit"},
+	agentConfiguration: []string{"/var/ossec/etc"},
+	keyTools:           []string{"/usr/bin/ssh-keygen", "/usr/bin/openssl"},
+	fimDefaults:        []string{"/etc", "/usr/bin", "/usr/sbin", "/bin", "/sbin", "/boot"},
+}
 
-var keyTools = []string{"/usr/bin/ssh-keygen", "/usr/bin/openssl"}
+const windowsAgentDir = `C:\Program Files (x86)\ossec-agent`
 
-var fimDefaults = []string{"/etc", "/usr/bin", "/usr/sbin", "/bin", "/sbin", "/boot"}
+// The Wazuh agent reads ossec.conf and client.keys only when it starts, so
+// watching them for reads costs nothing; its queue and logs churn all day.
+var windows = platform{
+	securityPaths:      []string{windowsAgentDir + `\ossec.conf`, windowsAgentDir + `\client.keys`},
+	agentConfiguration: []string{windowsAgentDir + `\ossec.conf`, windowsAgentDir + `\client.keys`},
+	fimDefaults:        []string{`C:\Windows\System32\drivers\etc`},
+	windows:            true,
+}
 
-func ForAgent(policy params.Lister, agentID, agentName string) Machine {
+func platformOf(osPlatform string) platform {
+	if strings.EqualFold(strings.TrimSpace(osPlatform), "windows") {
+		return windows
+	}
+	return linux
+}
 
-	var m Machine
+func ForAgent(policy params.Lister, agentID, agentName, osPlatform string) Machine {
+
+	pl := platformOf(osPlatform)
+	m := Machine{Windows: pl.windows}
+	cells := func(policy params.Lister, agentID, controlID, paramID string, column int) []string {
+		return pl.cells(policy, agentID, controlID, paramID, column)
+	}
 
 	for _, p := range cells(policy, agentID, "op.acc.2", "P-02", 0) {
-		if !underAny(p, fimDefaults) {
+		if !pl.underAny(p, pl.fimDefaults) {
 			m.FIM = append(m.FIM, p)
 		}
 	}
 
 	for _, c := range serviceConfigurations {
 		for _, p := range cells(policy, agentID, c.control, c.param, 0) {
-			if !underAny(p, fimDefaults) {
+			if !pl.underAny(p, pl.fimDefaults) {
 				m.FIM = append(m.FIM, p)
 			}
 		}
@@ -63,18 +94,18 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.8", "P-14", 0)...)
 	m.Paths.Read = append(m.Paths.Read, cells(policy, agentID, "op.acc.2", "P-06", 1)...)
 	m.Paths.Read = append(m.Paths.Read, cells(policy, agentID, "op.acc.4", "P-07", 0)...)
-	m.Paths.Read = append(m.Paths.Read, securityPaths...)
+	m.Paths.Read = append(m.Paths.Read, pl.securityPaths...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.exp.3", "P-04", 0)...)
-	m.Paths.Backup = BackupSources(policy, agentID)
+	m.Paths.Backup = pl.backupSources(policy, agentID)
 	m.Paths.BackupKeys = cells(policy, agentID, "mp.info.6", "P-08", 0)
 	m.Paths.Keys = cells(policy, agentID, "op.exp.10", "P-02", 0)
 	m.Paths.Read = append(m.Paths.Read, m.Paths.Keys...)
 	if len(m.Paths.Keys) > 0 {
-		m.Paths.Exec = append(m.Paths.Exec, keyTools...)
+		m.Paths.Exec = append(m.Paths.Exec, pl.keyTools...)
 	}
 
-	for _, indicator := range indicators(policy, agentID) {
-		if isBinary(indicator) {
+	for _, indicator := range pl.indicators(policy, agentID) {
+		if pl.isBinary(indicator) {
 			m.Paths.Exec = append(m.Paths.Exec, indicator)
 		} else {
 			m.Paths.Read = append(m.Paths.Read, indicator)
@@ -90,7 +121,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 		}
 	}
 
-	m.FIM = append(m.FIM, agentConfiguration)
+	m.FIM = append(m.FIM, pl.agentConfiguration...)
 	m.FIM = sorted(m.FIM)
 	m.Paths.ACL = sorted(m.Paths.ACL)
 	m.Paths.Read = sorted(m.Paths.Read)
@@ -104,7 +135,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	return m
 }
 
-func indicators(policy params.Lister, agentID string) []string {
+func (pl platform) indicators(policy params.Lister, agentID string) []string {
 
 	rows, err := policy.List(agentID, "op.acc.3", "P-03")
 	if err != nil {
@@ -114,15 +145,18 @@ func indicators(policy params.Lister, agentID string) []string {
 	var out []string
 	for _, r := range rows {
 		for _, c := range split(r, 0)[1:] {
-			if filepath.IsAbs(c) {
-				out = append(out, filepath.Clean(c))
+			if pl.abs(c) {
+				out = append(out, pl.clean(c))
 			}
 		}
 	}
 	return out
 }
 
-func BackupSources(policy params.Lister, agentID string) []string {
+func (pl platform) backupSources(policy params.Lister, agentID string) []string {
+	if pl.windows {
+		return append(pl.cells(policy, agentID, "op.exp.3", "P-07", 1), pl.cells(policy, agentID, "mp.info.6", "P-04", 1)...)
+	}
 	return append(Sources(policy, agentID, "op.exp.3", "P-07"), Sources(policy, agentID, "mp.info.6", "P-04")...)
 }
 
@@ -152,12 +186,15 @@ func Source(src string) string {
 	return ""
 }
 
-func isBinary(path string) bool {
+func (pl platform) isBinary(path string) bool {
+	if pl.windows {
+		return strings.HasSuffix(strings.ToLower(path), ".exe")
+	}
 	dir := filepath.Base(filepath.Dir(path))
 	return dir == "bin" || dir == "sbin"
 }
 
-func cells(policy params.Lister, agentID, controlID, paramID string, column int) []string {
+func (pl platform) cells(policy params.Lister, agentID, controlID, paramID string, column int) []string {
 
 	rows, err := policy.List(agentID, controlID, paramID)
 	if err != nil {
@@ -166,8 +203,8 @@ func cells(policy params.Lister, agentID, controlID, paramID string, column int)
 
 	var out []string
 	for _, r := range rows {
-		if c := split(r, column+1)[column]; filepath.IsAbs(c) {
-			out = append(out, filepath.Clean(c))
+		if c := split(r, column+1)[column]; pl.abs(c) {
+			out = append(out, pl.clean(c))
 		}
 	}
 	return out
@@ -184,9 +221,34 @@ func split(row string, atLeast int) []string {
 	return c
 }
 
-func underAny(path string, dirs []string) bool {
+func (pl platform) abs(path string) bool {
+	if !pl.windows {
+		return filepath.IsAbs(path)
+	}
+	return len(path) >= 3 && path[1] == ':' && (path[2] == '\\' || path[2] == '/') && unicode.IsLetter(rune(path[0]))
+}
+
+func (pl platform) clean(path string) string {
+	if !pl.windows {
+		return filepath.Clean(path)
+	}
+	path = strings.ReplaceAll(path, "/", `\`)
+	if len(path) > 3 {
+		path = strings.TrimRight(path, `\`)
+	}
+	return path
+}
+
+func (pl platform) underAny(path string, dirs []string) bool {
+	sep := "/"
+	if pl.windows {
+		path, sep = strings.ToLower(path), `\`
+	}
 	for _, d := range dirs {
-		if path == d || strings.HasPrefix(path, d+"/") {
+		if pl.windows {
+			d = strings.ToLower(d)
+		}
+		if path == d || strings.HasPrefix(path, d+sep) {
 			return true
 		}
 	}

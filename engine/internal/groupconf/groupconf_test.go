@@ -48,7 +48,7 @@ const fleet = `{
 
 func TestForAgent(t *testing.T) {
 
-	m := ForAgent(policyOf(t, fleet), "001", "web01")
+	m := ForAgent(policyOf(t, fleet), "001", "web01", "linux")
 
 	if strings.Join(m.FIM, ",") != "/srv/app/config,/var/ossec/etc" {
 		t.Errorf("FIM: only what Wazuh does not watch by default, and the agent configuration: %v", m.FIM)
@@ -72,7 +72,7 @@ func TestForAgent(t *testing.T) {
 	if len(m.Services) != 1 || m.Services[0].Log != "/var/log/sede/auth.json" {
 		t.Errorf("services of web01: %v", m.Services)
 	}
-	if len(ForAgent(policyOf(t, fleet), "002", "db01").Services) != 0 {
+	if len(ForAgent(policyOf(t, fleet), "002", "db01", "linux").Services) != 0 {
 		t.Error("a service belongs only to the machine its row names")
 	}
 }
@@ -82,7 +82,7 @@ func TestReadWinsOverChange(t *testing.T) {
 	m := ForAgent(policyOf(t, `{"controls": [
     {"controlId": "op.acc.4", "parameters": [{"id": "P-07", "value": ["/etc/shadow | rrhh"]}]},
     {"controlId": "op.exp.3", "parameters": [{"id": "P-04", "value": ["/etc/shadow", "/etc/group"]}]}
-  ]}`), "001", "web01")
+  ]}`), "001", "web01", "linux")
 
 	if strings.Join(m.Paths.Audit, ",") != "/etc/group" || !slices.Contains(m.Paths.Read, "/etc/shadow") {
 		t.Errorf("a path audited for reads is not repeated as a change watch: audit %v, read %v", m.Paths.Audit, m.Paths.Read)
@@ -93,9 +93,9 @@ func TestRegion(t *testing.T) {
 
 	policy := policyOf(t, fleet)
 	agents := []Agent{
-		{Name: "web01", Machine: ForAgent(policy, "001", "web01")},
-		{Name: "db01", Machine: ForAgent(policy, "002", "db01")},
-		{Name: "odd01", Machine: ForAgent(policy, "003", "odd01")},
+		{Name: "web01", Machine: ForAgent(policy, "001", "web01", "linux")},
+		{Name: "db01", Machine: ForAgent(policy, "002", "db01", "linux")},
+		{Name: "odd01", Machine: ForAgent(policy, "003", "odd01", "linux")},
 	}
 	region := Region(agents)
 
@@ -240,5 +240,60 @@ func TestCreateExclusionGroups(t *testing.T) {
 	}
 	if len(changes) != 1 || !changes[0].Applied || changes[0].Group != "ens-excluir-op.acc.2" {
 		t.Errorf("changes %v", changes)
+	}
+}
+
+func TestWindowsMachine(t *testing.T) {
+
+	m := ForAgent(policyOf(t, `{"controls": [
+    {"controlId": "op.exp.10", "parameters": [{"id": "P-02", "value": ["C:\\ProgramData\\ssh\\ | Administradores", "/etc/ssh | 600 | root"]}]},
+    {"controlId": "op.exp.3", "parameters": [{"id": "P-04", "value": ["C:/Windows/System32/drivers/etc/hosts"]}]},
+    {"controlId": "op.acc.2", "parameters": [{"id": "P-02", "value": ["C:\\Windows\\System32\\drivers\\etc\\hosts", "D:\\App\\conf"]}]}
+  ]}`), "009", "dc01", "windows")
+
+	if !m.Windows || !slices.Equal(m.Paths.Keys, []string{`C:\ProgramData\ssh`}) {
+		t.Errorf("keys %v", m.Paths.Keys)
+	}
+	if !slices.Contains(m.Paths.Read, `C:\Program Files (x86)\ossec-agent\client.keys`) || slices.Contains(m.Paths.Read, "/var/ossec/etc") {
+		t.Errorf("read watches %v", m.Paths.Read)
+	}
+	if !slices.Equal(m.Paths.Audit, []string{`C:\Windows\System32\drivers\etc\hosts`}) || len(m.Paths.Exec) != 0 {
+		t.Errorf("audit %v exec %v", m.Paths.Audit, m.Paths.Exec)
+	}
+	if !slices.Contains(m.FIM, `D:\App\conf`) || slices.Contains(m.FIM, `C:\Windows\System32\drivers\etc\hosts`) {
+		t.Errorf("FIM %v", m.FIM)
+	}
+}
+
+func TestMixedGroupSeparatesTheOperatingSystems(t *testing.T) {
+
+	policy := policyOf(t, fleet)
+	region := Region([]Agent{
+		{Name: "web01", Machine: ForAgent(policy, "001", "web01", "linux")},
+		{Name: "dc01", Machine: ForAgent(policy, "009", "dc01", "windows")},
+	})
+
+	var root struct {
+		Blocks []struct {
+			Name string `xml:"name,attr"`
+			OS   string `xml:"os,attr"`
+			Logs []struct {
+				Location string `xml:"location"`
+			} `xml:"localfile"`
+		} `xml:"agent_config"`
+	}
+	if err := xml.Unmarshal([]byte("<root>"+region+"</root>"), &root); err != nil {
+		t.Fatalf("not XML: %v\n%s", err, region)
+	}
+	if len(root.Blocks) < 2 || root.Blocks[0].OS != "Linux" || root.Blocks[1].OS != "Windows" {
+		t.Fatalf("one block per operating system first:\n%s", region)
+	}
+	for _, l := range root.Blocks[1].Logs {
+		if strings.HasPrefix(l.Location, "/") {
+			t.Errorf("Windows block reads a Linux file %s", l.Location)
+		}
+	}
+	if root.Blocks[1].Logs[0].Location != WindowsFactsLog {
+		t.Errorf("Windows facts file missing:\n%s", region)
 	}
 }

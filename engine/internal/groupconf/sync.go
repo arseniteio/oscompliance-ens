@@ -60,7 +60,7 @@ func syncGroup(ctx context.Context, api API, policy params.Lister, group string,
 			continue
 		}
 		seen[m.ID] = true
-		agents = append(agents, Agent{Name: m.Name, Machine: ForAgent(policy, m.ID, m.Name)})
+		agents = append(agents, Agent{Name: m.Name, Machine: ForAgent(policy, m.ID, m.Name, m.OS.Platform)})
 	}
 
 	current, err := api.GroupConfiguration(ctx, group)

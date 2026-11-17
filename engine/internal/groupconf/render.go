@@ -15,6 +15,9 @@ const (
 	FactsLog = "/var/log/oscompliance/facts.ndjson"
 	AuditLog = "/var/log/audit/audit.log"
 
+	WindowsFactsLog = `C:\ProgramData\oscompliance\facts.ndjson`
+	DefenderChannel = "Microsoft-Windows-Windows Defender/Operational"
+
 	pathsMarker = "oscompliance "
 )
 
@@ -25,22 +28,36 @@ type Agent struct {
 
 func Region(agents []Agent) string {
 
-	common := mostShared(agents)
+	var linuxAgents, windowsAgents []Agent
+	for _, a := range agents {
+		if a.Machine.Windows {
+			windowsAgents = append(windowsAgents, a)
+		} else {
+			linuxAgents = append(linuxAgents, a)
+		}
+	}
 
 	var b strings.Builder
-	b.WriteString(begin + "\n<agent_config>\n")
-	writePaths(&b, common.Paths)
-	writeLocalfile(&b, FactsLog, "json", "")
-	writeLocalfile(&b, AuditLog, "audit", "")
-	writeFIM(&b, common.FIM)
-	b.WriteString("</agent_config>\n")
+	b.WriteString(begin + "\n")
+
+	// A group without Windows agents keeps the block every Linux agent already has.
+	commons := map[bool]Machine{}
+	switch {
+	case len(windowsAgents) == 0:
+		commons[false] = writeCommon(&b, "", linuxAgents)
+	case len(linuxAgents) == 0:
+		commons[true] = writeCommon(&b, osWindows, windowsAgents)
+	default:
+		commons[false] = writeCommon(&b, osLinux, linuxAgents)
+		commons[true] = writeCommon(&b, osWindows, windowsAgents)
+	}
 
 	named := slices.Clone(agents)
 	slices.SortFunc(named, func(a, b Agent) int { return strings.Compare(a.Name, b.Name) })
 
 	for _, a := range named {
 
-		ownPaths := sharedKey(a.Machine) != sharedKey(common)
+		ownPaths := sharedKey(a.Machine) != sharedKey(commons[a.Machine.Windows])
 		if !ownPaths && len(a.Machine.Services) == 0 {
 			continue
 		}
@@ -58,6 +75,34 @@ func Region(agents []Agent) string {
 
 	b.WriteString(end + "\n")
 	return b.String()
+}
+
+const (
+	osLinux   = "Linux"
+	osWindows = "Windows"
+)
+
+func writeCommon(b *strings.Builder, os string, agents []Agent) Machine {
+
+	common := mostShared(agents)
+
+	if os == "" {
+		b.WriteString("<agent_config>\n")
+	} else {
+		b.WriteString(`<agent_config os="` + os + "\">\n")
+	}
+	writePaths(b, common.Paths)
+	if os == osWindows {
+		writeLocalfile(b, WindowsFactsLog, "json", "")
+		writeLocalfile(b, DefenderChannel, "eventchannel", "")
+	} else {
+		writeLocalfile(b, FactsLog, "json", "")
+		writeLocalfile(b, AuditLog, "audit", "")
+	}
+	writeFIM(b, common.FIM)
+	b.WriteString("</agent_config>\n")
+
+	return common
 }
 
 func Merge(current, region string) string {
@@ -107,7 +152,7 @@ func mostShared(agents []Agent) Machine {
 	for _, a := range agents {
 		k := sharedKey(a.Machine)
 		count[k]++
-		byKey[k] = Machine{Paths: a.Machine.Paths, FIM: a.Machine.FIM}
+		byKey[k] = Machine{Windows: a.Machine.Windows, Paths: a.Machine.Paths, FIM: a.Machine.FIM}
 	}
 
 	best := ""

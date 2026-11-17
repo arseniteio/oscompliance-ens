@@ -30,6 +30,9 @@ type Client struct {
 type Agent struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+	OS   struct {
+		Platform string `json:"platform"`
+	} `json:"os"`
 }
 
 func New(baseURL, user, password, caFile, serverName string) (*Client, error) {
@@ -158,7 +161,7 @@ func (c *Client) GroupAgents(ctx context.Context, group string) ([]Agent, error)
 
 	for offset := 0; ; offset += agentsPage {
 
-		path := fmt.Sprintf("/groups/%s/agents?select=id,name&limit=%d&offset=%d", url.PathEscape(group), agentsPage, offset)
+		path := fmt.Sprintf("/groups/%s/agents?select=id,name,os.platform&limit=%d&offset=%d", url.PathEscape(group), agentsPage, offset)
 		body, err := c.do(ctx, http.MethodGet, path, "", nil)
 		if err != nil {
 			return nil, err
