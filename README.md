@@ -43,6 +43,7 @@ For Wazuh on Docker or the detail of each step, follow the full guides:
 
 - [Installation with packages](docs/en/install.md)
 - [Installation with Docker](docs/en/install-docker.md)
+- [Windows agent](docs/en/install-windows.md)
 
 ## How it works
 

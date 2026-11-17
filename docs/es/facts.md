@@ -61,6 +61,8 @@ Cada línea lleva estos campos, con los datos a su lado en el nivel superior.
 | `sweep` | [special_file](#special_file), [file_sweep_snapshot](#file_sweep_snapshot) | cada sistema de ficheros local, solo metadatos (diario) |
 | en cada pasada | [agent_pass](#agent_pass) | cierra la pasada |
 
+El agente de Windows escribe los mismos hechos desde fuentes de Windows, más [file_access](#file_access); sus colectores están en [Agente de Windows](install-windows.md).
+
 ## Indexación en Wazuh
 
 | Regla | Indexa |
@@ -70,6 +72,8 @@ Cada línea lleva estos campos, con los datos a su lado en el nivel superior.
 | 119002 | la sonda de autenticación (grupo `oscompliance_probe`) |
 | 119003 | un evento JSON de un servicio externo declarado (grupo `oscompliance_service`) |
 | 119004 | un registro de auditd con una clave `oscompliance_*` (grupo `oscompliance_audit`) |
+| 119007 | cualquier línea de `C:\ProgramData\oscompliance\facts.ndjson` con la envoltura (nivel 0), padre de 119001 |
+| 119008 | el evento 1006 del agente de Windows: una vigilancia de lectura suspendida por su volumen (nivel 10, grupo `oscompliance_audit`) |
 
 En `wazuh-alerts-*`, cada campo de datos queda bajo `data.` y los valores simples llegan como cadenas; el motor los convierte de nuevo con los tipos Go. Los nombres de campo evitan los que Wazuh renombra o mapea como objetos (`user`, `port`, `process`), y `catalog/fact` lo comprueba.
 
@@ -216,6 +220,20 @@ Resumen de un barrido del sistema de ficheros, emitido después de sus registros
 | `sweep_error` | cadena |  |
 | `unreadable` | entero | Directorios que el barrido no ha podido leer: lo que contienen no se ha visto. |
 | `records_emitted` | entero |  |
+
+### file_access
+
+Un acceso auditado a una ruta vigilada en Windows, leído por `-guard-audit` del evento 4663 del registro Seguridad. El motor lo lee como un acceso de auditd de la misma vigilancia.
+
+| Campo | Tipo | Significado |
+|---|---|---|
+| `time` | cadena | Cuándo registró Windows el acceso. |
+| `watch` | cadena | La ruta vigilada bajo la que está el objeto. |
+| `path` | cadena | El objeto al que se accedió. |
+| `access` | `read`, `write` |  |
+| `account` | cadena | La cuenta del sujeto; SYSTEM, LOCAL SERVICE o NETWORK SERVICE para los servicios del sistema operativo. |
+| `domain` | cadena |  |
+| `process_name` | cadena | El ejecutable que hizo el acceso. |
 
 ### firewall_snapshot
 

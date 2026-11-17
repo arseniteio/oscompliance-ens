@@ -64,6 +64,8 @@ Every line carries these fields, with the payload next to them at the top level.
 | `sweep` | [special_file](#special_file), [file_sweep_snapshot](#file_sweep_snapshot) | every local file system, metadata only (daily) |
 | `every pass` | [agent_pass](#agent_pass) | closes the pass |
 
+The Windows agent writes the same facts from Windows sources, plus [file_access](#file_access); its collectors are in [Windows agent](install-windows.md).
+
 ## Wazuh indexing
 
 | Rule | Indexes |
@@ -73,6 +75,8 @@ Every line carries these fields, with the payload next to them at the top level.
 | 119002 | the authentication probe (group `oscompliance_probe`) |
 | 119003 | a JSON event of a declared external service (group `oscompliance_service`) |
 | 119004 | an auditd record with an `oscompliance_*` key (group `oscompliance_audit`) |
+| 119007 | any line of `C:\ProgramData\oscompliance\facts.ndjson` with the envelope (level 0), parent of 119001 |
+| 119008 | event 1006 of the Windows agent: a read watch suspended for its volume (level 10, group `oscompliance_audit`) |
 
 In `wazuh-alerts-*` every payload field sits under `data.` and scalars arrive as strings; the engine converts them back with the Go types. Field names avoid names Wazuh renames or maps as objects (`user`, `port`, `process`), which `catalog/fact` tests.
 
@@ -219,6 +223,20 @@ Summary of one filesystem sweep, emitted after its special_file records. The swe
 | `sweep_error` | string |  |
 | `unreadable` | integer | Directories the sweep could not read: what is inside them was not seen. |
 | `records_emitted` | integer |  |
+
+### file_access
+
+One audited access to a watched path on Windows, read by `-guard-audit` from event 4663 of the Security log. The engine reads it as an auditd access of the same watch.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `time` | string | When Windows logged the access. |
+| `watch` | string | The watched path the object falls under. |
+| `path` | string | The object accessed. |
+| `access` | `read`, `write` |  |
+| `account` | string | The subject account; SYSTEM, LOCAL SERVICE or NETWORK SERVICE for the services of the operating system. |
+| `domain` | string |  |
+| `process_name` | string | The executable that made the access. |
 
 ### firewall_snapshot
 
