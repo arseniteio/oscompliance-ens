@@ -48,7 +48,19 @@ for arch in amd64 arm64; do
   rm -rf "$dir"
 done
 
+name="oscompliance-ens-wazuh-$version-windows-amd64"
+dir="$dist/$name"
+mkdir -p "$dir/wazuh"
+(cd "$root/agent" && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 \
+  go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$dir/oscompliance-agent.exe" ./cmd/oscompliance-agent)
+cp "$root/agent/windows/install.ps1" "$root/agent/windows/agent.example.json" "$dir/"
+cp "$root/catalog/wazuh/oscompliance_facts_rules.xml" "$root/catalog/wazuh/agent.conf.windows.fragment.xml" "$dir/wazuh/"
+cp "$root/LICENSE" "$notices" "$dir/"
+echo "$version" > "$dir/VERSION"
+(cd "$dist" && zip -qrX "$name.zip" "$name")
+rm -rf "$dir"
+
 rm "$notices"
 release_installer "$dist/install.sh"
-(cd "$dist" && sha256sum ./*.tar.gz ./install.sh | sed 's# \./# #' > SHA256SUMS)
+(cd "$dist" && sha256sum ./*.tar.gz ./*.zip ./install.sh | sed 's# \./# #' > SHA256SUMS)
 ls -l "$dist"
