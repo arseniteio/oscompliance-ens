@@ -33,7 +33,7 @@ The engine derives the auditd watches from P-03 and writes them into the
 group configuration: binaries in a bin or sbin directory become execution
 watches (`exec_watches`, key `oscompliance_exec`); P-03 paths and the
 security paths (/var/ossec/etc, /etc/audit, /var/log/audit) become
-`audit_watches`. A change to P-03 reaches every agent without touching a
+`read_watches`. A change to P-03 reaches every agent without touching a
 machine.
 
 Actions are pooled by account name across every machine over the last P-06

@@ -57,6 +57,8 @@ Las evidencias de inicio de sesión salen NOT_EVALUABLE por COLLECTION. El regis
 
 EV-06 de op.acc.2, op.acc.3 o EV-07 de op.acc.4 salen NOT_EVALUABLE por COLLECTION. auditd está parado, sus vigilancias no están cargadas o no se lee el registro de auditoría. Instala auditd y comprueba `auditctl -l`. El bloque del motor en la configuración de grupo añade el localfile de auditoría.
 
+Las alertas 119004 con clave `oscompliance_read` inundan el indexador desde una máquina actualizada desde la 1.2.0 o anterior. Esas versiones cargaban vigilancias de lectura en todas las rutas auditadas, incluidos ficheros legibles por todos como /etc/group, y el agente nunca retira una regla. Ejecuta `auditctl -D -k oscompliance_read` y `auditctl -D -k oscompliance_exec` en la máquina; la siguiente pasada del agente carga solo las vigilancias que pide la configuración de grupo.
+
 Un control sale NOT_EVALUABLE por CONFIGURATION. Falta un parámetro. El veredicto lo nombra: defínelo en Power ENS.
 
 El motor registra `the ENS scope has never been read`. El motor no ha podido leer el índice de configuración desde que arrancó. La línea `parameters` anterior nombra el error, normalmente la conexión con el indexer. Sin una configuración guardada, el motor usa la configuración por defecto del catálogo y no registra esto.

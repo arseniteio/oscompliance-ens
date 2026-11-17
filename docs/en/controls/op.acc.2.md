@@ -40,10 +40,10 @@ limit; reaching either marks the sweep partial instead of hiding what is
 left.
 
 The paths of P-08 and P-06 reach the agents through the group configuration
-the engine writes (`acl_paths`, `audit_watches`). For each audited path the
+the engine writes (`acl_paths`, `read_watches`). For each audited path the
 agent loads four auditd watches, one per permission (`oscompliance_read`,
-`_write`, `_exec`, `_attr`), so every audited access carries its kind. It
-never removes a rule.
+`_write`, `_exec`, `_attr`), so every audited access carries its kind. Reads
+are recorded only for sessions with a login UID. It never removes a rule.
 
 FIM is Wazuh's own. By default it watches /etc, /usr/bin, /usr/sbin, /bin,
 /sbin and /boot; a P-02 path elsewhere needs a `<directories>` entry in the

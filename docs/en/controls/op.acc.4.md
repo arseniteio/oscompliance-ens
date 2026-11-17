@@ -31,7 +31,7 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.2.4. Definition: [`catalog/control
 | `auth_log_probe` and rule 119002 | the authentication log reaches Wazuh | EV-06 |
 
 The paths of P-07 reach auditd through the group configuration the engine
-writes (`audit_watches`). Changes of mode, owner and attributes, and writes
+writes (`read_watches`). Changes of mode, owner and attributes, and writes
 to the account and sudo files, are audited with key `oscompliance_perm`.
 
 ## Parameters

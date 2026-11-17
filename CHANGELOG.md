@@ -14,6 +14,7 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ### Changed
 
+- The group configuration splits the auditd watches in two. `audit_watches` (op.exp.3 P-04) records only writes and attribute changes. The new `read_watches` (op.acc.2 P-06, op.acc.3 P-03 paths and the security paths, op.acc.4 P-07, op.exp.10 P-02) adds reads, recorded only for sessions with a login UID (`auid!=-1`). Read watches on world-readable files such as /etc/group made every NSS lookup an alert 119004. `audit_watch_snapshot` gains `read_wanted`. Machines upgraded from 1.2.0 keep their old watches until `auditctl -D -k oscompliance_read` and `auditctl -D -k oscompliance_exec` run once.
 - The repository is now `arseniteio/oscompliance-ens-wazuh`, to leave room for other SIEMs. The Go module paths and schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.
 - The installation guide lists the hardware the agent, the engine and the verdicts need, measured in the lab.
 - The configuration guide presents Power ENS > Configuración > Perfiles as the place to manage profiles, and `oscompliance-policy` as the option for automation.

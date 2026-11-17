@@ -44,8 +44,9 @@ Levels: BAJO, MEDIO, ALTO. Annex II section 4.3.3. Definition: [`catalog/control
 | `backup_snapshot` fact | the newest copy of each source of P-07 | EV-09 |
 
 The paths of P-04 reach auditd with the audit watches of the group
-configuration (`audit_watches`); the sources of P-07 reach the agent as
-`backup_sources`.
+configuration (`audit_watches`), which record only writes and attribute
+changes, because EV-02 judges edits and not reads; the sources of P-07 reach
+the agent as `backup_sources`.
 
 ### `package_selection`
 

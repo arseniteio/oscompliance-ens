@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -61,15 +62,30 @@ func TestForAgent(t *testing.T) {
 	if strings.Join(m.Paths.Exec, ",") != "/usr/bin/git" {
 		t.Errorf("exec: binaries of P-03: %v", m.Paths.Exec)
 	}
-	want := "/datos/rrhh,/etc/audit,/etc/ssh,/srv/datos,/srv/repos,/var/log/audit,/var/ossec/etc"
-	if strings.Join(m.Paths.Audit, ",") != want {
-		t.Errorf("audit: %v", m.Paths.Audit)
+	if strings.Join(m.Paths.Audit, ",") != "/etc/ssh" {
+		t.Errorf("audit: only the paths whose changes are audited, op.exp.3 P-04: %v", m.Paths.Audit)
+	}
+	want := "/datos/rrhh,/etc/audit,/srv/datos,/srv/repos,/var/log/audit,/var/ossec/etc"
+	if strings.Join(m.Paths.Read, ",") != want {
+		t.Errorf("read: %v", m.Paths.Read)
 	}
 	if len(m.Services) != 1 || m.Services[0].Log != "/var/log/sede/auth.json" {
 		t.Errorf("services of web01: %v", m.Services)
 	}
 	if len(ForAgent(policyOf(t, fleet), "002", "db01").Services) != 0 {
 		t.Error("a service belongs only to the machine its row names")
+	}
+}
+
+func TestReadWinsOverChange(t *testing.T) {
+
+	m := ForAgent(policyOf(t, `{"controls": [
+    {"controlId": "op.acc.4", "parameters": [{"id": "P-07", "value": ["/etc/shadow | rrhh"]}]},
+    {"controlId": "op.exp.3", "parameters": [{"id": "P-04", "value": ["/etc/shadow", "/etc/group"]}]}
+  ]}`), "001", "web01")
+
+	if strings.Join(m.Paths.Audit, ",") != "/etc/group" || !slices.Contains(m.Paths.Read, "/etc/shadow") {
+		t.Errorf("a path audited for reads is not repeated as a change watch: audit %v, read %v", m.Paths.Audit, m.Paths.Read)
 	}
 }
 

@@ -129,7 +129,7 @@ func sharedKey(m Machine) string {
 }
 
 func nonNil(p Paths) Paths {
-	for _, l := range []*[]string{&p.ACL, &p.Audit, &p.Exec} {
+	for _, l := range []*[]string{&p.ACL, &p.Audit, &p.Read, &p.Exec} {
 		if *l == nil {
 			*l = []string{}
 		}

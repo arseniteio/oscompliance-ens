@@ -115,15 +115,16 @@ Last fact of every collection pass. A collector whose records and snapshot did n
 
 ### audit_watch_snapshot
 
-The auditd watches the manager asked for (audit_watches of the group configuration the engine writes) and whether they are loaded: four per path, one per permission (r, w, x, a) with keys oscompliance_read, oscompliance_write, oscompliance_exec and oscompliance_attr, so each access carries its kind. The agent loads a missing watch with auditctl and never removes one. Binaries in exec_watches (op.acc.3 P-03) get one execution watch each, key oscompliance_exec.
+The auditd watches the manager asked for in the group configuration the engine writes, and whether they are loaded. Paths in audit_watches get two watches, one per permission (w, a), with keys oscompliance_write and oscompliance_attr. Paths in read_watches get four, one per permission (r, w, x, a), with keys oscompliance_read, oscompliance_write, oscompliance_exec and oscompliance_attr. The read rule only records sessions with a login UID (auid!=-1). Each access carries its kind. The agent loads a missing watch with auditctl and never removes one. Binaries in exec_watches (op.acc.3 P-03) get one execution watch each, key oscompliance_exec.
 
 | Field | Type | Meaning |
 |---|---|---|
 | `auditd` | `running`, `stopped`, `absent`, `error` | running; stopped (the daemon is not running or the kernel audit is off); absent (auditctl not installed); error. |
 | `error` | string |  |
-| `wanted` | array |  |
-| `loaded` | array | Wanted paths whose four watches are loaded. |
+| `wanted` | array | Paths of audit_watches and read_watches. |
+| `loaded` | array | Wanted paths whose watches are all loaded. |
 | `failed` | array | Wanted paths whose watch could not be loaded, with the reason. |
+| `read_wanted` | array | Wanted paths whose reads are audited (read_watches). |
 | `exec_wanted` | array | Binaries whose executions the manager asked to audit (exec_watches). |
 | `exec_loaded` | array | exec_wanted binaries whose execution watch is loaded. |
 | `perm_rules` | integer | Rules loaded with the key oscompliance_perm: changes of mode, owner and attributes by people (auid 1000 and above) and writes to /etc/group, /etc/gshadow, /etc/sudoers and /etc/sudoers.d. The agent loads them when none is. |

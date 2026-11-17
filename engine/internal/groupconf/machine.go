@@ -17,6 +17,7 @@ type Machine struct {
 type Paths struct {
 	ACL   []string `json:"acl_paths"`
 	Audit []string `json:"audit_watches"`
+	Read  []string `json:"read_watches"`
 	Exec  []string `json:"exec_watches"`
 
 	Backup     []string `json:"backup_sources,omitempty"`
@@ -60,14 +61,14 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.Paths.ACL = cells(policy, agentID, "op.acc.2", "P-08", 0)
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.2", "P-08", 0)...)
 	m.Paths.ACL = append(m.Paths.ACL, cells(policy, agentID, "op.exp.8", "P-14", 0)...)
-	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.2", "P-06", 1)...)
-	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.acc.4", "P-07", 0)...)
+	m.Paths.Read = append(m.Paths.Read, cells(policy, agentID, "op.acc.2", "P-06", 1)...)
+	m.Paths.Read = append(m.Paths.Read, cells(policy, agentID, "op.acc.4", "P-07", 0)...)
+	m.Paths.Read = append(m.Paths.Read, securityPaths...)
 	m.Paths.Audit = append(m.Paths.Audit, cells(policy, agentID, "op.exp.3", "P-04", 0)...)
-	m.Paths.Audit = append(m.Paths.Audit, securityPaths...)
 	m.Paths.Backup = BackupSources(policy, agentID)
 	m.Paths.BackupKeys = cells(policy, agentID, "mp.info.6", "P-08", 0)
 	m.Paths.Keys = cells(policy, agentID, "op.exp.10", "P-02", 0)
-	m.Paths.Audit = append(m.Paths.Audit, m.Paths.Keys...)
+	m.Paths.Read = append(m.Paths.Read, m.Paths.Keys...)
 	if len(m.Paths.Keys) > 0 {
 		m.Paths.Exec = append(m.Paths.Exec, keyTools...)
 	}
@@ -76,7 +77,7 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 		if isBinary(indicator) {
 			m.Paths.Exec = append(m.Paths.Exec, indicator)
 		} else {
-			m.Paths.Audit = append(m.Paths.Audit, indicator)
+			m.Paths.Read = append(m.Paths.Read, indicator)
 		}
 	}
 
@@ -92,7 +93,8 @@ func ForAgent(policy params.Lister, agentID, agentName string) Machine {
 	m.FIM = append(m.FIM, agentConfiguration)
 	m.FIM = sorted(m.FIM)
 	m.Paths.ACL = sorted(m.Paths.ACL)
-	m.Paths.Audit = sorted(m.Paths.Audit)
+	m.Paths.Read = sorted(m.Paths.Read)
+	m.Paths.Audit = slices.DeleteFunc(sorted(m.Paths.Audit), func(p string) bool { return slices.Contains(m.Paths.Read, p) })
 	m.Paths.Exec = sorted(m.Paths.Exec)
 	m.Paths.Backup = sorted(m.Paths.Backup)
 	m.Paths.BackupKeys = sorted(m.Paths.BackupKeys)

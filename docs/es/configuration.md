@@ -112,7 +112,7 @@ Con `-wazuh-api` y `-sync-apply`, el motor mantiene una región marcada en el `a
 ```xml
 <!-- oscompliance begin: written by oscompliance-engine from the ENS configuration, do not edit -->
 <agent_config>
-  <!-- oscompliance {"acl_paths":["/srv/data"],"audit_watches":["/srv/data"],"exec_watches":["/usr/bin/git"]} -->
+  <!-- oscompliance {"acl_paths":["/srv/data"],"audit_watches":["/etc/ssh"],"read_watches":["/srv/data"],"exec_watches":["/usr/bin/git"]} -->
   <localfile><log_format>json</log_format><location>/var/log/oscompliance/facts.ndjson</location></localfile>
   <localfile><log_format>audit</log_format><location>/var/log/audit/audit.log</location></localfile>
 </agent_config>
@@ -129,7 +129,8 @@ Con `-wazuh-api` y `-sync-apply`, el motor mantiene una región marcada en el `a
 | Contenido | Procede de |
 |---|---|
 | `acl_paths` | P-08 de op.acc.2, P-08 de op.exp.2 |
-| `audit_watches` | P-06 de op.acc.2, rutas de P-03 de op.acc.3 y las rutas de seguridad, P-07 de op.acc.4 |
+| `audit_watches` | P-04 de op.exp.3: solo escrituras y cambios de atributos |
+| `read_watches` | P-06 de op.acc.2, rutas de P-03 de op.acc.3 y las rutas de seguridad, P-07 de op.acc.4, P-02 de op.exp.10: lecturas de sesiones con UID de inicio de sesión, y además escrituras, ejecuciones y cambios de atributos |
 | `exec_watches` | binarios de P-03 de op.acc.3 |
 | `backup_sources`, `backup_keys` | P-07 de op.exp.3, P-04 y P-08 de mp.info.6 |
 | `key_stores` | P-02 de op.exp.10 |

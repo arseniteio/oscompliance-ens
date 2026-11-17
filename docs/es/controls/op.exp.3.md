@@ -39,7 +39,7 @@ Niveles: BAJO, MEDIO, ALTO. Anexo II, apartado 4.3.3. Definición: [`catalog/con
 | `listening_snapshot`, `listening_socket` ([op.acc.6](op.acc.6.md)) | procesos en escucha fuera de una unidad | EV-04 |
 | hecho `backup_snapshot` | la copia más reciente de cada fuente de P-07 | EV-09 |
 
-Las rutas de P-04 llegan a auditd con las vigilancias de la configuración de grupo (`audit_watches`); las fuentes de P-07 llegan al agente como `backup_sources`.
+Las rutas de P-04 llegan a auditd con las vigilancias de la configuración de grupo (`audit_watches`), que solo registran escrituras y cambios de atributos, porque EV-02 juzga ediciones y no lecturas; las fuentes de P-07 llegan al agente como `backup_sources`.
 
 ### `package_selection`
 

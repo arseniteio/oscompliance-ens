@@ -26,7 +26,7 @@ Una acción es una cuenta ejecutando un binario o tocando una ruta.
 | `audit_watch_snapshot` ([op.acc.2](op.acc.2.md)) | estado de auditd y vigilancias cargadas | silencio |
 | `identity_*` ([op.acc.1](op.acc.1.md)) | nombres de los UID de auditoría | todas las evidencias |
 
-El motor deriva las vigilancias de auditd de P-03 y las escribe en la configuración de grupo: los binarios de un directorio bin o sbin pasan a vigilancias de ejecución (`exec_watches`, clave `oscompliance_exec`); las rutas de P-03 y las rutas de seguridad (/var/ossec/etc, /etc/audit, /var/log/audit) pasan a `audit_watches`. Un cambio en P-03 llega a todos los agentes sin tocar ninguna máquina.
+El motor deriva las vigilancias de auditd de P-03 y las escribe en la configuración de grupo: los binarios de un directorio bin o sbin pasan a vigilancias de ejecución (`exec_watches`, clave `oscompliance_exec`); las rutas de P-03 y las rutas de seguridad (/var/ossec/etc, /etc/audit, /var/log/audit) pasan a `read_watches`. Un cambio en P-03 llega a todos los agentes sin tocar ninguna máquina.
 
 Las acciones se agrupan por nombre de cuenta en todas las máquinas durante los últimos P-06 días: el mismo nombre es la misma persona. Un UID de auditoría sin nombre se notifica y nunca se agrupa.
 

@@ -117,7 +117,7 @@ With `-wazuh-api` and `-sync-apply`, the engine keeps a marked region in the
 ```xml
 <!-- oscompliance begin: written by oscompliance-engine from the ENS configuration, do not edit -->
 <agent_config>
-  <!-- oscompliance {"acl_paths":["/srv/data"],"audit_watches":["/srv/data"],"exec_watches":["/usr/bin/git"]} -->
+  <!-- oscompliance {"acl_paths":["/srv/data"],"audit_watches":["/etc/ssh"],"read_watches":["/srv/data"],"exec_watches":["/usr/bin/git"]} -->
   <localfile><log_format>json</log_format><location>/var/log/oscompliance/facts.ndjson</location></localfile>
   <localfile><log_format>audit</log_format><location>/var/log/audit/audit.log</location></localfile>
 </agent_config>
@@ -134,7 +134,8 @@ With `-wazuh-api` and `-sync-apply`, the engine keeps a marked region in the
 | Content | From |
 |---|---|
 | `acl_paths` | op.acc.2 P-08, op.exp.2 P-08 |
-| `audit_watches` | op.acc.2 P-06, op.acc.3 P-03 paths and the security paths, op.acc.4 P-07 |
+| `audit_watches` | op.exp.3 P-04: writes and attribute changes only |
+| `read_watches` | op.acc.2 P-06, op.acc.3 P-03 paths and the security paths, op.acc.4 P-07, op.exp.10 P-02: reads by sessions with a login UID, plus writes, executions and attribute changes |
 | `exec_watches` | op.acc.3 P-03 binaries |
 | `backup_sources`, `backup_keys` | op.exp.3 P-07, mp.info.6 P-04 and P-08 |
 | `key_stores` | op.exp.10 P-02 |

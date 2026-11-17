@@ -299,6 +299,7 @@ func add(out *fact.WazuhAgentConfig, blocks []agentConfig, source string) {
 type SharedPaths struct {
 	ACLPaths     []string `json:"acl_paths"`
 	AuditWatches []string `json:"audit_watches"`
+	ReadWatches  []string `json:"read_watches"`
 
 	ExecWatches []string `json:"exec_watches"`
 

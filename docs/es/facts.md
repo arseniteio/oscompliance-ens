@@ -112,15 +112,16 @@ Resumen de una lectura de las rutas de la configuración de grupo, emitido despu
 
 ### audit_watch_snapshot
 
-Las vigilancias de auditd que ha pedido el manager (audit_watches de la configuración de grupo que escribe el motor) y si están cargadas: cuatro por ruta, una por permiso (r, w, x, a) con las claves oscompliance_read, oscompliance_write, oscompliance_exec y oscompliance_attr, de modo que cada acceso lleva su tipo. El agente carga con auditctl una vigilancia que falta y nunca retira ninguna. Los binarios de exec_watches (P-03 de op.acc.3) reciben una vigilancia de ejecución cada uno, clave oscompliance_exec.
+Las vigilancias de auditd que ha pedido el manager en la configuración de grupo que escribe el motor, y si están cargadas. Las rutas de audit_watches reciben dos, una por permiso (w, a), con las claves oscompliance_write y oscompliance_attr. Las rutas de read_watches reciben cuatro, una por permiso (r, w, x, a), con las claves oscompliance_read, oscompliance_write, oscompliance_exec y oscompliance_attr. La regla de lectura solo registra sesiones con UID de inicio de sesión (auid!=-1). Cada acceso lleva su tipo. El agente carga con auditctl una vigilancia que falta y nunca retira ninguna. Los binarios de exec_watches (P-03 de op.acc.3) reciben una vigilancia de ejecución cada uno, clave oscompliance_exec.
 
 | Campo | Tipo | Significado |
 |---|---|---|
 | `auditd` | `running`, `stopped`, `absent`, `error` | running; stopped (el demonio no se ejecuta o la auditoría del núcleo está apagada); absent (auditctl sin instalar); error. |
 | `error` | cadena |  |
-| `wanted` | lista |  |
-| `loaded` | lista | Rutas pedidas con sus cuatro vigilancias cargadas. |
+| `wanted` | lista | Rutas de audit_watches y read_watches. |
+| `loaded` | lista | Rutas pedidas con todas sus vigilancias cargadas. |
 | `failed` | lista | Rutas pedidas cuya vigilancia no se ha podido cargar, con el motivo. |
+| `read_wanted` | lista | Rutas pedidas cuyas lecturas se auditan (read_watches). |
 | `exec_wanted` | lista | Binarios cuyas ejecuciones ha pedido auditar el manager (exec_watches). |
 | `exec_loaded` | lista | Binarios de exec_wanted con su vigilancia de ejecución cargada. |
 | `perm_rules` | entero | Reglas cargadas con la clave oscompliance_perm: cambios de modo, propietario y atributos hechos por personas (auid 1000 o superior) y escrituras en /etc/group, /etc/gshadow, /etc/sudoers y /etc/sudoers.d. El agente las carga cuando no hay ninguna. |

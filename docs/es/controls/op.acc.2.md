@@ -32,7 +32,7 @@ Niveles: BAJO, MEDIO, ALTO. Anexo II, apartado 4.2.2. Definición: [`catalog/con
 
 El barrido recorre `/` y los demás sistemas de ficheros locales, nunca los de red ni los pseudo sistemas de ficheros, y no sigue enlaces simbólicos. Tiene un límite de tiempo y otro de registros; al alcanzar cualquiera, marca el barrido como parcial en lugar de ocultar lo que falta.
 
-Las rutas de P-08 y P-06 llegan a los agentes por la configuración de grupo que escribe el motor (`acl_paths`, `audit_watches`). Para cada ruta auditada, el agente carga cuatro vigilancias de auditd, una por permiso (`oscompliance_read`, `_write`, `_exec`, `_attr`), de modo que cada acceso auditado lleva su tipo. Nunca retira una regla.
+Las rutas de P-08 y P-06 llegan a los agentes por la configuración de grupo que escribe el motor (`acl_paths`, `read_watches`). Para cada ruta auditada, el agente carga cuatro vigilancias de auditd, una por permiso (`oscompliance_read`, `_write`, `_exec`, `_attr`), de modo que cada acceso auditado lleva su tipo. Las lecturas solo se registran para sesiones con UID de inicio de sesión. Nunca retira una regla.
 
 FIM es el de Wazuh. Por defecto vigila /etc, /usr/bin, /usr/sbin, /bin, /sbin y /boot; una ruta de P-02 en otro lugar necesita una entrada `<directories>` en la configuración de grupo.
 

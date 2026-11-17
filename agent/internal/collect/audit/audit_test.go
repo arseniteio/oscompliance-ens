@@ -39,3 +39,27 @@ func TestAuditSafety(t *testing.T) {
 		}
 	}
 }
+
+func TestWatchRule(t *testing.T) {
+
+	cases := []struct {
+		watch watch
+		dir   bool
+		want  string
+	}{
+		{writeWatch, false, "-w /etc/ssh -p w -k oscompliance_write"},
+		{attrWatch, true, "-w /etc/ssh -p a -k oscompliance_attr"},
+		{readWatch, false, "-a always,exit -F path=/etc/ssh -F perm=r -F auid!=-1 -k oscompliance_read"},
+		{readWatch, true, "-a always,exit -F dir=/etc/ssh -F perm=r -F auid!=-1 -k oscompliance_read"},
+	}
+	for _, c := range cases {
+		if got := strings.Join(watchRule("/etc/ssh", c.watch, c.dir), " "); got != c.want {
+			t.Errorf("%v dir=%v: %s", c.watch, c.dir, got)
+		}
+	}
+
+	got := parseWatches("-a always,exit -S all -F dir=/srv/datos -F perm=r -F auid!=-1 -F key=oscompliance_read\n")
+	if strings.Join(got, ",") != "/srv/datos oscompliance_read" {
+		t.Errorf("a loaded read rule is recognised: %v", got)
+	}
+}

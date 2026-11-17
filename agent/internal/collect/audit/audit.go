@@ -15,12 +15,19 @@ import (
 	"github.com/arseniteio/oscompliance-ens-wazuh/catalog/fact"
 )
 
-var Keys = []struct{ Perm, Key string }{
-	{"r", "oscompliance_read"},
-	{"w", "oscompliance_write"},
-	{"x", "oscompliance_exec"},
-	{"a", "oscompliance_attr"},
-}
+type watch struct{ Perm, Key string }
+
+var (
+	readWatch  = watch{"r", "oscompliance_read"}
+	writeWatch = watch{"w", "oscompliance_write"}
+	execWatch  = watch{"x", "oscompliance_exec"}
+	attrWatch  = watch{"a", "oscompliance_attr"}
+)
+
+var (
+	allWatches    = []watch{readWatch, writeWatch, execWatch, attrWatch}
+	changeWatches = []watch{writeWatch, attrWatch}
+)
 
 const execKey = "oscompliance_exec"
 
@@ -69,6 +76,8 @@ func Collect(e *emit.Emitter, cfg Config) error {
 		return e.Emit(snapshot)
 	}
 	snapshot.Wanted = append(snapshot.Wanted, paths.AuditWatches...)
+	snapshot.Wanted = append(snapshot.Wanted, paths.ReadWatches...)
+	snapshot.ReadWanted = append(snapshot.ReadWanted, paths.ReadWatches...)
 	snapshot.ExecWanted = append(snapshot.ExecWanted, paths.ExecWatches...)
 
 	if _, err := os.Stat(cfg.Auditctl); errors.Is(err, fs.ErrNotExist) {
@@ -115,26 +124,10 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	}
 
 	for _, p := range paths.AuditWatches {
-
-		if why := unsafeWatch(p); why != "" {
-			snapshot.Failed = append(snapshot.Failed, p+": "+why)
-			continue
-		}
-
-		ok := true
-		for _, w := range Keys {
-			if slices.Contains(loaded, p+" "+w.Key) {
-				continue
-			}
-			if _, err := host.Run(cfg.Auditctl, "-w", p, "-p", w.Perm, "-k", w.Key); err != nil {
-				snapshot.Failed = append(snapshot.Failed, p+" "+w.Perm+": "+err.Error())
-				ok = false
-			}
-		}
-
-		if ok {
-			snapshot.Loaded = append(snapshot.Loaded, p)
-		}
+		loadPathWatches(&snapshot, cfg.Auditctl, loaded, p, changeWatches)
+	}
+	for _, p := range paths.ReadWatches {
+		loadPathWatches(&snapshot, cfg.Auditctl, loaded, p, allWatches)
 	}
 
 	for _, b := range paths.ExecWatches {
@@ -154,6 +147,49 @@ func Collect(e *emit.Emitter, cfg Config) error {
 	}
 
 	return e.Emit(snapshot)
+}
+
+func loadPathWatches(snapshot *fact.AuditWatchSnapshot, auditctl string, loaded []string, path string, watches []watch) {
+
+	if why := unsafeWatch(path); why != "" {
+		snapshot.Failed = append(snapshot.Failed, path+": "+why)
+		return
+	}
+
+	ok := true
+	for _, w := range watches {
+		if slices.Contains(loaded, path+" "+w.Key) {
+			continue
+		}
+		if _, err := host.Run(auditctl, watchRule(path, w, isDir(path))...); err != nil {
+			snapshot.Failed = append(snapshot.Failed, path+" "+w.Perm+": "+err.Error())
+			ok = false
+		}
+	}
+
+	if ok {
+		snapshot.Loaded = append(snapshot.Loaded, path)
+	}
+}
+
+func watchRule(path string, w watch, dir bool) []string {
+
+	if w != readWatch {
+		return []string{"-w", path, "-p", w.Perm, "-k", w.Key}
+	}
+
+	// Daemons and NSS lookups read watched files constantly, and a read without
+	// a login UID names no person, so it is no evidence for the controls that judge reads.
+	field := "path=" + path
+	if dir {
+		field = "dir=" + path
+	}
+	return []string{"-a", "always,exit", "-F", field, "-F", "perm=r", "-F", "auid!=-1", "-k", w.Key}
+}
+
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 func auditRunning(status string) bool {
@@ -191,7 +227,7 @@ func parseWatches(listing string) []string {
 
 		f := strings.Fields(line)
 
-		for _, w := range Keys {
+		for _, w := range allWatches {
 
 			if len(f) >= 2 && f[0] == "-w" && slices.Contains(f, "-k") && f[len(f)-1] == w.Key {
 				out = append(out, f[1]+" "+w.Key)

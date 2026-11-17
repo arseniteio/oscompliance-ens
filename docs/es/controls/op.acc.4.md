@@ -27,7 +27,7 @@ Niveles: BAJO, MEDIO, ALTO. Anexo II, apartado 4.2.4. Definición: [`catalog/con
 | inicios de sesión por sshd, regla 5715 y derivadas | inicios de sesión remotos | EV-06 |
 | `auth_log_probe` y regla 119002 | el registro de autenticación llega a Wazuh | EV-06 |
 
-Las rutas de P-07 llegan a auditd por la configuración de grupo que escribe el motor (`audit_watches`). Los cambios de modo, propietario y atributos, y las escrituras en los ficheros de cuentas y de sudo, se auditan con la clave `oscompliance_perm`.
+Las rutas de P-07 llegan a auditd por la configuración de grupo que escribe el motor (`read_watches`). Los cambios de modo, propietario y atributos, y las escrituras en los ficheros de cuentas y de sudo, se auditan con la clave `oscompliance_perm`.
 
 ## Parámetros
 

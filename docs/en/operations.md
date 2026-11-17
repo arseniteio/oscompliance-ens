@@ -59,6 +59,8 @@ Login evidences are NOT_EVALUABLE by COLLECTION. The authentication log does not
 
 op.acc.2 EV-06, op.acc.3 or op.acc.4 EV-07 are NOT_EVALUABLE by COLLECTION. auditd is not running, its watches are not loaded, or the audit log is not read. Install auditd and check `auditctl -l`. The engine's block in the group configuration adds the audit localfile.
 
+Alerts 119004 with key `oscompliance_read` flood the indexer from a machine upgraded from 1.2.0 or earlier. Those versions loaded read watches on every audited path, including world-readable files such as /etc/group, and the agent never removes a rule. Run `auditctl -D -k oscompliance_read` and `auditctl -D -k oscompliance_exec` on the machine; the next agent pass loads only the watches the group configuration asks for.
+
 A control is NOT_EVALUABLE by CONFIGURATION. A parameter is not set. The verdict names it: set it in Power ENS.
 
 The engine logs `the ENS scope has never been read`. The engine could not read the configuration index since it started. The `parameters` line before it names the error, usually the indexer connection. Without a saved configuration the engine uses the catalog default and does not log this.
