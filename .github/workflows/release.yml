@@ -22,9 +22,9 @@ jobs:
         run: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
       - name: gofmt, vet, lint and tests
         run: make check
-      - name: packages for amd64 and arm64
+      - name: packages for linux amd64 and arm64 and windows amd64
         run: make dist VERSION="${GITHUB_REF_NAME#v}"
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/install.sh dist/SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.zip dist/install.sh dist/install.ps1 dist/SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
