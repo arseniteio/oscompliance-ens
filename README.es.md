@@ -4,9 +4,9 @@
 
 OSCompliance ENS mide el Esquema Nacional de Seguridad (Real Decreto 311/2022) sobre un despliegue de Wazuh. Convierte lo que hacen tus máquinas en un veredicto por control, por requisito y por máquina, con el motivo de cada resultado, cada 15 minutos.
 
-Añade un binario de agente en cada máquina Linux y un motor en el manager maestro de Wazuh. Wazuh sigue haciendo la recogida. No se juzga nada en la máquina auditada, y lo que no se puede demostrar no cuenta como cumplido. El plugin [Power ENS](https://github.com/arseniteio/power-ens-wazuh) muestra los resultados en el dashboard de Wazuh.
+Añade un binario de agente en cada máquina auditada y un motor en el manager maestro de Wazuh. Wazuh sigue haciendo la recogida. No se juzga nada en la máquina auditada, y lo que no se puede demostrar no cuenta como cumplido. El plugin [Power ENS](https://github.com/arseniteio/power-ens-wazuh) muestra los resultados en el dashboard de Wazuh.
 
-Funciona en Wazuh 4.14.7, 4.14.8 y 4.14.9, con las máquinas auditadas en Linux.
+Funciona en Wazuh 4.14.7, 4.14.8 y 4.14.9, con las máquinas auditadas en Linux. El agente de Windows se incluye, pero todavía no se ha probado en una máquina física.
 
 ## Primeros pasos
 
@@ -35,7 +35,7 @@ El motor añade cada máquina al grupo `ens` en menos de 15 minutos, y los prime
 Para revisar los ficheros antes de ejecutar nada, descarga el paquete y compruébalo. El `install.sh` del paquete usa los ficheros que tiene al lado.
 
 ```bash
-v=1.2.0
+v=2.0.0
 url=https://github.com/arseniteio/oscompliance-ens-wazuh/releases/download/v$v
 curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
@@ -91,7 +91,7 @@ make check
 Compila los paquetes en `dist/`, con `install.sh` y `SHA256SUMS`. Hace falta Go 1.27.2 o posterior.
 
 ```bash
-make dist VERSION=1.2.0
+make dist VERSION=2.0.0
 ```
 
 ## Seguridad
