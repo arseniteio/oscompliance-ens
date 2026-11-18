@@ -4,36 +4,36 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-18
+
 ### Added
 
-- A profile condition on `distro`, `family`, `role` or `hostname` takes `in` with a comma-separated list, for a group of machines chosen by hand.
-- A machine whose type is set to `none` takes no type template, only the values of its groups and its own.
-- op.mon.2 EV-01 gives each machine's implementation degree, the average score of its applicable control verdicts, against the statement of applicability of P-01, which it now needs. EV-05 lists the controls with evidences not evaluable by configuration.
-- Maturity (Anexo II, apdo. 6). Each control verdict carries the CMM level its evidence accredits on that machine, L0 to L2 over 30 days. Each pass writes `organization` verdicts with the lowest level of each control, the level, target and author declared in the configuration, declared measures without engine, and the distribution and global level for the whole ENS.
-- The agent unloads the `oscompliance_*` audit watches the group configuration no longer asks for, only when it holds the engine's block, and the read watches loaded with `-w` before the auid filter. `audit_watch_snapshot` lists them in `unloaded`.
-- `oscompliance-agent -guard-audit`, run by cron every 2 minutes, unloads for one hour a read watch that records more than `audit_read_limit` successful reads per minute (60 by default) over 5 minutes. The next passes report it in `failed` and the controls that judge those reads are NOT_EVALUABLE by COLLECTION until the suspension ends. Rule 119006 alerts at level 10 on every suspension.
-- The engine deduces each machine's distro, role (manager, server or workstation) and services from the Wazuh inventory on every pass, and writes them to `oscompliance-host-profile` with the signal behind each one. The rules are in `catalog/host-signals.json`. Verdicts do not change.
-- `-host-profile-index` names that index.
-- Profiles give parameter values to every machine whose host profile meets their conditions, in four layers (distro, role, service, site): lists add up across layers and other values come from the most specific one. Each profile is a `PROFILE` document in `wazuh-ens-configuration`. The catalog ships `ubuntu` and `manager-wazuh` with the values of the built-in templates, so verdicts do not change.
-- `-profile-groups` keeps one Wazuh group per profile, `ens-perfil-<id>`, with the machines that get it and the label `ens.perfil.<id>`. The engine API role already allows it (`agent:modify_group`).
-- `oscompliance-policy`, installed with the engine, checks, plans, applies, exports and deletes profiles written in YAML, and explains which profiles and values a machine gets.
-- Windows agent. `oscompliance-agent.exe` for Windows Server 2016 to 2025 and Windows 10 and 11 collects accounts and groups (SAM, or Active Directory on a domain controller), the security, audit and registry policy, BitLocker and the inactivity lock, Windows Firewall, Microsoft Defender and AppLocker, W32Time, Windows Update, services, listening ports, installed programs and ACLs, and writes them to `C:\ProgramData\oscompliance\facts.ndjson` with the existing fact types. One PowerShell command installs it from the release, like `install.sh agent --group ens`: `install.ps1` downloads and checks the package, requests the group, adds the facts file to the Wazuh agent, schedules two tasks as SYSTEM and runs the first pass. `make dist` packages it as `oscompliance-ens-wazuh-<version>-windows-amd64.zip` and publishes `install.ps1` next to `install.sh`.
-- On Windows the `audit` collector sets SACL entries on the read and change watches, and `-guard-audit` forwards event 4663 on them as the new `file_access` fact, oldest first and at most 2,000 per run. A read watch over `audit_read_limit` reads per minute loses its read entry for one hour; rule 119008 alerts on it.
-- The engine reads logins from events 4624 of logon types 2, 10 and 11, failures from 4625 and lockouts from 4740. Type 3 network logons stay out, so a service account that connects over WinRM is not a person logging in. Remote Desktop counts as a remote channel `rdp` next to `ssh`.
-- op.acc.6 judges the Windows lockout, password quality and maximum age from the `secedit` account policy when the machine has no PAM facts. op.exp.6 judges the signatures and settings of Microsoft Defender.
-- The host profile recognises Windows Server 2016 to 2025 and Windows 10 and 11 (family `windows`; Windows 10 and 11 as workstations), and the catalog ships the `windows` profile with Windows paths and the English and Spanish names of the built-in groups.
-- Rule 119007 decodes the Windows facts file. `install.sh` installs it with the other rules.
+- Windows agent, not yet tested on a physical machine. `oscompliance-agent.exe` for Windows Server 2016 to 2025 and Windows 10 and 11 collects accounts and groups (SAM, or Active Directory on a domain controller), the security, audit and registry policy, BitLocker and the inactivity lock, Windows Firewall, Microsoft Defender, AppLocker, W32Time, Windows Update, services, listening ports, installed programs and ACLs, and writes them to `C:\ProgramData\oscompliance\facts.ndjson` with the existing fact types. `install.ps1` installs it with one PowerShell command, like `install.sh agent --group ens`. `make dist` packages it as `oscompliance-ens-wazuh-<version>-windows-amd64.zip`.
+- On Windows the `audit` collector sets SACL entries on the read and change watches, and `-guard-audit` forwards event 4663 on them as the `file_access` fact. Rule 119007 decodes the Windows facts file and rule 119008 alerts when a read watch is suspended.
+- The engine reads Windows logons from events 4624 of logon types 2, 10 and 11, failures from 4625 and lockouts from 4740. Remote Desktop counts as the remote channel `rdp`.
+- op.acc.6 judges the Windows lockout and password policy from `secedit` when the machine has no PAM facts. op.exp.6 judges the signatures and settings of Microsoft Defender.
+- Host profiles. The engine deduces each machine's distro, role (manager, server or workstation) and services from the Wazuh inventory on every pass and writes them to `oscompliance-host-profile`, named by `-host-profile-index`. The rules are in `catalog/host-signals.json`, including the Windows editions.
+- Profiles give parameter values to every machine whose host profile meets their conditions, in four layers: distro, role, service and site. Lists add up across layers; other values come from the most specific layer. The catalog ships `ubuntu`, `manager-wazuh` and `windows`. A condition on `distro`, `family`, `role` or `hostname` takes `in` with a comma-separated list for a hand-picked group, and a machine of type `none` takes no type template.
+- `-profile-groups` keeps one Wazuh group per profile, `ens-perfil-<id>`, with the machines that get it.
+- `oscompliance-policy` checks, plans, applies, exports and deletes profiles written in YAML, and explains which profiles and values a machine gets.
+- Maturity (RD 311/2022, Anexo II, apdo. 6). Each control verdict carries the CMM level its evidence accredits on that machine, L0 to L2 over 30 days. Each pass writes `organization` verdicts with the lowest level of each control, the declared level, target and author, the declared measures without engine, and the distribution and global level.
+- op.mon.2 EV-01 reports each machine's implementation degree against the statement of applicability of P-01. EV-05 lists the controls with evidences not evaluable by configuration.
+- `oscompliance-agent -guard-audit`, run by cron every 2 minutes, unloads for one hour a read watch that records more than `audit_read_limit` successful reads per minute (60 by default) over 5 minutes. The controls that judge those reads are NOT_EVALUABLE by COLLECTION until the suspension ends. Rule 119006 alerts at level 10 on every suspension.
+- The agent unloads the `oscompliance_*` audit watches the group configuration no longer asks for, only while it holds the engine's block. `audit_watch_snapshot` lists them in `unloaded`.
 
 ### Changed
 
-- Rule 119005 drops on the manager the 119004 reads (`oscompliance_read`) of files every process reads: the NSS files, the loader cache, the CA store, the time zone, `/usr` and `/lib`. Agents of 1.2.0 and earlier loaded such watches and filled disks within minutes. `install.sh` checks IDs 119000 to 119005.
-- The agent does not load a read rule on a path from `catalog.HotReadPaths`, under one, or on a directory that holds one, and reports it in `failed` of `audit_watch_snapshot`. The path stays out of `loaded`, so the controls that judge reads show it as a collection gap. Writes, executions and attribute changes are still audited.
-- The group configuration splits the auditd watches in two. `audit_watches` (op.exp.3 P-04) records only writes and attribute changes. The new `read_watches` (op.acc.2 P-06, op.acc.3 P-03 paths and the security paths, op.acc.4 P-07, op.exp.10 P-02) adds reads, recorded only for sessions with a login UID (`auid!=-1`). Read watches on world-readable files such as /etc/group made every NSS lookup an alert 119004. `audit_watch_snapshot` gains `read_wanted`. Machines upgraded from 1.2.0 keep their old watches until `auditctl -D -k oscompliance_read` and `auditctl -D -k oscompliance_exec` run once.
-- The repository is now `arseniteio/oscompliance-ens-wazuh`, to leave room for other SIEMs. The Go module paths and schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.
-- The installation guide lists the hardware the agent, the engine and the verdicts need, measured in the lab.
-- The configuration guide presents Power ENS > Configuración > Perfiles as the place to manage profiles, and `oscompliance-policy` as the option for automation.
-- `CONTRIBUTING.md` and `CONTRIBUTING.es.md` explain how to propose a change and the contributor license agreement.
-- The group configuration writes one `<agent_config os="...">` block per operating system when a group has Windows machines, so a mixed group no longer sends Linux files and audit watches to Windows agents. Groups with Linux machines only keep the same block. The engine reads the platform of each agent from the Wazuh API.
+- The repository is now `arseniteio/oscompliance-ens-wazuh`. The Go module paths and the schema `$id` URLs follow it, and the packages are named `oscompliance-ens-wazuh-<version>-linux-<arch>.tar.gz`. `install.sh` downloads from the new repositories and expects the new plugin zip name.
+- The group configuration splits the auditd watches in two. `audit_watches` records writes and attribute changes. `read_watches` records reads, only for sessions with a login UID (`auid!=-1`). The first pass of the new agent unloads the 1.2.0 read watches on machines of a group with the engine's block; elsewhere run `auditctl -D -k oscompliance_read` and `auditctl -D -k oscompliance_exec` once.
+- The agent does not load a read watch on a file every process reads (`catalog.HotReadPaths`), and rule 119005 drops such reads on the manager. Agents of 1.2.0 loaded these watches and filled disks within minutes. `install.sh` checks rule IDs 119000 to 119008.
+- The group configuration writes one `<agent_config os="...">` block per operating system when a group has Windows machines, so a mixed group does not send Linux files and watches to Windows agents.
+- The accredited global maturity level leaves out the measures that are only declared.
+- The installation guide lists the hardware the agent, the engine and the verdicts need, measured in the lab. The configuration guide presents Power ENS as the place to manage profiles and `oscompliance-policy` for automation. `CONTRIBUTING.md` and `CONTRIBUTING.es.md` explain how to propose a change.
+
+### Fixed
+
+- The read guard does not run on machines without auditd.
+- The op.acc parameter labels carry their accents, and the BOE text of mp.eq.3.r1.1 and op.exp.10.r2.1 is literal.
 
 ## [1.2.0] - 2026-11-16
 
@@ -88,7 +88,8 @@ First release.
 - Packages for Linux amd64 and arm64 with a `SHA256SUMS` file.
 - Support for Wazuh 4.14.7, 4.14.8 and 4.14.9, installed from packages or on Docker.
 
-[Unreleased]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/releases/tag/v1.0.0
