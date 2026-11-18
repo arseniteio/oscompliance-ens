@@ -65,7 +65,7 @@ El perfil de máquina decide qué [perfiles](#perfiles) recibe cada máquina.
 
 ## Perfiles
 
-Un perfil da valores de parámetros a todas las máquinas cuyo perfil de máquina cumple sus condiciones, de modo que un valor se define una vez por tipo de máquina y no una vez por máquina. Cada perfil es un documento de `wazuh-ens-configuration` con `documentType` `PROFILE`. Los perfiles se gestionan en Power ENS > Configuración > Perfiles, que muestra a cuántas máquinas llega cada uno mientras se edita, importa y exporta YAML, y lista en Máquinas los perfiles y el origen de cada valor de cada máquina. `oscompliance-policy`, más abajo, es la opción para automatizar. El catálogo trae `ubuntu` y `manager-wazuh` en [`catalog/profiles/`](../../catalog/profiles/), con los mismos valores que las plantillas integradas; un perfil guardado con el mismo `id` sustituye al integrado.
+Un perfil da valores de parámetros a todas las máquinas cuyo perfil de máquina cumple sus condiciones, de modo que un valor se define una vez por tipo de máquina y no una vez por máquina. Cada perfil es un documento de `wazuh-ens-configuration` con `documentType` `PROFILE`. Power ENS muestra los perfiles como grupos y los gestiona en Configuración > Grupos y máquinas, que muestra las máquinas a las que llega cada grupo mientras se edita, importa y exporta YAML, y muestra en cada máquina sus grupos y el origen de cada valor. `oscompliance-policy`, más abajo, es la opción para automatizar. El catálogo trae `ubuntu`, `manager-wazuh` y `windows` en [`catalog/profiles/`](../../catalog/profiles/), con los mismos valores que las plantillas integradas; un perfil guardado con el mismo `id` sustituye al integrado.
 
 ```yaml
 id: web

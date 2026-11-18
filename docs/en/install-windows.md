@@ -2,6 +2,8 @@
 
 The OSCompliance agent for Windows collects the same kind of facts as the Linux agent and writes them to `C:\ProgramData\oscompliance\facts.ndjson`. The Wazuh agent ships the file to the manager and the engine judges the facts with the same controls. The plugin shows Windows machines like any other machine.
 
+The Windows agent has been tested in the lab only, not yet on a physical machine. Try it on a test machine before rolling it out.
+
 ## Requirements
 
 - Windows Server 2016, 2019, 2022 or 2025, or Windows 10 or 11, 64-bit.
