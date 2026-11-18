@@ -98,7 +98,7 @@ En una nueva ejecución sin `OSC_INDEXER_URLS`, el script mantiene los valores d
 Descarga el paquete de tu arquitectura y sus sumas de comprobación en cada nodo servidor donde instales algo y en cada máquina auditada. `uname -m` indica la arquitectura: `x86_64` es amd64 y `aarch64` es arm64. La línea de tu paquete debe terminar en `OK`. Los comandos siguientes se ejecutan desde la carpeta del paquete.
 
 ```bash
-v=1.2.0
+v=2.0.0
 url=https://github.com/arseniteio/oscompliance-ens-wazuh/releases/download/v$v
 curl -fLO "$url/oscompliance-ens-$v-linux-amd64.tar.gz" -O "$url/SHA256SUMS"
 sha256sum -c --ignore-missing SHA256SUMS
@@ -198,9 +198,9 @@ Este paso es opcional para obtener los primeros veredictos. Hasta que se guarda 
 
 En Power ENS, abre Configuración.
 
-1. En Organización, rellena Cliente, cambia Nivel ENS si tu sistema tiene otro nivel y pulsa Guardar configuración global. Esto crea la configuración.
-2. En Plantillas, abre cada control, pulsa Completar configuración, rellena lo que falta y guarda.
-3. En Agentes, abre cada máquina y rellena los parámetros que corresponden a la máquina.
+1. En General, rellena Cliente, cambia Nivel ENS si tu sistema tiene otro nivel y pulsa Guardar configuración global. Esto crea la configuración.
+2. En Organización, abre cada control, pulsa Completar configuración, rellena lo que falta y guarda.
+3. En Grupos y máquinas, da a cada grupo los valores de sus máquinas y abre una máquina para fijar los parámetros que solo le corresponden a ella.
 
 Cada página de [Controles](controls/README.md) lista los parámetros de su control. Un control se puede rellenar más tarde: hasta entonces aparece como no evaluable por configuración.
 
@@ -402,6 +402,8 @@ systemctl restart oscompliance-engine
 
 Si ha cambiado el rol, ejecuta `KEEP_PASSWORDS=1 bash wazuh/engine-users.sh create` como en el apartado 3. La versión 1.2.0 añade dos acciones de la API de Wazuh, así que una actualización desde 1.1.0 lo necesita. Si han cambiado las reglas, instálalas en el maestro como en el apartado 2 y reinicia cada worker cuando lleguen, como en la parte de worker del apartado 2. En cada máquina auditada, instala el nuevo binario del agente: lo usa la siguiente ejecución de cron. En cada nodo de dashboard, instala el zip del plugin de la misma versión como en el apartado 4.
 
+De la 1.2.0 a la 2.0.0, la primera pasada del nuevo agente descarga las vigilancias de lectura de la 1.2.0 en cada máquina Linux de un grupo con el bloque del motor. En una máquina fuera de esos grupos, ejecuta una vez `auditctl -D -k oscompliance_read` y `auditctl -D -k oscompliance_exec`. Las versiones se publican ahora en `arseniteio/oscompliance-ens-wazuh` y `arseniteio/power-ens-wazuh`: descarga `install.sh` y los paquetes de ahí.
+
 ## Desinstalar
 
 Con el script de instalación, ejecuta `install.sh uninstall` en cada nodo y en cada máquina auditada. En cada uno retira lo que encuentra: el motor y sus usuarios, el plugin, las partes del manager en un manager, y el agente con su bloque en `ossec.conf`. Las reglas y el bloque de la configuración de grupo solo se retiran en el maestro, y los workers lo siguen a través del clúster. Los pasos manuales son estos.
@@ -454,7 +456,7 @@ Los índices `oscompliance-verdicts`, `oscompliance-identity-history`, `oscompli
 Compila los paquetes en este repositorio con Go 1.27.2 o posterior. El resultado está en `dist/`, con `install.sh` y `SHA256SUMS`.
 
 ```bash
-make dist VERSION=1.2.0
+make dist VERSION=2.0.0
 ```
 
 Compila el plugin en el repositorio power-ens-wazuh con Docker, para la versión de OpenSearch Dashboards de tu dashboard. La primera compilación tarda unos 20 minutos. El resultado es `dist/powerEns-2.19.6.zip`.
