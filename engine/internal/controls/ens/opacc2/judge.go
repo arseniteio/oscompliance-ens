@@ -672,7 +672,9 @@ func JudgeEV06(in EV06Input) verdict.Judgement {
 
 	for _, a := range in.Accesses {
 
-		if a.Success != "yes" {
+		// A syscall record (chmod, chown, setxattr) can come without a file
+		// name: with no path there is nothing to hold against P-06.
+		if a.Success != "yes" || strings.TrimSpace(a.Path) == "" {
 			continue
 		}
 

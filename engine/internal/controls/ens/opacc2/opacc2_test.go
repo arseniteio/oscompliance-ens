@@ -285,6 +285,7 @@ func TestJudgeEV06(t *testing.T) {
 	check(t, "longest path wins", JudgeEV06(base(access("oscompliance_write", "1000", "/srv/datos/ro/b.txt"))), want{verdict.NonCompliant, "", []string{"escritura by ana (profile ops) on /srv/datos/ro/b.txt"}})
 	check(t, "no profile", JudgeEV06(base(access("oscompliance_exec", "1002", "/srv/datos/x"))), want{verdict.Compliant, "", []string{"1 by accounts without a P-09 profile"}})
 	check(t, "no person", JudgeEV06(base(access("oscompliance_read", "4294967295", "/srv/datos/x"))), want{verdict.NotEvaluable, verdict.CauseEvidence, []string{"no person"}})
+	check(t, "syscall without a path", JudgeEV06(base(access("oscompliance_attr", "4294967295", ""), access("oscompliance_write", "1000", "/srv/datos/a.txt"))), want{verdict.Compliant, "", []string{"1 accesses"}})
 
 	stopped := base()
 	stopped.Watches = &fact.AuditWatchSnapshot{Auditd: fact.AuditdAbsent}
