@@ -37,3 +37,17 @@ func TestCollect(t *testing.T) {
 		t.Errorf("no table: %v", facts[0])
 	}
 }
+
+func TestPlaceholdersAndIncompleteEntriesAreLeftOut(t *testing.T) {
+
+	got := parse(`IP address       HW type     Flags       HW address            Mask     Device
+10.0.0.6         0x1         0x0         bc:24:11:33:93:a8     *        eth1
+10.0.0.7         0x1         0x2         52:54:00:00:00:01     *        eth1
+10.0.0.8         0x1         0x2         01:00:5e:00:00:01     *        eth1
+10.0.0.9         0x1         0x2         ff:ff:ff:ff:ff:ff     *        eth1
+10.0.0.10        0x1         0x6         bc:24:11:00:00:0a     *        eth1
+`)
+	if len(got) != 1 || got[0].IP != "10.0.0.10" {
+		t.Errorf("got %+v, want only the permanent entry", got)
+	}
+}
