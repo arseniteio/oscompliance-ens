@@ -22,6 +22,7 @@ type Facts interface {
 	IdentityRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.IdentityRecord, error)
 	Logins(ctx context.Context, agentID string, since time.Time) ([]source.Login, error)
 	AuthActivity(ctx context.Context, since time.Time) (map[string]time.Time, error)
+	ProbesSeen(ctx context.Context, since time.Time) (map[string]map[string]bool, error)
 	GroupSnapshots(ctx context.Context, since time.Time) (map[string]fact.GroupSnapshot, error)
 	GroupRecords(ctx context.Context, agentID, runID string, since time.Time) ([]fact.GroupRecord, error)
 }
@@ -66,6 +67,21 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 
 	if e.authActivity, err = e.facts.AuthActivity(ctx, pass.LookbackStart); err != nil {
 		return fmt.Errorf("authentication activity: %w", err)
+	}
+
+	// The authentication probe proves the log reaches Wazuh, so a machine
+	// nobody logged in to is judged on its empty log, not left unevaluable.
+	probes, err := e.facts.ProbesSeen(ctx, pass.LookbackStart)
+	if err != nil {
+		return fmt.Errorf("authentication probes: %w", err)
+	}
+	if e.authActivity == nil {
+		e.authActivity = map[string]time.Time{}
+	}
+	for agentID, runs := range probes {
+		if _, seen := e.authActivity[agentID]; !seen && len(runs) > 0 {
+			e.authActivity[agentID] = pass.LookbackStart
+		}
 	}
 
 	if e.groupSnapshots, err = e.facts.GroupSnapshots(ctx, pass.WindowStart); err != nil {

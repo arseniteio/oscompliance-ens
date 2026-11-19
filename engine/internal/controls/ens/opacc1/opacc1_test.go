@@ -23,6 +23,11 @@ type fakeFacts struct {
 	identityRecords map[string][]fact.IdentityRecord
 	identityAsked   []string
 	failIdentityRun string
+	probes          map[string]map[string]bool
+}
+
+func (f *fakeFacts) ProbesSeen(context.Context, time.Time) (map[string]map[string]bool, error) {
+	return f.probes, nil
 }
 
 func (f *fakeFacts) IdentitySnapshots(_ context.Context, _ time.Time, n int) (map[string][]fact.IdentitySnapshot, error) {
@@ -818,4 +823,32 @@ func TestParseAdminAffixes(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProbeMakesAnEmptyAuthLogEvaluable(t *testing.T) {
+
+	for _, c := range []struct {
+		name   string
+		probes map[string]map[string]bool
+		want   verdict.Status
+	}{
+		{"probe seen", map[string]map[string]bool{"001": {"run": true}}, verdict.Compliant},
+		{"no probe", nil, verdict.NotEvaluable},
+	} {
+		facts := &fakeFacts{currentIdentity: map[string][]fact.IdentitySnapshot{"001": {identityPass("cur", 1, true)}},
+			identityRecords: map[string][]fact.IdentityRecord{"cur": {{AccountName: "root"}}}, probes: c.probes}
+		results, err := begin(t, facts, &memHistory{}).Agent(context.Background(), verdict.Agent{ID: "001"}, forbidRoot{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := results["EV-03"].Judgement.Status; got != c.want {
+			t.Errorf("%s: EV-03 %s, want %s: %s", c.name, got, c.want, results["EV-03"].Judgement.Reason)
+		}
+	}
+}
+
+type forbidRoot struct{ noParams }
+
+func (forbidRoot) Matcher(string, string, string) (params.Matcher, error) {
+	return params.ListMatcher("root"), nil
 }
