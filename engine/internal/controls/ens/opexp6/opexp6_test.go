@@ -28,9 +28,14 @@ func clam() *fact.MalwareProtection {
 
 func TestAntimalware(t *testing.T) {
 
-	check(t, "running", JudgeEV01(clam(), []string{"clamav"}, catalog.Message{}), verdict.Compliant, "", "clamav")
-	check(t, "expected other", JudgeEV01(clam(), []string{"mdatp"}, catalog.Message{}), verdict.NonCompliant, "", "mdatp")
-	check(t, "none", JudgeEV01(&fact.MalwareProtection{Status: fact.SourceRead}, nil, catalog.Message{}), verdict.NonCompliant, "", "no antimalware")
+	check(t, "running", JudgeEV01(clam(), []string{"clamav"}, false, catalog.Message{}), verdict.Compliant, "", "clamav")
+	check(t, "expected other", JudgeEV01(clam(), []string{"mdatp"}, false, catalog.Message{}), verdict.NonCompliant, "", "mdatp")
+	check(t, "none", JudgeEV01(&fact.MalwareProtection{Status: fact.SourceRead}, nil, false, catalog.Message{}), verdict.NonCompliant, "", "no antimalware")
+	bare := &fact.MalwareProtection{Status: fact.SourceRead}
+	check(t, "wazuh declared and installed", JudgeEV01(bare, []string{"Wazuh"}, true, catalog.Message{}), verdict.Compliant, "", "wazuh")
+	check(t, "wazuh declared, not installed", JudgeEV01(bare, []string{"wazuh"}, false, catalog.Message{}), verdict.NonCompliant, "", "no antimalware")
+	check(t, "wazuh installed, not declared", JudgeEV01(bare, []string{"clamav"}, true, catalog.Message{}), verdict.NonCompliant, "", "no antimalware")
+	check(t, "wazuh-agent counts as wazuh", JudgeEV01(clam(), []string{"clamav", "wazuh-agent"}, true, catalog.Message{}), verdict.Compliant, "", "wazuh")
 
 	check(t, "signatures", JudgeEV02(clam(), 24, catalog.Message{}, now), verdict.Compliant, "", "2026-10-29 06:24")
 	check(t, "old signatures", JudgeEV02(clam(), 2, catalog.Message{}, now), verdict.NonCompliant, "", "5 h ago")

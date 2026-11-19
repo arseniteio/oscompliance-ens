@@ -23,6 +23,7 @@ type Facts interface {
 	Manager(ctx context.Context) (*source.Manager, error)
 	DeviceSecurities(ctx context.Context, since time.Time) (map[string]fact.DeviceSecurity, error)
 	MalwareProtections(ctx context.Context, since time.Time) (map[string]fact.MalwareProtection, error)
+	WazuhAgentConfigs(ctx context.Context, since time.Time) (map[string]fact.WazuhAgentConfig, error)
 	SourceActivity(ctx context.Context, name string, since time.Time) ([]time.Time, error)
 	Retention(ctx context.Context) (days int, found bool, err error)
 }
@@ -37,6 +38,7 @@ type Evaluator struct {
 	managerErr error
 	devices    map[string]fact.DeviceSecurity
 	protection map[string]fact.MalwareProtection
+	wazuh      map[string]fact.WazuhAgentConfig
 	retention  int
 	retained   bool
 	hours      map[string][]time.Time
@@ -58,6 +60,9 @@ func (e *Evaluator) Begin(ctx context.Context, pass evaluator.Pass) error {
 	}
 	if e.protection, err = e.facts.MalwareProtections(ctx, pass.WindowStart); err != nil {
 		return fmt.Errorf("malware protection: %w", err)
+	}
+	if e.wazuh, err = e.facts.WazuhAgentConfigs(ctx, pass.WindowStart); err != nil {
+		return fmt.Errorf("wazuh config: %w", err)
 	}
 	if e.retention, e.retained, err = e.facts.Retention(ctx); err != nil {
 		return fmt.Errorf("retention: %w", err)
@@ -127,8 +132,12 @@ func (e *Evaluator) Agent(ctx context.Context, agent verdict.Agent, policy param
 		if v, ok := e.protection[agent.ID]; ok {
 			p = &v
 		}
+		var c *fact.WazuhAgentConfig
+		if v, ok := e.wazuh[agent.ID]; ok {
+			c = &v
+		}
 		expected, problem := list("op.exp.6", "P-02", true)
-		return opexp6.JudgeEV01(p, expected, problem)
+		return opexp6.JudgeEV01(p, expected, opexp6.WazuhInstalled(c), problem)
 	}())
 
 	put("EV-08", func() verdict.Judgement {

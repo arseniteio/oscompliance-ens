@@ -89,7 +89,7 @@ func (e *Evaluator) Agent(_ context.Context, agent verdict.Agent, policy params.
 	}
 
 	expected, err := policy.List(agent.ID, control, "P-02")
-	put("EV-01", JudgeEV01(p, expected, passes.ParamProblem("P-02", err)))
+	put("EV-01", JudgeEV01(p, expected, WazuhInstalled(c), passes.ParamProblem("P-02", err)))
 
 	hours, problem := passes.Whole(policy, agent.ID, control, "P-03", "param.not_hours")
 	put("EV-02", JudgeEV02(p, hours, problem, now))

@@ -45,7 +45,23 @@ func stateRead(p *fact.MalwareProtection) bool {
 
 const defender = "windows-defender"
 
-func JudgeEV01(p *fact.MalwareProtection, expected []string, problem catalog.Message) verdict.Judgement {
+const wazuhProduct = "wazuh"
+
+// WazuhInstalled tells whether the agent read the configuration of the Wazuh
+// agent on the machine, the proof that it is installed there.
+func WazuhInstalled(c *fact.WazuhAgentConfig) bool {
+	return c != nil && c.Status == fact.SourceRead
+}
+
+func product(name string) string {
+	name = strings.TrimSpace(name)
+	if strings.EqualFold(name, wazuhProduct) || strings.EqualFold(name, "wazuh-agent") {
+		return wazuhProduct
+	}
+	return name
+}
+
+func JudgeEV01(p *fact.MalwareProtection, expected []string, wazuh bool, problem catalog.Message) verdict.Judgement {
 
 	if !problem.IsZero() {
 		return passes.Gap(verdict.CauseConfiguration, problem)
@@ -54,13 +70,21 @@ func JudgeEV01(p *fact.MalwareProtection, expected []string, problem catalog.Mes
 		return j
 	}
 
+	wanted := make([]string, 0, len(expected))
+	for _, e := range expected {
+		wanted = append(wanted, product(e))
+	}
+
 	on := running(p)
+	if wazuh && slices.Contains(wanted, wazuhProduct) {
+		on = append(on, wazuhProduct)
+	}
 	if len(on) == 0 {
 		return verdict.Explain(verdict.NonCompliant, "", catalog.Says("opexp6.no_antimalware"))
 	}
 	var missing []string
-	for _, e := range expected {
-		if e = strings.TrimSpace(e); e != "" && !slices.Contains(on, e) {
+	for _, e := range wanted {
+		if e != "" && !slices.Contains(on, e) {
 			missing = append(missing, e)
 		}
 	}
