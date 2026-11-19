@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -54,8 +55,13 @@ type winAlert struct {
 	EventData winEventData `json:"eventdata"`
 }
 
+var windowsServiceAccounts = []string{"SYSTEM", "LOCAL SERVICE", "NETWORK SERVICE", "ANONYMOUS LOGON"}
+
+// windowsAccount leaves out computer accounts (HOST$) and the accounts of
+// the operating system, which no person uses to log in.
 func windowsAccount(name string) bool {
-	return name != "" && name != "-" && !strings.HasSuffix(name, "$")
+	return name != "" && name != "-" && !strings.HasSuffix(name, "$") &&
+		!slices.ContainsFunc(windowsServiceAccounts, func(s string) bool { return strings.EqualFold(s, name) })
 }
 
 func windowsIP(ip string) string {
@@ -315,6 +321,9 @@ func (s *Source) failures(ctx context.Context, ids []string, since time.Time) (m
 		account, ip := a.Data.DstUser, a.Data.SrcIP
 		if w := a.Data.Win; w.System.EventID == eventFailure {
 			account, ip = w.EventData.TargetUserName, windowsIP(w.EventData.IPAddress)
+			if !windowsAccount(account) {
+				return nil
+			}
 		}
 		if account == "" {
 			return nil
@@ -382,6 +391,9 @@ func (s *Source) lockouts(ctx context.Context, ids []string, since time.Time) (m
 		var account string
 		if w := a.Data.Win; w.System.EventID == eventLockout {
 			account = w.EventData.TargetUserName
+			if !windowsAccount(account) {
+				return nil
+			}
 		} else if m := lockoutLine.FindStringSubmatch(a.FullLog); m != nil {
 			account = m[1]
 			if account == "" {

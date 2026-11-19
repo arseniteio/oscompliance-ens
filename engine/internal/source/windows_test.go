@@ -45,6 +45,7 @@ func TestWindowsLoginsAreInteractiveOnly(t *testing.T) {
 		winEvent("4624", map[string]any{"targetUserName": "ana", "logonType": "2", "ipAddress": "-"}),
 		winEvent("4624", map[string]any{"targetUserName": "svc-control", "logonType": "3", "ipAddress": "10.0.0.9"}),
 		winEvent("4624", map[string]any{"targetUserName": "DC01$", "logonType": "2"}),
+		winEvent("4624", map[string]any{"targetUserName": "SYSTEM", "logonType": "2"}),
 	)
 
 	logins, err := s.logins(context.Background(), []string{"045"}, time.Time{})
@@ -67,7 +68,10 @@ func TestWindowsFailuresAndLockouts(t *testing.T) {
 
 	s := hitsIndexer(t,
 		winEvent("4625", map[string]any{"targetUserName": "ana", "ipAddress": "10.0.0.7"}),
+		winEvent("4625", map[string]any{"targetUserName": "DC01$", "ipAddress": "10.0.0.8"}),
+		winEvent("4625", map[string]any{"targetUserName": "SYSTEM"}),
 		winEvent("4740", map[string]any{"targetUserName": "ana"}),
+		winEvent("4740", map[string]any{"targetUserName": "WS01$"}),
 	)
 
 	failures, err := s.failures(context.Background(), []string{"045"}, time.Time{})
