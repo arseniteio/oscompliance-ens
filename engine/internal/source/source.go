@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -30,6 +31,25 @@ type Source struct {
 	managerNetwork   func(ctx context.Context, tools []string) (*Network, error)
 	networks         networkCache
 	vulnerabilities  vulnerabilityCache
+	managerName      func(ctx context.Context) (string, error)
+}
+
+// UseManagerName names agent 000 from the manager API. Every node of a
+// cluster has its own agent 000, so the alerts can carry a worker's name.
+func (s *Source) UseManagerName(read func(ctx context.Context) (string, error)) {
+	s.managerName = read
+}
+
+func (s *Source) nameManager(ctx context.Context, agents []verdict.Agent) []verdict.Agent {
+	if s.managerName == nil || !slices.ContainsFunc(agents, func(a verdict.Agent) bool { return a.ID == ManagerID }) {
+		return agents
+	}
+	name, err := s.managerName(ctx)
+	if err != nil || strings.TrimSpace(name) == "" {
+		return agents
+	}
+	out := slices.DeleteFunc(slices.Clone(agents), func(a verdict.Agent) bool { return a.ID == ManagerID })
+	return append(out, verdict.Agent{ID: ManagerID, Name: strings.TrimSpace(name)})
 }
 
 func New(client *indexer.Client, index, monitoring, states string) *Source {
@@ -57,7 +77,7 @@ func (s *Source) RegisteredAgents(ctx context.Context, since time.Time) ([]verdi
 		return nil, fmt.Errorf("manager: %w", err)
 	}
 
-	return append(monitoring, manager...), nil
+	return s.nameManager(ctx, append(monitoring, manager...)), nil
 }
 
 func (s *Source) Platforms(ctx context.Context, since time.Time) (map[string]string, error) {
@@ -147,10 +167,14 @@ func factFilter(name string, since time.Time) []any {
 }
 
 func (s *Source) Agents(ctx context.Context, since time.Time) ([]verdict.Agent, error) {
-	return s.agentNames(ctx, s.index, "agent.id", "agent.name", []any{
+	agents, err := s.agentNames(ctx, s.index, "agent.id", "agent.name", []any{
 		map[string]any{"term": map[string]any{"rule.id": FactRule}},
 		map[string]any{"range": map[string]any{"timestamp": map[string]any{"gte": since.UTC().Format(time.RFC3339)}}},
 	})
+	if err != nil {
+		return nil, err
+	}
+	return s.nameManager(ctx, agents), nil
 }
 
 func newest[T any](ctx context.Context, s *Source, name string, since time.Time) (map[string]T, error) {

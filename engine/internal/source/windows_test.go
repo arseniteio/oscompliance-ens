@@ -3,12 +3,14 @@ package source
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/indexer"
+	"github.com/arseniteio/oscompliance-ens-wazuh/engine/internal/verdict"
 )
 
 func hitsIndexer(t *testing.T, alerts ...map[string]any) *Source {
@@ -105,5 +107,26 @@ func TestWindowsFileAccessesAreAuditAccesses(t *testing.T) {
 	a := got["045"]
 	if len(a) != 1 || a[0].Key != "oscompliance_read" || a[0].Account != "ana" || a[0].AUID != "" || a[0].Exe != `C:\Windows\notepad.exe` || a[0].Time.Second() != 30 {
 		t.Errorf("got %+v", a)
+	}
+}
+
+func TestManagerNameFromTheAPI(t *testing.T) {
+
+	s := &Source{}
+	agents := []verdict.Agent{{ID: "001", Name: "web01"}, {ID: ManagerID, Name: "wazuh-worker-02"}}
+
+	if got := s.nameManager(context.Background(), agents); got[1].Name != "wazuh-worker-02" {
+		t.Errorf("without the API: %+v", got)
+	}
+
+	s.UseManagerName(func(context.Context) (string, error) { return "wazuh-mgr-01", nil })
+	got := s.nameManager(context.Background(), agents)
+	if len(got) != 2 || got[0].Name != "web01" || got[1] != (verdict.Agent{ID: ManagerID, Name: "wazuh-mgr-01"}) {
+		t.Errorf("with the API: %+v", got)
+	}
+
+	s.UseManagerName(func(context.Context) (string, error) { return "", errors.New("down") })
+	if got := s.nameManager(context.Background(), agents); got[1].Name != "wazuh-worker-02" {
+		t.Errorf("API down: %+v", got)
 	}
 }

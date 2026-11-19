@@ -155,6 +155,7 @@ func runMain() error {
 			}}
 		facts.UseManagerInventory(func(ctx context.Context) (*source.Inventory, error) { return managerInventory(ctx, api) })
 		facts.UseManager(func(ctx context.Context) (*source.Manager, error) { return managerState(ctx, api) })
+		facts.UseManagerName(func(ctx context.Context) (string, error) { return api.AgentName(ctx, source.ManagerID) })
 		facts.UseManagerNetwork(func(ctx context.Context, tools []string) (*source.Network, error) {
 			return managerNetwork(ctx, api, tools)
 		})

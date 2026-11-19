@@ -260,6 +260,27 @@ func (c *Client) changeGroup(ctx context.Context, method, group string, agentIDs
 	return nil
 }
 
+func (c *Client) AgentName(ctx context.Context, agentID string) (string, error) {
+
+	body, err := c.do(ctx, http.MethodGet, "/agents?agents_list="+url.QueryEscape(agentID)+"&select=name", "", nil)
+	if err != nil {
+		return "", err
+	}
+
+	var page struct {
+		Data struct {
+			AffectedItems []Agent `json:"affected_items"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &page); err != nil {
+		return "", fmt.Errorf("wazuh api: agent %s: %w", agentID, err)
+	}
+	if len(page.Data.AffectedItems) == 0 {
+		return "", fmt.Errorf("wazuh api: agent %s not found", agentID)
+	}
+	return page.Data.AffectedItems[0].Name, nil
+}
+
 func (c *Client) GroupConfiguration(ctx context.Context, group string) (string, error) {
 
 	body, err := c.do(ctx, http.MethodGet, "/groups/"+url.PathEscape(group)+"/files/agent.conf?raw=true", "", nil)
