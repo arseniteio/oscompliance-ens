@@ -4,6 +4,19 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- op.exp.6 EV-01 and mp.s.3 EV-06 count the Wazuh agent as the expected protection when op.exp.6 P-02 names `wazuh` or `wazuh-agent` and the agent read the Wazuh agent configuration of the machine. Before, `wazuh` in P-02 always showed as missing.
+- The Windows template declares P-10 1000 and the privileged groups of op.acc.1 P-11, with their English and Spanish names.
+
+### Fixed
+
+- op.acc.1 EV-03, EV-05 and EV-06 judge a machine with no logins as compliant when the authentication probe reached Wazuh in the lookback, instead of NOT_EVALUABLE.
+- Windows failures (4625) and lockouts (4740) leave out computer accounts and SYSTEM, LOCAL SERVICE, NETWORK SERVICE and ANONYMOUS LOGON, as logons already did.
+- op.acc.2 EV-06 skips audited accesses without a path, such as some chmod or setxattr records, instead of turning NOT_EVALUABLE.
+- The agent drops ARP entries without a resolved MAC, QEMU placeholder MACs, broadcast and multicast from `neighbour_snapshot`.
+- The engine names agent 000 from the manager API: every node of a cluster has its own agent 000, and verdicts carried a worker's name.
+
 ## [2.0.0] - 2026-11-18
 
 ### Added
