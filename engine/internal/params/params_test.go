@@ -71,13 +71,13 @@ func TestResolution(t *testing.T) {
 
 		{"002", "P-01", []string{"Local"}, nil},
 
-		{"003", "P-11", []string{"Administrators"}, nil},
+		{"003", "P-11", windowsPrivileged, nil},
 		{"003", "P-03", []string{"common-svc"}, nil},
 
 		{"004", "P-11", nil, ErrNotSet},
 		{"004", "P-03", []string{"common-svc"}, nil},
 
-		{"006", "P-11", []string{"Administrators"}, nil},
+		{"006", "P-11", windowsPrivileged, nil},
 
 		{"007", "P-01", nil, ErrNotSet},
 
@@ -120,7 +120,7 @@ func TestInventoryTypes(t *testing.T) {
 	}{
 		{"008", []string{"sudo", "wheel", "admin"}},
 		{"003", []string{"sudo", "wheel", "admin"}},
-		{"006", []string{"Administrators"}},
+		{"006", windowsPrivileged},
 	}
 	for _, tc := range cases {
 		if got, err := c.List(tc.agent, "op.acc.1", "P-11"); err != nil || !reflect.DeepEqual(got, tc.want) {
@@ -280,4 +280,10 @@ func TestExcludes(t *testing.T) {
 	if c.Excludes("op.acc.2", groups) || c.Excludes("op.acc.1", []string{"ens"}) {
 		t.Error("only the group of the control excludes")
 	}
+}
+
+var windowsPrivileged = []string{
+	"Administrators", "Administradores", "Domain Admins", "Admins. del dominio", "Enterprise Admins", "Admins. de empresas",
+	"Schema Admins", "Admins. del esquema", "Account Operators", "Opers. de cuentas", "Backup Operators", "Operadores de copia de seguridad",
+	"Server Operators", "Opers. de servidores", "Print Operators", "Opers. de impresión", "Group Policy Creator Owners", "Propietarios del creador de directivas de grupo",
 }
