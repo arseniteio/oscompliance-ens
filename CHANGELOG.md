@@ -4,6 +4,8 @@ All notable changes to OSCompliance ENS are documented in this file. The format 
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-19
+
 ### Added
 
 - op.exp.6 EV-01 and mp.s.3 EV-06 count the Wazuh agent as the expected protection when op.exp.6 P-02 names `wazuh` or `wazuh-agent` and the agent read the Wazuh agent configuration of the machine. Before, `wazuh` in P-02 always showed as missing.
@@ -101,7 +103,8 @@ First release.
 - Packages for Linux amd64 and arm64 with a `SHA256SUMS` file.
 - Support for Wazuh 4.14.7, 4.14.8 and 4.14.9, installed from packages or on Docker.
 
-[Unreleased]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/arseniteio/oscompliance-ens-wazuh/compare/v1.0.0...v1.1.0
