@@ -100,8 +100,8 @@ Notifica las vulnerabilidades en privado mediante un aviso de seguridad de GitHu
 
 ## Licencia
 
-Copyright (c) 2026 Arsenite.
+Copyright (c) 2026 Quer System Informática.
 
 OSCompliance ENS se distribuye bajo la GNU Affero General Public License versión 3 (AGPL-3.0-only). Consulta [LICENSE](LICENSE).
 
-Arsenite ofrece también OSCompliance ENS con una licencia comercial, para organizaciones que no pueden cumplir las obligaciones de la AGPL, como mantener privados los cambios en un producto o en un servicio en red. Escribe a devqs@quersystem.com para conocer las condiciones.
+Quer System Informática ofrece también OSCompliance ENS con una licencia comercial, para organizaciones que no pueden cumplir las obligaciones de la AGPL, como mantener privados los cambios en un producto o en un servicio en red. Escribe a devqs@quersystem.com para conocer las condiciones.
